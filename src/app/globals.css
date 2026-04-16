@@ -2,26 +2,129 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Brand tokens ─────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --racing-green: #004225;
+  --velocity-lime: #CCFF00;
+  --carbon-grey: #1A1A1A;
+  --stark-white: #FFFFFF;
+
+  /* Dynamic — overridden per-user by ThemeContext */
+  --user-color: #CCFF00;
+
+  /* Semantic aliases */
+  --bg-primary:    var(--carbon-grey);
+  --bg-surface:    #242424;
+  --bg-card:       #2a2a2a;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --text-primary:  var(--stark-white);
+  --text-muted:    rgba(255, 255, 255, 0.45);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base ─────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--carbon-grey);
+  color: var(--stark-white);
+  font-family: var(--font-inter), 'Inter', sans-serif;
+  min-height: 100dvh;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* ── Typography utility ───────────────────────────────────────── */
+.tandem-heading {
+  font-family: var(--font-inter-tight), 'Inter Tight', sans-serif;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: var(--velocity-lime);
+  line-height: 1.05;
+}
+
+/* ── Component utilities ──────────────────────────────────────── */
+@layer components {
+  .card {
+    background-color: var(--bg-card);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-subtle);
+    padding: 1rem;
+  }
+
+  .btn-primary {
+    @apply font-tight font-extrabold italic uppercase tracking-tight
+           px-5 py-2.5 rounded-lg text-sm
+           transition-all duration-150
+           hover:opacity-90 active:scale-[0.97]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+    background-color: var(--user-color);
+    color: var(--carbon-grey);
+  }
+
+  .btn-ghost {
+    @apply font-tight font-extrabold italic uppercase tracking-tight
+           px-5 py-2.5 rounded-lg text-sm
+           transition-all duration-150
+           hover:bg-white/5 active:scale-[0.97];
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--stark-white);
+  }
+
+  .input-field {
+    @apply w-full rounded-lg px-3 py-2.5 text-sm text-white
+           placeholder:text-white/30
+           focus:outline-none transition-colors;
+    background-color: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .input-field:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .section-label {
+    @apply font-tight font-bold italic uppercase tracking-wide text-xs;
+    color: var(--text-muted);
   }
 }
+
+/* ── Progressive overload arrow indicators ────────────────────── */
+.arrow-up   { color: var(--velocity-lime); }
+.arrow-same { color: rgba(255, 255, 255, 0.5); }
+.arrow-down { color: #FF6B6B; }
+
+/* ── Keyframes ────────────────────────────────────────────────── */
+@keyframes pr-flash {
+  0%, 100% { background-color: transparent; }
+  50%       { background-color: var(--velocity-lime); color: var(--carbon-grey); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar             { width: 4px; height: 4px; }
+::-webkit-scrollbar-track       { background: transparent; }
+::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.15); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+/* ── Hide number input spinners ───────────────────────────────── */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] { -moz-appearance: textfield; }
