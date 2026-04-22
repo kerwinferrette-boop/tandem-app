@@ -60,15 +60,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ═══════════════════════════════
    ONBOARDING / PLAN SETUP
 ═══════════════════════════════ */
-.onboard-wrap{padding:32px 18px 0;}
-.ob-logo{text-align:center;margin-bottom:32px;}
+.onboard-wrap{padding:0;min-height:100vh;display:flex;flex-direction:column;}
+.ob-logo{text-align:center;padding:32px 18px 24px;}
 .ob-logo-big svg{width:64px;height:64px;display:block;margin:0 auto 12px;}
 .ob-title{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:.06em;
   background:linear-gradient(135deg,#fff 0%,#2BA366 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
 .ob-sub{font-size:13px;color:var(--muted2);margin-top:8px;font-weight:300;line-height:1.6;}
 
-.ob-section{margin-bottom:24px;}
+/* Step indicator */
+.ob-steps{display:flex;align-items:center;justify-content:center;gap:6px;padding:0 18px 20px;}
+.ob-step-dot{width:24px;height:4px;border-radius:2px;background:var(--s3);transition:all .3s;}
+.ob-step-dot.done{background:var(--accent);}
+.ob-step-dot.active{background:var(--accent2);width:36px;}
+.ob-step-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:6px;}
+
+/* Cards container */
+.ob-cards{flex:1;overflow:hidden;position:relative;}
+.ob-card{display:none;padding:0 18px;animation:obSlideIn .25s ease;}
+.ob-card.active{display:block;}
+@keyframes obSlideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes obSlideBack{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+.ob-card.slide-back{animation:obSlideBack .25s ease;}
+
+.ob-card-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em;color:#fff;margin-bottom:4px;}
+.ob-card-sub{font-size:12px;color:var(--muted2);font-weight:300;line-height:1.6;margin-bottom:20px;}
+
+.ob-section{margin-bottom:20px;}
 .ob-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;
   text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
 
@@ -89,7 +108,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .goal-tag{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;
   background:var(--s2);border:1px solid var(--border);color:var(--muted2);letter-spacing:.06em;}
 
-/* Number inputs row */
+/* Number inputs */
 .ob-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .ob-field{display:flex;flex-direction:column;gap:6px;}
 .ob-field-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;
@@ -100,6 +119,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   transition:border-color .15s;}
 .ob-input:focus{border-color:var(--accent);}
 .ob-input::placeholder{color:var(--muted);font-size:14px;}
+.ob-select{background:var(--s1);border:1px solid var(--border2);border-radius:10px;
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;
+  padding:12px 14px;outline:none;width:100%;transition:border-color .15s;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23585878' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;}
+.ob-select:focus{border-color:var(--accent);}
+.ob-select option{background:#0d0d16;}
+
+/* Weight gap display */
+.weight-gap{margin-top:10px;padding:12px 14px;background:var(--s2);border-radius:10px;
+  border:1px solid var(--border);display:none;}
+.weight-gap.visible{display:block;}
+.wg-gap{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em;line-height:1;}
+.wg-pace{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);margin-top:3px;}
+
+/* Sex / experience toggle */
+.ob-toggle-row{display:grid;gap:8px;}
+.ob-toggle-row.two{grid-template-columns:1fr 1fr;}
+.ob-toggle-row.three{grid-template-columns:1fr 1fr 1fr;}
+.ob-toggle{padding:12px 10px;background:var(--s1);border:1px solid var(--border2);border-radius:10px;
+  cursor:pointer;transition:all .18s;text-align:center;}
+.ob-toggle:hover{border-color:var(--border2);}
+.ob-toggle.selected{background:var(--accent-dim);border-color:rgba(30,126,76,.4);}
+.ob-toggle-icon{font-size:18px;margin-bottom:4px;}
+.ob-toggle-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted2);}
+.ob-toggle.selected .ob-toggle-label{color:var(--accent2);}
 
 /* Days selector */
 .days-row{display:flex;gap:7px;}
@@ -108,6 +155,28 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted2);cursor:pointer;transition:all .15s;}
 .day-dot.selected{background:var(--accent-dim);border-color:rgba(30,126,76,.4);color:var(--accent2);}
 
+/* Review card */
+.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+.review-item{padding:12px 14px;background:var(--s1);border:1px solid var(--border);border-radius:10px;}
+.review-item-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.review-item-value{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--text);letter-spacing:.03em;line-height:1.2;}
+.review-item.span2{grid-column:1/-1;}
+.review-item .goal-accent{color:var(--gc,var(--accent2));}
+
+/* Navigation buttons */
+.ob-nav{display:flex;gap:10px;padding:16px 18px 32px;margin-top:4px;}
+.ob-back-btn{flex:0 0 48px;height:48px;border-radius:11px;border:1px solid var(--border2);
+  background:var(--s1);color:var(--muted2);font-size:18px;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;}
+.ob-back-btn:hover{border-color:var(--border2);color:var(--text);}
+.ob-next-btn{flex:1;height:48px;border-radius:11px;border:none;
+  background:linear-gradient(135deg,#1E7E4C 0%,#166B3E 100%);
+  color:#fff;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.08em;
+  cursor:pointer;transition:all .2s;}
+.ob-next-btn:disabled{background:var(--s2);color:var(--muted);cursor:not-allowed;}
+.ob-next-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(30,126,76,.3);}
+.ob-next-btn:not(:disabled):active{transform:scale(.98);}
 .ob-build-btn{width:100%;padding:16px;border-radius:12px;
   background:linear-gradient(135deg,#1E7E4C 0%,#166B3E 100%);
   border:none;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:22px;
@@ -485,10 +554,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .sync-dot.syncing{background:var(--accent);animation:syncPulse 1s infinite;}
 .sync-dot.error{background:var(--red);}
 @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* ═══════════════════════════════
-   PROFILE MODAL
-═══════════════════════════════ */
+/* ── PROFILE MODAL ── */
 .profile-section{margin-bottom:20px;}
 .profile-section-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
 .profile-pill-row{display:flex;gap:6px;flex-wrap:wrap;}
@@ -501,7 +567,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .profile-input-row.three{grid-template-columns:1fr 1fr 1fr;}
 .profile-input-group{display:flex;flex-direction:column;gap:5px;}
 .profile-input-label{font-size:11px;color:var(--muted2);}
-.profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#1E7E4C 0%,#166B3E 100%);border:none;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:4px;transition:all .2s;}
+.profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#1E7E4C 0%,#166B3E 100%);border:none;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:8px;transition:all .2s;}
 .profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(30,126,76,.3);}
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
 #profileBtn{cursor:pointer;transition:all .15s;}
@@ -543,15 +609,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 ══════════════════════════════════ -->
 <div class="view" id="view-onboard">
   <div class="onboard-wrap">
+
+    <!-- Logo -->
     <div class="ob-logo">
       <div class="ob-logo-big">
         <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="64" height="64" rx="14" fill="#1E7E4C"/>
-          <!-- T crossbar -->
           <polygon points="7,12 48,12 46,23 5,23" fill="#fff"/>
-          <!-- T stem (italic slant) -->
           <polygon points="16,23 28,23 22,54 10,54" fill="#fff"/>
-          <!-- i stem (italic slant) -->
           <polygon points="34,25 46,25 40,54 28,54" fill="#fff"/>
         </svg>
       </div>
@@ -559,57 +624,190 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div class="ob-sub">Your training partner. Built around your goals.</div>
     </div>
 
-    <!-- GOAL -->
-    <div class="ob-section">
-      <span class="ob-label">What's your primary goal?</span>
-      <div class="goal-grid">
-        <div class="goal-card" style="--gc:var(--red);--gd:rgba(232,84,84,0.08);--gb:rgba(232,84,84,0.35);" onclick="selectGoal('fat_burn',this)">
-          <div class="goal-card-top"><div class="goal-icon">🔥</div><div class="goal-name">Burn Fat</div></div>
-          <div class="goal-desc">Lose body fat, increase metabolic conditioning, and build a leaner physique. High-rep, shorter rest, cardio-integrated sessions.</div>
-          <div class="goal-tags"><span class="goal-tag">Higher Reps</span><span class="goal-tag">Shorter Rest</span><span class="goal-tag">Zone 2 Cardio</span><span class="goal-tag">Compound Circuits</span></div>
-        </div>
-        <div class="goal-card" style="--gc:var(--blue);--gd:rgba(74,158,255,0.08);--gb:rgba(74,158,255,0.35);" onclick="selectGoal('build_muscle',this)">
-          <div class="goal-card-top"><div class="goal-icon">💪</div><div class="goal-name">Build Muscle</div></div>
-          <div class="goal-desc">Maximize hypertrophy and strength through progressive overload, wave periodization, and compound-first programming.</div>
-          <div class="goal-tags"><span class="goal-tag">6–12 Reps</span><span class="goal-tag">2 min Rest</span><span class="goal-tag">Heavy Compounds</span><span class="goal-tag">Wave Loading</span></div>
-        </div>
-        <div class="goal-card" style="--gc:var(--teal);--gd:rgba(56,217,192,0.08);--gb:rgba(56,217,192,0.35);" onclick="selectGoal('transform',this)">
-          <div class="goal-card-top"><div class="goal-icon">⚡</div><div class="goal-name">Transform</div></div>
-          <div class="goal-desc">Simultaneous fat loss and muscle building. Body recomposition through metabolic resistance training and moderate deficit.</div>
-          <div class="goal-tags"><span class="goal-tag">8–15 Reps</span><span class="goal-tag">90 sec Rest</span><span class="goal-tag">MRT Circuits</span><span class="goal-tag">Hybrid Cardio</span></div>
-        </div>
-      </div>
+    <!-- Step dots -->
+    <div class="ob-step-label" id="obStepLabel">Step 1 of 4 — Goal</div>
+    <div class="ob-steps">
+      <div class="ob-step-dot active" id="sdot-0"></div>
+      <div class="ob-step-dot" id="sdot-1"></div>
+      <div class="ob-step-dot" id="sdot-2"></div>
+      <div class="ob-step-dot" id="sdot-3"></div>
     </div>
 
-    <!-- DETAILS -->
-    <div class="ob-section">
-      <span class="ob-label">Program Details</span>
-      <div class="ob-row" style="margin-bottom:12px;">
-        <div class="ob-field">
-          <div class="ob-field-label">Program Length (weeks)</div>
-          <input class="ob-input" type="number" inputmode="numeric" id="ob-weeks" placeholder="12" min="4" max="24">
-        </div>
-        <div class="ob-field">
-          <div class="ob-field-label">Current Weight (lbs)</div>
-          <input class="ob-input" type="number" inputmode="decimal" id="ob-weight" placeholder="295">
+    <!-- Cards -->
+    <div class="ob-cards">
+
+      <!-- CARD 1: Goal -->
+      <div class="ob-card active" id="ob-card-0">
+        <div class="ob-card-title">What's Your Goal?</div>
+        <div class="ob-card-sub">This shapes your entire program — reps, rest, progressions, everything.</div>
+        <div class="goal-grid">
+          <div class="goal-card" style="--gc:var(--red);--gd:rgba(232,84,84,0.08);--gb:rgba(232,84,84,0.35);" onclick="selectGoal('fat_burn',this)">
+            <div class="goal-card-top"><div class="goal-icon">🔥</div><div class="goal-name">Burn Fat</div></div>
+            <div class="goal-desc">Lose body fat, increase metabolic conditioning, and build a leaner physique. High-rep, shorter rest, cardio-integrated sessions.</div>
+            <div class="goal-tags"><span class="goal-tag">Higher Reps</span><span class="goal-tag">Shorter Rest</span><span class="goal-tag">Zone 2 Cardio</span><span class="goal-tag">Compound Circuits</span></div>
+          </div>
+          <div class="goal-card" style="--gc:var(--blue);--gd:rgba(74,158,255,0.08);--gb:rgba(74,158,255,0.35);" onclick="selectGoal('build_muscle',this)">
+            <div class="goal-card-top"><div class="goal-icon">💪</div><div class="goal-name">Build Muscle</div></div>
+            <div class="goal-desc">Maximize hypertrophy and strength through progressive overload, wave periodization, and compound-first programming.</div>
+            <div class="goal-tags"><span class="goal-tag">6–12 Reps</span><span class="goal-tag">2 min Rest</span><span class="goal-tag">Heavy Compounds</span><span class="goal-tag">Wave Loading</span></div>
+          </div>
+          <div class="goal-card" style="--gc:var(--teal);--gd:rgba(56,217,192,0.08);--gb:rgba(56,217,192,0.35);" onclick="selectGoal('transform',this)">
+            <div class="goal-card-top"><div class="goal-icon">⚡</div><div class="goal-name">Transform</div></div>
+            <div class="goal-desc">Simultaneous fat loss and muscle building. Body recomposition through metabolic resistance training and moderate deficit.</div>
+            <div class="goal-tags"><span class="goal-tag">8–15 Reps</span><span class="goal-tag">90 sec Rest</span><span class="goal-tag">MRT Circuits</span><span class="goal-tag">Hybrid Cardio</span></div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- DAYS -->
-    <div class="ob-section">
-      <span class="ob-label">Training Days Per Week</span>
-      <div class="days-row">
-        <div class="day-dot" onclick="selectDays(2,this)">2</div>
-        <div class="day-dot" onclick="selectDays(3,this)">3</div>
-        <div class="day-dot" onclick="selectDays(4,this)">4</div>
-        <div class="day-dot" onclick="selectDays(5,this)">5</div>
+      <!-- CARD 2: Body Stats -->
+      <div class="ob-card" id="ob-card-1">
+        <div class="ob-card-title">Your Stats</div>
+        <div class="ob-card-sub">Used to calibrate your program and track progress over time.</div>
+
+        <!-- Weight -->
+        <div class="ob-section">
+          <span class="ob-label">Weight</span>
+          <div class="ob-row" style="margin-bottom:10px;">
+            <div class="ob-field">
+              <div class="ob-field-label">Current (lbs)</div>
+              <input class="ob-input" type="number" inputmode="decimal" id="ob-weight" placeholder="225" oninput="updateWeightGap()">
+            </div>
+            <div class="ob-field">
+              <div class="ob-field-label">Target (lbs)</div>
+              <input class="ob-input" type="number" inputmode="decimal" id="ob-target-weight" placeholder="195" oninput="updateWeightGap()">
+            </div>
+          </div>
+          <div class="weight-gap" id="weightGap">
+            <div class="wg-gap" id="wgGapVal">—</div>
+            <div class="wg-pace" id="wgPaceVal">—</div>
+          </div>
+        </div>
+
+        <!-- Height -->
+        <div class="ob-section">
+          <span class="ob-label">Height</span>
+          <div class="ob-row">
+            <div class="ob-field">
+              <div class="ob-field-label">Feet</div>
+              <select class="ob-select" id="ob-height-ft">
+                <option value="">ft</option>
+                <option value="4">4 ft</option>
+                <option value="5">5 ft</option>
+                <option value="6">6 ft</option>
+                <option value="7">7 ft</option>
+              </select>
+            </div>
+            <div class="ob-field">
+              <div class="ob-field-label">Inches</div>
+              <select class="ob-select" id="ob-height-in">
+                <option value="">in</option>
+                <option value="0">0 in</option>
+                <option value="1">1 in</option>
+                <option value="2">2 in</option>
+                <option value="3">3 in</option>
+                <option value="4">4 in</option>
+                <option value="5">5 in</option>
+                <option value="6">6 in</option>
+                <option value="7">7 in</option>
+                <option value="8">8 in</option>
+                <option value="9">9 in</option>
+                <option value="10">10 in</option>
+                <option value="11">11 in</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Age + Sex -->
+        <div class="ob-section">
+          <div class="ob-row" style="margin-bottom:14px;">
+            <div class="ob-field">
+              <span class="ob-label" style="margin-bottom:6px;">Age</span>
+              <input class="ob-input" type="number" inputmode="numeric" id="ob-age" placeholder="30" min="16" max="80">
+            </div>
+            <div class="ob-field">
+              <span class="ob-label" style="margin-bottom:6px;">Biological Sex</span>
+              <div class="ob-toggle-row two">
+                <div class="ob-toggle" onclick="selectSex('M',this)">
+                  <div class="ob-toggle-icon">♂</div>
+                  <div class="ob-toggle-label">Male</div>
+                </div>
+                <div class="ob-toggle" onclick="selectSex('F',this)">
+                  <div class="ob-toggle-icon">♀</div>
+                  <div class="ob-toggle-label">Female</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Experience -->
+        <div class="ob-section">
+          <span class="ob-label">Experience Level</span>
+          <div class="ob-toggle-row three">
+            <div class="ob-toggle" onclick="selectExperience('beginner',this)">
+              <div class="ob-toggle-icon">🌱</div>
+              <div class="ob-toggle-label">Beginner</div>
+            </div>
+            <div class="ob-toggle" onclick="selectExperience('intermediate',this)">
+              <div class="ob-toggle-icon">⚡</div>
+              <div class="ob-toggle-label">Intermediate</div>
+            </div>
+            <div class="ob-toggle" onclick="selectExperience('advanced',this)">
+              <div class="ob-toggle-icon">🔥</div>
+              <div class="ob-toggle-label">Advanced</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">Pick the number you can genuinely commit to every week — not your best-case scenario.</div>
+
+      <!-- CARD 3: Schedule -->
+      <div class="ob-card" id="ob-card-2">
+        <div class="ob-card-title">Your Schedule</div>
+        <div class="ob-card-sub">Honest answers here beat optimistic ones. Pick what you'll actually do.</div>
+
+        <div class="ob-section">
+          <span class="ob-label">Program Length</span>
+          <div class="ob-field">
+            <div class="ob-field-label">Weeks</div>
+            <input class="ob-input" type="number" inputmode="numeric" id="ob-weeks" placeholder="12" min="4" max="24" style="text-align:left;padding-left:18px;">
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">12 weeks is the sweet spot for meaningful transformation. 4 minimum, 24 maximum.</div>
+        </div>
+
+        <div class="ob-section">
+          <span class="ob-label">Training Days Per Week</span>
+          <div class="days-row">
+            <div class="day-dot" onclick="selectDays(2,this)">2</div>
+            <div class="day-dot" onclick="selectDays(3,this)">3</div>
+            <div class="day-dot" onclick="selectDays(4,this)">4</div>
+            <div class="day-dot" onclick="selectDays(5,this)">5</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">Pick the number you can genuinely commit to every week — not your best-case scenario.</div>
+        </div>
+      </div>
+
+      <!-- CARD 4: Review -->
+      <div class="ob-card" id="ob-card-3">
+        <div class="ob-card-title">Review & Build</div>
+        <div class="ob-card-sub">Everything looks right? Hit build and your program generates instantly.</div>
+
+        <div class="review-grid" id="reviewGrid">
+          <!-- populated by JS -->
+        </div>
+
+        <button class="ob-build-btn" style="margin-top:16px;" onclick="buildProgram()">Build My Program →</button>
+        <div style="height:8px;"></div>
+      </div>
+
+    </div><!-- /ob-cards -->
+
+    <!-- Nav -->
+    <div class="ob-nav" id="obNav">
+      <button class="ob-back-btn" id="obBackBtn" onclick="obStep(-1)" style="display:none;">‹</button>
+      <button class="ob-next-btn" id="obNextBtn" onclick="obStep(1)" disabled>Next →</button>
     </div>
 
-    <button class="ob-build-btn" onclick="buildProgram()">Build My Program →</button>
-    <div style="height:20px;"></div>
   </div>
 </div>
 
@@ -639,7 +837,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div id="authOTPState" style="display:none;">
         <div class="auth-sent">
           <div class="auth-sent-icon">🔑</div>
-          <div class="auth-sent-title">Check Your Email</div>
+          <div class="auth-sent-title">Enter Your Code</div>
           <div class="auth-sent-sub">We sent a 6-digit code to <strong id="authSentEmail"></strong>.<br>Check your inbox (and spam).</div>
         </div>
         <span class="auth-field-label" style="margin-top:14px;">6-digit code</span>
@@ -802,180 +1000,179 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="modal-title">Your Program</div>
     <div id="goalSummary" style="font-size:13px;color:var(--muted2);line-height:1.8;"></div>
     <button class="clear-btn" style="color:var(--accent);background:var(--accent-dim);border-color:rgba(30,126,76,.3);margin-top:14px;" onclick="resetProgram()">← Rebuild Program</button>
-    <div id="partnerCard" style="margin-top:14px;padding:14px;background:var(--s1);border:1px solid var(--border2);border-radius:12px;display:none;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Train with a partner</div>
-      <div id="partnerStatus"></div>
-      <div id="partnerForm" style="display:flex;gap:8px;">
-        <input type="email" id="partnerEmail" placeholder="Partner's email" style="flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:10px 12px;outline:none;font-family:'DM Sans',sans-serif;">
-        <button onclick="connectPartner()" style="padding:10px 16px;border-radius:8px;background:var(--accent-dim);border:1px solid rgba(30,126,76,.35);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">Connect</button>
-      </div>
-    </div>
     <div id="goalSyncInfo" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
   </div>
 </div>
 
-<!-- VS LEADERBOARD -->
-<div class="modal-overlay" id="modal-vs" onclick="if(event.target===this)closeModal('vs')">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <button class="modal-close" onclick="closeModal('vs')">✕</button>
-    <div class="modal-title">VS — Partner Battle</div>
-    <div class="modal-sub">Weekly points: sessions (10), PRs (5), protein (3), steps ≥8k (2).</div>
-    <div id="vsContent" style="margin-top:12px;"></div>
-  </div>
-</div>
-
-<!-- PROFILE & SETTINGS MODAL -->
+<!-- PROFILE MODAL -->
 <div class="modal-overlay" id="modal-profile" onclick="if(event.target===this)closeModal('profile')">
   <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <button class="modal-close" onclick="closeModal('profile')">✕</button>
     <div class="modal-title">Profile & Settings</div>
 
-    <!-- PROGRAM -->
+    <!-- A. Program -->
     <div class="profile-section">
       <span class="profile-section-label">Program</span>
-      <div style="margin-bottom:10px;">
-        <div class="profile-input-label" style="margin-bottom:6px;">Goal</div>
-        <div class="profile-pill-row" id="prof-goal-pills">
-          <div class="profile-pill" data-goal="fat_burn" onclick="selectProfileGoal('fat_burn',this)">🔥 Burn Fat</div>
-          <div class="profile-pill" data-goal="build_muscle" onclick="selectProfileGoal('build_muscle',this)">💪 Build Muscle</div>
-          <div class="profile-pill" data-goal="transform" onclick="selectProfileGoal('transform',this)">⚡ Transform</div>
+      <div class="profile-pill-row" id="profileGoalRow">
+        <button class="profile-pill" data-goal="burn_fat" onclick="selectProfileGoal('burn_fat')">🔥 Burn</button>
+        <button class="profile-pill" data-goal="build_muscle" onclick="selectProfileGoal('build_muscle')">💪 Muscle</button>
+        <button class="profile-pill" data-goal="transform" onclick="selectProfileGoal('transform')">⚡ Transform</button>
+      </div>
+      <div style="margin-top:12px;">
+        <span class="profile-input-label" style="display:block;margin-bottom:6px;">Days / week</span>
+        <div class="profile-pill-row" id="profileDaysRow">
+          <button class="profile-pill" data-days="2" onclick="selectProfileDays(2)">2</button>
+          <button class="profile-pill" data-days="3" onclick="selectProfileDays(3)">3</button>
+          <button class="profile-pill" data-days="4" onclick="selectProfileDays(4)">4</button>
+          <button class="profile-pill" data-days="5" onclick="selectProfileDays(5)">5</button>
         </div>
       </div>
-      <div style="margin-bottom:10px;">
-        <div class="profile-input-label" style="margin-bottom:6px;">Training Days / Week</div>
-        <div class="days-row" id="prof-days-row" style="justify-content:flex-start;gap:8px;">
-          <div class="day-dot" onclick="selectProfileDays(2,this)">2</div>
-          <div class="day-dot" onclick="selectProfileDays(3,this)">3</div>
-          <div class="day-dot" onclick="selectProfileDays(4,this)">4</div>
-          <div class="day-dot" onclick="selectProfileDays(5,this)">5</div>
-        </div>
-      </div>
-      <div class="profile-input-row">
+      <div class="profile-input-row" style="margin-top:12px;">
         <div class="profile-input-group">
-          <span class="profile-input-label">Current Week</span>
-          <input class="auth-input" type="number" id="prof-week" min="1" max="24" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Current Week</label>
+          <input type="number" id="profileWeekInput" min="1" max="16" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;box-sizing:border-box;">
         </div>
         <div class="profile-input-group">
-          <span class="profile-input-label">Program Length (wks)</span>
-          <input class="auth-input" type="number" id="prof-weeks" min="4" max="24" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Sex</label>
+          <div class="profile-pill-row" id="profileSexRow" style="margin-top:2px;">
+            <button class="profile-pill" data-sex="male" onclick="selectAvatarPill('sex','male')">M</button>
+            <button class="profile-pill" data-sex="female" onclick="selectAvatarPill('sex','female')">F</button>
+            <button class="profile-pill" data-sex="other" onclick="selectAvatarPill('sex','other')">X</button>
+          </div>
         </div>
       </div>
-      <button class="profile-save-btn" onclick="saveProfileProgram()">Save Program Changes</button>
+      <div style="margin-top:12px;">
+        <span class="profile-input-label" style="display:block;margin-bottom:6px;">Experience</span>
+        <div class="profile-pill-row" id="profileExpRow">
+          <button class="profile-pill" data-exp="beginner" onclick="selectAvatarPill('exp','beginner')">Beginner</button>
+          <button class="profile-pill" data-exp="intermediate" onclick="selectAvatarPill('exp','intermediate')">Intermediate</button>
+          <button class="profile-pill" data-exp="advanced" onclick="selectAvatarPill('exp','advanced')">Advanced</button>
+        </div>
+      </div>
+      <button class="profile-save-btn" onclick="saveProfileProgram()">Save Program</button>
     </div>
 
     <div class="profile-divider"></div>
 
-    <!-- BODY STATS -->
+    <!-- B. Body Stats -->
     <div class="profile-section">
       <span class="profile-section-label">Body Stats</span>
       <div class="profile-input-row three">
         <div class="profile-input-group">
-          <span class="profile-input-label">Current Weight (lbs)</span>
-          <input class="auth-input" type="number" id="prof-weight" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Current (lbs)</label>
+          <input type="number" id="profileWeightInput" placeholder="185" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;box-sizing:border-box;">
         </div>
         <div class="profile-input-group">
-          <span class="profile-input-label">Goal Weight (lbs)</span>
-          <input class="auth-input" type="number" id="prof-goal-weight" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Goal (lbs)</label>
+          <input type="number" id="profileGoalWeightInput" placeholder="175" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;box-sizing:border-box;">
         </div>
         <div class="profile-input-group">
-          <span class="profile-input-label">Height (in)</span>
-          <input class="auth-input" type="number" id="prof-height" placeholder="72" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Height</label>
+          <div style="display:flex;gap:4px;">
+            <input type="number" id="profileHeightFt" placeholder="5" min="4" max="7" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:50%;box-sizing:border-box;">
+            <input type="number" id="profileHeightIn" placeholder="11" min="0" max="11" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:50%;box-sizing:border-box;">
+          </div>
         </div>
       </div>
-      <button class="profile-save-btn" style="margin-top:10px;" onclick="saveProfileStats()">Save Body Stats</button>
+      <button class="profile-save-btn" onclick="saveProfileStats()">Save Stats</button>
     </div>
 
     <div class="profile-divider"></div>
 
-    <!-- NUTRITION -->
+    <!-- C. Nutrition Targets -->
     <div class="profile-section">
-      <span class="profile-section-label">Daily Nutrition Targets</span>
+      <span class="profile-section-label">Nutrition Targets</span>
       <div class="profile-input-row three">
         <div class="profile-input-group">
-          <span class="profile-input-label">Calories</span>
-          <input class="auth-input" type="number" id="prof-calories" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Calories</label>
+          <input type="number" id="profileCalInput" placeholder="2200" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;box-sizing:border-box;">
         </div>
         <div class="profile-input-group">
-          <span class="profile-input-label">Protein (g)</span>
-          <input class="auth-input" type="number" id="prof-protein" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Protein (g)</label>
+          <input type="number" id="profileProteinInput" placeholder="180" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;box-sizing:border-box;">
         </div>
         <div class="profile-input-group">
-          <span class="profile-input-label">Water (oz)</span>
-          <input class="auth-input" type="number" id="prof-water" style="margin-bottom:0;font-size:15px;padding:10px 12px;">
+          <label class="profile-input-label">Water (oz)</label>
+          <input type="number" id="profileWaterInput" placeholder="100" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;box-sizing:border-box;">
         </div>
       </div>
-      <button class="profile-save-btn" style="margin-top:10px;" onclick="saveProfileNutrition()">Save Nutrition Targets</button>
+      <button class="profile-save-btn" onclick="saveProfileNutrition()">Save Nutrition</button>
     </div>
 
     <div class="profile-divider"></div>
 
-    <!-- COLOR THEME -->
+    <!-- D. Color Theme -->
     <div class="profile-section">
       <span class="profile-section-label">Color Theme</span>
-      <div class="profile-swatch-row">
-        <div class="profile-swatch" style="background:#d4a843;" onclick="applyColorTheme('#d4a843','#e8b84b',this)" title="Gold"></div>
-        <div class="profile-swatch" style="background:#2BA366;" onclick="applyColorTheme('#2BA366','#33c47c',this)" title="Green"></div>
-        <div class="profile-swatch" style="background:#4a9eff;" onclick="applyColorTheme('#4a9eff','#6aadff',this)" title="Blue"></div>
-        <div class="profile-swatch" style="background:#e85454;" onclick="applyColorTheme('#e85454','#f06a6a',this)" title="Red"></div>
-        <div class="profile-swatch" style="background:#b47fff;" onclick="applyColorTheme('#b47fff','#c494ff',this)" title="Purple"></div>
-        <div class="profile-swatch" style="background:#38d9c0;" onclick="applyColorTheme('#38d9c0','#4ee8cf',this)" title="Teal"></div>
-        <div class="profile-swatch" style="background:#e8547a;" onclick="applyColorTheme('#e8547a','#f06a8e',this)" title="Pink"></div>
-        <div class="profile-swatch" style="background:#ff9952;" onclick="applyColorTheme('#ff9952','#ffad6e',this)" title="Orange"></div>
+      <div class="profile-swatch-row" id="profileThemeRow">
+        <div class="profile-swatch" data-color="#d4a843" style="background:#d4a843;" onclick="applyColorTheme('#d4a843')" title="Gold"></div>
+        <div class="profile-swatch" data-color="#2BA366" style="background:#2BA366;" onclick="applyColorTheme('#2BA366')" title="Green"></div>
+        <div class="profile-swatch" data-color="#4a9eff" style="background:#4a9eff;" onclick="applyColorTheme('#4a9eff')" title="Blue"></div>
+        <div class="profile-swatch" data-color="#e85454" style="background:#e85454;" onclick="applyColorTheme('#e85454')" title="Red"></div>
+        <div class="profile-swatch" data-color="#b47fff" style="background:#b47fff;" onclick="applyColorTheme('#b47fff')" title="Purple"></div>
+        <div class="profile-swatch" data-color="#38d9c0" style="background:#38d9c0;" onclick="applyColorTheme('#38d9c0')" title="Teal"></div>
+        <div class="profile-swatch" data-color="#e8547a" style="background:#e8547a;" onclick="applyColorTheme('#e8547a')" title="Pink"></div>
+        <div class="profile-swatch" data-color="#ff9952" style="background:#ff9952;" onclick="applyColorTheme('#ff9952')" title="Orange"></div>
       </div>
     </div>
 
     <div class="profile-divider"></div>
 
-    <!-- AVATAR -->
+    <!-- E. Avatar -->
     <div class="profile-section">
       <span class="profile-section-label">Avatar</span>
       <div style="margin-bottom:10px;">
-        <div class="profile-input-label" style="margin-bottom:6px;">Gender</div>
-        <div class="profile-pill-row">
-          <div class="profile-pill" data-av="gender" data-val="male" onclick="selectAvatarPill('gender','male',this)">♂ Male</div>
-          <div class="profile-pill" data-av="gender" data-val="female" onclick="selectAvatarPill('gender','female',this)">♀ Female</div>
-          <div class="profile-pill" data-av="gender" data-val="nonbinary" onclick="selectAvatarPill('gender','nonbinary',this)">⚧ Nonbinary</div>
+        <span class="profile-input-label" style="display:block;margin-bottom:6px;">Gender</span>
+        <div class="profile-pill-row" id="profileGenderRow">
+          <button class="profile-pill" data-gender="male" onclick="selectAvatarPill('gender','male')">Male</button>
+          <button class="profile-pill" data-gender="female" onclick="selectAvatarPill('gender','female')">Female</button>
+          <button class="profile-pill" data-gender="nonbinary" onclick="selectAvatarPill('gender','nonbinary')">Nonbinary</button>
         </div>
       </div>
       <div style="margin-bottom:10px;">
-        <div class="profile-input-label" style="margin-bottom:6px;">Skin Tone</div>
-        <div class="profile-swatch-row">
-          <div class="profile-swatch" style="background:#FDDBB4;" onclick="selectSkinTone('#FDDBB4',this)"></div>
-          <div class="profile-swatch" style="background:#D4956A;" onclick="selectSkinTone('#D4956A',this)"></div>
-          <div class="profile-swatch" style="background:#A0622A;" onclick="selectSkinTone('#A0622A',this)"></div>
-          <div class="profile-swatch" style="background:#6B3A2A;" onclick="selectSkinTone('#6B3A2A',this)"></div>
-          <div class="profile-swatch" style="background:#3B1F0E;" onclick="selectSkinTone('#3B1F0E',this)"></div>
+        <span class="profile-input-label" style="display:block;margin-bottom:6px;">Skin Tone</span>
+        <div class="profile-swatch-row" id="profileSkinRow">
+          <div class="profile-swatch" data-skin="#FDDCB5" style="background:#FDDCB5;" onclick="selectSkinTone('#FDDCB5')"></div>
+          <div class="profile-swatch" data-skin="#F0C27F" style="background:#F0C27F;" onclick="selectSkinTone('#F0C27F')"></div>
+          <div class="profile-swatch" data-skin="#C68642" style="background:#C68642;" onclick="selectSkinTone('#C68642')"></div>
+          <div class="profile-swatch" data-skin="#8D5524" style="background:#8D5524;" onclick="selectSkinTone('#8D5524')"></div>
+          <div class="profile-swatch" data-skin="#4A2912" style="background:#4A2912;" onclick="selectSkinTone('#4A2912')"></div>
         </div>
       </div>
       <div style="margin-bottom:10px;">
-        <div class="profile-input-label" style="margin-bottom:6px;">Hair</div>
-        <div class="profile-pill-row">
-          <div class="profile-pill" data-av="hair" data-val="fade" onclick="selectAvatarPill('hair','fade',this)">Fade</div>
-          <div class="profile-pill" data-av="hair" data-val="short" onclick="selectAvatarPill('hair','short',this)">Short</div>
-          <div class="profile-pill" data-av="hair" data-val="long" onclick="selectAvatarPill('hair','long',this)">Long</div>
-          <div class="profile-pill" data-av="hair" data-val="bald" onclick="selectAvatarPill('hair','bald',this)">Bald</div>
+        <span class="profile-input-label" style="display:block;margin-bottom:6px;">Body Type</span>
+        <div class="profile-pill-row" id="profileBodyRow">
+          <button class="profile-pill" data-body="athletic" onclick="selectAvatarPill('body','athletic')">Athletic</button>
+          <button class="profile-pill" data-body="lean" onclick="selectAvatarPill('body','lean')">Lean</button>
+          <button class="profile-pill" data-body="stocky" onclick="selectAvatarPill('body','stocky')">Stocky</button>
         </div>
       </div>
       <div style="margin-bottom:10px;">
-        <div class="profile-input-label" style="margin-bottom:6px;">Body Type</div>
-        <div class="profile-pill-row">
-          <div class="profile-pill" data-av="body" data-val="athletic" onclick="selectAvatarPill('body','athletic',this)">Athletic</div>
-          <div class="profile-pill" data-av="body" data-val="lean" onclick="selectAvatarPill('body','lean',this)">Lean</div>
-          <div class="profile-pill" data-av="body" data-val="stocky" onclick="selectAvatarPill('body','stocky',this)">Stocky</div>
+        <span class="profile-input-label" style="display:block;margin-bottom:6px;">Hair</span>
+        <div class="profile-pill-row" id="profileHairRow">
+          <button class="profile-pill" data-hair="fade" onclick="selectAvatarPill('hair','fade')">Fade</button>
+          <button class="profile-pill" data-hair="short" onclick="selectAvatarPill('hair','short')">Short</button>
+          <button class="profile-pill" data-hair="long" onclick="selectAvatarPill('hair','long')">Long</button>
+          <button class="profile-pill" data-hair="bald" onclick="selectAvatarPill('hair','bald')">Bald</button>
         </div>
       </div>
       <button class="profile-save-btn" onclick="saveProfileAvatar()">Save Avatar</button>
     </div>
 
-    <div style="height:8px;"></div>
+    <div class="profile-divider"></div>
+
+    <!-- Sign Out -->
+    <div class="profile-section" style="text-align:center;">
+      <div id="profileUserEmail" style="font-size:11px;color:var(--muted);margin-bottom:10px;"></div>
+      <button class="clear-btn" style="color:#e85454;background:rgba(232,84,84,.1);border-color:rgba(232,84,84,.3);" onclick="signOut()">Sign Out</button>
+    </div>
   </div>
 </div>
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav" id="bottomNav" style="display:none;">
-  <button class="bnav-btn" onclick="openModal('vs')">⚔ VS</button>
+  <button class="bnav-btn" onclick="openModal('plates')">🏋️ Plates</button>
   <button class="bnav-btn" onclick="openModal('calc')">📊 1RM</button>
   <button class="bnav-btn" onclick="openModal('history')">📋 Log</button>
   <button class="bnav-btn primary" onclick="finishSession()">Finish ✓</button>
@@ -1006,7 +1203,8 @@ sb.auth.onAuthStateChange((event, session) => {
     if (document.getElementById('view-auth')?.classList.contains('active')) {
       const savedCfg = LS.get('tandem_cfg');
       if (savedCfg?.goal) {
-        cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days;
+        cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
+        selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = LS.get('tandem_week') || 1;
         renderTracker(); showView('tracker');
       } else {
@@ -1033,8 +1231,6 @@ let currentDay = ''; // active day key
 let currentWeek = 1;
 let activeFormula = 'epley';
 const S = { restTimers:{}, swTimers:{}, swRun:{}, swSec:{}, logged:{}, sessionSets:{} };
-const exerciseMeta = {}; // exId → { name, category }
-const exerciseNameToId = {}; // "Exercise Name" → "xx-id"
 
 // ═══════════════════════════════════════════════════════
 // GOAL-ADAPTIVE PROGRAM LIBRARY
@@ -1592,50 +1788,219 @@ function saveSetLS(exId, weight, reps) {
 // ONBOARDING
 // ═══════════════════════════════════════════════════════
 let selectedGoal = null;
-let selectedDays = 4;
+let selectedDays = null;
+let selectedSex = null;
+let selectedExperience = null;
+
+// ═══════════════════════════════════════════════════════
+// ONBOARDING — MULTI-STEP
+// ═══════════════════════════════════════════════════════
+let obCurrentStep = 0;
+const OB_STEPS = 4;
+const OB_LABELS = ['Step 1 of 4 — Goal','Step 2 of 4 — Body Stats','Step 3 of 4 — Schedule','Step 4 of 4 — Review'];
+
+function obStep(dir) {
+  if (dir === 1 && !obCanAdvance()) return;
+  const prev = obCurrentStep;
+  obCurrentStep = Math.max(0, Math.min(OB_STEPS - 1, obCurrentStep + dir));
+  if (obCurrentStep === prev) return;
+
+  // FIX BUG 1 & 4: proper slide animation using double rAF so browser paints before removing class
+  const card = document.getElementById('ob-card-' + obCurrentStep);
+  if (dir < 0) {
+    card.classList.add('slide-back');
+    requestAnimationFrame(() => requestAnimationFrame(() => card.classList.remove('slide-back')));
+  }
+
+  // show/hide cards
+  document.querySelectorAll('.ob-card').forEach((c,i) => c.classList.toggle('active', i === obCurrentStep));
+
+  // update dots
+  for (let i = 0; i < OB_STEPS; i++) {
+    const d = document.getElementById('sdot-' + i);
+    d.classList.toggle('active', i === obCurrentStep);
+    d.classList.toggle('done', i < obCurrentStep);
+  }
+
+  // update label
+  document.getElementById('obStepLabel').textContent = OB_LABELS[obCurrentStep];
+
+  // back button
+  document.getElementById('obBackBtn').style.display = obCurrentStep > 0 ? 'flex' : 'none';
+
+  // FIX BUG 7: use 'block' not 'flex' for button display
+  const nextBtn = document.getElementById('obNextBtn');
+  if (obCurrentStep === OB_STEPS - 1) {
+    nextBtn.style.display = 'none';
+    populateReview();
+  } else {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = obCurrentStep === OB_STEPS - 2 ? 'Review →' : 'Next →';
+  }
+
+  obUpdateNextState();
+}
+
+function obCanAdvance() {
+  switch (obCurrentStep) {
+    case 0: return !!selectedGoal;
+    case 1: {
+      const w = parseFloat(document.getElementById('ob-weight').value);
+      const t = parseFloat(document.getElementById('ob-target-weight').value);
+      return w > 0 && t > 0 && !!selectedSex && !!selectedExperience;
+    }
+    case 2: {
+      const wks = parseInt(document.getElementById('ob-weeks').value);
+      // FIX BUG 3: require explicit day selection — selectedDays init is 4 but we now init it null
+      return wks >= 4 && wks <= 24 && !!selectedDays;
+    }
+    default: return true;
+  }
+}
+
+function obUpdateNextState() {
+  const btn = document.getElementById('obNextBtn');
+  if (!btn) return;
+  btn.disabled = !obCanAdvance();
+}
 
 function selectGoal(goal, el) {
   selectedGoal = goal;
   document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
+  obUpdateNextState();
 }
 
 function selectDays(n, el) {
   selectedDays = n;
   document.querySelectorAll('.day-dot').forEach(d => d.classList.remove('selected'));
   el.classList.add('selected');
+  obUpdateNextState();
+}
+
+function selectSex(sex, el) {
+  selectedSex = sex;
+  document.querySelectorAll('.ob-toggle[onclick*="selectSex"]').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  obUpdateNextState();
+}
+
+function selectExperience(exp, el) {
+  selectedExperience = exp;
+  document.querySelectorAll('.ob-toggle[onclick*="selectExperience"]').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  obUpdateNextState();
+}
+
+function updateWeightGap() {
+  const cur = parseFloat(document.getElementById('ob-weight').value);
+  const tgt = parseFloat(document.getElementById('ob-target-weight').value);
+  const gap = document.getElementById('weightGap');
+  const gapVal = document.getElementById('wgGapVal');
+  const paceVal = document.getElementById('wgPaceVal');
+
+  if (!cur || !tgt) { gap.classList.remove('visible'); return; }
+
+  const diff = tgt - cur;
+  const absDiff = Math.abs(diff);
+  const isGain = diff > 0;
+  const isLoss = diff < 0;
+
+  // pace: fat loss ~2 lbs/week, muscle gain ~0.5 lbs/week, recomp ~1 lb/week
+  let rateLabel, rateVal;
+  if (selectedGoal === 'build_muscle') { rateVal = 0.5; rateLabel = '0.5 lbs/week'; }
+  else if (selectedGoal === 'fat_burn') { rateVal = 2; rateLabel = '2 lbs/week'; }
+  else { rateVal = 1; rateLabel = '1 lb/week'; }
+
+  const weeks = Math.round(absDiff / rateVal);
+
+  const sign = isGain ? '+' : isLoss ? '−' : '';
+  const color = isGain ? 'var(--blue)' : isLoss ? 'var(--green)' : 'var(--muted2)';
+
+  gapVal.style.color = color;
+  gapVal.textContent = `${sign}${absDiff} lbs to goal`;
+  paceVal.textContent = diff === 0 ? 'Already at target weight' : `~${weeks} weeks at ${rateLabel}`;
+  gap.classList.add('visible');
+  obUpdateNextState();
+}
+
+function populateReview() {
+  const goalMap = { fat_burn: { label: '🔥 Burn Fat', color: 'var(--red)' }, build_muscle: { label: '💪 Build Muscle', color: 'var(--blue)' }, transform: { label: '⚡ Transform', color: 'var(--teal)' } };
+  const expMap = { beginner: '🌱 Beginner', intermediate: '⚡ Intermediate', advanced: '🔥 Advanced' };
+  const sexMap = { M: '♂ Male', F: '♀ Female' };
+  const g = goalMap[selectedGoal] || { label: selectedGoal, color: 'var(--accent2)' };
+  const ftEl = document.getElementById('ob-height-ft');
+  const inEl = document.getElementById('ob-height-in');
+  const heightStr = (ftEl.value && inEl.value !== '') ? `${ftEl.value}'${inEl.value}"` : '—';
+  const cur = document.getElementById('ob-weight').value || '—';
+  const tgt = document.getElementById('ob-target-weight').value || '—';
+  const age = document.getElementById('ob-age').value || '—';
+  const weeks = document.getElementById('ob-weeks').value || '12';
+
+  document.getElementById('reviewGrid').innerHTML = `
+    <div class="review-item span2">
+      <div class="review-item-label">Goal</div>
+      <div class="review-item-value" style="color:${g.color}">${g.label}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Current Weight</div>
+      <div class="review-item-value">${cur} lbs</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Target Weight</div>
+      <div class="review-item-value">${tgt} lbs</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Height</div>
+      <div class="review-item-value">${heightStr}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Age</div>
+      <div class="review-item-value">${age}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Sex</div>
+      <div class="review-item-value">${sexMap[selectedSex] || '—'}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Experience</div>
+      <div class="review-item-value">${expMap[selectedExperience] || '—'}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Program Length</div>
+      <div class="review-item-value">${weeks} weeks</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Days / Week</div>
+      <div class="review-item-value">${selectedDays}</div>
+    </div>
+  `;
 }
 
 function buildProgram() {
   if (!selectedGoal) { alert('Please select a goal first.'); return; }
   const weeks = parseInt(document.getElementById('ob-weeks').value) || 12;
-  const weight = parseFloat(document.getElementById('ob-weight').value) || 295;
+  const weight = parseFloat(document.getElementById('ob-weight').value) || 225;
+  const targetWeight = parseFloat(document.getElementById('ob-target-weight').value) || weight;
+  const ftEl = document.getElementById('ob-height-ft');
+  const inEl = document.getElementById('ob-height-in');
+  const heightIn = ftEl.value ? (parseInt(ftEl.value)*12 + parseInt(inEl.value||0)) : null;
+  const age = parseInt(document.getElementById('ob-age').value) || null;
 
-  cfg = { goal: selectedGoal, days: selectedDays, weeks, weight };
+  cfg = {
+    goal: selectedGoal,
+    days: selectedDays,
+    weeks,
+    weight,
+    targetWeight,
+    heightIn,
+    age,
+    sex: selectedSex,
+    experience: selectedExperience
+  };
   LS.set('tandem_cfg', cfg);
   currentWeek = 1;
   LS.set('tandem_week', 1);
-
-  // Upsert user profile to Supabase
-  if (currentUser) {
-    (async () => {
-      try {
-        const { error } = await sb.from('users').upsert({
-          id: currentUser.id,
-          email: currentUser.email || null,
-          name: currentUser.email ? currentUser.email.split('@')[0] : (currentUser.phone || 'athlete'),
-          program_goal: cfg.goal,
-          program_weeks: cfg.weeks,
-          program_days_per_week: cfg.days,
-          current_week: 1,
-          start_weight_lbs: cfg.weight,
-          current_weight_lbs: cfg.weight
-        }, { onConflict: 'id' });
-        if (error) console.warn('User upsert error:', error);
-        else setSyncStatus('synced');
-      } catch(e) { console.warn('User upsert error:', e); }
-    })();
-  }
 
   renderTracker();
   showView('tracker');
@@ -1643,6 +2008,38 @@ function buildProgram() {
 
 function resetProgram() {
   closeModal('goal');
+  // FIX BUG 6: reset all JS state vars so a fresh run-through starts clean
+  selectedGoal = null;
+  selectedDays = null;
+  selectedSex = null;
+  selectedExperience = null;
+  // Reset multi-step state
+  obCurrentStep = 0;
+  document.querySelectorAll('.ob-card').forEach((c,i) => c.classList.toggle('active', i === 0));
+  // Clear visual selections
+  document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.ob-toggle').forEach(t => t.classList.remove('selected'));
+  document.querySelectorAll('.day-dot').forEach(d => d.classList.remove('selected'));
+  // Clear inputs
+  ['ob-weight','ob-target-weight','ob-age','ob-weeks'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['ob-height-ft','ob-height-in'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+  document.getElementById('weightGap')?.classList.remove('visible');
+  for (let i = 0; i < OB_STEPS; i++) {
+    const d = document.getElementById('sdot-' + i);
+    if (d) { d.classList.toggle('active', i === 0); d.classList.remove('done'); }
+  }
+  const nextBtn = document.getElementById('obNextBtn');
+  if (nextBtn) { nextBtn.style.display = 'block'; nextBtn.textContent = 'Next →'; nextBtn.disabled = true; }
+  const backBtn = document.getElementById('obBackBtn');
+  if (backBtn) backBtn.style.display = 'none';
+  const stepLabel = document.getElementById('obStepLabel');
+  if (stepLabel) stepLabel.textContent = OB_LABELS[0];
   showView('onboard');
 }
 
@@ -1686,18 +2083,6 @@ function renderTracker() {
   const viewsEl = document.getElementById('workoutViews');
   tabsEl.innerHTML = '';
   viewsEl.innerHTML = '';
-
-  // Populate exercise metadata lookup
-  program.forEach(day => {
-    day.blocks.forEach(block => {
-      (block.exs || []).forEach(ex => {
-        if (ex.id) {
-          exerciseMeta[ex.id] = { name: ex.name, category: ex.badge === 'compound' ? 'compound' : 'isolation' };
-          exerciseNameToId[ex.name] = ex.id;
-        }
-      });
-    });
-  });
 
   program.forEach((day, i) => {
     // Tab
@@ -1963,7 +2348,7 @@ function logSet(id, i) {
       wEl.classList.add('pr'); rEl.classList.add('pr');
       showToast(`🏆 PR — ${id.replace(/\w+-/,'')} · ${est1rm} lbs`);
       document.getElementById('ec-' + id)?.classList.add('pr-beat');
-      // PR synced automatically via sets trigger when session finishes
+      syncPRs(); // background sync on PR beat
     } else {
       btn.classList.add('logged');
       wEl.classList.add('done'); rEl.classList.add('done');
@@ -2144,41 +2529,20 @@ function quickPlatesFor(id) {
 function buildPRModal() {
   const prs = LS.get('tandem_prs') || {};
   const list = document.getElementById('prList');
-  const renderPRs = (data) => {
-    const sorted = Object.entries(data).sort((a,b)=>b[1]-a[1]);
-    if (!sorted.length) { list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px;">No PRs logged yet.<br>Log sets to start tracking.</div>'; return; }
-    list.innerHTML = sorted.map(([id,pr],i) => `
-      <div class="pr-item">
-        <div class="pr-rank">${i+1}</div>
-        <div class="pr-info">
-          <div class="pr-name">${exerciseMeta[id]?.name || id.replace(/^\w+-/,'').replace(/-/g,' ')}</div>
-          <div class="pr-data">Estimated 1RM · Tandem tracked</div>
-        </div>
-        <div style="text-align:right">
-          <div class="pr-1rm">${pr} lbs</div>
-          <div class="pr-badge">1RM</div>
-        </div>
-      </div>`).join('');
-  };
-  renderPRs(prs);
-  // Merge cloud PRs in background
-  if (currentUser) {
-    (async () => {
-      try {
-        const { data: cloudPRs } = await sb.from('personal_records')
-          .select('exercise_name,best_estimated_1rm_lbs').eq('user_id', currentUser.id);
-        if (cloudPRs?.length) {
-          let updated = false;
-          cloudPRs.forEach(r => {
-            const id = exerciseNameToId[r.exercise_name] || r.exercise_name.toLowerCase().replace(/\s+/g, '-');
-            const val = Number(r.best_estimated_1rm_lbs);
-            if (!prs[id] || val > prs[id]) { prs[id] = val; updated = true; }
-          });
-          if (updated) { LS.set('tandem_prs', prs); renderPRs(prs); }
-        }
-      } catch(e) { console.warn('Cloud PR fetch error:', e); }
-    })();
-  }
+  const sorted = Object.entries(prs).sort((a,b)=>b[1]-a[1]);
+  if (!sorted.length) { list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px;">No PRs logged yet.<br>Log sets to start tracking.</div>'; return; }
+  list.innerHTML = sorted.map(([id,pr],i) => `
+    <div class="pr-item">
+      <div class="pr-rank">${i+1}</div>
+      <div class="pr-info">
+        <div class="pr-name">${id.replace(/^\w+-/,'').replace(/-/g,' ')}</div>
+        <div class="pr-data">Estimated 1RM · Tandem tracked</div>
+      </div>
+      <div style="text-align:right">
+        <div class="pr-1rm">${pr} lbs</div>
+        <div class="pr-badge">1RM</div>
+      </div>
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2216,11 +2580,9 @@ function finishSession() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-    isoDate: new Date().toISOString().split('T')[0],
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
-    phase: getPhase(currentWeek, cfg.goal).name,
     exercises: {...sessionSetsMap}
   });
   if (hist.length > 100) hist.pop();
@@ -2235,9 +2597,8 @@ function finishSession() {
   buildNextSessionBanners(program);
   updateProgress();
 
-  // Cloud sync — workout_sessions + sets + health snapshot
+  // Cloud sync
   syncToCloud();
-  syncDailySnapshot(0, cfg.weight);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2305,8 +2666,7 @@ function openModal(name) {
   document.getElementById('modal-' + name).classList.add('open');
   if (name === 'prs')     buildPRModal();
   if (name === 'history') { buildHistoryModal(); updateSyncUserInfo(); }
-  if (name === 'goal')    { updateSyncUserInfo(); checkPartnerStatus(); }
-  if (name === 'vs')      loadVSView();
+  if (name === 'goal')    updateSyncUserInfo();
 }
 
 function closeModal(name) { document.getElementById('modal-' + name)?.classList.remove('open'); }
@@ -2386,7 +2746,8 @@ async function verifyOTP() {
 function skipAuth() {
   const savedCfg = LS.get('tandem_cfg');
   if (savedCfg?.goal) {
-    cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days;
+    cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
+    selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
     currentWeek = LS.get('tandem_week') || 1;
     renderTracker(); showView('tracker');
   } else {
@@ -2433,23 +2794,18 @@ async function syncToCloud() {
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-
-    // 1. Upsert user profile to users table
-    if (Object.keys(cfg).length) {
-      const { error } = await sb.from('users').upsert({
-        id: uid,
-        email: currentUser.email || null,
-        name: currentUser.email ? currentUser.email.split('@')[0] : (currentUser.phone || 'athlete'),
-        program_goal: cfg.goal,
-        program_weeks: cfg.weeks,
-        program_days_per_week: cfg.days,
-        current_week: currentWeek,
-        current_weight_lbs: cfg.weight
-      }, { onConflict: 'id' });
+    // Sessions
+    const hist = (LS.get('tandem_history') || []).map(s => ({
+      id: String(s.id || Date.now()), user_id: uid,
+      date: s.date, week: s.week, goal: s.goal, day: s.day, exercises: s.exercises
+    }));
+    if (hist.length) {
+      const { error } = await sb.from('sessions').upsert(hist, { onConflict: 'id' });
       if (error) throw error;
     }
-
-    // 2. Sync last sets (table preserved)
+    // PRs
+    await syncPRs();
+    // Last sets
     const lastsets = LS.get('tandem_lastsets') || {};
     const lsRows = Object.entries(lastsets).map(([exercise_id, data]) =>
       ({ user_id: uid, exercise_id, data, updated_at: new Date().toISOString() }));
@@ -2457,55 +2813,15 @@ async function syncToCloud() {
       const { error } = await sb.from('lastsets').upsert(lsRows, { onConflict: 'user_id,exercise_id' });
       if (error) throw error;
     }
-
-    // 3. Sync sessions → workout_sessions + sets (skip already-synced)
-    const hist = LS.get('tandem_history') || [];
-    if (hist.length) {
-      const { data: existing } = await sb.from('workout_sessions')
-        .select('session_date,day_type').eq('user_id', uid);
-      const synced = new Set((existing || []).map(e => `${e.session_date}_${e.day_type}`));
-
-      for (const s of hist) {
-        const isoDate = s.isoDate || (() => {
-          const d = new Date(s.date);
-          return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
-        })();
-        if (!isoDate) continue;
-        if (synced.has(`${isoDate}_${s.day}`)) continue;
-
-        let totalVol = 0;
-        Object.values(s.exercises || {}).forEach(sets =>
-          (sets || []).forEach(x => { totalVol += (x.w || 0) * (x.r || 0); }));
-
-        const { data: wsData, error: wsErr } = await sb.from('workout_sessions').insert({
-          user_id: uid, session_date: isoDate, week_number: s.week,
-          phase_name: s.phase || null, day_type: s.day, program_goal: s.goal,
-          completed: true, total_volume_lbs: totalVol
-        }).select('id').single();
-        if (wsErr) { console.warn('Session sync skip:', wsErr.message); continue; }
-
-        const setRows = [];
-        Object.entries(s.exercises || {}).forEach(([exId, sets]) => {
-          const meta = exerciseMeta[exId] || {};
-          (sets || []).forEach(x => {
-            setRows.push({
-              session_id: wsData.id, user_id: uid,
-              exercise_name: meta.name || exId.replace(/^\w+-/, '').replace(/-/g, ' '),
-              exercise_category: meta.category || 'compound',
-              set_number: x.set || 1, weight_lbs: x.w, reps: x.r
-            });
-          });
-        });
-        if (setRows.length) {
-          const { error: setErr } = await sb.from('sets').insert(setRows);
-          if (setErr) console.warn('Sets sync skip:', setErr.message);
-        }
-      }
+    // Config
+    if (Object.keys(cfg).length) {
+      const { error } = await sb.from('user_config').upsert({
+        user_id: uid, ...cfg, current_week: currentWeek, updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      if (error) throw error;
     }
-
-    // PRs handled automatically by check_pr_on_set_insert trigger
-
     setSyncStatus('synced');
+    buildHistoryModal(); // refresh if open
   } catch(e) {
     console.warn('Sync error:', e);
     setSyncStatus('error');
@@ -2515,19 +2831,11 @@ async function syncToCloud() {
 async function syncPRs() {
   if (!currentUser) return;
   const prs = LS.get('tandem_prs') || {};
-  const rows = Object.entries(prs).map(([exId, est1rm]) => ({
-    user_id: currentUser.id,
-    exercise_name: exerciseMeta[exId]?.name || exId.replace(/^\w+-/, '').replace(/-/g, ' '),
-    best_estimated_1rm_lbs: est1rm,
-    achieved_weight_lbs: est1rm,
-    achieved_reps: 1,
-    achieved_date: new Date().toISOString().split('T')[0]
-  }));
-  if (!rows.length) return;
-  try {
-    const { error } = await sb.from('personal_records').upsert(rows, { onConflict: 'user_id,exercise_name' });
-    if (error) console.warn('PR sync error:', error);
-  } catch(e) { console.warn('PR sync error:', e); }
+  const prRows = Object.entries(prs).map(([exercise_id, estimated_1rm]) =>
+    ({ user_id: currentUser.id, exercise_id, estimated_1rm, updated_at: new Date().toISOString() }));
+  if (!prRows.length) return;
+  const { error } = await sb.from('prs').upsert(prRows, { onConflict: 'user_id,exercise_id' });
+  if (error) console.warn('PR sync error:', error);
 }
 
 async function restoreFromCloud() {
@@ -2535,83 +2843,43 @@ async function restoreFromCloud() {
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-
-    // 1. Restore sessions from workout_sessions + sets
-    const { data: sessions, error: se } = await sb.from('workout_sessions')
-      .select('*, sets(*)').eq('user_id', uid).order('session_date', { ascending: false });
+    // Sessions
+    const { data: sessions, error: se } = await sb.from('sessions')
+      .select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (se) throw se;
     if (sessions?.length) {
       const existing = LS.get('tandem_history') || [];
       if (!existing.length) {
-        const hist = sessions.map(ws => {
-          const exercises = {};
-          (ws.sets || []).forEach(s => {
-            const id = exerciseNameToId[s.exercise_name] || s.exercise_name.toLowerCase().replace(/\s+/g, '-');
-            if (!exercises[id]) exercises[id] = [];
-            exercises[id].push({ set: s.set_number, w: Number(s.weight_lbs), r: s.reps, est1rm: Number(s.estimated_1rm_lbs) || 0 });
-          });
-          return {
-            id: Date.parse(ws.session_date) || Date.now(),
-            date: new Date(ws.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }),
-            isoDate: ws.session_date,
-            week: ws.week_number, goal: ws.program_goal, day: ws.day_type, phase: ws.phase_name, exercises
-          };
-        });
-        LS.set('tandem_history', hist);
-        showToast('Restored ' + hist.length + ' sessions from cloud');
+        LS.set('tandem_history', sessions.map(({user_id, ...s}) => s));
+        showToast('History restored from cloud (' + sessions.length + ' sessions)');
       } else {
         showToast('Local data exists — no overwrite');
       }
     } else {
-      showToast('No cloud sessions found');
+      showToast('No cloud data found');
     }
-
-    // 2. Restore PRs from personal_records
-    const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
+    // PRs
+    const { data: prData } = await sb.from('prs').select('*').eq('user_id', uid);
     if (prData?.length && !Object.keys(LS.get('tandem_prs') || {}).length) {
       const prs = {};
-      prData.forEach(r => {
-        const id = exerciseNameToId[r.exercise_name] || r.exercise_name.toLowerCase().replace(/\s+/g, '-');
-        prs[id] = Number(r.best_estimated_1rm_lbs);
-      });
+      prData.forEach(r => { prs[r.exercise_id] = r.estimated_1rm; });
       LS.set('tandem_prs', prs);
     }
-
-    // 3. Restore lastsets
+    // Last sets
     const { data: lsData } = await sb.from('lastsets').select('*').eq('user_id', uid);
     if (lsData?.length && !Object.keys(LS.get('tandem_lastsets') || {}).length) {
       const ls = {};
       lsData.forEach(r => { ls[r.exercise_id] = r.data; });
       LS.set('tandem_lastsets', ls);
     }
-
-    // 4. Restore config from users table
-    const { data: userData } = await sb.from('users').select('*').eq('id', uid).single();
-    if (userData && !LS.get('tandem_cfg')) {
-      LS.set('tandem_cfg', {
-        goal: userData.program_goal, days: userData.program_days_per_week,
-        weeks: userData.program_weeks, weight: Number(userData.current_weight_lbs || userData.start_weight_lbs)
-      });
-      LS.set('tandem_week', userData.current_week || 1);
+    // Config
+    const { data: configData } = await sb.from('user_config')
+      .select('*').eq('user_id', uid).single();
+    if (configData && !LS.get('tandem_cfg')) {
+      const { user_id, updated_at, current_week, ...cfgData } = configData;
+      LS.set('tandem_cfg', cfgData);
+      LS.set('tandem_week', current_week);
     }
-    // Always restore profile fields (color, avatar, nutrition, body stats)
-    if (userData) {
-      const cachedProfile = LS.get('tandem_profile') || {};
-      if (userData.color_theme) cachedProfile.color_theme = userData.color_theme;
-      if (userData.goal_weight_lbs) cachedProfile.goal_weight_lbs = Number(userData.goal_weight_lbs);
-      if (userData.height_inches) cachedProfile.height_inches = Number(userData.height_inches);
-      if (userData.daily_calories_target) cachedProfile.daily_calories_target = userData.daily_calories_target;
-      if (userData.daily_protein_target_g) cachedProfile.daily_protein_target_g = userData.daily_protein_target_g;
-      if (userData.daily_water_target_oz) cachedProfile.daily_water_target_oz = userData.daily_water_target_oz;
-      if (userData.avatar_gender) cachedProfile.avatar_gender = userData.avatar_gender;
-      if (userData.avatar_skin_tone) cachedProfile.avatar_skin_tone = userData.avatar_skin_tone;
-      if (userData.avatar_hair_style) cachedProfile.avatar_hair_style = userData.avatar_hair_style;
-      if (userData.avatar_body_type) cachedProfile.avatar_body_type = userData.avatar_body_type;
-      LS.set('tandem_profile', cachedProfile);
-      // Apply color theme immediately
-      if (userData.color_theme) applyColorTheme(userData.color_theme, userData.color_theme, null);
-    }
-
     setSyncStatus('synced');
     buildHistoryModal();
   } catch(e) {
@@ -2622,314 +2890,199 @@ async function restoreFromCloud() {
 }
 
 // ═══════════════════════════════════════════════════════
-// DAILY HEALTH SNAPSHOT
+// PROFILE MODAL FUNCTIONS
 // ═══════════════════════════════════════════════════════
-async function syncDailySnapshot(steps, weight) {
-  if (!currentUser) return;
-  try {
-    const { error } = await sb.from('health_snapshots').upsert({
-      user_id: currentUser.id,
-      snapshot_date: new Date().toISOString().split('T')[0],
-      steps: steps || 0,
-      weight_lbs: weight || null
-    }, { onConflict: 'user_id,snapshot_date' });
-    if (error) console.warn('Snapshot sync error:', error);
-  } catch(e) { console.warn('Snapshot sync error:', e); }
-}
 
-// ═══════════════════════════════════════════════════════
-// PARTNER CONNECT
-// ═══════════════════════════════════════════════════════
-async function connectPartner() {
-  if (!currentUser) { showToast('Sign in first'); return; }
-  const email = document.getElementById('partnerEmail')?.value?.trim();
-  if (!email || !email.includes('@')) { showToast('Enter a valid email'); return; }
-  try {
-    const { data, error } = await sb.rpc('connect_partner', { partner_email: email });
-    if (error) throw error;
-    if (data?.error) { showToast(data.error); return; }
-    showToast('Connected with ' + (data.name || email) + '!');
-    checkPartnerStatus();
-  } catch(e) {
-    console.warn('Partner connect error:', e);
-    showToast('Failed to connect — see console');
-  }
-}
-
-async function checkPartnerStatus() {
-  const card = document.getElementById('partnerCard');
-  if (!card) return;
-  if (!currentUser) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-  try {
-    const { data: me } = await sb.from('users').select('partner_id').eq('id', currentUser.id).single();
-    if (me?.partner_id) {
-      const { data: partner } = await sb.from('users').select('name,email').eq('id', me.partner_id).single();
-      document.getElementById('partnerStatus').innerHTML = '<div style="font-size:12px;color:var(--green);margin-bottom:8px;">✓ Connected with ' + (partner?.name || partner?.email || 'Partner') + '</div>';
-      document.getElementById('partnerForm').style.display = 'none';
-    } else {
-      document.getElementById('partnerStatus').innerHTML = '';
-      document.getElementById('partnerForm').style.display = 'flex';
-    }
-  } catch(e) { console.warn('Partner check error:', e); }
-}
-
-// ═══════════════════════════════════════════════════════
-// VS LEADERBOARD
-// ═══════════════════════════════════════════════════════
-async function loadVSView() {
-  const el = document.getElementById('vsContent');
-  if (!el) return;
-  if (!currentUser) {
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">Sign in to use VS mode.</div>';
-    return;
-  }
-  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px;">Loading...</div>';
-  try {
-    const { data: me } = await sb.from('users').select('partner_id').eq('id', currentUser.id).single();
-    if (!me?.partner_id) {
-      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">No partner connected.<br><br><span style="color:var(--accent);cursor:pointer;" onclick="closeModal(\'vs\');openModal(\'goal\')">Connect a partner</span> to start competing.</div>';
-      return;
-    }
-    const { data: board, error } = await sb.from('competition_leaderboard')
-      .select('*').in('user_id', [currentUser.id, me.partner_id]);
-    if (error) throw error;
-    const myData = board?.find(r => r.user_id === currentUser.id) || {};
-    const pData = board?.find(r => r.user_id === me.partner_id) || {};
-    const myT = Number(myData.total_points || 0);
-    const pT = Number(pData.total_points || 0);
-    const lead = myT >= pT ? 'you' : 'them';
-    el.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:16px;">
-        <div style="text-align:center;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">You</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:${lead==='you'?'var(--green)':'var(--text)'};line-height:1;">${myT}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2);">pts this week</div>
-        </div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--muted);">VS</div>
-        <div style="text-align:center;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">${pData.name || 'Partner'}</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:${lead==='them'?'var(--green)':'var(--text)'};line-height:1;">${pT}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted2);">pts this week</div>
-        </div>
-      </div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Point Breakdown</div>
-      ${vsRow('Sessions (10 pts)', myData.session_points, pData.session_points)}
-      ${vsRow('PRs (5 pts)', myData.pr_points, pData.pr_points)}
-      ${vsRow('Steps ≥8k (2 pts)', myData.step_points, pData.step_points)}
-      ${vsRow('Protein goal (3 pts)', myData.protein_points, pData.protein_points)}
-      <div style="margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">All Time</div>
-      ${vsRow('Current streak', myData.current_streak_days, pData.current_streak_days, ' days')}
-      ${vsRow('Best streak', myData.longest_streak_days, pData.longest_streak_days, ' days')}
-      ${vsRow('Total sessions', myData.total_sessions, pData.total_sessions)}
-      ${vsRow('Total PRs', myData.total_prs, pData.total_prs)}
-    `;
-  } catch(e) {
-    console.warn('VS load error:', e);
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red);font-size:13px;">Failed to load leaderboard.</div>';
-  }
-}
-
-function vsRow(label, myVal, pVal, unit) {
-  const m = Number(myVal || 0), p = Number(pVal || 0);
-  const u = unit || '';
-  const mc = m > p ? 'var(--green)' : m < p ? 'var(--red)' : 'var(--muted2)';
-  const pc = p > m ? 'var(--green)' : p < m ? 'var(--red)' : 'var(--muted2)';
-  return '<div style="display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">' +
-    '<div style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:16px;font-weight:600;color:' + mc + ';">' + m + u + '</div>' +
-    '<div style="text-align:center;font-size:11px;color:var(--muted2);">' + label + '</div>' +
-    '<div style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:16px;font-weight:600;color:' + pc + ';">' + p + u + '</div>' +
-    '</div>';
-}
-
-// ═══════════════════════════════════════════════════════
-// PROFILE MODAL
-// ═══════════════════════════════════════════════════════
-let profileGoal = null;
-let profileDays = 4;
-let profileSkinTone = null;
-let profileAvatarGender = null;
-let profileAvatarHair = null;
-let profileAvatarBody = null;
+// State for modal selections
+const profileState = { goal: null, days: null, sex: null, exp: null, gender: null, skinTone: null, bodyType: null, hair: null };
 
 function openProfileModal() {
-  // Populate program section
-  profileGoal = cfg.goal || null;
-  profileDays = cfg.days || 4;
-  document.querySelectorAll('#prof-goal-pills .profile-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.goal === profileGoal);
+  // Populate from cfg
+  profileState.goal = cfg.goal || selectedGoal;
+  profileState.days = cfg.days || selectedDays || 4;
+  profileState.sex = cfg.sex || selectedSex;
+  profileState.exp = cfg.experience || selectedExperience;
+  const profile = LS.get('tandem_profile') || {};
+  profileState.gender = profile.gender || null;
+  profileState.skinTone = profile.skinTone || null;
+  profileState.bodyType = profile.bodyType || null;
+  profileState.hair = profile.hair || null;
+
+  // Highlight active goal
+  document.querySelectorAll('#profileGoalRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.goal === profileState.goal);
   });
-  document.querySelectorAll('#prof-days-row .day-dot').forEach(d => {
-    d.classList.toggle('selected', parseInt(d.textContent) === profileDays);
+  // Highlight active days
+  document.querySelectorAll('#profileDaysRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.days) === profileState.days);
   });
-  const weekInput = document.getElementById('prof-week');
-  const weeksInput = document.getElementById('prof-weeks');
+  // Week input
+  const weekInput = document.getElementById('profileWeekInput');
   if (weekInput) weekInput.value = currentWeek || 1;
-  if (weeksInput) weeksInput.value = cfg.weeks || 12;
-
-  // Populate body stats
-  const profWeight = document.getElementById('prof-weight');
-  const profGoalWeight = document.getElementById('prof-goal-weight');
-  const profHeight = document.getElementById('prof-height');
-  if (profWeight) profWeight.value = cfg.weight || '';
-  // Try to restore from cached profile data
-  const cachedProfile = LS.get('tandem_profile') || {};
-  if (profGoalWeight) profGoalWeight.value = cachedProfile.goal_weight_lbs || '';
-  if (profHeight) profHeight.value = cachedProfile.height_inches || '';
-
-  // Populate nutrition
-  const cal = document.getElementById('prof-calories');
-  const prot = document.getElementById('prof-protein');
-  const water = document.getElementById('prof-water');
-  if (cal) cal.value = cachedProfile.daily_calories_target || 2700;
-  if (prot) prot.value = cachedProfile.daily_protein_target_g || 250;
-  if (water) water.value = cachedProfile.daily_water_target_oz || 120;
-
-  // Populate color theme — mark active swatch
-  const currentTheme = cachedProfile.color_theme || '#d4a843';
-  document.querySelectorAll('.profile-swatch[onclick*="applyColorTheme"]').forEach(s => {
-    s.classList.toggle('active', s.style.background === currentTheme || s.title === currentTheme);
+  // Sex
+  document.querySelectorAll('#profileSexRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.sex === profileState.sex);
   });
-
-  // Populate avatar
-  profileAvatarGender = cachedProfile.avatar_gender || 'male';
-  profileSkinTone = cachedProfile.avatar_skin_tone || '#6B3A2A';
-  profileAvatarHair = cachedProfile.avatar_hair_style || 'fade';
-  profileAvatarBody = cachedProfile.avatar_body_type || 'athletic';
-  document.querySelectorAll('[data-av="gender"]').forEach(p => p.classList.toggle('active', p.dataset.val === profileAvatarGender));
-  document.querySelectorAll('[data-av="hair"]').forEach(p => p.classList.toggle('active', p.dataset.val === profileAvatarHair));
-  document.querySelectorAll('[data-av="body"]').forEach(p => p.classList.toggle('active', p.dataset.val === profileAvatarBody));
-  document.querySelectorAll('.profile-swatch[onclick*="selectSkinTone"]').forEach(s => {
-    s.classList.toggle('active', s.style.background === profileSkinTone);
+  // Experience
+  document.querySelectorAll('#profileExpRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.exp === profileState.exp);
   });
+  // Body stats
+  const w = document.getElementById('profileWeightInput');
+  if (w) w.value = cfg.weight || '';
+  const gw = document.getElementById('profileGoalWeightInput');
+  if (gw) gw.value = profile.goalWeight || '';
+  const heightIn = profile.heightInches || cfg.height_inches || 0;
+  const hft = document.getElementById('profileHeightFt');
+  const hin = document.getElementById('profileHeightIn');
+  if (hft) hft.value = heightIn ? Math.floor(heightIn / 12) : '';
+  if (hin) hin.value = heightIn ? (heightIn % 12) : '';
+  // Nutrition
+  const nc = document.getElementById('profileCalInput');
+  if (nc) nc.value = profile.calories || '';
+  const np = document.getElementById('profileProteinInput');
+  if (np) np.value = profile.protein || '';
+  const nw = document.getElementById('profileWaterInput');
+  if (nw) nw.value = profile.water || '';
+  // Avatar
+  document.querySelectorAll('#profileGenderRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.gender === profileState.gender);
+  });
+  document.querySelectorAll('#profileSkinRow .profile-swatch').forEach(b => {
+    b.classList.toggle('active', b.dataset.skin === profileState.skinTone);
+  });
+  document.querySelectorAll('#profileBodyRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.body === profileState.bodyType);
+  });
+  document.querySelectorAll('#profileHairRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.hair === profileState.hair);
+  });
+  // Theme swatches
+  const curTheme = profile.colorTheme || '#2BA366';
+  document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
+    b.classList.toggle('active', b.dataset.color === curTheme);
+  });
+  // User email
+  const emailEl = document.getElementById('profileUserEmail');
+  if (emailEl && currentUser) emailEl.textContent = currentUser.email || currentUser.phone || '';
 
   openModal('profile');
 }
 
-function selectProfileGoal(goal, el) {
-  profileGoal = goal;
-  document.querySelectorAll('#prof-goal-pills .profile-pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
+function selectProfileGoal(goal) {
+  profileState.goal = goal;
+  document.querySelectorAll('#profileGoalRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.goal === goal);
+  });
 }
 
-function selectProfileDays(n, el) {
-  profileDays = n;
-  document.querySelectorAll('#prof-days-row .day-dot').forEach(d => d.classList.remove('selected'));
-  el.classList.add('selected');
+function selectProfileDays(days) {
+  profileState.days = days;
+  document.querySelectorAll('#profileDaysRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.days) === days);
+  });
 }
 
-function selectAvatarPill(type, val, el) {
-  if (type === 'gender') profileAvatarGender = val;
-  else if (type === 'hair') profileAvatarHair = val;
-  else if (type === 'body') profileAvatarBody = val;
-  document.querySelectorAll(`[data-av="${type}"]`).forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
+function selectAvatarPill(type, value) {
+  const rowMap = { sex: '#profileSexRow', exp: '#profileExpRow', gender: '#profileGenderRow', body: '#profileBodyRow', hair: '#profileHairRow' };
+  const attrMap = { sex: 'sex', exp: 'exp', gender: 'gender', body: 'body', hair: 'hair' };
+  profileState[type] = value;
+  document.querySelectorAll(`${rowMap[type]} .profile-pill`).forEach(b => {
+    b.classList.toggle('active', b.dataset[attrMap[type]] === value);
+  });
 }
 
-function selectSkinTone(hex, el) {
-  profileSkinTone = hex;
-  document.querySelectorAll('.profile-swatch[onclick*="selectSkinTone"]').forEach(s => s.classList.remove('active'));
-  el.classList.add('active');
+function selectSkinTone(color) {
+  profileState.skinTone = color;
+  document.querySelectorAll('#profileSkinRow .profile-swatch').forEach(b => {
+    b.classList.toggle('active', b.dataset.skin === color);
+  });
 }
 
 function saveProfileProgram() {
-  if (!profileGoal) { showToast('Select a goal first'); return; }
-  const newWeek = parseInt(document.getElementById('prof-week').value) || 1;
-  const newWeeks = parseInt(document.getElementById('prof-weeks').value) || 12;
-  const changed = profileGoal !== cfg.goal || profileDays !== cfg.days || newWeeks !== cfg.weeks;
-  cfg.goal = profileGoal;
-  cfg.days = profileDays;
-  cfg.weeks = newWeeks;
+  const newGoal = profileState.goal || cfg.goal;
+  const newDays = profileState.days || cfg.days || 4;
+  const newWeek = parseInt(document.getElementById('profileWeekInput')?.value) || currentWeek;
+  const changed = newGoal !== cfg.goal || newDays !== cfg.days;
+  cfg.goal = newGoal; cfg.days = newDays;
+  cfg.sex = profileState.sex || cfg.sex;
+  cfg.experience = profileState.exp || cfg.experience;
+  selectedGoal = cfg.goal; selectedDays = cfg.days;
+  selectedSex = cfg.sex; selectedExperience = cfg.experience;
   LS.set('tandem_cfg', cfg);
   currentWeek = newWeek;
   LS.set('tandem_week', currentWeek);
   if (changed) renderTracker();
   syncToCloud();
   closeModal('profile');
-  showToast('Program updated ✓');
+  showToast('Program updated');
 }
 
 function saveProfileStats() {
-  const weight = parseFloat(document.getElementById('prof-weight').value);
-  const goalWeight = parseFloat(document.getElementById('prof-goal-weight').value);
-  const height = parseFloat(document.getElementById('prof-height').value);
-  if (weight) { cfg.weight = weight; LS.set('tandem_cfg', cfg); }
-  const cached = LS.get('tandem_profile') || {};
-  if (goalWeight) cached.goal_weight_lbs = goalWeight;
-  if (height) cached.height_inches = height;
-  LS.set('tandem_profile', cached);
+  const weight = parseFloat(document.getElementById('profileWeightInput')?.value) || 0;
+  const goalWeight = parseFloat(document.getElementById('profileGoalWeightInput')?.value) || 0;
+  const ft = parseInt(document.getElementById('profileHeightFt')?.value) || 0;
+  const inches = parseInt(document.getElementById('profileHeightIn')?.value) || 0;
+  const totalInches = ft * 12 + inches;
+  if (weight) cfg.weight = weight;
+  LS.set('tandem_cfg', cfg);
+  const profile = LS.get('tandem_profile') || {};
+  profile.goalWeight = goalWeight;
+  profile.heightInches = totalInches;
+  LS.set('tandem_profile', profile);
   if (currentUser) {
-    sb.from('users').upsert({
-      id: currentUser.id, email: currentUser.email || null,
-      name: currentUser.email ? currentUser.email.split('@')[0] : (currentUser.phone || 'athlete'),
-      current_weight_lbs: weight || null,
-      goal_weight_lbs: goalWeight || null,
-      height_inches: height || null
-    }, { onConflict: 'id' }).then(({ error }) => { if (error) console.warn(error); });
+    sb.from('users').upsert({ id: currentUser.id, goal_weight_lbs: goalWeight || null, height_inches: totalInches || null }, { onConflict: 'id' });
   }
-  showToast('Body stats saved ✓');
+  showToast('Stats saved');
 }
 
 function saveProfileNutrition() {
-  const cal = parseInt(document.getElementById('prof-calories').value);
-  const prot = parseInt(document.getElementById('prof-protein').value);
-  const water = parseInt(document.getElementById('prof-water').value);
-  const cached = LS.get('tandem_profile') || {};
-  if (cal) cached.daily_calories_target = cal;
-  if (prot) cached.daily_protein_target_g = prot;
-  if (water) cached.daily_water_target_oz = water;
-  LS.set('tandem_profile', cached);
+  const calories = parseInt(document.getElementById('profileCalInput')?.value) || 0;
+  const protein = parseInt(document.getElementById('profileProteinInput')?.value) || 0;
+  const water = parseInt(document.getElementById('profileWaterInput')?.value) || 0;
+  const profile = LS.get('tandem_profile') || {};
+  profile.calories = calories; profile.protein = protein; profile.water = water;
+  LS.set('tandem_profile', profile);
   if (currentUser) {
-    sb.from('users').upsert({
-      id: currentUser.id, email: currentUser.email || null,
-      name: currentUser.email ? currentUser.email.split('@')[0] : (currentUser.phone || 'athlete'),
-      daily_calories_target: cal || null,
-      daily_protein_target_g: prot || null,
-      daily_water_target_oz: water || null
-    }, { onConflict: 'id' }).then(({ error }) => { if (error) console.warn(error); });
+    sb.from('users').upsert({ id: currentUser.id, daily_calories_target: calories || null, daily_protein_target_g: protein || null, daily_water_target_oz: water || null }, { onConflict: 'id' });
   }
-  showToast('Nutrition targets saved ✓');
+  showToast('Nutrition targets saved');
 }
 
-function applyColorTheme(accent, accent2, el) {
-  document.documentElement.style.setProperty('--accent', accent);
-  document.documentElement.style.setProperty('--accent2', accent2);
-  document.documentElement.style.setProperty('--accent-dim', accent + '1f');
-  document.documentElement.style.setProperty('--accent-glow', accent + '33');
-  document.querySelectorAll('.profile-swatch[onclick*="applyColorTheme"]').forEach(s => s.classList.remove('active'));
-  if (el) el.classList.add('active');
-  const cached = LS.get('tandem_profile') || {};
-  cached.color_theme = accent;
-  LS.set('tandem_profile', cached);
+function applyColorTheme(hex) {
+  // Compute a slightly lighter accent2
+  document.documentElement.style.setProperty('--accent', hex);
+  document.documentElement.style.setProperty('--accent-dim', hex + '1f');
+  document.documentElement.style.setProperty('--accent-glow', hex + '33');
+  // Update swatch active states
+  document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
+    b.classList.toggle('active', b.dataset.color === hex);
+  });
+  const profile = LS.get('tandem_profile') || {};
+  profile.colorTheme = hex;
+  LS.set('tandem_profile', profile);
   if (currentUser) {
-    sb.from('users').upsert({
-      id: currentUser.id, email: currentUser.email || null,
-      name: currentUser.email ? currentUser.email.split('@')[0] : (currentUser.phone || 'athlete'),
-      color_theme: accent
-    }, { onConflict: 'id' }).then(({ error }) => { if (error) console.warn(error); });
+    sb.from('users').upsert({ id: currentUser.id, color_theme: hex }, { onConflict: 'id' });
   }
-  showToast('Theme updated ✓');
 }
 
 function saveProfileAvatar() {
-  const cached = LS.get('tandem_profile') || {};
-  cached.avatar_gender = profileAvatarGender;
-  cached.avatar_skin_tone = profileSkinTone;
-  cached.avatar_hair_style = profileAvatarHair;
-  cached.avatar_body_type = profileAvatarBody;
-  LS.set('tandem_profile', cached);
+  const profile = LS.get('tandem_profile') || {};
+  profile.gender = profileState.gender;
+  profile.skinTone = profileState.skinTone;
+  profile.bodyType = profileState.bodyType;
+  profile.hair = profileState.hair;
+  LS.set('tandem_profile', profile);
   if (currentUser) {
     sb.from('users').upsert({
-      id: currentUser.id, email: currentUser.email || null,
-      name: currentUser.email ? currentUser.email.split('@')[0] : (currentUser.phone || 'athlete'),
-      avatar_gender: profileAvatarGender,
-      avatar_skin_tone: profileSkinTone,
-      avatar_hair_style: profileAvatarHair,
-      avatar_body_type: profileAvatarBody
-    }, { onConflict: 'id' }).then(({ error }) => { if (error) console.warn(error); });
+      id: currentUser.id,
+      avatar_gender: profile.gender,
+      avatar_skin_tone: profile.skinTone,
+      avatar_body_type: profile.bodyType,
+      avatar_hair_style: profile.hair
+    }, { onConflict: 'id' });
   }
-  closeModal('profile');
-  showToast('Avatar saved ✓');
+  showToast('Avatar saved');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2937,6 +3090,13 @@ function saveProfileAvatar() {
 // ═══════════════════════════════════════════════════════
 (async () => {
   try {
+    // Restore saved color theme immediately
+    const savedProfile = LS.get('tandem_profile');
+    if (savedProfile?.colorTheme) {
+      document.documentElement.style.setProperty('--accent', savedProfile.colorTheme);
+      document.documentElement.style.setProperty('--accent-dim', savedProfile.colorTheme + '1f');
+      document.documentElement.style.setProperty('--accent-glow', savedProfile.colorTheme + '33');
+    }
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
       currentUser = session.user;
@@ -2945,16 +3105,16 @@ function saveProfileAvatar() {
     }
     const savedCfg = LS.get('tandem_cfg');
     if (savedCfg?.goal) {
-      cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days;
+      cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
+      selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = LS.get('tandem_week') || 1;
       renderTracker(); showView('tracker');
     } else if (session?.user) {
       showView('onboard');
     }
-    // else: no session, no config → stays on auth view (already active by default)
-    window.__initResult = { session: !!session, email: session?.user?.email, view: document.querySelector('.view.active')?.id };
+    // else: no session, no config → stays on auth view
   } catch(e) {
-    window.__initResult = { error: e.message, stack: e.stack?.split('\n').slice(0,3).join(' | ') };
+    console.error('Init error:', e);
   }
 })();
 </script>
