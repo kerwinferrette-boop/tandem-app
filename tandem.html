@@ -572,6 +572,41 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
 #profileBtn{cursor:pointer;transition:all .15s;}
 #profileBtn:hover{background:var(--accent-dim);border-color:rgba(30,126,76,.4);color:var(--accent2);}
+/* ── Dashboard ── */
+.dash-wrap{padding:0 16px 32px;}
+.dash-header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px;}
+.dash-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;color:var(--text);}
+.dash-refresh-btn{width:34px;height:34px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.dash-refresh-btn:hover:not(:disabled){background:var(--accent-dim);border-color:rgba(30,126,76,.4);color:var(--accent);}
+.dash-refresh-btn:disabled{opacity:.35;cursor:default;}
+@keyframes dash-spin{to{transform:rotate(360deg);}}
+.dash-refresh-btn.spinning span{display:inline-block;animation:dash-spin .7s linear infinite;}
+.dash-rings{display:flex;gap:10px;margin-bottom:12px;}
+.dash-ring-card{flex:1;background:var(--s2);border-radius:14px;padding:14px 8px 12px;text-align:center;border:1px solid var(--border2);}
+.dash-ring-svg{width:68px;height:68px;transform:rotate(-90deg);overflow:visible;}
+.dash-ring-track{fill:none;stroke:var(--border2);stroke-width:5;}
+.dash-ring-circle{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;transition:stroke-dasharray .4s ease;}
+.dash-ring-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);margin-top:6px;line-height:1;}
+.dash-ring-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+.dash-nutrition{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);display:flex;justify-content:space-around;margin-bottom:12px;}
+.dash-nut-cell{text-align:center;}
+.dash-nut-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text);line-height:1;}
+.dash-nut-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+.dash-section-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;display:block;}
+.dash-competition{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);margin-bottom:12px;}
+.dash-comp-row{display:flex;justify-content:space-around;margin-top:8px;}
+.dash-comp-user{text-align:center;}
+.dash-comp-name{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
+.dash-comp-count{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--text);line-height:1;}
+.dash-comp-leading{color:var(--accent);}
+.dash-comp-divider{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--border2);align-self:center;}
+.dash-medals{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);margin-bottom:12px;}
+.dash-medals-header{display:flex;align-items:center;justify-content:space-between;}
+.dash-medal-row{display:flex;gap:8px;margin-top:10px;}
+.dash-medal-chip{flex:1;background:var(--bg);border-radius:10px;padding:10px 6px;text-align:center;font-size:11px;color:var(--muted2);border:1px solid var(--border);}
+.dash-medal-icon{font-size:20px;display:block;margin-bottom:4px;}
+.dash-cta{width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--accent) 0%,#166B3E 100%);border:none;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.1em;cursor:pointer;transition:all .2s;}
+.dash-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(30,126,76,.3);}
 </style>
 </head>
 <body>
@@ -848,6 +883,105 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </div>
     <div style="height:20px;"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     VIEW: DASHBOARD
+══════════════════════════════════ -->
+<div class="view" id="view-dashboard">
+  <div class="dash-wrap">
+
+    <!-- Header -->
+    <div class="dash-header">
+      <div class="dash-title">Today</div>
+      <button id="dashRefreshBtn" class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh health data">
+        <span>↻</span>
+      </button>
+    </div>
+
+    <!-- Health Rings -->
+    <span class="dash-section-label">Activity</span>
+    <div class="dash-rings">
+      <div class="dash-ring-card" id="dashRingCal">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingCalVal">—</div>
+        <div class="dash-ring-label">Active Cal</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingSleep">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#4a9eff;"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingSleepVal">—</div>
+        <div class="dash-ring-label">Sleep (h)</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingSteps">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#38d9c0;"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingStepsVal">—</div>
+        <div class="dash-ring-label">Steps</div>
+      </div>
+    </div>
+
+    <!-- Nutrition -->
+    <span class="dash-section-label">Nutrition</span>
+    <div class="dash-nutrition">
+      <div class="dash-nut-cell">
+        <div class="dash-nut-val" id="dashNutCal">—</div>
+        <div class="dash-nut-label">Cal</div>
+      </div>
+      <div class="dash-nut-cell">
+        <div class="dash-nut-val" id="dashNutProtein">—</div>
+        <div class="dash-nut-label">Protein</div>
+      </div>
+      <div class="dash-nut-cell">
+        <div class="dash-nut-val" id="dashNutCarbs">—</div>
+        <div class="dash-nut-label">Carbs</div>
+      </div>
+      <div class="dash-nut-cell">
+        <div class="dash-nut-val" id="dashNutFat">—</div>
+        <div class="dash-nut-label">Fat</div>
+      </div>
+    </div>
+
+    <!-- Competition -->
+    <span class="dash-section-label">This Week</span>
+    <div class="dash-competition">
+      <div class="dash-comp-row">
+        <div class="dash-comp-user">
+          <div class="dash-comp-name" id="dashCompMyName">You</div>
+          <div class="dash-comp-count" id="dashCompMine">0</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">workouts</div>
+        </div>
+        <div class="dash-comp-divider">vs</div>
+        <div class="dash-comp-user">
+          <div class="dash-comp-name" id="dashCompTheirName">Partner</div>
+          <div class="dash-comp-count" id="dashCompTheirs">0</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">workouts</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medals -->
+    <div class="dash-medals">
+      <div class="dash-medals-header">
+        <span class="dash-section-label" style="margin-bottom:0;">Medals</span>
+        <button class="auth-signout" onclick="openModal('history')" style="font-size:11px;">See all →</button>
+      </div>
+      <div class="dash-medal-row" id="dashMedalRow">
+        <div style="font-size:12px;color:var(--muted);padding:6px 0;">No medals yet — keep going 🏅</div>
+      </div>
+    </div>
+
+    <!-- Today's Workout CTA -->
+    <button class="dash-cta" onclick="showView('tracker')">Today's Workout →</button>
+
   </div>
 </div>
 
@@ -1206,7 +1340,7 @@ sb.auth.onAuthStateChange((event, session) => {
         cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = LS.get('tandem_week') || 1;
-        renderTracker(); showView('tracker');
+        renderTracker(); showView('dashboard');
       } else {
         showView('onboard');
       }
@@ -2003,7 +2137,7 @@ function buildProgram() {
   LS.set('tandem_week', 1);
 
   renderTracker();
-  showView('tracker');
+  showView('dashboard');
 }
 
 function resetProgram() {
@@ -2044,7 +2178,7 @@ function resetProgram() {
 }
 
 function goHome() {
-  if (Object.keys(cfg).length) showView('tracker');
+  if (Object.keys(cfg).length) showView('dashboard');
   else showView('onboard');
 }
 
@@ -2659,6 +2793,7 @@ function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
   document.getElementById('bottomNav').style.display = id === 'tracker' ? 'flex' : 'none';
+  if (id === 'dashboard') loadDashboard();
 }
 
 function openModal(name) {
@@ -2749,7 +2884,7 @@ function skipAuth() {
     cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
     currentWeek = LS.get('tandem_week') || 1;
-    renderTracker(); showView('tracker');
+    renderTracker(); showView('dashboard');
   } else {
     showView('onboard');
   }
@@ -2886,6 +3021,146 @@ async function restoreFromCloud() {
     console.warn('Restore error:', e);
     setSyncStatus('error');
     showToast('Restore failed — see console');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD FUNCTIONS
+// ═══════════════════════════════════════════════════════
+
+const dashboardData = { health: null, competition: null, medals: [] };
+
+async function loadDashboard() {
+  const btn = document.getElementById('dashRefreshBtn');
+  if (btn) btn.disabled = !currentUser;
+  if (!currentUser) { renderDashboard(); return; }
+
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+  try {
+    const uid = currentUser.id;
+
+    // Health snapshot — most recent row
+    const { data: snap } = await sb.from('health_snapshots')
+      .select('*').eq('user_id', uid)
+      .order('snapshot_date', { ascending: false }).limit(1).maybeSingle();
+    dashboardData.health = snap || null;
+
+    // Competition — sessions this week
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const { data: mySessions } = await sb.from('sessions')
+      .select('id').eq('user_id', uid).gte('created_at', weekStart.toISOString());
+    const { data: userRow } = await sb.from('users')
+      .select('partner_id, display_name').eq('id', uid).maybeSingle();
+    let partnerCount = 0, partnerName = 'Partner';
+    if (userRow?.partner_id) {
+      const { data: partnerSessions } = await sb.from('sessions')
+        .select('id').eq('user_id', userRow.partner_id).gte('created_at', weekStart.toISOString());
+      const { data: partnerRow } = await sb.from('users')
+        .select('display_name').eq('id', userRow.partner_id).maybeSingle();
+      partnerCount = partnerSessions?.length || 0;
+      partnerName = partnerRow?.display_name || 'Partner';
+    }
+    dashboardData.competition = {
+      myCount: mySessions?.length || 0,
+      myName: userRow?.display_name || currentUser.email?.split('@')[0] || 'You',
+      partnerCount, partnerName
+    };
+
+    // Medals — 3 most recent
+    const { data: medals } = await sb.from('medals')
+      .select('*').eq('user_id', uid)
+      .order('earned_at', { ascending: false }).limit(3);
+    dashboardData.medals = medals || [];
+  } catch(e) {
+    console.warn('Dashboard load error:', e);
+  }
+  renderDashboard();
+  if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+}
+
+async function refreshDashboard() {
+  const btn = document.getElementById('dashRefreshBtn');
+  if (!currentUser) return;
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+  try {
+    const uid = currentUser.id;
+    const { data: snap } = await sb.from('health_snapshots')
+      .select('*').eq('user_id', uid)
+      .order('snapshot_date', { ascending: false }).limit(1).maybeSingle();
+    dashboardData.health = snap || null;
+    renderDashboard();
+    showToast(snap ? 'Health data refreshed' : 'No health data found');
+  } catch(e) {
+    console.warn('Refresh error:', e);
+    showToast('Refresh failed');
+  }
+  if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+}
+
+function renderDashboard() {
+  const h = dashboardData.health;
+  const fmt = v => (v != null ? Math.round(v).toLocaleString() : '—');
+  const circ = 2 * Math.PI * 28; // r=28
+
+  // Rings
+  const rings = [
+    { valId:'dashRingCalVal',   circleIdx:0, val: h?.active_calories_kcal, max:600 },
+    { valId:'dashRingSleepVal', circleIdx:1, val: h?.sleep_total_hours,    max:9 },
+    { valId:'dashRingStepsVal', circleIdx:2, val: h?.steps,                max:10000 }
+  ];
+  const ringCards = ['dashRingCal','dashRingSleep','dashRingSteps'];
+  rings.forEach((r, i) => {
+    const card = document.getElementById(ringCards[i]);
+    if (!card) return;
+    const pct = r.val != null ? Math.min(r.val / r.max, 1) : 0;
+    card.querySelector('.dash-ring-circle').style.strokeDasharray = `${(pct * circ).toFixed(1)} ${circ.toFixed(1)}`;
+    const valEl = document.getElementById(r.valId);
+    if (valEl) valEl.textContent = fmt(r.val);
+  });
+
+  // Nutrition
+  const nutMap = [
+    ['dashNutCal',     h?.dietary_calories_kcal],
+    ['dashNutProtein', h?.dietary_protein_g],
+    ['dashNutCarbs',   h?.dietary_carbs_g],
+    ['dashNutFat',     h?.dietary_fat_g]
+  ];
+  nutMap.forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = fmt(val);
+  });
+
+  // Competition
+  const comp = dashboardData.competition;
+  if (comp) {
+    const myEl = document.getElementById('dashCompMine');
+    const theirEl = document.getElementById('dashCompTheirs');
+    const myNameEl = document.getElementById('dashCompMyName');
+    const theirNameEl = document.getElementById('dashCompTheirName');
+    if (myNameEl) myNameEl.textContent = comp.myName;
+    if (theirNameEl) theirNameEl.textContent = comp.partnerName;
+    if (myEl) {
+      myEl.textContent = comp.myCount;
+      myEl.className = 'dash-comp-count' + (comp.myCount > comp.partnerCount ? ' dash-comp-leading' : '');
+    }
+    if (theirEl) {
+      theirEl.textContent = comp.partnerCount;
+      theirEl.className = 'dash-comp-count' + (comp.partnerCount > comp.myCount ? ' dash-comp-leading' : '');
+    }
+  }
+
+  // Medals
+  const medalRow = document.getElementById('dashMedalRow');
+  if (medalRow) {
+    if (dashboardData.medals.length) {
+      medalRow.innerHTML = dashboardData.medals.map(m =>
+        `<div class="dash-medal-chip"><span class="dash-medal-icon">${m.icon || '🏅'}</span>${m.name || 'Medal'}</div>`
+      ).join('');
+    } else {
+      medalRow.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0;">No medals yet — keep going 🏅</div>';
+    }
   }
 }
 
@@ -3108,7 +3383,7 @@ function saveProfileAvatar() {
       cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = LS.get('tandem_week') || 1;
-      renderTracker(); showView('tracker');
+      renderTracker(); showView('dashboard');
     } else if (session?.user) {
       showView('onboard');
     }
