@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type FormEvent, type KeyboardEvent, type C
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
-const CODE_LENGTH = 8
+const CODE_LENGTH = 6
 
 export default function LoginPage() {
   const { sendLoginCode, verifyLoginCode, user, loading } = useAuth()
