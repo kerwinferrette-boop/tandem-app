@@ -5,17 +5,20 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
 const CODE_LENGTH = 6
+const EMAIL_DOMAIN = '@goldenstatestorm.com'
 
 export default function LoginPage() {
   const { sendLoginCode, verifyLoginCode, user, loading } = useAuth()
   const router = useRouter()
 
   const [step, setStep]           = useState<'email' | 'code'>('email')
-  const [email, setEmail]         = useState('')
+  const [username, setUsername]   = useState('')
   const [digits, setDigits]       = useState<string[]>(Array(CODE_LENGTH).fill(''))
   const [error, setError]         = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  const email = username.trim().toLowerCase() + EMAIL_DOMAIN
 
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard')
@@ -28,9 +31,10 @@ export default function LoginPage() {
   const handleSendCode = async (e: FormEvent) => {
     e.preventDefault()
     if (submitting) return
+    if (!username.trim()) { setError('Please enter your name.'); return }
     setError(null)
     setSubmitting(true)
-    const { error: sendError } = await sendLoginCode(email.trim())
+    const { error: sendError } = await sendLoginCode(email)
     setSubmitting(false)
     if (sendError) { setError(sendError); return }
     setStep('code')
@@ -93,17 +97,20 @@ export default function LoginPage() {
         <form onSubmit={handleSendCode} className="w-full max-w-sm flex flex-col gap-4">
           <div className="card flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="section-label">Email</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="input-field"
-              />
+              <label htmlFor="username" className="section-label">Golden State Storm Email</label>
+              <div className="flex items-center input-field gap-0 p-0 overflow-hidden">
+                <input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
+                  placeholder="yourname"
+                  className="flex-1 bg-transparent outline-none px-3 py-2 min-w-0"
+                />
+                <span className="text-white/40 text-sm pr-3 whitespace-nowrap select-none">@goldenstatestorm.com</span>
+              </div>
             </div>
 
             {error && (
@@ -162,7 +169,7 @@ export default function LoginPage() {
               onClick={() => { setStep('email'); setDigits(Array(CODE_LENGTH).fill('')); setError(null) }}
               className="text-sm text-white/40 hover:text-white/70 text-center transition-colors"
             >
-              Use a different email
+              Use a different name
             </button>
           </div>
         </form>
