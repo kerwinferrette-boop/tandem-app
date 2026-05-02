@@ -9,6 +9,7 @@ import SetLogger from './SetLogger'
 interface Props {
   exercise:       Exercise
   recommendation: Recommendation | null
+  restSeconds?:   number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ const BADGE_STYLES: Record<Exercise['badge'], string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ExerciseCard({ exercise, recommendation }: Props) {
+export default function ExerciseCard({ exercise, recommendation, restSeconds }: Props) {
   const arrow = recommendation ? ARROW_STYLES[recommendation.arrow] : null
 
   return (
@@ -101,7 +102,7 @@ export default function ExerciseCard({ exercise, recommendation }: Props) {
           exerciseName={exercise.name}
           isCompound={exercise.compound ?? false}
           recommendation={recommendation}
-          restSeconds={exercise.rest}
+          restSeconds={restSeconds}
         />
       )}
 

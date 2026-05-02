@@ -33,9 +33,11 @@ export interface Exercise {
 }
 
 export interface Block {
-  label: string
-  cardio?: boolean
-  exs: Exercise[]
+  label:     string
+  cardio?:   boolean
+  superset?: boolean  // exercises done back-to-back; timer fires once after the last
+  restSecs?: number   // shared rest (seconds) for superset blocks
+  exs:       Exercise[]
 }
 
 export interface DayProgram {

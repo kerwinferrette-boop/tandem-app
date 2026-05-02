@@ -2,6 +2,12 @@ import type { Block } from '@/lib/program'
 import type { Recommendation, OverloadArrow } from '@/lib/overload'
 import ExerciseCard from './ExerciseCard'
 
+function resolveRest(block: Block, exIndex: number): number | undefined {
+  if (!block.superset) return block.exs[exIndex].rest
+  const isLast = exIndex === block.exs.length - 1
+  return isLast ? (block.restSecs ?? block.exs[exIndex].rest) : undefined
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface OverloadRow {
@@ -68,11 +74,12 @@ export default function ExerciseList({ blocks, overloadMap }: Props) {
 
           {/* Exercise cards */}
           <div className="space-y-3">
-            {block.exs.map((exercise) => (
+            {block.exs.map((exercise, idx) => (
               <ExerciseCard
                 key={exercise.id}
                 exercise={exercise}
                 recommendation={buildRec(overloadMap[exercise.name])}
+                restSeconds={resolveRest(block, idx)}
               />
             ))}
           </div>
