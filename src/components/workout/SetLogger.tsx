@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useWorkoutSession, type LoggedSet } from '@/contexts/WorkoutSessionContext'
+import { useRestTimer } from '@/contexts/RestTimerContext'
 import type { Recommendation } from '@/lib/overload'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -10,12 +11,14 @@ interface Props {
   exerciseName:   string
   isCompound:     boolean
   recommendation: Recommendation | null
+  restSeconds?:   number
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function SetLogger({ exerciseName, recommendation }: Props) {
+export default function SetLogger({ exerciseName, recommendation, restSeconds }: Props) {
   const { logSet } = useWorkoutSession()
+  const { startTimer } = useRestTimer()
 
   const [weight,  setWeight]  = useState<string>(
     recommendation?.weight != null ? String(recommendation.weight) : ''
@@ -34,6 +37,7 @@ export default function SetLogger({ exerciseName, recommendation }: Props) {
       const result = await logSet(exerciseName, w, r)
       setSets(prev => [...prev, result])
       setReps('')
+      if (restSeconds) startTimer(restSeconds, exerciseName)
     } catch (err) {
       console.error('Failed to log set:', err)
     } finally {

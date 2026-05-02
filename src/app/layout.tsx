@@ -3,7 +3,9 @@ import { Inter, Inter_Tight } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { RestTimerProvider } from '@/contexts/RestTimerContext'
 import Navbar from '@/components/layout/Navbar'
+import RestTimerChip from '@/components/layout/RestTimerChip'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -39,14 +41,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${interTight.variable}`}>
       <body className="antialiased">
-        <AuthProvider>
-          <ThemeProvider>
-            <div className="pb-16">
-              {children}
-            </div>
-            <Navbar />
-          </ThemeProvider>
-        </AuthProvider>
+        <RestTimerProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <div className="pb-16">
+                {children}
+              </div>
+              <RestTimerChip />
+              <Navbar />
+            </ThemeProvider>
+          </AuthProvider>
+        </RestTimerProvider>
       </body>
     </html>
   )

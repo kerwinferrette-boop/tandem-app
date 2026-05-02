@@ -88,7 +88,7 @@ export default function ExerciseCard({ exercise, recommendation }: Props) {
           )}
           <div className="flex gap-4 text-xs text-white/40 uppercase tracking-widest">
             {exercise.zone && (
-              <span>Zone {exercise.zone}</span>
+              <span>{exercise.zone}</span>
             )}
             {exercise.duration && (
               <span>{exercise.duration} min</span>
@@ -101,6 +101,7 @@ export default function ExerciseCard({ exercise, recommendation }: Props) {
           exerciseName={exercise.name}
           isCompound={exercise.compound ?? false}
           recommendation={recommendation}
+          restSeconds={exercise.rest}
         />
       )}
 
