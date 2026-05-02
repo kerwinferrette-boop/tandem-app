@@ -77,7 +77,7 @@ export default function SessionSummary() {
           transition-all duration-150
         "
       >
-        {completing ? 'SAVING...' : 'MARK COMPLETE'}
+        {completing ? 'SAVING...' : 'FINISH WORKOUT'}
       </button>
 
     </div>
