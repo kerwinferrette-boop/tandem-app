@@ -33,9 +33,11 @@ export interface Exercise {
 }
 
 export interface Block {
-  label: string
-  cardio?: boolean
-  exs: Exercise[]
+  label:     string
+  cardio?:   boolean
+  superset?: boolean  // exercises done back-to-back; timer fires once after the last
+  restSecs?: number   // shared rest (seconds) for superset blocks
+  exs:       Exercise[]
 }
 
 export interface DayProgram {
@@ -145,7 +147,7 @@ const FAT_BURN_4: DayProgram[] = [
     rationale: 'Upper body circuit. Minimal rest keeps heart rate elevated. Compound first, isolation finishers, cardio to close.',
     blocks: [
       {
-        label: 'Compound Block · Rest 60 sec',
+        label: 'Upper Block · Rest 60 sec',
         exs: [
           {
             id: 'fb-bench', name: 'Low Incline Barbell Press', badge: 'compound', sets: 4, w: 115, r: 15, rest: 60, compound: true,
@@ -153,9 +155,9 @@ const FAT_BURN_4: DayProgram[] = [
             cues: ['Retract scapulae before unracking. Hold throughout.', 'Bar diagonal in hand — not in the palm. Protect that grip.', 'Controlled 2-sec eccentric on every rep.'],
           },
           {
-            id: 'fb-press', name: 'Arnold Press', badge: 'compound', sets: 3, w: 25, r: 15, rest: 60, compound: true,
-            why: 'Full delt recruitment in one movement. The rotation hits all three heads — critical for shoulder development at higher reps.',
-            cues: ['Start palms facing you. Rotate outward as you press.', 'Elbows slightly in front of torso — not flared behind.', 'Keep core braced. No lumbar arch.'],
+            id: 'fb-lat-raise', name: 'DB Lateral Raise', badge: 'isolation', sets: 3, w: 20, r: 15, rest: 60, compound: false,
+            why: 'Lateral delt isolation immediately after incline press — zero anterior delt overlap. Incline bench already maxed the anterior delt; lateral raises shift emphasis to the medial head. V-taper builder with no redundant loading.',
+            cues: ['Lead with elbow. Pinky slightly higher than thumb.', 'Stop at shoulder height — above is trap, not delt.', '3-sec slow negative. Control the descent.'],
           },
         ],
       },
@@ -306,9 +308,9 @@ const FAT_BURN_4: DayProgram[] = [
             cues: ['Feet mid-platform, shoulder-width, 20–30° toe-out.', 'Below parallel. Partial reps = partial development.', '3-sec eccentric. No lockout at top — keep tension.'],
           },
           {
-            id: 'fb-bss', name: 'Bulgarian Split Squat', badge: 'compound', sets: 3, w: 20, r: 12, rest: 75, compound: true,
+            id: 'fb-bss', name: 'Bulgarian Split Squat', badge: 'compound', sets: 3, w: 30, r: 12, rest: 75, compound: true,
             why: 'Single-leg work catches imbalances. Hip flexor stretch on rear leg addresses the tightness that desk work creates. Lower total load, same stimulus.',
-            cues: ['Rear foot elevated. Front foot far enough for vertical shin.', 'Descend straight down — elevator, not lean.', 'Start lighter than you think. Balance resolves fast.'],
+            cues: ['Rear foot elevated. Front foot far enough for vertical shin.', 'Descend straight down — elevator, not lean.', '30 lbs is conservative — load climbs fast once balance locks in.'],
           },
         ],
       },
@@ -371,7 +373,7 @@ const BUILD_MUSCLE_4: DayProgram[] = [
             cues: ['Slight forward lean, soft elbow bend throughout.', 'Bring elbows together — hands are passengers.', '2-sec full squeeze at the top.'],
           },
           {
-            id: 'bm-lat', name: 'Cable Lateral Raise', badge: 'isolation', sets: 3, w: 25, r: 15, rest: 60, compound: false,
+            id: 'bm-lat', name: 'Cable Lateral Raise', badge: 'isolation', sets: 3, w: 25, r: 15, rest: 75, compound: false,
             why: "Lateral delt is the V-taper muscle. At 6'3\" building this makes body composition changes visible even at higher bodyweight.",
             cues: ['Cable at ankle. Arm crosses body at start.', 'Lead with elbow — pinky slightly higher than thumb.', 'Stop at shoulder height. 4-sec negative.'],
           },
@@ -571,8 +573,8 @@ function ppl(base4: DayProgram[]): DayProgram[] {
       key: 'legs', label: 'Day 3 · Legs', color: 'var(--purple)',
       rationale: 'Combined lower day — hinge and squat patterns in one session.',
       blocks: [
-        { label: 'Compound Block', exs: [la.blocks[0].exs[0], lb.blocks[0].exs[0]] },
-        { label: 'Accessory Block', exs: [la.blocks[1].exs[0], lb.blocks[1].exs[0], la.blocks[0].exs[1]] },
+        { label: 'Compound Block', exs: [la.blocks[0].exs[0], la.blocks[0].exs[1], lb.blocks[0].exs[0]] },
+        { label: 'Accessory Block', exs: [la.blocks[1].exs[0], lb.blocks[1].exs[0]] },
         { label: 'Zone 2 · 22 min', cardio: true, exs: [{ ...la.blocks[2].exs[0], duration: 22 }] },
       ],
     },
@@ -590,9 +592,9 @@ function build5(base4: DayProgram[]): DayProgram[] {
         label: 'Shoulder Block · Rest 90 sec',
         exs: [
           {
-            id: 's5-ap', name: 'Arnold Press', badge: 'compound', sets: 4, w: 40, r: 10, rest: 90, compound: true,
-            why: 'Full three-head delt recruitment in one movement.',
-            cues: ['Palms facing you at start. Rotate through press.', 'Elbows in front of torso plane throughout.'],
+            id: 's5-ohp', name: 'DB Overhead Press', badge: 'compound', sets: 4, w: 40, r: 10, rest: 90, compound: true,
+            why: 'Strict overhead press on Wednesday. No rotation = pure anterior and lateral delt stimulus without the anterior overlap from Monday Arnold Press. Complementary, not redundant — two pressing variations across the week.',
+            cues: ['Palms forward. Elbows at 90° at start.', 'Press to full lockout overhead. Control descent.', 'Brace core hard — no lumbar arch.'],
           },
           {
             id: 's5-lat', name: 'Cable Lateral Raise', badge: 'isolation', sets: 4, w: 25, r: 15, rest: 60, compound: false,
@@ -636,24 +638,227 @@ function build5(base4: DayProgram[]): DayProgram[] {
   return [ua, la, shoulders, ub, lb]
 }
 
-// ── Transform program (derived from build_muscle) ─────────────────────────────
-// More reps (×1.25) + shorter rest (×0.75) than pure muscle-building
+// ── Transform program ─────────────────────────────────────────────────────────
+// Body recomp: moderate weight (~85% of build_muscle), higher reps (12),
+// shorter rest (90s compound / 60s accessory). All values are clean integers.
 
-const TRANSFORM_4: DayProgram[] = BUILD_MUSCLE_4.map((day) => ({
-  ...day,
-  blocks: day.blocks.map((block) => ({
-    ...block,
-    label: block.cardio
-      ? block.label.replace('20 min', '22 min')
-      : block.label.replace('2 min', '90 sec').replace('2–3 min', '2 min'),
-    exs: block.exs.map((ex) => ({
-      ...ex,
-      r:        ex.r        ? Math.round(ex.r * 1.25)        : ex.r,
-      rest:     ex.rest     ? Math.round(ex.rest * 0.75)     : ex.rest,
-      duration: ex.duration ? ex.duration + 2                : ex.duration,
-    })),
-  })),
-}))
+const TRANSFORM_4: DayProgram[] = [
+  {
+    key: 'mon', label: 'Mon · Upper A', color: 'var(--gold)',
+    rationale: 'Push-dominant upper day. Moderate weight, higher rep range keeps metabolic demand elevated while still driving hypertrophy — the recomp sweet spot.',
+    blocks: [
+      {
+        label: 'Compound Block · Rest 90 sec',
+        exs: [
+          {
+            id: 'tr-bench', name: 'Low Incline Barbell Press', badge: 'compound', sets: 4, w: 115, r: 12, rest: 90, compound: true,
+            why: '30° incline keeps chest as primary driver. At 12 reps with 90s rest the metabolic demand is high enough for fat oxidation while load is sufficient for muscle retention.',
+            warning: '⚠️ GRIP: Bar across base of fingers — diagonal. Use wrist wraps if needed.',
+            cues: ['Scapulae retracted and depressed before unracking.', 'Bar path diagonal: touches nipple line, drives above collarbone.', '3-sec eccentric every rep.', 'Drive feet into the floor.'],
+          },
+          {
+            id: 'tr-apress', name: 'Arnold Press', badge: 'compound', sets: 3, w: 30, r: 12, rest: 90, compound: true,
+            why: 'All three delt heads in one movement. At 12 reps with shorter rest than pure muscle-building, the metabolic demand is elevated while the stimulus for retention remains high.',
+            cues: ['Palms facing you at chin. Rotate outward as you press.', 'Elbows in front of torso throughout.', 'No aggressive lumbar arch.'],
+          },
+        ],
+      },
+      {
+        label: 'Accessory Block · Rest 60 sec',
+        exs: [
+          {
+            id: 'tr-fly', name: 'Cable Low-to-High Fly', badge: 'isolation', sets: 3, w: 25, r: 15, rest: 60, compound: false,
+            why: 'Constant cable tension through full arc. 15 reps at 60s rest elevates heart rate and drives sternal pec volume.',
+            cues: ['Slight forward lean, soft elbow bend.', 'Elbows together — hands are passengers.', '2-sec squeeze at top.'],
+          },
+          {
+            id: 'tr-lat', name: 'Cable Lateral Raise', badge: 'isolation', sets: 3, w: 20, r: 15, rest: 60, compound: false,
+            why: 'Lateral delt volume. Short rest creates significant pump and keeps HR elevated for the recomp effect.',
+            cues: ['Lead with elbow. Pinky slightly higher than thumb.', 'Stop at shoulder height.', '4-sec negative.'],
+          },
+          {
+            id: 'tr-ohe', name: 'Tricep Overhead Extension', badge: 'isolation', sets: 3, w: 50, r: 15, rest: 60, compound: false,
+            why: 'Long head — 55% of tricep mass. Only fully activated in overhead position. 15 reps creates high mechanical tension with metabolic stress.',
+            cues: ['Elbows narrow and forward. Forearm only moves.', 'Full stretch before driving up.'],
+          },
+          {
+            id: 'tr-push', name: 'Tricep Rope Pushdown', badge: 'isolation', sets: 3, w: 65, r: 15, rest: 60, compound: false,
+            why: 'Lateral and medial head finisher after overhead ext has targeted the long head. Short rest elevates HR into the fat-burn zone.',
+            cues: ['15° forward hinge.', 'Full extension, hard squeeze.', 'Drop set final set only.'],
+          },
+        ],
+      },
+      {
+        label: 'Zone 2 Finisher · 22 min', cardio: true,
+        exs: [
+          {
+            id: 'tr-c1', name: 'Incline Treadmill Walk', badge: 'cardio', cardioOnly: true,
+            cardioDesc: '3–4% incline. Glycogen partially depleted from lifting — fat oxidation window is open right now.',
+            zone: 'HR 120–145 BPM', duration: 22,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'tue', label: 'Tue · Lower A', color: 'var(--blue)',
+    rationale: 'Hip hinge dominant lower day. Posterior chain at recomp volume — high enough rep range to drive metabolic stress, sufficient load to retain muscle.',
+    blocks: [
+      {
+        label: 'Compound Block · Rest 90 sec',
+        exs: [
+          {
+            id: 'tr-rdl', name: 'Romanian Deadlift', badge: 'compound', sets: 4, w: 115, r: 12, rest: 90, compound: true,
+            why: 'Constant hamstring tension throughout. At 12 reps with 90s rest the RDL becomes metabolically demanding while still driving posterior chain strength.',
+            cues: ['Push hips back — not down.', 'Bar against legs the entire descent.', 'Hamstring stretch at mid-shin.', 'Drive hips forward at top.'],
+          },
+          {
+            id: 'tr-hip', name: 'Hip Thrust', badge: 'compound', sets: 3, w: 115, r: 12, rest: 90, compound: true,
+            why: 'Greatest glute EMG activation of any exercise. 12 reps with short rest creates both hypertrophy signal and metabolic demand — the recomp combination.',
+            cues: ['Bench at shoulder blades. Feet flat, shoulder-width.', 'Drive through full foot.', 'Level hips, 2-sec hold at top every rep.'],
+          },
+        ],
+      },
+      {
+        label: 'Accessory Block · Rest 60 sec',
+        exs: [
+          {
+            id: 'tr-curl', name: 'Lying Leg Curl', badge: 'isolation', sets: 3, w: 80, r: 12, rest: 60, compound: false,
+            why: 'Knee flexion hits short head of bicep femoris. Short rest creates a significant hamstring pump and keeps metabolic demand high.',
+            cues: ['Hips into pad throughout.', 'Full extension every rep.', '3-sec eccentric.'],
+          },
+          {
+            id: 'tr-pt', name: 'Cable Pull-Through', badge: 'isolation', sets: 3, w: 55, r: 15, rest: 60, compound: false,
+            why: 'Reinforces hip hinge pattern under load at higher reps. Direct feedback on hip hinge quality.',
+            cues: ['Face away from cable. Drive hips forward at lockout.', 'Do not hyperextend lower back.'],
+          },
+          {
+            id: 'tr-calf1', name: 'Standing Calf Raise', badge: 'isolation', sets: 4, w: 135, r: 20, rest: 45, compound: false,
+            why: 'Calves are slow-twitch dominant — they respond to volume. High reps, short rest, full range.',
+            cues: ['Full hang at bottom, 1-sec pause. Full rise at top, 1-sec pause.'],
+          },
+        ],
+      },
+      {
+        label: 'Zone 2 Finisher · 22 min', cardio: true,
+        exs: [
+          {
+            id: 'tr-c2', name: 'Stationary Bike', badge: 'cardio', cardioOnly: true,
+            cardioDesc: 'Post leg day — bike over treadmill. Keeps hips and quads moving, aids DOMS recovery without impact.',
+            zone: 'HR 120–145 BPM', duration: 22,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'thu', label: 'Thu · Upper B', color: 'var(--green)',
+    rationale: 'Pull-dominant upper day. Rear delts and back volume at recomp intensity. Higher reps than pure muscle-building, shorter rest.',
+    blocks: [
+      {
+        label: 'Compound Block · Rest 90 sec',
+        exs: [
+          {
+            id: 'tr-pull', name: 'Lat Pulldown', badge: 'compound', sets: 4, w: 90, r: 12, rest: 90, compound: true,
+            why: 'Neutral grip, full ROM. At 12 reps with 90s rest the lat demand is high and heart rate stays elevated — the recomp training zone.',
+            cues: ['Lean back 10–15 degrees.', 'Lead with elbows into back pockets.', 'Full dead hang at top.'],
+          },
+          {
+            id: 'tr-row', name: 'Seated Cable Row', badge: 'compound', sets: 4, w: 95, r: 12, rest: 90, compound: true,
+            why: 'Wide overhand grip: rhomboids, lower traps, rear delts. The posture muscles. Short rest keeps HR in the fat-burn zone.',
+            cues: ['Torso upright — do not rock.', 'Elbows wide and high. Handle to lower sternum.', 'Full scapular protraction between reps.'],
+          },
+        ],
+      },
+      {
+        label: 'Accessory Block · Rest 60 sec',
+        exs: [
+          {
+            id: 'tr-dbr', name: 'Single-Arm DB Row', badge: 'isolation', sets: 3, w: 55, r: 12, rest: 60, compound: false,
+            why: 'Unilateral work catches the dominant-side compensation that bilateral rows mask. Short rest keeps metabolic demand high.',
+            cues: ['Row to hip — hip path is lat, chest path is upper trap.', 'Full protraction at bottom.'],
+          },
+          {
+            id: 'tr-face', name: 'Face Pull', badge: 'isolation', sets: 3, w: 30, r: 20, rest: 45, compound: false,
+            why: 'External rotation work. Mandatory shoulder longevity regardless of goal type.',
+            cues: ['Pull to ears. External rotate at end. Light weight only.'],
+          },
+          {
+            id: 'tr-icurl', name: 'Incline DB Curl', badge: 'isolation', sets: 3, w: 22, r: 12, rest: 60, compound: false,
+            why: 'Stretch-position loading produces greater hypertrophy than shortened-position. The recomp context still requires sufficient bicep stimulus to retain muscle.',
+            cues: ['Arms hang straight. Supinate through curl.', '3-sec slow negative.'],
+          },
+          {
+            id: 'tr-ham', name: 'Hammer Curl', badge: 'isolation', sets: 3, w: 27, r: 12, rest: 60, compound: false,
+            why: 'Brachialis development — sits underneath the bicep and physically pushes it up.',
+            cues: ['Elbow pinned to side.', 'Strict alternating.', 'Full extension at bottom.'],
+          },
+        ],
+      },
+      {
+        label: 'Zone 2 Finisher · 22 min', cardio: true,
+        exs: [
+          {
+            id: 'tr-c3', name: 'Elliptical', badge: 'cardio', cardioOnly: true,
+            cardioDesc: 'Upper pull day — elliptical preferred. Full-body low-impact movement. True Zone 2.',
+            zone: 'HR 120–145 BPM', duration: 22,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'fri', label: 'Fri · Lower B', color: 'var(--purple)',
+    rationale: 'Quad and glute session. 72 hours from Tuesday hinge day. Recomp volume: sufficient load for retention, higher reps for metabolic output.',
+    blocks: [
+      {
+        label: 'Compound Block · Rest 90 sec',
+        exs: [
+          {
+            id: 'tr-hack', name: 'Hack Squat', badge: 'compound', sets: 4, w: 135, r: 12, rest: 90, compound: true,
+            why: 'Hack squat at 12 reps with 90s rest creates both the hypertrophy signal (sufficient load) and the metabolic demand (short rest) required for body recomp.',
+            cues: ['Feet mid-platform, shoulder-width, 20–30° toe-out.', 'Below parallel. No partial reps.', '3-sec eccentric. No lockout at top.'],
+          },
+          {
+            id: 'tr-bss', name: 'Bulgarian Split Squat', badge: 'compound', sets: 3, w: 22, r: 10, rest: 90, compound: true,
+            why: 'Single-leg training at equivalent stimulus with lower total spinal load. Hip flexor stretch is therapeutic.',
+            cues: ['Rear foot elevated. Front foot far enough for vertical shin.', 'Descend straight down. Torso upright.'],
+          },
+        ],
+      },
+      {
+        label: 'Accessory Block · Rest 60 sec',
+        exs: [
+          {
+            id: 'tr-ext', name: 'Leg Extension', badge: 'isolation', sets: 3, w: 70, r: 15, rest: 60, compound: false,
+            why: 'VMO isolation — the teardrop quad. Full extension under load at higher reps creates a significant metabolic quad pump.',
+            cues: ['Pad at base of shin.', 'Full extension, 1-sec squeeze.', 'Slow controlled return.'],
+          },
+          {
+            id: 'tr-abd', name: 'Abductor Machine', badge: 'isolation', sets: 3, w: 80, r: 20, rest: 45, compound: false,
+            why: 'Glute medius. Stabilizes every lower body compound. Short rest is fine here — it is not a fatiguing movement.',
+            cues: ['Slight forward lean for glute med.', 'Full range, hold at end.'],
+          },
+          {
+            id: 'tr-calf2', name: 'Seated Calf Raise', badge: 'isolation', sets: 4, w: 70, r: 20, rest: 45, compound: false,
+            why: 'Soleus — only accessible with bent knee. High volume is the only stimulus it responds to.',
+            cues: ['Full stretch and rise. Pause at both ends.'],
+          },
+        ],
+      },
+      {
+        label: 'Zone 2 Finisher · 22 min', cardio: true,
+        exs: [
+          {
+            id: 'tr-c4', name: 'Stationary Bike', badge: 'cardio', cardioOnly: true,
+            cardioDesc: 'End of training week. Low resistance. Protect the weekend recovery window.',
+            zone: 'HR 115–135 BPM', duration: 22,
+          },
+        ],
+      },
+    ],
+  },
+]
 
 // ── Program registry ──────────────────────────────────────────────────────────
 

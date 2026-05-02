@@ -9,6 +9,7 @@ import SetLogger from './SetLogger'
 interface Props {
   exercise:       Exercise
   recommendation: Recommendation | null
+  restSeconds?:   number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ const BADGE_STYLES: Record<Exercise['badge'], string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ExerciseCard({ exercise, recommendation }: Props) {
+export default function ExerciseCard({ exercise, recommendation, restSeconds }: Props) {
   const arrow = recommendation ? ARROW_STYLES[recommendation.arrow] : null
 
   return (
@@ -88,7 +89,7 @@ export default function ExerciseCard({ exercise, recommendation }: Props) {
           )}
           <div className="flex gap-4 text-xs text-white/40 uppercase tracking-widest">
             {exercise.zone && (
-              <span>Zone {exercise.zone}</span>
+              <span>{exercise.zone}</span>
             )}
             {exercise.duration && (
               <span>{exercise.duration} min</span>
@@ -101,6 +102,7 @@ export default function ExerciseCard({ exercise, recommendation }: Props) {
           exerciseName={exercise.name}
           isCompound={exercise.compound ?? false}
           recommendation={recommendation}
+          restSeconds={restSeconds}
         />
       )}
 
