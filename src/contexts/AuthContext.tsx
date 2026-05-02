@@ -30,6 +30,8 @@ interface AuthContextValue {
   partner: TandemUser | null        // the other user
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
+  sendLoginCode: (email: string) => Promise<{ error: string | null }>
+  verifyLoginCode: (email: string, token: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -122,6 +124,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
+  const sendLoginCode = async (email: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
+    if (error) return { error: error.message }
+    return { error: null }
+  }
+
+  const verifyLoginCode = async (email: string, token: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    if (error) return { error: error.message }
+    return { error: null }
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
     setUser(null)
@@ -131,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, partner, loading, signIn, signOut, refreshProfile }}
+      value={{ user, profile, partner, loading, signIn, sendLoginCode, verifyLoginCode, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
