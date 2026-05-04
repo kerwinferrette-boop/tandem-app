@@ -25,24 +25,30 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session — required for Server Components to read auth state
+  // Primary purpose: refresh the session so Server Components can read auth state.
+  // IMPORTANT: nothing between createServerClient and getUser() — see Supabase SSR docs.
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
-  const isPublicRoute = request.nextUrl.pathname === '/'
+  const isAuthRoute    = request.nextUrl.pathname.startsWith('/login')
+  const isPublicRoute  = request.nextUrl.pathname === '/'
 
+  // Only redirect unauthenticated users away from protected routes.
+  // Authenticated-user redirects (e.g. /login → /dashboard) are handled
+  // by Server Components and client-side useEffect to avoid cookie-forwarding
+  // issues that create redirect loops.
   if (!user && !isAuthRoute && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    // Copy any refreshed session cookies so the login page can read them
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie as CookieOptions)
+    })
+    return redirectResponse
   }
 
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
+  // IMPORTANT: must return supabaseResponse (not a new NextResponse) so that
+  // the refreshed session cookies reach the Server Components.
   return supabaseResponse
 }
 
