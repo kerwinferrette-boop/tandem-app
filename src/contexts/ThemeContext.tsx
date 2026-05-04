@@ -15,8 +15,8 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  userColor: '#CCFF00',
-  partnerColor: '#CCFF00',
+  userColor: '#2E8B57',
+  partnerColor: '#2E8B57',
 })
 
 export function useTheme(): ThemeContextValue {
@@ -27,8 +27,8 @@ export function useTheme(): ThemeContextValue {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { profile, partner } = useAuth()
 
-  const userColor    = profile?.theme_color  ?? '#CCFF00'
-  const partnerColor = partner?.theme_color  ?? '#CCFF00'
+  const userColor    = profile?.theme_color  ?? '#2E8B57'
+  const partnerColor = partner?.theme_color  ?? '#2E8B57'
 
   // Inject the current user's color as a CSS variable on :root
   useEffect(() => {
