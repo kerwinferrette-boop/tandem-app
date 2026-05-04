@@ -56,7 +56,7 @@ export function WorkoutSessionProvider({
   dayType:  string
   userId:   string
 }) {
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
 
   // Refs avoid stale-closure issues in callbacks — no re-render needed
   const sessionIdRef  = useRef<string | null>(null)

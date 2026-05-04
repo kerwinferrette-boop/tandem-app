@@ -47,7 +47,9 @@ export function useAuth(): AuthContextValue {
 
 // ── Provider ─────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = createClient()
+  // Stable Supabase client across renders — createBrowserClient is not a
+  // singleton, so wrapping in useState prevents new instances every render.
+  const [supabase] = useState(() => createClient())
 
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<TandemUser | null>(null)
@@ -77,22 +79,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfiles(user)
   }, [user, fetchProfiles])
 
-  // Boot — check existing session
+  // Boot — validate existing session against the server (not just local storage)
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      const authUser = session?.user ?? null
-      setUser(authUser)
-      if (authUser) {
+    supabase.auth.getUser()
+      .then(({ data: { user: authUser } }) => {
+        if (!mounted) return
+        if (!authUser) {
+          // No valid session. If there's stale local state, clear it so we
+          // don't get into a redirect loop where the client thinks we're
+          // logged in but the server doesn't.
+          supabase.auth.signOut().catch(() => {})
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        setUser(authUser)
         fetchProfiles(authUser).finally(() => {
           if (mounted) setLoading(false)
         })
-      } else {
+      })
+      .catch(() => {
+        // Network error or Supabase unreachable — render the login form rather
+        // than spinning forever.
+        if (!mounted) return
+        setUser(null)
         setLoading(false)
-      }
-    })
+      })
 
     // Listen for auth state changes (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
