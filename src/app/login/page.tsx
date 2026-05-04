@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type FormEvent, type KeyboardEvent, type C
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
-const CODE_LENGTH = 6
+const CODE_LENGTH = 8
 
 export default function LoginPage() {
   const { sendLoginCode, verifyLoginCode, user, loading } = useAuth()
@@ -40,7 +40,7 @@ export default function LoginPage() {
     e.preventDefault()
     if (submitting) return
     const token = digits.join('')
-    if (token.length < CODE_LENGTH) { setError('Please enter all 8 digits.'); return }
+    if (token.length < CODE_LENGTH) { setError(`Please enter all ${CODE_LENGTH} digits.`); return }
     setError(null)
     setSubmitting(true)
     const { error: verifyError } = await verifyLoginCode(email.trim(), token)
