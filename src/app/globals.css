@@ -4,19 +4,19 @@
 
 /* ── Brand tokens ─────────────────────────────────────────────── */
 :root {
-  --racing-green: #004225;
+  --racing-green: #1A5C30;
   --velocity-lime: #CCFF00;
-  --carbon-grey: #1A1A1A;
+  --carbon-grey: #111318;
   --stark-white: #FFFFFF;
 
   /* Dynamic — overridden per-user by ThemeContext */
-  --user-color: #CCFF00;
+  --user-color: #2E8B57;
 
   /* Semantic aliases */
   --bg-primary:    var(--carbon-grey);
-  --bg-surface:    #242424;
-  --bg-card:       #2a2a2a;
-  --border-subtle: rgba(255, 255, 255, 0.08);
+  --bg-surface:    #181C22;
+  --bg-card:       #1E2330;
+  --border-subtle: rgba(255, 255, 255, 0.06);
   --text-primary:  var(--stark-white);
   --text-muted:    rgba(255, 255, 255, 0.45);
 }
@@ -45,7 +45,7 @@ body {
   font-style: italic;
   text-transform: uppercase;
   letter-spacing: -0.02em;
-  color: var(--velocity-lime);
+  color: var(--stark-white);
   line-height: 1.05;
 }
 
@@ -81,11 +81,11 @@ body {
     @apply w-full rounded-lg px-3 py-2.5 text-sm text-white
            placeholder:text-white/30
            focus:outline-none transition-colors;
-    background-color: #1a1a1a;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.10);
   }
   .input-field:focus {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--user-color);
   }
 
   .section-label {
