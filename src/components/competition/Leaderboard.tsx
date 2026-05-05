@@ -4,7 +4,7 @@
 // Fetches competition_leaderboard view, subscribes to real-time changes,
 // and renders two PointsCard components sorted by total_points.
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import PointsCard, { type LeaderboardRow } from './PointsCard'
 
@@ -19,12 +19,13 @@ interface Props {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function Leaderboard({ initialRows, currentUserId }: Props) {
+  const supabase = useMemo(() => createClient(), [])
   const [rows, setRows] = useState<LeaderboardRow[]>(initialRows)
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Re-fetch helper ──────────────────────────────────────────────────────────
 
   const refetch = useCallback(async () => {
-    const supabase = createClient()
     const { data, error } = await supabase
       .from('competition_leaderboard')
       .select('*')
@@ -32,39 +33,45 @@ export default function Leaderboard({ initialRows, currentUserId }: Props) {
     if (!error && data) {
       setRows(data as LeaderboardRow[])
     }
-  }, [])
+  }, [supabase])
+
+  // ── Debounced trigger — prevents hammering the view on every set logged ───────
+
+  const scheduleRefetch = useCallback(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    debounceTimer.current = setTimeout(refetch, 2500)
+  }, [refetch])
 
   // ── Realtime subscription ────────────────────────────────────────────────────
 
   useEffect(() => {
-    const supabase = createClient()
-
     const channel = supabase
       .channel('competition-live')
       // Any new set logged → could affect sessions_completed + PRs
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sets' },
-        () => { refetch() },
+        scheduleRefetch,
       )
       // Session marked complete → affects sessions_completed + streak
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'workout_sessions' },
-        () => { refetch() },
+        scheduleRefetch,
       )
       // Health snapshots → affects avg_steps
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'health_snapshots' },
-        () => { refetch() },
+        scheduleRefetch,
       )
       .subscribe()
 
     return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
       supabase.removeChannel(channel)
     }
-  }, [refetch])
+  }, [supabase, scheduleRefetch])
 
   // ── Sort ─────────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { GoalType } from '@/lib/program'
 
@@ -21,18 +21,18 @@ interface Props {
 }
 
 export default function GoalSelector({ currentGoal, userId, onGoalChange }: Props) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState<GoalType | null>(null)
 
   const select = async (goal: GoalType) => {
     if (goal === currentGoal || loading) return
     setLoading(goal)
-    await supabase
+    const { error } = await supabase
       .from('users')
       .update({ program_type: goal })
       .eq('id', userId)
     setLoading(null)
-    onGoalChange(goal)
+    if (!error) onGoalChange(goal)
   }
 
   return (

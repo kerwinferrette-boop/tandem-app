@@ -29,9 +29,8 @@ interface AuthContextValue {
   profile: TandemUser | null        // public.users row for current user
   partner: TandemUser | null        // the other user
   loading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  sendLoginCode: (email: string) => Promise<{ error: string | null }>
-  verifyLoginCode: (email: string, token: string) => Promise<{ error: string | null }>
+  signIn:  (email: string, password: string) => Promise<{ error: string | null }>
+  signUp:  (email: string, password: string, name: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -138,15 +137,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
-  const sendLoginCode = async (email: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
+  const signUp = async (
+    email: string,
+    password: string,
+    name: string,
+  ): Promise<{ error: string | null }> => {
+    const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) return { error: error.message }
-    return { error: null }
-  }
+    if (!data.user) return { error: 'Sign-up failed — please try again' }
 
-  const verifyLoginCode = async (email: string, token: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
-    if (error) return { error: error.message }
+    const { error: profileError } = await supabase
+      .from('users')
+      .insert({
+        id:           data.user.id,
+        email,
+        name,
+        program_type: 'build_muscle',
+        theme_color:  '#1B5E38',
+        current_week: 1,
+      })
+
+    if (profileError) return { error: profileError.message }
     return { error: null }
   }
 
@@ -159,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, partner, loading, signIn, sendLoginCode, verifyLoginCode, signOut, refreshProfile }}
+      value={{ user, profile, partner, loading, signIn, signUp, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

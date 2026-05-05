@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { GoalType } from '@/lib/program'
 import type { OverloadRow } from '@/components/workout/ExerciseList'
 import { getProgram } from '@/lib/program'
@@ -45,7 +45,7 @@ export default function WorkoutDashboard({ user, overloadMap }: Props) {
   const [currentWeek]                      = useState<number>(user.current_week)
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(todayIdx)
 
-  const days       = getProgram(goal, 4, currentWeek)
+  const days        = useMemo(() => getProgram(goal, 4, currentWeek), [goal, currentWeek])
   const selectedDay = days[selectedDayIdx] ?? days[0]
 
   return (

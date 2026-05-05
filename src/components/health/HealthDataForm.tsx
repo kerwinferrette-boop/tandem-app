@@ -8,7 +8,7 @@
  * for manual entry when the native bridge is unavailable.
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ReadinessInput } from '@/lib/readiness'
 
@@ -60,9 +60,45 @@ function i(s: string): number | null {
   return isNaN(v) ? null : v
 }
 
+// ── Field sub-component (module scope — must not be inside HealthDataForm) ────
+
+interface FieldProps {
+  label:       string
+  unit?:       string
+  placeholder: string
+  step?:       string
+  value:       string
+  onChange:    (value: string) => void
+}
+
+function Field({ label, unit, placeholder, step = 'any', value, onChange }: FieldProps) {
+  return (
+    <div>
+      <label className="block text-[10px] text-white/40 uppercase tracking-widest font-tight font-bold italic mb-1">
+        {label}
+        {unit && <span className="text-white/25 ml-1 normal-case not-italic font-normal">({unit})</span>}
+      </label>
+      <input
+        type="number"
+        step={step}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="
+          w-full bg-white/5 border border-white/20 px-3 py-2
+          text-sm text-white placeholder:text-white/25
+          focus:outline-none focus:border-[var(--user-color)]
+          transition-colors
+        "
+      />
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function HealthDataForm({ userId, onSave }: Props) {
+  const supabase = useMemo(() => createClient(), [])
   const [form,    setForm]    = useState<FormState>(EMPTY)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
@@ -80,8 +116,6 @@ export default function HealthDataForm({ userId, onSave }: Props) {
     setError(null)
 
     const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
-
-    const supabase = createClient()
 
     const { error: dbError } = await supabase
       .from('health_snapshots')
@@ -125,44 +159,6 @@ export default function HealthDataForm({ userId, onSave }: Props) {
     }
   }
 
-  // ── Input helper ────────────────────────────────────────────────────────────
-
-  function Field({
-    label,
-    field,
-    unit,
-    placeholder,
-    step = 'any',
-  }: {
-    label:       string
-    field:       keyof FormState
-    unit?:       string
-    placeholder: string
-    step?:       string
-  }) {
-    return (
-      <div>
-        <label className="block text-[10px] text-white/40 uppercase tracking-widest font-tight font-bold italic mb-1">
-          {label}
-          {unit && <span className="text-white/25 ml-1 normal-case not-italic font-normal">({unit})</span>}
-        </label>
-        <input
-          type="number"
-          step={step}
-          value={form[field]}
-          onChange={e => update(field, e.target.value)}
-          placeholder={placeholder}
-          className="
-            w-full bg-white/5 border border-white/20 px-3 py-2
-            text-sm text-white placeholder:text-white/25
-            focus:outline-none focus:border-[var(--user-color)]
-            transition-colors
-          "
-        />
-      </div>
-    )
-  }
-
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -176,37 +172,37 @@ export default function HealthDataForm({ userId, onSave }: Props) {
       <div className="space-y-3">
         <div className="text-[10px] text-white/25 uppercase tracking-widest">Heart Rate Variability</div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Today's HRV"   field="hrv_ms"          unit="ms" placeholder="e.g. 58" />
-          <Field label="7-Day Avg HRV" field="hrv_7day_avg_ms" unit="ms" placeholder="e.g. 52" />
+          <Field label="Today's HRV"   unit="ms"  placeholder="e.g. 58" value={form.hrv_ms}          onChange={v => update('hrv_ms', v)} />
+          <Field label="7-Day Avg HRV" unit="ms"  placeholder="e.g. 52" value={form.hrv_7day_avg_ms} onChange={v => update('hrv_7day_avg_ms', v)} />
         </div>
       </div>
 
       {/* Sleep */}
-      <Field label="Sleep" field="sleep_hours" unit="hrs" placeholder="e.g. 7.5" step="0.5" />
+      <Field label="Sleep" unit="hrs" placeholder="e.g. 7.5" step="0.5" value={form.sleep_hours} onChange={v => update('sleep_hours', v)} />
 
       {/* Heart rate */}
       <div className="space-y-3">
         <div className="text-[10px] text-white/25 uppercase tracking-widest">Resting Heart Rate</div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Today's RHR"  field="rhr_bpm"          unit="bpm" placeholder="e.g. 62" step="1" />
-          <Field label="Baseline RHR" field="baseline_rhr_bpm" unit="bpm" placeholder="e.g. 58" step="1" />
+          <Field label="Today's RHR"  unit="bpm" placeholder="e.g. 62" step="1" value={form.rhr_bpm}          onChange={v => update('rhr_bpm', v)} />
+          <Field label="Baseline RHR" unit="bpm" placeholder="e.g. 58" step="1" value={form.baseline_rhr_bpm} onChange={v => update('baseline_rhr_bpm', v)} />
         </div>
       </div>
 
       {/* Activity */}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Steps"          field="steps"          placeholder="e.g. 7400"  step="1" />
-        <Field label="Active Minutes" field="active_minutes" placeholder="e.g. 45"    step="1" />
+        <Field label="Steps"          placeholder="e.g. 7400" step="1" value={form.steps}          onChange={v => update('steps', v)} />
+        <Field label="Active Minutes" placeholder="e.g. 45"   step="1" value={form.active_minutes} onChange={v => update('active_minutes', v)} />
       </div>
 
       {/* Body */}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Weight"      field="weight_lbs"   unit="lbs" placeholder="e.g. 225.5" />
-        <Field label="Body Fat"    field="body_fat_pct" unit="%"   placeholder="e.g. 18.2"  />
+        <Field label="Weight"   unit="lbs" placeholder="e.g. 225.5" value={form.weight_lbs}   onChange={v => update('weight_lbs', v)} />
+        <Field label="Body Fat" unit="%"   placeholder="e.g. 18.2"  value={form.body_fat_pct} onChange={v => update('body_fat_pct', v)} />
       </div>
 
       {/* Calories */}
-      <Field label="Calories Burned" field="calories_burned" unit="kcal" placeholder="e.g. 2800" step="1" />
+      <Field label="Calories Burned" unit="kcal" placeholder="e.g. 2800" step="1" value={form.calories_burned} onChange={v => update('calories_burned', v)} />
 
       {/* Notes */}
       <div>

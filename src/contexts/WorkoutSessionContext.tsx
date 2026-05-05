@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -56,7 +57,7 @@ export function WorkoutSessionProvider({
   dayType:  string
   userId:   string
 }) {
-  const [supabase] = useState(() => createClient())
+  const supabase = useMemo(() => createClient(), [])
 
   // Refs avoid stale-closure issues in callbacks — no re-render needed
   const sessionIdRef  = useRef<string | null>(null)
@@ -163,6 +164,7 @@ export function WorkoutSessionProvider({
   // Flips completed = true on the session row, triggering the streak DB update.
 
   const markComplete = useCallback(async () => {
+    if (!sessionIdRef.current) return
     const sid = await ensureSession()
 
     const durationMinutes = startedAtRef.current

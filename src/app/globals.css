@@ -4,13 +4,14 @@
 
 /* ── Brand tokens ─────────────────────────────────────────────── */
 :root {
-  --racing-green: #1A5C30;
+  --forest-green:  #1B5E38;
+  --racing-green:  #004225;
   --velocity-lime: #CCFF00;
-  --carbon-grey: #111318;
-  --stark-white: #FFFFFF;
+  --carbon-grey:   #1A1A1A;
+  --stark-white:   #FFFFFF;
 
-  /* Dynamic — overridden per-user by ThemeContext */
-  --user-color: #2E8B57;
+  /* Dynamic — overridden per-user by ThemeContext once logged in */
+  --user-color: #1B5E38;
 
   /* Semantic aliases */
   --bg-primary:    var(--carbon-grey);
@@ -45,7 +46,7 @@ body {
   font-style: italic;
   text-transform: uppercase;
   letter-spacing: -0.02em;
-  color: var(--stark-white);
+  color: var(--forest-green);
   line-height: 1.05;
 }
 
