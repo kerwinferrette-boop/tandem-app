@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 const CODE_LENGTH = 8
 
 export default function LoginPage() {
-  const { sendLoginCode, verifyLoginCode, user, loading } = useAuth()
+  const { sendLoginCode, verifyLoginCode, user, loading, validated } = useAuth()
   const router = useRouter()
 
   const [step,       setStep]       = useState<'email' | 'code'>('email')
@@ -19,8 +19,8 @@ export default function LoginPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
-    if (!loading && user) router.replace('/dashboard')
-  }, [user, loading, router])
+    if (validated && !loading && user) router.replace('/dashboard')
+  }, [validated, user, loading, router])
 
   useEffect(() => {
     if (step === 'code') inputRefs.current[0]?.focus()

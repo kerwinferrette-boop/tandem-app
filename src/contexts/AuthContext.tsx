@@ -29,6 +29,7 @@ interface AuthContextValue {
   profile: TandemUser | null        // public.users row for current user
   partner: TandemUser | null        // the other user
   loading: boolean
+  validated: boolean                // true once getUser() server check has resolved at least once
   sendLoginCode:  (email: string) => Promise<{ error: string | null }>
   verifyLoginCode: (email: string, token: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<TandemUser | null>(null)
   const [partner, setPartner] = useState<TandemUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [validated, setValidated] = useState(false)
 
   const fetchProfiles = useCallback(async (authUser: User) => {
     // Fetch all users in one query (there are only 2)
@@ -78,7 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfiles(user)
   }, [user, fetchProfiles])
 
-  // Boot — validate existing session against the server (not just local storage)
+  // Boot — getUser() is the sole source of truth. The onAuthStateChange listener
+  // ignores INITIAL_SESSION (stale localStorage) and TOKEN_REFRESHED (no profile change)
+  // to avoid a redirect ping-pong with the middleware.
   useEffect(() => {
     let mounted = true
 
@@ -86,31 +90,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data: { user: authUser } }) => {
         if (!mounted) return
         if (!authUser) {
-          // No valid session. If there's stale local state, clear it so we
-          // don't get into a redirect loop where the client thinks we're
-          // logged in but the server doesn't.
-          supabase.auth.signOut().catch(() => {})
           setUser(null)
+          setValidated(true)
           setLoading(false)
           return
         }
         setUser(authUser)
+        setValidated(true)
         fetchProfiles(authUser).finally(() => {
           if (mounted) setLoading(false)
         })
       })
       .catch(() => {
-        // Network error or Supabase unreachable — render the login form rather
-        // than spinning forever.
         if (!mounted) return
         setUser(null)
+        setValidated(true)
         setLoading(false)
       })
 
-    // Listen for auth state changes (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (!mounted) return
+        if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return
+
         const authUser = session?.user ?? null
         setUser(authUser)
         if (authUser) {
@@ -149,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, partner, loading, sendLoginCode, verifyLoginCode, signOut, refreshProfile }}
+      value={{ user, profile, partner, loading, validated, sendLoginCode, verifyLoginCode, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
