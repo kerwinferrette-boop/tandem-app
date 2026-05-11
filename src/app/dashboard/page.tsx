@@ -30,7 +30,24 @@ export default async function DashboardPage() {
     .eq('id', authUser.id)
     .single()
 
-  if (profileError || !profile) redirect('/login')
+  if (profileError || !profile) {
+    return (
+      <main className="min-h-screen bg-[#1A1A1A] text-white flex flex-col items-center justify-center p-4">
+        <h1 className="text-xl font-bold mb-4 text-center">Profile not found</h1>
+        <p className="text-white/60 mb-8 text-center max-w-sm">
+          We couldn't load your profile. Please make sure you are using the correct email or contact support.
+        </p>
+        <form action={async () => {
+          'use server'
+          const actionClient = await createClient()
+          await actionClient.auth.signOut()
+          redirect('/login')
+        }}>
+          <button className="btn-primary px-6 py-2">Sign Out</button>
+        </form>
+      </main>
+    )
+  }
 
   // ── Fetch progressive overload recommendations ──────────────────────────────
   const { data: overloadRows } = await supabase
