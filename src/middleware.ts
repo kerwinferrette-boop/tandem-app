@@ -32,15 +32,24 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute    = request.nextUrl.pathname.startsWith('/login')
   const isPublicRoute  = request.nextUrl.pathname === '/'
 
-  // Only redirect unauthenticated users away from protected routes.
-  // Authenticated-user redirects (e.g. /login → /dashboard) are handled
-  // by Server Components and client-side useEffect to avoid cookie-forwarding
-  // issues that create redirect loops.
-  if (!user && !isAuthRoute && !isPublicRoute) {
+  // Redirect unauthenticated users to login
+  if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     const redirectResponse = NextResponse.redirect(url)
     // Copy any refreshed session cookies so the login page can read them
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie as CookieOptions)
+    })
+    return redirectResponse
+  }
+
+  // Redirect authenticated users away from the login page or root to the dashboard.
+  if (user && (isAuthRoute || isPublicRoute)) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    const redirectResponse = NextResponse.redirect(url)
+    // Copy any refreshed session cookies so the dashboard can read them
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie.name, cookie.value, cookie as CookieOptions)
     })

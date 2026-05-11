@@ -116,7 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const authUser = session?.user ?? null
         setUser(authUser)
         if (authUser) {
-          fetchProfiles(authUser)
+          setLoading(true)
+          fetchProfiles(authUser).finally(() => {
+            if (mounted) setLoading(false)
+          })
         } else {
           setProfile(null)
           setPartner(null)
