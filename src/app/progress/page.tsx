@@ -40,9 +40,10 @@ export default async function ProgressPage() {
 
   // ── Fetch personal records ─────────────────────────────────────────────────
 
+  // Column names use the actual DB schema; aliased for the PersonalRecord type
   const { data: prs } = await supabase
     .from('personal_records')
-    .select('exercise_name, best_weight_lbs, best_reps, estimated_1rm_lbs, achieved_at')
+    .select('exercise_name, achieved_weight_lbs, achieved_reps, best_estimated_1rm_lbs, achieved_date')
     .eq('user_id', user.id)
     .order('exercise_name', { ascending: true })
 
@@ -52,7 +53,14 @@ export default async function ProgressPage() {
   const goalLbs    = profile?.goal_weight_lbs  ?? 0
   const currentLbs = latestSnapshot?.weight_lbs ?? startLbs
 
-  const records: PersonalRecord[] = (prs ?? []) as PersonalRecord[]
+  // Map DB column names → component interface names
+  const records: PersonalRecord[] = (prs ?? []).map((r: Record<string, unknown>) => ({
+    exercise_name:     r.exercise_name as string,
+    best_weight_lbs:   r.achieved_weight_lbs as number,
+    best_reps:         r.achieved_reps as number,
+    estimated_1rm_lbs: r.best_estimated_1rm_lbs as number,
+    achieved_at:       r.achieved_date as string,
+  }))
 
   const hasWeightData = startLbs > 0 && goalLbs > 0
 

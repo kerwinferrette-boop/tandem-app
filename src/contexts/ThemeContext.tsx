@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  type ReactNode,
-} from 'react'
-import { useAuth } from './AuthContext'
+import { createContext, useContext, type ReactNode } from 'react'
 
 // ── Context ──────────────────────────────────────────────────────
 interface ThemeContextValue {
@@ -14,6 +8,7 @@ interface ThemeContextValue {
   partnerColor: string
 }
 
+// Forest green is hard-locked — never driven by user profile data
 const BRAND_GREEN = '#1B5E38'
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -27,18 +22,10 @@ export function useTheme(): ThemeContextValue {
 
 // ── Provider ─────────────────────────────────────────────────────
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const { profile, partner } = useAuth()
-
-  const userColor    = profile?.theme_color  ?? BRAND_GREEN
-  const partnerColor = partner?.theme_color  ?? BRAND_GREEN
-
-  // Inject the current user's color as a CSS variable on :root
-  useEffect(() => {
-    document.documentElement.style.setProperty('--user-color', userColor)
-  }, [userColor])
-
+  // Theme is always forest green — no dynamic override from user profile.
+  // The CSS variable --user-color is hardcoded in globals.css.
   return (
-    <ThemeContext.Provider value={{ userColor, partnerColor }}>
+    <ThemeContext.Provider value={{ userColor: BRAND_GREEN, partnerColor: BRAND_GREEN }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -75,7 +75,7 @@ export default function Leaderboard({ initialRows, currentUserId }: Props) {
 
   // ── Sort ─────────────────────────────────────────────────────────────────────
 
-  const sorted = [...rows].sort((a, b) => b.total_points - a.total_points)
+  const sorted = [...rows].sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0))
   const leader = sorted[0]
   const trailer = sorted[1]
 
@@ -109,7 +109,7 @@ export default function Leaderboard({ initialRows, currentUserId }: Props) {
       {sorted.length === 2 && (
         <div className="text-center py-3 border border-white/5 bg-white/2">
           <span className="font-tight font-bold italic text-white/60 text-sm tabular-nums">
-            {Math.abs(leader.total_points - trailer.total_points).toLocaleString()}
+            {Math.abs((leader.total_points ?? 0) - (trailer.total_points ?? 0)).toLocaleString()}
           </span>
           <span className="text-[10px] text-white/25 uppercase tracking-widest ml-2">
             point gap

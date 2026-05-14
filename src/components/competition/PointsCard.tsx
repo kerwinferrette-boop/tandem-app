@@ -66,9 +66,9 @@ export default function PointsCard({ row, isCurrentUser, isLeading, rank }: Prop
   const color = row.theme_color || 'var(--user-color)'
 
   // Point breakdown (mirrors DB scoring — adjust if view uses different weights)
-  const sessionPts = row.sessions_completed * 10
-  const prPts      = row.prs_earned         * 25
-  const stepPts    = Math.round(Math.min(row.avg_steps / 8000, 1) * 15)
+  const sessionPts = (row.sessions_completed ?? 0) * 10
+  const prPts      = (row.prs_earned         ?? 0) * 25
+  const stepPts    = Math.round(Math.min((row.avg_steps ?? 0) / 8000, 1) * 15)
 
   const borderStyle = isLeading
     ? { borderColor: `${color}60` }
@@ -115,7 +115,7 @@ export default function PointsCard({ row, isCurrentUser, isLeading, rank }: Prop
             className="font-tight font-bold italic text-3xl leading-none tabular-nums"
             style={{ color: isLeading ? color : 'rgba(255,255,255,0.5)' }}
           >
-            {row.total_points.toLocaleString()}
+            {(row.total_points ?? 0).toLocaleString()}
           </div>
           <div className="text-[9px] text-white/25 uppercase tracking-widest mt-0.5">
             points
@@ -142,7 +142,7 @@ export default function PointsCard({ row, isCurrentUser, isLeading, rank }: Prop
         />
         <StatRow
           label="Avg Steps"
-          value={row.avg_steps.toLocaleString()}
+          value={(row.avg_steps ?? 0).toLocaleString()}
           points={stepPts}
           color={color}
         />

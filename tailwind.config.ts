@@ -6,14 +6,13 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  // Hard-lock: never respond to OS light/dark preference
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
         tight: ['var(--font-inter-tight)', 'Inter Tight', 'sans-serif'],
-      },
-      colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        mono:  ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
       },
     },
   },

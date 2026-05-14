@@ -7,19 +7,23 @@
   --forest-green:  #1B5E38;
   --racing-green:  #004225;
   --velocity-lime: #CCFF00;
-  --carbon-grey:   #1A1A1A;
+  --carbon-grey:   #111318;
   --stark-white:   #FFFFFF;
 
-  /* Dynamic — overridden per-user by ThemeContext once logged in */
+  /* HARD-LOCKED — forest green, never changes regardless of user profile */
   --user-color: #1B5E38;
 
   /* Semantic aliases */
-  --bg-primary:    var(--carbon-grey);
-  --bg-surface:    #181C22;
-  --bg-card:       #1E2330;
-  --border-subtle: rgba(255, 255, 255, 0.06);
+  --bg-primary:    #111318;
+  --bg-surface:    #161A24;
+  --bg-card:       #1A2035;
+  --border-subtle: rgba(255, 255, 255, 0.08);
   --text-primary:  var(--stark-white);
   --text-muted:    rgba(255, 255, 255, 0.45);
+
+  /* Set grid accent colors */
+  --set-active:    #7C3AED;   /* violet — current/active set */
+  --set-done:      #1B5E38;   /* forest green — completed set */
 }
 
 /* ── Base ─────────────────────────────────────────────────────── */
@@ -33,10 +37,15 @@ html {
 }
 
 body {
-  background-color: var(--carbon-grey);
+  background-color: var(--bg-primary);
   color: var(--stark-white);
   font-family: var(--font-inter), 'Inter', sans-serif;
   min-height: 100dvh;
+}
+
+/* Prevent any OS-level color-scheme from bleeding in */
+html {
+  color-scheme: dark;
 }
 
 /* ── Typography utility ───────────────────────────────────────── */

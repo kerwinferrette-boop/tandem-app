@@ -3,81 +3,79 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import UserAvatar from './UserAvatar'
 
 const NAV_ITEMS = [
   {
     href: '/dashboard',
-    label: 'Train',
+    label: 'Home',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
       </svg>
     ),
   },
   {
-    href: '/competition',
-    label: 'Compete',
+    href: '/train',
+    label: 'Train',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 2h16l-2 8a6 6 0 01-12 0L4 2z" />
-        <path d="M8 18h8M12 10v8" />
-        <path d="M2 4h2M22 4h-2" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="10" width="4" height="4" rx="1" />
+        <rect x="18" y="10" width="4" height="4" rx="1" />
+        <rect x="6" y="8" width="2" height="8" rx="0.5" />
+        <rect x="16" y="8" width="2" height="8" rx="0.5" />
+        <rect x="8" y="11" width="8" height="2" rx="0.5" />
       </svg>
     ),
   },
   {
     href: '/progress',
-    label: 'Progress',
+    label: 'Stats',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3,17 9,11 13,15 21,7" />
-        <polyline points="15,7 21,7 21,13" />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6"  y1="20" x2="6"  y2="14" />
+      </svg>
+    ),
+  },
+  {
+    href: '/profile',
+    label: 'Me',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
       </svg>
     ),
   },
 ]
 
 export default function Navbar() {
-  const { profile } = useAuth()
+  const { profile, loading } = useAuth()
   const pathname = usePathname()
 
-  if (!profile) return null
+  if (loading || !profile) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#1A1A1A]">
-      <div className="max-w-lg mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Left: user identity */}
-        <UserAvatar />
-
-        {/* Right: nav links */}
-        <div className="flex gap-6">
-          {NAV_ITEMS.map(({ href, label, icon }) => {
-            const active = pathname === href || pathname.startsWith(href + '/')
-            return (
-              <Link
-                key={href}
-                href={href}
-                className="flex flex-col items-center gap-1 transition-colors"
-                style={active ? { color: 'var(--user-color)' } : undefined}
-              >
-                <span className={active ? '' : 'text-white/30'}>
-                  {icon}
-                </span>
-                <span
-                  className={`text-[9px] font-tight font-bold italic uppercase tracking-widest ${
-                    active ? '' : 'text-white/30'
-                  }`}
-                >
-                  {label}
-                </span>
-              </Link>
-            )
-          })}
-        </div>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06]" style={{ backgroundColor: '#161A24' }}>
+      <div className="max-w-lg mx-auto h-16 grid grid-cols-4 items-center">
+        {NAV_ITEMS.map(({ href, label, icon }) => {
+          const active = pathname === href || pathname.startsWith(href + '/')
+          return (
+            <Link
+              key={label}
+              href={href}
+              className="flex flex-col items-center justify-center gap-1 h-full transition-colors"
+              style={active ? { color: 'var(--user-color)' } : { color: 'rgba(255,255,255,0.30)' }}
+            >
+              {icon}
+              <span className="text-[9px] font-tight font-bold italic uppercase tracking-widest">
+                {label}
+              </span>
+            </Link>
+          )
+        })}
       </div>
     </nav>
   )

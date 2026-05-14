@@ -150,9 +150,9 @@ const FAT_BURN_4: DayProgram[] = [
         label: 'Upper Block · Rest 60 sec',
         exs: [
           {
-            id: 'fb-bench', name: 'Low Incline Barbell Press', badge: 'compound', sets: 4, w: 115, r: 15, rest: 60, compound: true,
-            why: 'Incline press at higher reps with short rest creates significant metabolic demand while hitting chest, anterior delt, and triceps simultaneously.',
-            cues: ['Retract scapulae before unracking. Hold throughout.', 'Bar diagonal in hand — not in the palm. Protect that grip.', 'Controlled 2-sec eccentric on every rep.'],
+            id: 'fb-thruster', name: 'DB Thruster', badge: 'compound', sets: 4, w: 35, r: 15, rest: 60, compound: true,
+            why: 'The thruster (front squat into overhead press) is the single highest-calorie-expenditure movement per rep available in a gym. It recruits quads, glutes, core, shoulders, and triceps simultaneously — more muscle mass than any pure upper or lower body movement. Short rest amplifies the metabolic response, elevating EPOC (afterburn) for hours post-session.',
+            cues: ['DBs at shoulders, elbows slightly forward. Squat to below parallel.', 'Drive explosively from the hole — use leg power to initiate the press.', 'Full lockout overhead before the next descent.', 'Core braced hard throughout — no lumbar collapse at the top.'],
           },
           {
             id: 'fb-lat-raise', name: 'DB Lateral Raise', badge: 'isolation', sets: 3, w: 20, r: 15, rest: 60, compound: false,
@@ -352,10 +352,10 @@ const BUILD_MUSCLE_4: DayProgram[] = [
         label: 'Compound Block · Rest 2 min',
         exs: [
           {
-            id: 'bm-bench', name: 'Low Incline Barbell Press', badge: 'compound', sets: 4, w: 140, r: 10, rest: 120, compound: true,
-            why: '30° incline is mechanically superior for taller lifters. Keeps chest as primary driver through full ROM. Safer shoulder angle than flat or 45°.',
+            id: 'bm-bench', name: 'Low Incline Barbell Press', badge: 'compound', sets: 4, w: 165, r: 6, rest: 180, compound: true,
+            why: 'Mechanical tension is the primary hypertrophy driver at this rep range. 6 reps at 80–85% 1RM creates the maximal neural recruitment and time-under-tension for muscle fiber recruitment that higher rep ranges cannot match. The 3-minute rest is mandatory — it allows full ATP-PCr system recovery so each set is genuinely heavy, not aerobic compensation.',
             warning: '⚠️ GRIP: Bar across the base of fingers — diagonal, low pinky side. Use wrist wraps. Switch to DB if palm pain fires.',
-            cues: ['Scapulae retracted and depressed before unracking.', 'Bar path diagonal: touches nipple line, drives to above collarbone.', '3-second eccentric every rep — the negative builds more than the concentric.', 'Drive feet into the floor. Leg drive transfers through the chain.'],
+            cues: ['Scapulae retracted and depressed before unracking — hold this arch throughout.', 'Bar path diagonal: touches nipple line, drives to above collarbone.', '3-second eccentric every rep — the negative is where mechanical tension peaks.', 'Drive feet into the floor. Leg drive through the kinetic chain adds 10–15 lbs to your press.'],
           },
           {
             id: 'bm-press', name: 'Arnold Press', badge: 'compound', sets: 3, w: 40, r: 10, rest: 120, compound: true,
@@ -651,10 +651,10 @@ const TRANSFORM_4: DayProgram[] = [
         label: 'Compound Block · Rest 90 sec',
         exs: [
           {
-            id: 'tr-bench', name: 'Low Incline Barbell Press', badge: 'compound', sets: 4, w: 115, r: 12, rest: 90, compound: true,
-            why: '30° incline keeps chest as primary driver. At 12 reps with 90s rest the metabolic demand is high enough for fat oxidation while load is sufficient for muscle retention.',
+            id: 'tr-bench', name: 'Flat Barbell Bench Press', badge: 'compound', sets: 4, w: 125, r: 12, rest: 90, compound: true,
+            why: 'Flat bench at 12 reps sits in the hypertrophy-metabolic overlap zone — the recomp sweet spot. Maximum sternal pec recruitment at flat angle, with 90s rest keeping metabolic demand elevated enough for fat oxidation alongside the muscle-preservation stimulus. Distinct from the incline variation used in muscle-building programs and the overhead-emphasis of fat-burn thrusters.',
             warning: '⚠️ GRIP: Bar across base of fingers — diagonal. Use wrist wraps if needed.',
-            cues: ['Scapulae retracted and depressed before unracking.', 'Bar path diagonal: touches nipple line, drives above collarbone.', '3-sec eccentric every rep.', 'Drive feet into the floor.'],
+            cues: ['Scapulae retracted and depressed throughout. Slight natural arch — not exaggerated.', 'Bar touches mid-chest (nipple line). Drive up and slightly back toward the rack.', '3-sec eccentric every rep — control is the stimulus.', 'Drive feet into the floor for full-body tension.'],
           },
           {
             id: 'tr-apress', name: 'Arnold Press', badge: 'compound', sets: 3, w: 30, r: 12, rest: 90, compound: true,

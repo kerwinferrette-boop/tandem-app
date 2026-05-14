@@ -118,6 +118,13 @@ export function calcPlates(
  * @param currentWeek user's current program week (1–12)
  * @param lastSet     most recent set data for this exercise, or null if first session
  */
+/**
+ * Round weight to the nearest 5 lbs (standard plate increment).
+ */
+function roundTo5(n: number): number {
+  return Math.round(n / 5) * 5
+}
+
 export function getRecommendation(
   compound:    boolean,
   goal:        GoalType,
@@ -135,25 +142,30 @@ export function getRecommendation(
 
   const phase    = getPhase(currentWeek, goal)
   const topRange = phase.pctTop
-  const inc      = compound ? phase.incComp : phase.incAcc
   const { minReps, weight } = lastSet
+
+  // Percentage-based progression: 2.5–5% depending on compound/accessory and phase
+  // phase.pctInc is already expressed as a percentage (e.g. 5 = 5%)
+  const pct = (compound ? phase.pctInc : Math.max(phase.pctInc - 2, 2.5)) / 100
 
   let rec:    number
   let arrow:  OverloadArrow
   let reason: string
 
   if (minReps >= topRange) {
-    rec    = weight + inc
+    const increase = Math.max(roundTo5(weight * pct), 5)
+    rec    = roundTo5(weight + increase)
     arrow  = 'up'
-    reason = `${minReps} reps hit — add ${inc} lbs`
+    reason = `${minReps} reps hit — +${increase} lbs (${(pct * 100).toFixed(1)}%)`
   } else if (minReps >= topRange - 3) {
     rec    = weight
     arrow  = 'same'
-    reason = `${minReps} reps — stay, hit full range first`
+    reason = `${minReps} reps — hit full range first`
   } else {
-    rec    = Math.max(weight - inc, inc)
+    const drop = Math.max(roundTo5(weight * 0.05), 5)
+    rec    = Math.max(roundTo5(weight - drop), 5)
     arrow  = 'down'
-    reason = `Only ${minReps} reps — drop ${inc} lbs`
+    reason = `Only ${minReps} reps — drop ${drop} lbs`
   }
 
   return { weight: rec, arrow, label: `${rec} lbs`, reason }
