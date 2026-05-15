@@ -23,6 +23,7 @@ interface Props {
   recommendation: Recommendation | null
   restSeconds?:   number
   userId:         string
+  onDone?:        (lastWeight: number, setCount: number) => void
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -45,8 +46,9 @@ export default function SetLogger({
   recommendation,
   restSeconds,
   userId,
+  onDone,
 }: Props) {
-  const { logSet } = useWorkoutSession()
+  const { logSet, markComplete } = useWorkoutSession()
   const { secondsLeft, durationSecs, exerciseName: timerExercise, startTimer, cancelTimer } = useRestTimer()
   const supabase = useRef(createClient()).current
 
@@ -61,6 +63,8 @@ export default function SetLogger({
   )
   const [liveRM, setLiveRM] = useState<number | null>(null)
   const [logging, setLogging] = useState<number | null>(null) // index being logged
+  const [exerciseSaved, setExerciseSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // ── Note persistence ──────────────────────────────────────────────────────
   const [note, setNote] = useState('')
@@ -135,6 +139,22 @@ export default function SetLogger({
       console.error('[SetLogger] logSet failed:', err)
     } finally {
       setLogging(null)
+    }
+  }
+
+  const handleDone = async () => {
+    if (saving || exerciseSaved) return
+    setSaving(true)
+    try {
+      await markComplete()
+      const lastDone = rows.filter(r => r.done).at(-1)
+      const lastWeight = lastDone?.logged?.weightLbs ?? parseFloat(lastDone?.weight ?? '0') ?? 0
+      setExerciseSaved(true)
+      onDone?.(lastWeight, doneCount)
+    } catch (err) {
+      console.error('[SetLogger] markComplete failed:', err)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -332,6 +352,32 @@ export default function SetLogger({
           color: 'rgba(255,255,255,0.75)',
         }}
       />
+
+      {/* Done — Save to Memory */}
+      {doneCount >= 1 && (
+        exerciseSaved ? (
+          <div
+            className="w-full py-3 rounded text-center text-sm font-tight font-bold italic uppercase tracking-tight"
+            style={{ backgroundColor: 'rgba(27,94,56,0.15)', color: 'var(--user-color)', border: '1px solid rgba(27,94,56,0.35)' }}
+          >
+            ✓ Saved to Memory
+          </div>
+        ) : (
+          <button
+            onClick={handleDone}
+            disabled={saving}
+            className="w-full py-3 rounded text-sm font-tight font-bold italic uppercase tracking-tight transition-all"
+            style={{
+              backgroundColor: saving ? 'rgba(27,94,56,0.10)' : 'var(--user-color)',
+              color: saving ? 'var(--user-color)' : '#0a1a10',
+              border: '1px solid var(--user-color)',
+              opacity: saving ? 0.7 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Done — Save to Memory'}
+          </button>
+        )
+      )}
 
     </div>
   )

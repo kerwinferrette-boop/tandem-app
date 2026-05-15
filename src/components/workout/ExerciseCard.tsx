@@ -35,6 +35,14 @@ const BADGE_BORDER: Record<Exercise['badge'], string> = {
 export default function ExerciseCard({ exercise, recommendation, restSeconds, defaultExpanded = false }: Props) {
   const { profile } = useAuth()
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const [exerciseDone, setExerciseDone] = useState(false)
+  const [savedSummary, setSavedSummary] = useState<{ sets: number; weight: number } | null>(null)
+
+  const handleExerciseDone = (lastWeight: number, setCount: number) => {
+    setExerciseDone(true)
+    setSavedSummary({ sets: setCount, weight: lastWeight })
+    setExpanded(false)
+  }
 
   const arrow = recommendation ? ARROW_ICON[recommendation.arrow] : ARROW_ICON.new
 
@@ -60,9 +68,12 @@ export default function ExerciseCard({ exercise, recommendation, restSeconds, de
         {/* Completion dot / checkbox */}
         <span
           className="mt-0.5 flex-shrink-0 w-5 h-5 rounded flex items-center justify-center"
-          style={{ border: '1.5px solid rgba(27,94,56,0.5)', backgroundColor: 'rgba(27,94,56,0.08)' }}
+          style={exerciseDone
+            ? { border: '1.5px solid var(--user-color)', backgroundColor: 'var(--user-color)' }
+            : { border: '1.5px solid rgba(27,94,56,0.5)', backgroundColor: 'rgba(27,94,56,0.08)' }
+          }
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(27,94,56,0.5)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={exerciseDone ? '#fff' : 'rgba(27,94,56,0.5)'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </span>
@@ -94,8 +105,18 @@ export default function ExerciseCard({ exercise, recommendation, restSeconds, de
         </span>
       </button>
 
-      {/* Progression pill */}
-      {recommendation && (
+      {/* Progression pill — or saved confirmation */}
+      {exerciseDone && savedSummary ? (
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <span className="text-base leading-none" style={{ color: 'var(--user-color)' }}>✓</span>
+          <span
+            className="text-[10px] font-tight font-bold italic uppercase tracking-tight px-2 py-0.5 rounded"
+            style={{ backgroundColor: 'rgba(27,94,56,0.15)', color: 'var(--user-color)', border: '1px solid rgba(27,94,56,0.40)' }}
+          >
+            {savedSummary.sets} set{savedSummary.sets !== 1 ? 's' : ''} · {savedSummary.weight} lbs saved
+          </span>
+        </div>
+      ) : recommendation ? (
         <div className="px-4 pb-3 flex items-center gap-2">
           <span className="text-base leading-none" style={{ color: arrow.color }}>{arrow.symbol}</span>
           <span
@@ -110,9 +131,7 @@ export default function ExerciseCard({ exercise, recommendation, restSeconds, de
             </span>
           )}
         </div>
-      )}
-
-      {!recommendation && (
+      ) : (
         <div className="px-4 pb-3 flex items-center gap-2">
           <span className="text-base" style={{ color: 'var(--user-color)' }}>★</span>
           <span
@@ -157,6 +176,7 @@ export default function ExerciseCard({ exercise, recommendation, restSeconds, de
                 recommendation={recommendation}
                 restSeconds={restSeconds}
                 userId={profile?.id ?? ''}
+                onDone={handleExerciseDone}
               />
             </div>
           )}
