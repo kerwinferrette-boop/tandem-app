@@ -2434,6 +2434,8 @@ function buildNextSessionBanners(program) {
 // ═══════════════════════════════════════════════════════
 const loggedSetsMap = {}; // exId → [false,false,...]
 const sessionSetsMap = {};
+let currentCloudSessionId = null;
+let sessionStartTime = null;
 
 function initExLogging(exId, sets) {
   if (!loggedSetsMap[exId]) loggedSetsMap[exId] = Array(sets).fill(false);
@@ -2517,6 +2519,50 @@ function checkExComplete(id) {
   card.classList.toggle('completed', allDone);
   const chk = card.querySelector('.ex-check');
   if (chk) chk.textContent = allDone ? '✓' : '';
+  if (allDone) saveExerciseToCloud(id);
+}
+
+async function saveExerciseToCloud(id) {
+  if (!currentUser) return;
+  const sets = sessionSetsMap[id];
+  if (!sets?.length) return;
+  if (!sessionStartTime) sessionStartTime = Date.now();
+  try {
+    const sessionPayload = {
+      user_id: currentUser.id,
+      session_date: new Date().toISOString(),
+      week_number: currentWeek,
+      day_type: currentDay,
+      program_goal: cfg.goal,
+      completed: false,
+      notes: null
+    };
+    if (currentCloudSessionId) sessionPayload.id = currentCloudSessionId;
+    const { data: sessionData, error: sessionError } = await sb
+      .from('workout_sessions')
+      .upsert(sessionPayload, { onConflict: 'id' })
+      .select('id')
+      .single();
+    if (sessionError) throw sessionError;
+    currentCloudSessionId = sessionData.id;
+
+    const setRows = sets.map(s => ({
+      session_id: currentCloudSessionId,
+      user_id: currentUser.id,
+      exercise_name: id,
+      set_number: s.set,
+      weight_lbs: s.w,
+      reps: s.r,
+      estimated_1rm_lbs: s.est1rm
+    }));
+    const { error: setsError } = await sb.from('sets').upsert(setRows);
+    if (setsError) throw setsError;
+
+    showToast('✓ ' + id + ' saved');
+  } catch(e) {
+    console.warn('Exercise sync error:', e);
+    showToast('Sync error — saved locally');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2733,6 +2779,20 @@ function finishSession() {
 
   // Cloud sync
   syncToCloud();
+
+  // Mark cloud session complete
+  if (currentCloudSessionId && currentUser) {
+    const duration = sessionStartTime
+      ? Math.round((Date.now() - sessionStartTime) / 60000)
+      : null;
+    sb.from('workout_sessions').upsert({
+      id: currentCloudSessionId,
+      completed: true,
+      duration_minutes: duration
+    }, { onConflict: 'id' }).then(({ error }) => {
+      if (error) console.warn('Session complete sync error:', error);
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2935,7 +2995,7 @@ async function syncToCloud() {
       date: s.date, week: s.week, goal: s.goal, day: s.day, exercises: s.exercises
     }));
     if (hist.length) {
-      const { error } = await sb.from('sessions').upsert(hist, { onConflict: 'id' });
+      const { error } = await sb.from('workout_sessions').upsert(hist, { onConflict: 'id' });
       if (error) throw error;
     }
     // PRs
@@ -2945,12 +3005,12 @@ async function syncToCloud() {
     const lsRows = Object.entries(lastsets).map(([exercise_id, data]) =>
       ({ user_id: uid, exercise_id, data, updated_at: new Date().toISOString() }));
     if (lsRows.length) {
-      const { error } = await sb.from('lastsets').upsert(lsRows, { onConflict: 'user_id,exercise_id' });
+      const { error } = await sb.from('sets').upsert(lsRows, { onConflict: 'user_id,exercise_id' });
       if (error) throw error;
     }
     // Config
     if (Object.keys(cfg).length) {
-      const { error } = await sb.from('user_config').upsert({
+      const { error } = await sb.from('users').upsert({
         user_id: uid, ...cfg, current_week: currentWeek, updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
       if (error) throw error;
@@ -2969,7 +3029,7 @@ async function syncPRs() {
   const prRows = Object.entries(prs).map(([exercise_id, estimated_1rm]) =>
     ({ user_id: currentUser.id, exercise_id, estimated_1rm, updated_at: new Date().toISOString() }));
   if (!prRows.length) return;
-  const { error } = await sb.from('prs').upsert(prRows, { onConflict: 'user_id,exercise_id' });
+  const { error } = await sb.from('personal_records').upsert(prRows, { onConflict: 'user_id,exercise_id' });
   if (error) console.warn('PR sync error:', error);
 }
 
@@ -2979,7 +3039,7 @@ async function restoreFromCloud() {
   try {
     const uid = currentUser.id;
     // Sessions
-    const { data: sessions, error: se } = await sb.from('sessions')
+    const { data: sessions, error: se } = await sb.from('workout_sessions')
       .select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (se) throw se;
     if (sessions?.length) {
@@ -2994,21 +3054,21 @@ async function restoreFromCloud() {
       showToast('No cloud data found');
     }
     // PRs
-    const { data: prData } = await sb.from('prs').select('*').eq('user_id', uid);
+    const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
     if (prData?.length && !Object.keys(LS.get('tandem_prs') || {}).length) {
       const prs = {};
       prData.forEach(r => { prs[r.exercise_id] = r.estimated_1rm; });
       LS.set('tandem_prs', prs);
     }
     // Last sets
-    const { data: lsData } = await sb.from('lastsets').select('*').eq('user_id', uid);
+    const { data: lsData } = await sb.from('sets').select('*').eq('user_id', uid);
     if (lsData?.length && !Object.keys(LS.get('tandem_lastsets') || {}).length) {
       const ls = {};
       lsData.forEach(r => { ls[r.exercise_id] = r.data; });
       LS.set('tandem_lastsets', ls);
     }
     // Config
-    const { data: configData } = await sb.from('user_config')
+    const { data: configData } = await sb.from('users')
       .select('*').eq('user_id', uid).single();
     if (configData && !LS.get('tandem_cfg')) {
       const { user_id, updated_at, current_week, ...cfgData } = configData;
@@ -3049,13 +3109,13 @@ async function loadDashboard() {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
-    const { data: mySessions } = await sb.from('sessions')
+    const { data: mySessions } = await sb.from('workout_sessions')
       .select('id').eq('user_id', uid).gte('created_at', weekStart.toISOString());
     const { data: userRow } = await sb.from('users')
       .select('partner_id, display_name').eq('id', uid).maybeSingle();
     let partnerCount = 0, partnerName = 'Partner';
     if (userRow?.partner_id) {
-      const { data: partnerSessions } = await sb.from('sessions')
+      const { data: partnerSessions } = await sb.from('workout_sessions')
         .select('id').eq('user_id', userRow.partner_id).gte('created_at', weekStart.toISOString());
       const { data: partnerRow } = await sb.from('users')
         .select('display_name').eq('id', userRow.partner_id).maybeSingle();
