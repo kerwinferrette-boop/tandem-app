@@ -2546,16 +2546,19 @@ async function saveExerciseToCloud(id) {
     if (sessionError) throw sessionError;
     currentCloudSessionId = sessionData.id;
 
-    const setRows = sets.map(s => ({
-      session_id: currentCloudSessionId,
-      user_id: currentUser.id,
-      exercise_name: id,
-      set_number: s.set,
-      weight_lbs: s.w,
-      reps: s.r,
-      estimated_1rm_lbs: s.est1rm
-    }));
-    const { error: setsError } = await sb.from('sets').upsert(setRows);
+    const setRows = sets
+      .map(s => ({
+        session_id: currentCloudSessionId,
+        user_id: currentUser.id,
+        exercise_name: id,
+        set_number: s.set || 1,
+        weight_lbs: parseFloat(s.w) || 0,
+        reps: parseInt(s.r) || 0,
+        estimated_1rm_lbs: s.est1rm || null
+      }))
+      .filter(s => s.weight_lbs > 0 && s.reps > 0);
+    if (!setRows.length) return;
+    const { error: setsError } = await sb.from('sets').insert(setRows);
     if (setsError) throw setsError;
 
     showToast('✓ ' + id + ' saved');
