@@ -228,6 +228,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ═══════════════════════════════
    DAY TABS
 ═══════════════════════════════ */
+.day-tabs-wrap{position:relative;}
+.day-tabs-wrap::after{content:'';position:absolute;right:0;top:0;bottom:0;width:36px;
+  background:linear-gradient(to right,transparent,var(--bg));pointer-events:none;}
 .day-tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 16px 0;}
 .day-tabs::-webkit-scrollbar{display:none;}
 .day-tab{flex-shrink:0;padding:7px 13px;border-radius:8px;border:1px solid var(--border);
@@ -1135,7 +1138,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 
   <!-- Day Tabs -->
-  <div class="day-tabs" id="dayTabs"></div>
+  <div class="day-tabs-wrap">
+    <div class="day-tabs" id="dayTabs"></div>
+  </div>
 
   <!-- Workout Views injected here -->
   <div id="workoutViews"></div>
@@ -1772,7 +1777,7 @@ function getProgram(goal, days, weeks) {
     },
     transform: {
       4: [
-        { key:'mon', label:'Mon · Upper Push + Pull', color:'var(--teal)', rationale:'Superset-driven upper body. Antagonist pairing (push+pull) keeps heart rate elevated while allowing each muscle group partial recovery. MRT structure maximizes calorie burn while building lean mass.',
+        { key:'mon', label:'Mon · Push + Pull', color:'var(--teal)', rationale:'Superset-driven upper body. Antagonist pairing (push+pull) keeps heart rate elevated while allowing each muscle group partial recovery. MRT structure maximizes calorie burn while building lean mass.',
           blocks:[
             {label:'Superset A · Rest 90 sec', exs:[
               {id:'tr-dbench', name:'DB Bench Press', badge:'compound', sets:4, w:50, r:10, rest:90, compound:true,
@@ -1804,7 +1809,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'tue', label:'Tue · Lower Strength + Metabolic', color:'var(--orange)', rationale:'Heavy lower compounds followed by superset accessories and a kettlebell metabolic finisher. The largest muscle groups burn the most calories — training legs hard is the single most effective recomp strategy.',
+        { key:'tue', label:'Tue · Lower A', color:'var(--orange)', rationale:'Heavy lower compounds followed by superset accessories and a kettlebell metabolic finisher. The largest muscle groups burn the most calories — training legs hard is the single most effective recomp strategy.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'tr-gsquat', name:'Goblet Squat', badge:'compound', sets:4, w:70, r:12, rest:120, compound:true,
@@ -1828,7 +1833,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'thu', label:'Thu · Upper Pull + Push', color:'var(--blue)', rationale:'Pull-dominant upper day with antagonist supersets. Reverses Monday\'s push emphasis. Balanced upper body development while maintaining metabolic resistance training structure.',
+        { key:'thu', label:'Thu · Pull + Push', color:'var(--blue)', rationale:'Pull-dominant upper day with antagonist supersets. Reverses Monday\'s push emphasis. Balanced upper body development while maintaining metabolic resistance training structure.',
           blocks:[
             {label:'Superset A · Rest 90 sec', exs:[
               {id:'tr-pull',  name:'Lat Pulldown', badge:'compound', sets:4, w:100, r:10, rest:90, compound:true,
@@ -1860,7 +1865,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'fri', label:'Fri · Lower Power + Conditioning', color:'var(--purple)', rationale:'Quad and glute emphasis with unilateral work. Machine compounds allow heavier loading safely. Metabolic treadmill finisher closes the training week and maximizes weekend fat oxidation.',
+        { key:'fri', label:'Fri · Lower B', color:'var(--purple)', rationale:'Quad and glute emphasis with unilateral work. Machine compounds allow heavier loading safely. Metabolic treadmill finisher closes the training week and maximizes weekend fat oxidation.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'tr-lpress', name:'Leg Press', badge:'compound', sets:4, w:270, r:12, rest:120, compound:true,
@@ -1975,6 +1980,10 @@ function getProgram(goal, days, weeks) {
 // ═══════════════════════════════════════════════════════
 // PROGRESSIVE OVERLOAD ENGINE
 // ═══════════════════════════════════════════════════════
+function phaseTopRep(phase) {
+  return parseInt(phase.reps.split('·')[0]) || 10;
+}
+
 function getPhase(week, goal) {
   const phases = PHASES[goal] || PHASES.build_muscle;
   for (const p of phases) {
@@ -2491,7 +2500,7 @@ function buildDayHTML(day, phase) {
             <div class="ex-info">
               <div class="ex-name">${ex.name}<span class="ex-badge badge-${ex.badge}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">1RM ~${pr1rm}</span>` : ''}</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);margin-top:2px;">
-                ${ex.sets} × ${ex.r} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest
+                ${ex.sets} × ${phaseTopRep(phase)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest
               </div>
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
@@ -2511,7 +2520,7 @@ function buildDayHTML(day, phase) {
               <div class="set-hdr-cell">Vol</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, ex.r)}
+            ${buildSetRows(ex.id, ex.sets, startW, phaseTopRep(phase))}
             <div class="set-actions">
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r})">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">🏋️ Plates</div>
