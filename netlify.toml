@@ -2,6 +2,9 @@
   command = "echo 'Static site'"
   publish = "."
 
+[build.environment]
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
 [[headers]]
   for = "/*"
   [headers.values]
