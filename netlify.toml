@@ -1,6 +1,6 @@
 [build]
-  command = "echo 'Static site'"
-  publish = "."
+  command = "mkdir -p _site && cp tandem.html _site/index.html && cp -r public _site/ 2>/dev/null || true"
+  publish = "_site"
 
 [build.environment]
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
