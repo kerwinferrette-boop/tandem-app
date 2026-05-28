@@ -1485,22 +1485,22 @@ const S = { restTimers:{}, swTimers:{}, swRun:{}, swSec:{}, logged:{}, sessionSe
 // Phase definitions per goal
 const PHASES = {
   fat_burn: [
-    {name:'Metabolic Foundation', intent:'Build work capacity and movement quality. Higher rep ranges maximize calorie burn.',    weeks:[1,3],  reps:'20·15·12', restComp:60,  restAcc:45,  incComp:2.5, incAcc:2.5, pctTop:15, pctInc:10},
-    {name:'Metabolic Intensify',  intent:'Increase load while maintaining short rest. The sweet spot for fat loss + strength.',   weeks:[4,6],  reps:'15·12·10', restComp:75,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:12, pctInc:10},
-    {name:'Power Burn',           intent:'Heavy compounds, metabolic finishers. Most demanding phase for simultaneous fat loss.',  weeks:[7,9],  reps:'12·10·8',  restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:10, pctInc:8},
-    {name:'Peak Conditioning',    intent:'Maximum output. You are significantly leaner and stronger than week 1.',                weeks:[10,12],reps:'10·8·6',   restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:6}
+    {name:'Metabolic Foundation', intent:'Build work capacity and movement quality. High rep start, descending across the 3-week block — volume then intensity.',             weeks:[1,3],  reps:'15·12·10', restComp:60,  restAcc:45,  incComp:2.5, incAcc:2.5, pctTop:10, pctInc:10},
+    {name:'Metabolic Intensify',  intent:'Increase load while maintaining short rest. The sweet spot for fat loss + strength.',                                             weeks:[4,6],  reps:'12·10·8',  restComp:75,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:10},
+    {name:'Power Burn',           intent:'Heavy compounds, metabolic finishers. Most demanding phase for simultaneous fat loss.',                                           weeks:[7,9],  reps:'10·8·6',   restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:8},
+    {name:'Peak Conditioning',    intent:'Maximum output. You are significantly leaner and stronger than week 1.',                                                          weeks:[10,12],reps:'8·7·6',    restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6}
   ],
   build_muscle: [
-    {name:'Hypertrophy Foundation',intent:'Establish movement patterns. High volume, moderate load. Muscle memory is building.',   weeks:[1,3],  reps:'15·12·10', restComp:120, restAcc:75,  incComp:5,   incAcc:2.5, pctTop:10, pctInc:8},
-    {name:'Strength Build',        intent:'Load increases, volume holds. Strength adaptations accelerate this phase.',             weeks:[4,6],  reps:'12·10·8',  restComp:120, restAcc:90,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:6},
-    {name:'Power Phase',           intent:'Heavier compounds. Short accessory rest. Highest hypertrophy signal of the program.',   weeks:[7,9],  reps:'10·8·6',   restComp:150, restAcc:90,  incComp:10,  incAcc:5,   pctTop:6,  pctInc:5},
-    {name:'Peak Strength',         intent:'Maximum load. Neural efficiency peaks. You are stronger than week 1 at every lift.',    weeks:[10,12],reps:'8·6·4',    restComp:180, restAcc:90,  incComp:5,   incAcc:5,   pctTop:4,  pctInc:3}
+    {name:'Hypertrophy Foundation',intent:'Establish movement patterns. High volume descending across 3 weeks — technique then load.',                                        weeks:[1,3],  reps:'12·10·8',  restComp:120, restAcc:75,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},
+    {name:'Strength Build',        intent:'Load increases, volume holds. Strength adaptations accelerate this phase.',                                                      weeks:[4,6],  reps:'10·8·6',   restComp:120, restAcc:90,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6},
+    {name:'Power Phase',           intent:'Heavier compounds. Short accessory rest. Highest hypertrophy signal of the program.',                                            weeks:[7,9],  reps:'8·6·5',    restComp:150, restAcc:90,  incComp:10,  incAcc:5,   pctTop:5,  pctInc:5},
+    {name:'Peak Strength',         intent:'Maximum load. Neural efficiency peaks. You are stronger than week 1 at every lift.',                                             weeks:[10,12],reps:'6·5·4',    restComp:180, restAcc:90,  incComp:5,   incAcc:5,   pctTop:4,  pctInc:3}
   ],
   transform: [
-    {name:'Recomp Foundation',    intent:'Moderate deficit, high protein, progressive overload. Body recomp starts now.',          weeks:[1,3],  reps:'15·12·10', restComp:90,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:10, pctInc:8},
-    {name:'Recomp Build',         intent:'Add load, maintain intensity. Muscle grows while fat continues to drop.',                weeks:[4,6],  reps:'12·10·8',  restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:6},
-    {name:'Recomp Power',         intent:'Heaviest phase. Body composition changes become visually apparent this block.',          weeks:[7,9],  reps:'10·8·6',   restComp:120, restAcc:75,  incComp:10,  incAcc:5,   pctTop:6,  pctInc:5},
-    {name:'Recomp Peak',          intent:'The results phase. Scale may barely move but the mirror tells the real story.',          weeks:[10,12],reps:'8·6·4',    restComp:120, restAcc:75,  incComp:5,   incAcc:5,   pctTop:4,  pctInc:3}
+    {name:'Recomp Foundation',    intent:'Moderate deficit, high protein, progressive overload. Rep range descends across 3 weeks — establishes the work capacity base.',    weeks:[1,3],  reps:'12·10·8',  restComp:90,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},
+    {name:'Recomp Build',         intent:'Add load, maintain intensity. Muscle grows while fat continues to drop. Floor at 8 reps — no heavier in a deficit.',             weeks:[4,6],  reps:'10·9·8',   restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:6},
+    {name:'Recomp Power',         intent:'Heaviest phase. Body composition changes become visually apparent. 8-rep floor maintained throughout.',                           weeks:[7,9],  reps:'9·8·8',    restComp:120, restAcc:75,  incComp:10,  incAcc:5,   pctTop:8,  pctInc:5},
+    {name:'Recomp Peak',          intent:'The results phase. Scale may barely move but the mirror tells the real story. Load is at its peak — 8 reps all week.',           weeks:[10,12],reps:'8·8·8',    restComp:120, restAcc:75,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:3}
   ]
 };
 
@@ -1536,6 +1536,7 @@ const VIDEO_IDS = {
   'Push-Up':                    'IODxDxX7oi4',
   'Dumbbell Row':               'pYcpY20QaE8',
   'Plank':                      'pSHjTRCQxIw',
+  'Seated Leg Curl':            'YyvSfVjQeL0',
 };
 
 function getProgram(goal, days, weeks) {
@@ -1568,6 +1569,14 @@ function getProgram(goal, days, weeks) {
                why:'High-rep pushdowns with short rest create a significant metabolic demand on the tricep and elevate heart rate for the cardio finisher.',
                cues:['15° forward hinge. Removes shoulder from the movement.','Full extension at bottom. Squeeze 1 full second.','Drop 30% on final set, continue to failure.']},
             ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fb-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'McGill-approved anti-rotation movement. Forces the core to resist spinal extension while contralateral limbs move — exactly what the core does during every compound lift. Zero spinal shear.',
+               cues:['Lie on back. Arms straight to ceiling, knees at 90° above hips.','Slowly lower opposite arm and leg toward floor. Lower back STAYS pressed to floor.','Return and switch. 10 per side = 1 set. Do not rush.']},
+              {id:'fb-mon-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Targets the rectus abdominis through hip flexion rather than spinal flexion — loads the lower portion without compressing the lumbar discs. Zero neck strain.',
+               cues:['Lie flat. Bring knees to 90°.','Curl hips off the floor using the abs — not momentum.','Lower slowly. 3-sec eccentric. Do not let feet touch ground between reps.']},
+            ]},
             {label:'Cardio Finisher · 25 min', cardio:true, exs:[
               {id:'fb-cardio1', name:'Incline Treadmill — Zone 2', badge:'cardio', cardioOnly:true,
                cardioDesc:'3–4% incline, 3.2–3.5 mph. Glycogen partially depleted from lifting — body is primed to pull from fat stores. This window is gold.', zone:'HR 130–150 BPM', duration:25}
@@ -1594,6 +1603,14 @@ function getProgram(goal, days, weeks) {
               {id:'fb-calf1', name:'Standing Calf Raise', badge:'isolation', sets:3, w:160, r:20, rest:45, compound:false,
                why:'Calves respond to volume. High reps, short rest, full range. The stretch at the bottom is mandatory.',
                cues:['Full hang at bottom, 1-sec pause. Full rise at top, 1-sec pause.','No bouncing. Own every inch of the range.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fb-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Posterior chain core work pairs perfectly with hip hinge days. Erector spinae and multifidus are the core\'s "back wall" — undertrained in almost every ab program. Direct erector work reduces lower back injury risk by 30–40% in studies.',
+               cues:['Brace abs before initiating. Neutral spine throughout.','Rise until body is straight — not hyperextended.','2-sec hold at top. 3-sec controlled lower.']},
+              {id:'fb-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'McGill Big 3 staple — the only exercise that loads the lateral core (quadratus lumborum and obliques) without spinal compression. Anti-lateral flexion strength directly transfers to stability in every loaded carry and hinge movement.',
+               cues:['Elbow under shoulder. Hips stacked. Body in one straight line.','Drive hips up — do not sag.','Hold 35 sec each side. Rest 30 sec between sides.']},
             ]},
             {label:'Cardio Finisher · 25 min', cardio:true, exs:[
               {id:'fb-cardio2', name:'Stationary Bike — Zone 2', badge:'cardio', cardioOnly:true,
@@ -1622,6 +1639,14 @@ function getProgram(goal, days, weeks) {
                why:'Brachialis development — sits underneath the bicep and physically pushes it up. The arm-size muscle most people never train.',
                cues:['Elbow pinned to side. No front delt drift.','Strict alternating — complete one before starting the other.','Full extension at bottom.']},
             ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fb-thu-cc',   name:'Cable Crunch', badge:'core', sets:3, w:40, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'The only weighted core flexion exercise with direct progressive overload capability. Cable provides constant tension through the full range — eliminates the slack point at the bottom that bodyweight crunches have. Primary rectus abdominis development.',
+               cues:['Kneel facing cable. Rope attachment at forehead.','Crunch DOWN, not forward. Elbows toward knees.','Hold 1 sec at bottom. Slow return. Weight is secondary to feel.']},
+              {id:'fb-thu-bd',   name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'McGill Big 3 exercise — simultaneously trains lumbar extensors, glute max, and contralateral rotator coordination. Unique in that it builds core stability and erector strength simultaneously without any spinal compression.',
+               cues:['On all fours. Hands under shoulders, knees under hips.','Extend opposite arm and leg. Back stays level — no rotation.','5-sec hold at full extension. 10 per side = 1 set.']},
+            ]},
             {label:'Cardio Finisher · 25 min', cardio:true, exs:[
               {id:'fb-cardio3', name:'Elliptical or Rower', badge:'cardio', cardioOnly:true,
                cardioDesc:'Upper pull day — elliptical preferred. Full-body movement keeps total burn high without stressing the fatigued back.', zone:'HR 130–150 BPM', duration:25}
@@ -1645,6 +1670,14 @@ function getProgram(goal, days, weeks) {
               {id:'fb-calf2', name:'Seated Calf Raise', badge:'isolation', sets:3, w:80, r:20, rest:45, compound:false,
                why:'Soleus work — different muscle than standing calf. Bent knee removes gastrocnemius. Deep calf with its own hypertrophy potential.',
                cues:['Pad just above knee on lower quad.','Full stretch, full rise, pause at both ends.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fb-fri-hkr',  name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion with a loaded hanging position — one of the highest-activation exercises for the rectus abdominis and hip flexors. The shoulder girdle also works to maintain the hang. Decompresses the spine after a heavy squat session.',
+               cues:['Hang from bar with full shoulder extension.','Raise knees to hip height or above — controlled.','Lower slowly. 3-sec eccentric. No swinging.']},
+              {id:'fb-fri-pl',   name:'Plank', badge:'core', sets:3, w:0, r:45, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Anti-extension baseline — the standard measure of core endurance. Research shows 45-second holds outperform longer holds for muscle activation efficiency. Closing the training week with a stability finisher reinforces the bracing pattern for weekend recovery.',
+               cues:['Forearms under shoulders. Hips level — not sagging or piked.','Squeeze glutes and quads. Brace abs as if taking a punch.','Breathe. Do not hold breath. Full breaths throughout.']},
             ]},
             {label:'Cardio Finisher · 25 min', cardio:true, exs:[
               {id:'fb-cardio4', name:'Bike — Easy Zone 2', badge:'cardio', cardioOnly:true,
@@ -1683,6 +1716,14 @@ function getProgram(goal, days, weeks) {
                why:'Lateral and medial head isolation after overhead ext has burned out the long head. Final set: drop 30%, continue to failure.',
                cues:['15° forward hinge.','Full extension, hard squeeze.','Drop set final set only.']},
             ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bm-mon-cc',   name:'Cable Crunch', badge:'core', sets:3, w:50, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Only weighted core exercise with direct progressive overload potential. Cable constant tension eliminates the slack at bottom that bodyweight crunches have. For hypertrophy, this is the ab equivalent of a curl — the rectus abdominis needs load to grow.',
+               cues:['Kneel facing cable. Rope at forehead.','Crunch DOWN toward knees — elbows to thighs.','1-sec hold at bottom. Slow 3-sec return. Feel every inch.']},
+              {id:'bm-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Builds the transverse abdominis and deep stabilizers that no crunching exercise reaches. These muscles are the internal brace that protects the spine under heavy compound loads — critical on press days.',
+               cues:['Lie on back. Arms to ceiling, knees 90° above hips.','Opposite arm + leg lower toward floor. Back FLAT throughout.','5-sec descent, slow return. 10 per side = 1 set.']},
+            ]},
             {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
               {id:'bm-c1', name:'Incline Treadmill Walk', badge:'cardio', cardioOnly:true,
                cardioDesc:'3–4% incline. Post-lift fat oxidation window. Glycogen depleted = body pulling from fat stores right now.', zone:'HR 120–145 BPM', duration:20}
@@ -1703,12 +1744,20 @@ function getProgram(goal, days, weeks) {
               {id:'bm-curl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:100, r:10, rest:75, compound:false,
                why:'Knee flexion hits short head of bicep femoris that RDL barely touches. Both hamstring functions need training.',
                cues:['Hips into pad. Any lift = glute compensating.','Full extension every rep.','3-sec eccentric — this is the growth signal.']},
-              {id:'bm-pt',   name:'Cable Pull-Through', badge:'isolation', sets:3, w:70, r:15, rest:60, compound:false,
-               why:'Reinforces hip hinge pattern under load. Immediate feedback on whether you\'re hinging at the hip or bending at the waist.',
-               cues:['Face away from cable, feet wider than shoulder.','Drive hips forward explosively. Squeeze hard at lockout.','Do not hyperextend the lower back at top.']},
+              {id:'bm-slc',  name:'Seated Leg Curl', badge:'isolation', sets:3, w:75, r:10, rest:75, compound:false,
+               why:'Seated leg curl places the hamstring at a stretched starting length — greater hypertrophy signal than lying curl alone. This completes the hamstring picture: RDL covers the hip-extension function, seated curl covers the knee-flexion function from a lengthened position.',
+               cues:['Sit upright. Back against pad.','Full extension at start — earn the stretch.','3-sec eccentric. This is the growth signal.','Do not let hips lift off seat — that is the glute stealing the work.']},
               {id:'bm-calf1',name:'Standing Calf Raise', badge:'isolation', sets:4, w:170, r:20, rest:45, compound:false,
                why:'Calves are slow-twitch dominant — they respond to volume, not heavy loading. High reps, short rest, full range.',
                cues:['Full hang at bottom, 1-sec pause. Full rise at top, 1-sec pause.','Alternate toe angles across sets for full development.']},
+            ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bm-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Posterior core on a posterior chain day — intentional pairing. The erector spinae and multifidus are as much "core" as the rectus abdominis. On RDL/hip thrust days they are already warm. Direct erector training creates the muscular symmetry that prevents the forward lean breakdown point in heavy compounds.',
+               cues:['Neutral spine at start. Brace before moving.','Rise until body is in a straight line. Not hyperextended.','2-sec hold. 3-sec lower. Add a 25 lb plate to chest when 15 feels easy.']},
+              {id:'bm-tue-hlr',  name:'Hanging Leg Raise', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'The most progressive hip-flexion core exercise available. Full range from dead hang to legs parallel (or above) provides superior lower rectus and hip flexor stimulus over any ground-based alternative. Traction effect decompresses lumbar after heavy deadlifts.',
+               cues:['Dead hang from bar. Shoulders depressed.','Raise legs straight (or slightly bent) to parallel or above.','3-sec lowering phase — slow negatives build the most here.']},
             ]},
             {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
               {id:'bm-c2', name:'Stationary Bike', badge:'cardio', cardioOnly:true,
@@ -1740,6 +1789,14 @@ function getProgram(goal, days, weeks) {
                why:'Brachialis — underneath the bicep, physically pushes it up. Requires neutral grip. Does not respond to supinated curls. This is where arm size comes from.',
                cues:['Elbow pinned to side.','Strict alternating.','Full extension at bottom.']},
             ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bm-thu-aw',   name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'The gold standard anti-extension exercise — higher rectus abdominis and oblique activation than almost any other movement. Forces the entire anterior chain to resist extension under full body-length leverage. Progressive: as core strengthens, range increases.',
+               cues:['Start kneeling. Arms straight, wheel under shoulders.','Roll out slowly — lower back stays neutral the entire time.','Go only as far as you can without your back arching. Pull wheel back.']},
+              {id:'bm-thu-pp',   name:'Pallof Press', badge:'core', sets:3, w:30, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'The most effective anti-rotation exercise with loadable, progressive resistance. Cable pulls laterally while you resist — activating the obliques, transverse abdominis, and quadratus lumborum under measurable load. Directly transfers to rotational stability in every push and pull.',
+               cues:['Stand sideways to cable at chest height. Hold handle at chest.','Press straight out. Hold 2 sec. Resist any rotation.','12 per side. Heavier than you think once you feel it.']},
+            ]},
             {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
               {id:'bm-c3', name:'Elliptical', badge:'cardio', cardioOnly:true,
                cardioDesc:'Upper pull day — elliptical preferred. Low impact, full-body movement. Keep it true Zone 2.', zone:'HR 120–145 BPM', duration:20}
@@ -1766,6 +1823,14 @@ function getProgram(goal, days, weeks) {
               {id:'bm-calf2',name:'Seated Calf Raise', badge:'isolation', sets:4, w:90, r:20, rest:45, compound:false,
                why:'Soleus — only accessible with bent knee. Larger than most realize. High volume is the only stimulus it responds to.',
                cues:['Pad above knee on lower quad.','Full stretch and rise. Pause at both ends.']},
+            ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bm-fri-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:45, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core training — the one movement plane almost every program ignores. Quadratus lumborum and oblique stability directly transfer to hip stability under heavy single-leg loads like split squats (which you just did). McGill research shows this reduces lateral knee collapse by reinforcing the hip-stabilizer chain.',
+               cues:['Elbow under shoulder. Body in a straight diagonal line.','Drive hips up. Hold 40 sec each side.','Progress: add hip dips (lower and raise) to make it dynamic.']},
+              {id:'bm-fri-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Targets lower rectus abdominis through hip flexion — the area most visible in body composition change. No neck involvement, no lumbar compression. At the end of a heavy lower day the core is already warm and ready for this direct work.',
+               cues:['Lie flat. Knees at 90°.','Roll hips off floor using abs — not hip flexors.','3-sec lowering. Don\'t let feet touch ground between reps.']},
             ]},
             {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
               {id:'bm-c4', name:'Stationary Bike', badge:'cardio', cardioOnly:true,
@@ -1803,6 +1868,14 @@ function getProgram(goal, days, weeks) {
                why:'Brachialis — underneath the bicep, physically pushes it up. Neutral grip targets it exclusively. Short rest keeps metabolic demand high.',
                cues:['Elbow pinned to side. No front delt swing.','Strict alternating. Full extension at bottom.']},
             ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'tr-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Foundational anti-rotation movement for the recomp athlete. Trains the deep core stabilizers (transverse abdominis, multifidus) that are responsible for protecting the spine during the explosive HIIT work that follows. Specific to the antagonist superset format — builds the stability base that makes heavy paired sets safer.',
+               cues:['Lie on back. Arms to ceiling, knees 90° above hips.','Lower opposite arm + leg slowly. Back flat the entire time.','5-sec descent per limb. 10 per side = 1 set.']},
+              {id:'tr-mon-pp',   name:'Pallof Press', badge:'core', sets:3, w:25, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-rotation resistance training — the cable\'s lateral pull challenges the obliques and deep stabilizers to resist rotation under load. Directly relevant to the pressing and rowing supersets on this day: core anti-rotation strength is what allows you to transfer force cleanly.',
+               cues:['Stand sideways to cable. Handle at chest.','Press straight out and hold 2 sec. No rotation.','12 per side. Heavier = more stable lifts everywhere.']},
+            ]},
             {label:'HIIT Finisher · 15 min', cardio:true, exs:[
               {id:'tr-c1', name:'Rower — Intervals', badge:'cardio', cardioOnly:true,
                cardioDesc:'30 sec hard / 30 sec easy × 15 rounds. Full-body intervals after upper supersets maximize EPOC — your body burns elevated calories for hours post-session.', zone:'HR 150–175 BPM intervals', duration:15}
@@ -1826,6 +1899,14 @@ function getProgram(goal, days, weeks) {
               {id:'tr-lcurl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:85, r:15, rest:60, compound:false,
                why:'Paired with extensions — while quads recover, hamstrings work. Short rest between supersets creates a leg-destroying metabolic environment.',
                cues:['Hips pressed into pad throughout.','Full extension every rep — full stretch matters.','3-sec eccentric.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'tr-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'On a heavy posterior chain day (RDL + hip thrust), the erectors and multifidus are already primed. Direct back extension work on this day accelerates their adaptation and creates the posterior core strength that prevents breakdown in heavy pulls. The most undertrained "ab" exercise in most programs.',
+               cues:['Neutral spine at bottom. Brace abs.','Lift until body is straight — not beyond.','2-sec hold at top. Slow controlled lower.']},
+              {id:'tr-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral stability for the recomp athlete. The KB swings that follow demand anti-lateral core strength to prevent hip shift under load. Side plank directly trains this. McGill calls it the safest and most effective lateral core exercise available.',
+               cues:['Elbow under shoulder. Stack hips. One line from head to feet.','40 sec each side.','Progress: add a hip dip movement to make it dynamic.']},
             ]},
             {label:'Metabolic Finisher · 15 min', cardio:true, exs:[
               {id:'tr-c2', name:'KB Swing — Intervals', badge:'cardio', cardioOnly:true,
@@ -1859,6 +1940,14 @@ function getProgram(goal, days, weeks) {
                why:'Lateral and medial head isolation. Short rest at 12 reps keeps the metabolic cost high. Drop set on the final set — continue to failure.',
                cues:['15° forward hinge.','Full extension, hard squeeze at bottom.','Drop 30% on last set, continue to failure.']},
             ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'tr-thu-cc',   name:'Cable Crunch', badge:'core', sets:3, w:45, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Loaded flexion on a pull-dominant day — the pulling muscles (lats, rhomboids) pull the spine into extension all session, making flexion work the intelligent counterbalance. Cable crunch\'s constant tension and progressive load makes it the only weighted core exercise that consistently builds visible ab muscle.',
+               cues:['Kneel facing cable. Rope at forehead height.','Crunch DOWN — elbows toward knees.','1-sec hold. Slow return. The weight should be challenging at rep 10.']},
+              {id:'tr-thu-bd',   name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'McGill Big 3 closer — builds the erector and glute coordination chain in the most spine-safe position. On a high-volume upper day, this low-intensity movement actively promotes recovery while maintaining core neural drive.',
+               cues:['All fours. Hands under shoulders, knees under hips.','Opposite arm + leg extended. Back level — no rotation.','5-sec hold. 10 per side = 1 set.']},
+            ]},
             {label:'HIIT Finisher · 15 min', cardio:true, exs:[
               {id:'tr-c3', name:'Bike — Sprint Intervals', badge:'cardio', cardioOnly:true,
                cardioDesc:'20 sec all-out sprint / 40 sec cruise × 15 rounds. Short sprint intervals preserve muscle while creating massive EPOC. Heart rate spikes then partially recovers — the recomp sweet spot.', zone:'HR 155–180 BPM sprints', duration:15}
@@ -1882,6 +1971,14 @@ function getProgram(goal, days, weeks) {
               {id:'tr-calf',  name:'Standing Calf Raise', badge:'isolation', sets:3, w:160, r:20, rest:60, compound:false,
                why:'Calves are slow-twitch dominant — they only respond to volume. High reps, full range, paired with split squats to keep heart rate elevated.',
                cues:['Full hang at bottom, 1-sec pause.','Full rise at top, 1-sec pause.','No bouncing. Own every inch of the range.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'tr-fri-aw',   name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Highest anti-extension activation of any core exercise. After a heavy leg press + hip thrust session, the anterior core is warm and conditioned — primed for high-intensity anti-extension work. This is the most demanding bodyweight ab exercise and the one that builds visible rectus abdominis best.',
+               cues:['Kneel, wheel under shoulders.','Roll out slowly. Back stays neutral — do not let it arch.','Only go as far as you can maintain form. Pull back by squeezing abs.']},
+              {id:'tr-fri-hkr',  name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion decompresses the spine after the heavy lower compounds. The hanging position creates traction while the leg raise recruits lower rectus and hip flexors. Closing the training week with decompression work accelerates the weekend recovery window.',
+               cues:['Hang from bar. Full shoulder extension.','Raise knees to hip height or above. Controlled.','3-sec lower. No swinging. If too easy, extend legs straight.']},
             ]},
             {label:'Metabolic Finisher · 15 min', cardio:true, exs:[
               {id:'tr-c4', name:'Incline Treadmill — Intervals', badge:'cardio', cardioOnly:true,
@@ -1980,8 +2077,10 @@ function getProgram(goal, days, weeks) {
 // ═══════════════════════════════════════════════════════
 // PROGRESSIVE OVERLOAD ENGINE
 // ═══════════════════════════════════════════════════════
-function phaseTopRep(phase) {
-  return parseInt(phase.reps.split('·')[0]) || 10;
+function phaseWeekRep(phase, week) {
+  const reps = phase.reps.split('·').map(Number);
+  const offset = (week || 1) - phase.weeks[0]; // 0-based index within phase
+  return reps[Math.min(Math.max(offset, 0), reps.length - 1)] || 10;
 }
 
 function getPhase(week, goal) {
@@ -1996,7 +2095,7 @@ function getRecommendation(exId, compound, goal) {
   const lastSets = LS.get('tandem_lastsets') || {};
   const entry = lastSets[exId];
   const phase = getPhase(currentWeek, goal);
-  const topRange = phase.pctTop;
+  const topRange = phaseWeekRep(phase, currentWeek);
   const inc = compound ? phase.incComp : phase.incAcc;
 
   if (!entry) return { weight: null, arrow: 'new', label: 'First session', reason: 'Log this session to set your baseline' };
@@ -2384,7 +2483,7 @@ function renderTracker() {
   document.getElementById('pbEyebrow').textContent = `Phase ${Math.ceil(currentWeek / 3)} · ${cfg.goal.replace('_',' ').toUpperCase()}`;
   document.getElementById('pbName').textContent = phase.name;
   document.getElementById('pbIntent').textContent = phase.intent;
-  document.getElementById('pbReps').textContent = `Target reps: ${phase.reps}`;
+  document.getElementById('pbReps').textContent = `This week: ${phaseWeekRep(phase, currentWeek)} reps · Phase range: ${phase.reps}`;
   document.getElementById('pbWeekNum').textContent = currentWeek;
   document.getElementById('pbTotalWeeks').textContent = cfg.weeks;
   document.getElementById('wnLabel').textContent = `Week ${currentWeek} of ${cfg.weeks}`;
@@ -2396,7 +2495,7 @@ function renderTracker() {
     <strong style="color:var(--text)">Program length:</strong> ${cfg.weeks} weeks<br>
     <strong style="color:var(--text)">Current week:</strong> ${currentWeek}<br>
     <strong style="color:var(--text)">Current phase:</strong> ${phase.name}<br>
-    <strong style="color:var(--text)">Target reps this phase:</strong> ${phase.reps}<br>
+    <strong style="color:var(--text)">This week's reps:</strong> ${phaseWeekRep(phase, currentWeek)} (Phase range: ${phase.reps})<br>
     <strong style="color:var(--text)">Compound rest:</strong> ${phase.restComp} sec<br>
     <strong style="color:var(--text)">Accessory rest:</strong> ${phase.restAcc} sec<br>
     <strong style="color:var(--text)">Weight increment (compounds):</strong> +${phase.incComp} lbs<br>
@@ -2452,7 +2551,7 @@ function buildDayHTML(day, phase) {
         <div class="dh-title">${day.label}</div>
         <div class="dh-chips">
           <div class="dh-chip hi">${day.blocks.find(b=>b.cardio) ? '90 min' : '60 min'}</div>
-          <div class="dh-chip">${phase.reps} reps</div>
+          <div class="dh-chip">${phaseWeekRep(phase, currentWeek)} reps</div>
         </div>
       </div>
       <div class="dh-rationale">${day.rationale}</div>
@@ -2500,7 +2599,9 @@ function buildDayHTML(day, phase) {
             <div class="ex-info">
               <div class="ex-name">${ex.name}<span class="ex-badge badge-${ex.badge}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">1RM ~${pr1rm}</span>` : ''}</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);margin-top:2px;">
-                ${ex.sets} × ${phaseTopRep(phase)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest
+                ${ex.isCore
+                ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
+                : `${ex.sets} × ${phaseWeekRep(phase, currentWeek)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
               </div>
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
@@ -2520,7 +2621,7 @@ function buildDayHTML(day, phase) {
               <div class="set-hdr-cell">Vol</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, phaseTopRep(phase))}
+            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek))}
             <div class="set-actions">
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r})">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">🏋️ Plates</div>
