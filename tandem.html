@@ -337,6 +337,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   cursor:pointer;transition:all .15s;text-align:center;}
 .set-act:hover{border-color:var(--accent);color:var(--accent);}
 .set-act.blue:hover{border-color:var(--blue);color:var(--blue);}
+.set-act.green{color:var(--green);border-color:rgba(68,204,122,.3);}
 
 /* Inline 1RM */
 .inline-1rm{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:8px;display:none;}
@@ -660,12 +661,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
 
     <!-- Step dots -->
-    <div class="ob-step-label" id="obStepLabel">Step 1 of 4 — Goal</div>
+    <div class="ob-step-label" id="obStepLabel">Step 1 of 5 — Goal</div>
     <div class="ob-steps">
       <div class="ob-step-dot active" id="sdot-0"></div>
       <div class="ob-step-dot" id="sdot-1"></div>
       <div class="ob-step-dot" id="sdot-2"></div>
       <div class="ob-step-dot" id="sdot-3"></div>
+      <div class="ob-step-dot" id="sdot-4"></div>
     </div>
 
     <!-- Cards -->
@@ -822,8 +824,113 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         </div>
       </div>
 
-      <!-- CARD 4: Review -->
+      <!-- CARD 4: Training Preferences -->
       <div class="ob-card" id="ob-card-3">
+        <div class="ob-card-title">Training Preferences</div>
+        <div class="ob-card-sub">This shapes how your coach programs and adapts your workouts daily.</div>
+
+        <!-- Equipment -->
+        <div class="ob-section">
+          <span class="ob-label">Equipment Access</span>
+          <div class="ob-toggle-row two">
+            <div class="ob-toggle" onclick="selectEquipment('full_gym',this)">
+              <div class="ob-toggle-icon">🏋️</div>
+              <div class="ob-toggle-label">Full Gym</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEquipment('barbell_rack',this)">
+              <div class="ob-toggle-icon">🔩</div>
+              <div class="ob-toggle-label">Barbell + Rack</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEquipment('home_dumbbells',this)">
+              <div class="ob-toggle-icon">💪</div>
+              <div class="ob-toggle-label">Home Dumbbells</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEquipment('bodyweight',this)">
+              <div class="ob-toggle-icon">🤸</div>
+              <div class="ob-toggle-label">Bodyweight</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Length -->
+        <div class="ob-section">
+          <span class="ob-label">Session Length</span>
+          <div class="ob-toggle-row two">
+            <div class="ob-toggle" onclick="selectDuration(30,this)">
+              <div class="ob-toggle-icon">⚡</div>
+              <div class="ob-toggle-label">30 min</div>
+            </div>
+            <div class="ob-toggle" onclick="selectDuration(45,this)">
+              <div class="ob-toggle-icon">🕐</div>
+              <div class="ob-toggle-label">45 min</div>
+            </div>
+            <div class="ob-toggle" onclick="selectDuration(60,this)">
+              <div class="ob-toggle-icon">🕑</div>
+              <div class="ob-toggle-label">60 min</div>
+            </div>
+            <div class="ob-toggle" onclick="selectDuration(90,this)">
+              <div class="ob-toggle-icon">🕒</div>
+              <div class="ob-toggle-label">90 min</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preferred Workout Time -->
+        <div class="ob-section">
+          <span class="ob-label">Preferred Workout Time</span>
+          <div class="ob-toggle-row three">
+            <div class="ob-toggle" onclick="selectWorkoutTime('morning',this)">
+              <div class="ob-toggle-icon">🌅</div>
+              <div class="ob-toggle-label">Morning</div>
+            </div>
+            <div class="ob-toggle" onclick="selectWorkoutTime('lunch',this)">
+              <div class="ob-toggle-icon">☀️</div>
+              <div class="ob-toggle-label">Lunch</div>
+            </div>
+            <div class="ob-toggle" onclick="selectWorkoutTime('evening',this)">
+              <div class="ob-toggle-icon">🌙</div>
+              <div class="ob-toggle-label">Evening</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Injuries -->
+        <div class="ob-section">
+          <span class="ob-label">Injuries or Limitations <span style="font-weight:300;color:var(--muted);">(optional)</span></span>
+          <input class="ob-input" type="text" id="ob-injuries"
+            placeholder="e.g. bad knees, lower back, shoulder impingement"
+            style="width:100%;box-sizing:border-box;">
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:300;">
+            Your coach will avoid programming movements that aggravate these areas.
+          </div>
+        </div>
+
+        <!-- Secondary Goal -->
+        <div class="ob-section">
+          <span class="ob-label">Secondary Goal <span style="font-weight:300;color:var(--muted);">(optional)</span></span>
+          <div class="ob-toggle-row two">
+            <div class="ob-toggle" onclick="selectSecondaryGoal('run_5k',this)">
+              <div class="ob-toggle-icon">🏃</div>
+              <div class="ob-toggle-label">Run a 5K</div>
+            </div>
+            <div class="ob-toggle" onclick="selectSecondaryGoal('10k_steps',this)">
+              <div class="ob-toggle-icon">👟</div>
+              <div class="ob-toggle-label">10K Steps/Day</div>
+            </div>
+            <div class="ob-toggle" onclick="selectSecondaryGoal('improve_mobility',this)">
+              <div class="ob-toggle-icon">🧘</div>
+              <div class="ob-toggle-label">Mobility</div>
+            </div>
+            <div class="ob-toggle" onclick="selectSecondaryGoal('none',this)">
+              <div class="ob-toggle-icon">—</div>
+              <div class="ob-toggle-label">None</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 5: Review -->
+      <div class="ob-card" id="ob-card-4">
         <div class="ob-card-title">Review & Build</div>
         <div class="ob-card-sub">Everything looks right? Hit build and your program generates instantly.</div>
 
@@ -1925,13 +2032,17 @@ let selectedGoal = null;
 let selectedDays = null;
 let selectedSex = null;
 let selectedExperience = null;
+let selectedEquipment = null;
+let selectedDuration = 60;
+let selectedWorkoutTime = null;
+let selectedSecondaryGoal = null;
 
 // ═══════════════════════════════════════════════════════
 // ONBOARDING — MULTI-STEP
 // ═══════════════════════════════════════════════════════
 let obCurrentStep = 0;
-const OB_STEPS = 4;
-const OB_LABELS = ['Step 1 of 4 — Goal','Step 2 of 4 — Body Stats','Step 3 of 4 — Schedule','Step 4 of 4 — Review'];
+const OB_STEPS = 5;
+const OB_LABELS = ['Step 1 of 5 — Goal','Step 2 of 5 — Body Stats','Step 3 of 5 — Schedule','Step 4 of 5 — Training Preferences','Step 5 of 5 — Review'];
 
 function obStep(dir) {
   if (dir === 1 && !obCanAdvance()) return;
@@ -1988,6 +2099,7 @@ function obCanAdvance() {
       // FIX BUG 3: require explicit day selection — selectedDays init is 4 but we now init it null
       return wks >= 4 && wks <= 24 && !!selectedDays;
     }
+    case 3: return !!selectedEquipment && !!selectedWorkoutTime;
     default: return true;
   }
 }
@@ -2023,6 +2135,46 @@ function selectExperience(exp, el) {
   selectedExperience = exp;
   document.querySelectorAll('.ob-toggle[onclick*="selectExperience"]').forEach(t => t.classList.remove('selected'));
   el.classList.add('selected');
+  obUpdateNextState();
+}
+
+function selectEquipment(val, el) {
+  selectedEquipment = val;
+  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
+    if (t.closest('.ob-section') === el.closest('.ob-section'))
+      t.classList.remove('active');
+  });
+  el.classList.add('active');
+  obUpdateNextState();
+}
+
+function selectDuration(val, el) {
+  selectedDuration = val;
+  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
+    if (t.closest('.ob-section') === el.closest('.ob-section'))
+      t.classList.remove('active');
+  });
+  el.classList.add('active');
+  obUpdateNextState();
+}
+
+function selectWorkoutTime(val, el) {
+  selectedWorkoutTime = val;
+  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
+    if (t.closest('.ob-section') === el.closest('.ob-section'))
+      t.classList.remove('active');
+  });
+  el.classList.add('active');
+  obUpdateNextState();
+}
+
+function selectSecondaryGoal(val, el) {
+  selectedSecondaryGoal = val;
+  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
+    if (t.closest('.ob-section') === el.closest('.ob-section'))
+      t.classList.remove('active');
+  });
+  el.classList.add('active');
   obUpdateNextState();
 }
 
@@ -2071,6 +2223,10 @@ function populateReview() {
   const age = document.getElementById('ob-age').value || '—';
   const weeks = document.getElementById('ob-weeks').value || '12';
 
+  const equipMap = { full_gym: 'Full Gym', barbell_rack: 'Barbell + Rack', home_dumbbells: 'Home Dumbbells', bodyweight: 'Bodyweight' };
+  const timeMap = { morning: 'Morning', lunch: 'Lunch', evening: 'Evening' };
+  const secGoalMap = { run_5k: 'Run a 5K', '10k_steps': '10K Steps/Day', improve_mobility: 'Mobility', none: 'None' };
+
   document.getElementById('reviewGrid').innerHTML = `
     <div class="review-item span2">
       <div class="review-item-label">Goal</div>
@@ -2108,6 +2264,22 @@ function populateReview() {
       <div class="review-item-label">Days / Week</div>
       <div class="review-item-value">${selectedDays}</div>
     </div>
+    <div class="review-item">
+      <div class="review-item-label">Equipment</div>
+      <div class="review-item-value">${equipMap[selectedEquipment] || '—'}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Session Length</div>
+      <div class="review-item-value">${selectedDuration} min</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Workout Time</div>
+      <div class="review-item-value">${timeMap[selectedWorkoutTime] || '—'}</div>
+    </div>
+    <div class="review-item">
+      <div class="review-item-label">Secondary Goal</div>
+      <div class="review-item-value">${secGoalMap[selectedSecondaryGoal] || 'None'}</div>
+    </div>
   `;
 }
 
@@ -2130,7 +2302,13 @@ function buildProgram() {
     heightIn,
     age,
     sex: selectedSex,
-    experience: selectedExperience
+    experience: selectedExperience,
+    equipment: selectedEquipment,
+    workout_duration_minutes: selectedDuration,
+    preferred_workout_time: selectedWorkoutTime,
+    injuries: document.getElementById('ob-injuries').value.trim() || null,
+    secondary_goal: selectedSecondaryGoal === 'none' ? null : selectedSecondaryGoal,
+    program_goal: selectedGoal
   };
   LS.set('tandem_cfg', cfg);
   currentWeek = 1;
@@ -2147,15 +2325,19 @@ function resetProgram() {
   selectedDays = null;
   selectedSex = null;
   selectedExperience = null;
+  selectedEquipment = null;
+  selectedDuration = 60;
+  selectedWorkoutTime = null;
+  selectedSecondaryGoal = null;
   // Reset multi-step state
   obCurrentStep = 0;
   document.querySelectorAll('.ob-card').forEach((c,i) => c.classList.toggle('active', i === 0));
   // Clear visual selections
   document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
-  document.querySelectorAll('.ob-toggle').forEach(t => t.classList.remove('selected'));
+  document.querySelectorAll('.ob-toggle').forEach(t => { t.classList.remove('selected'); t.classList.remove('active'); });
   document.querySelectorAll('.day-dot').forEach(d => d.classList.remove('selected'));
   // Clear inputs
-  ['ob-weight','ob-target-weight','ob-age','ob-weeks'].forEach(id => {
+  ['ob-weight','ob-target-weight','ob-age','ob-weeks','ob-injuries'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2334,6 +2516,7 @@ function buildDayHTML(day, phase) {
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r})">+ Set</div>
               <div class="set-act blue" onclick="quickPlatesFor('${ex.id}')">🏋️ Plates</div>
               <div class="set-act" onclick="quickCalcFor('${ex.id}')">📊 1RM</div>
+              <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">💾 Save</div>
             </div>
           </div>
           <div class="rest-timer" id="rt-${ex.id}">
@@ -2519,7 +2702,6 @@ function checkExComplete(id) {
   card.classList.toggle('completed', allDone);
   const chk = card.querySelector('.ex-check');
   if (chk) chk.textContent = allDone ? '✓' : '';
-  if (allDone) saveExerciseToCloud(id);
 }
 
 async function saveExerciseToCloud(id) {
@@ -2566,6 +2748,20 @@ async function saveExerciseToCloud(id) {
     console.warn('Exercise sync error:', e);
     showToast('Sync error — saved locally');
   }
+}
+
+async function manualSaveExercise(id) {
+  const sets = sessionSetsMap[id];
+  if (!sets?.length) {
+    showToast('Log at least one set first');
+    return;
+  }
+  const hasValidSet = sets.some(s => (parseFloat(s.w) > 0) && (parseInt(s.r) > 0));
+  if (!hasValidSet) {
+    showToast('Enter weight and reps before saving');
+    return;
+  }
+  await saveExerciseToCloud(id);
 }
 
 // ═══════════════════════════════════════════════════════
