@@ -1,6 +1,9 @@
 [build]
-  command   = "npm install && npm run build"
-  publish   = ".next"
+  command = ""
+  publish = "."
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

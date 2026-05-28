@@ -190,11 +190,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .phase-banner{margin:14px 16px 0;padding:14px 16px;border-radius:13px;
   background:linear-gradient(135deg,rgba(30,126,76,0.09) 0%,var(--s1) 70%);
   border:1px solid rgba(30,126,76,0.25);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-.pb-left{}
+.pb-left{flex:1;min-width:0;}
 .pb-eyebrow{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;}
 .pb-name{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;line-height:1;}
 .pb-intent{font-size:11px;color:var(--muted2);margin-top:3px;font-weight:300;}
-.pb-right{text-align:right;}
+.pb-right{flex-shrink:0;text-align:right;}
 .pb-week-num{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--accent);line-height:1;}
 .pb-week-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
 .pb-reps{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);margin-top:4px;}
