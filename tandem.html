@@ -22,9 +22,9 @@
   --green:#3FE08C;--green-dim:rgba(63,224,140,0.10);
   /* legacy accents retained as neutral-leaning fallbacks (demoted; avoid in new UI) */
   --blue:#9A9AAC;--blue-dim:rgba(255,255,255,0.05);
-  --purple:#FFB020;--purple-dim:rgba(255,176,32,0.10);
+  --amber:#FFB020;--amber-dim:rgba(255,176,32,0.10);
   --teal:#3FE08C;--teal-dim:rgba(63,224,140,0.10);
-  --orange:#FFB020;
+  --orange:#fb923c;
   --text:#F2F2F5;--muted:#6B6B7A;--muted2:#9A9AAC;
   /* type */
   --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;--font-mono:var(--font-mono);
@@ -352,7 +352,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .po-reason{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--font-mono);}
 
 .ex-1rm-tag{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;
-  background:var(--purple-dim);border:1px solid rgba(255,176,32,.22);color:var(--purple);
+  background:var(--amber-dim);border:1px solid rgba(255,176,32,.22);color:var(--amber);
   margin-left:5px;vertical-align:middle;cursor:pointer;}
 .ex-expand{color:var(--muted);font-size:13px;transition:transform .2s;flex-shrink:0;margin-top:2px;}
 .ex-card.open .ex-expand{transform:rotate(180deg);}
@@ -376,12 +376,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   width:100%;text-align:center;outline:none;-webkit-appearance:none;transition:border-color .15s;}
 .set-input:focus{border-color:var(--accent);}
 .set-input.done{border-color:rgba(63,224,140,.4);color:var(--green);background:rgba(63,224,140,.04);}
-.set-input.pr{border-color:rgba(255,176,32,.5);color:var(--purple);}
+.set-input.pr{border-color:rgba(255,176,32,.5);color:var(--amber);}
 .set-vol{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center;}
 .set-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);
   color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .set-btn.logged{background:var(--green-dim);border-color:rgba(63,224,140,.4);color:var(--green);}
-.set-btn.pr-set{background:var(--purple-dim);border-color:rgba(255,176,32,.4);color:var(--purple);}
+.set-btn.pr-set{background:var(--amber-dim);border-color:rgba(255,176,32,.4);color:var(--amber);}
 .set-actions{display:flex;gap:5px;margin:6px 0 8px;}
 .set-act{flex:1;padding:7px;background:transparent;border:1px dashed var(--border2);border-radius:7px;
   color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;
@@ -397,10 +397,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ex-card.open .inline-1rm{display:block;}
 .i1rm-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .i1rm-label{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;}
-.i1rm-val{font-family:var(--font-display);font-size:26px;color:var(--purple);}
+.i1rm-val{font-family:var(--font-display);font-size:26px;color:var(--amber);}
 .i1rm-pcts{display:flex;gap:4px;flex-wrap:wrap;}
 .i1rm-pct{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:4px;
-  background:rgba(255,176,32,.07);border:1px solid rgba(255,176,32,.14);color:var(--purple);}
+  background:rgba(255,176,32,.07);border:1px solid rgba(255,176,32,.14);color:var(--amber);}
 
 /* Rest timer */
 .rest-timer{display:none;margin:0 0 8px;background:var(--s2);border:1px solid var(--border);
@@ -572,7 +572,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:var(--accent-dim);border:1px solid rgba(24,194,106,.2);color:var(--accent);text-transform:uppercase;}
 .hist-ex{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
 .hist-sets{font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-bottom:5px;line-height:1.6;}
-.hist-pr{font-family:var(--font-mono);font-size:9px;color:var(--purple);background:var(--purple-dim);
+.hist-pr{font-family:var(--font-mono);font-size:9px;color:var(--amber);background:var(--amber-dim);
   border:1px solid rgba(255,176,32,.2);padding:1px 6px;border-radius:3px;display:inline-block;margin-left:5px;}
 .clear-btn{width:100%;padding:9px;background:var(--red-dim);border:1px solid rgba(232,84,84,.3);
   border-radius:8px;color:var(--red);font-family:var(--font-mono);font-size:10px;
@@ -580,8 +580,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* PR TOAST */
 .pr-toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-14px);
-  background:var(--purple-dim);border:1px solid rgba(255,176,32,.4);border-radius:10px;
-  padding:8px 16px;font-family:var(--font-mono);font-size:12px;color:var(--purple);
+  background:var(--amber-dim);border:1px solid rgba(255,176,32,.4);border-radius:10px;
+  padding:8px 16px;font-family:var(--font-mono);font-size:12px;color:var(--amber);
   z-index:600;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
 .pr-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
@@ -647,6 +647,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .profile-input-row.three{grid-template-columns:1fr 1fr 1fr;}
 .profile-input-group{display:flex;flex-direction:column;gap:5px;}
 .profile-input-label{font-size:11px;color:var(--muted2);}
+.modal-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
 .profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#18C26A 0%,#0E7A45 100%);border:none;color:#fff;font-family:var(--font-display);font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:8px;transition:all .2s;}
 .profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(24,194,106,.3);}
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
@@ -657,16 +658,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .avatar-stage svg,.avatar-stage img{display:block;width:148px;height:148px;}
 .avatar-empty{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 18px;line-height:1.5;}
 .avatar-style-row{display:flex;gap:6px;margin-bottom:14px;}
-.avatar-style-row .profile-pill{flex:1;text-align:center;}
-.avatar-rpm-btn{width:100%;padding:11px;border-radius:10px;background:var(--s2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px;}
-.avatar-rpm-btn:hover{border-color:rgba(24,194,106,.4);color:var(--accent2);}
 .avatar-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;}
-.rpm-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);flex-direction:column;}
-.rpm-overlay.open{display:flex;}
-.rpm-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;}
-.rpm-bar-title{font-family:var(--font-display);font-size:16px;color:#fff;}
-.rpm-close{background:var(--s2);border:1px solid var(--border2);color:var(--text);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;}
-.rpm-frame{flex:1;width:100%;border:none;}
+/* ── JS-controlled initial states ── */
+#obBackBtn,#authOTPState,#bottomNav{display:none;}
 /* ── Dashboard ── */
 .dash-wrap{padding:0 16px 32px;}
 .dash-header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px;}
@@ -1096,7 +1090,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
     <!-- Nav -->
     <div class="ob-nav" id="obNav">
-      <button class="ob-back-btn" id="obBackBtn" onclick="obStep(-1)" style="display:none;">‹</button>
+      <button class="ob-back-btn" id="obBackBtn" onclick="obStep(-1)">‹</button>
       <button class="ob-next-btn" id="obNextBtn" onclick="obStep(1)" disabled>Next →</button>
     </div>
 
@@ -1126,7 +1120,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <button class="auth-send-btn" onclick="sendOTP()">Send Sign-in Code →</button>
         <button class="auth-skip" onclick="skipAuth()">Continue without signing in</button>
       </div>
-      <div id="authOTPState" style="display:none;">
+      <div id="authOTPState">
         <div class="auth-sent">
           <div class="auth-sent-icon" data-icon="key"></div>
           <div class="auth-sent-title">Enter Your Code</div>
@@ -1503,7 +1497,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div class="profile-input-row" style="margin-top:12px;">
         <div class="profile-input-group">
           <label class="profile-input-label">Current Week</label>
-          <input type="number" id="profileWeekInput" min="1" max="16" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileWeekInput" min="1" max="16" class="modal-input">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Sex</label>
@@ -1533,17 +1527,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div class="profile-input-row three">
         <div class="profile-input-group">
           <label class="profile-input-label">Current (lbs)</label>
-          <input type="number" id="profileWeightInput" placeholder="185" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileWeightInput" placeholder="185" class="modal-input">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Goal (lbs)</label>
-          <input type="number" id="profileGoalWeightInput" placeholder="175" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileGoalWeightInput" placeholder="175" class="modal-input">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Height</label>
           <div style="display:flex;gap:4px;">
-            <input type="number" id="profileHeightFt" placeholder="5" min="4" max="7" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:50%;box-sizing:border-box;">
-            <input type="number" id="profileHeightIn" placeholder="11" min="0" max="11" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:50%;box-sizing:border-box;">
+            <input type="number" id="profileHeightFt" placeholder="5" min="4" max="7" class="modal-input" style="width:50%;">
+            <input type="number" id="profileHeightIn" placeholder="11" min="0" max="11" class="modal-input" style="width:50%;">
           </div>
         </div>
       </div>
@@ -1558,25 +1552,25 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div class="profile-input-row three">
         <div class="profile-input-group">
           <label class="profile-input-label">Calories</label>
-          <input type="number" id="profileCalInput" placeholder="2200" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileCalInput" placeholder="2200" class="modal-input">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Protein (g)</label>
-          <input type="number" id="profileProteinInput" placeholder="180" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileProteinInput" placeholder="180" class="modal-input">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Water (oz)</label>
-          <input type="number" id="profileWaterInput" placeholder="100" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileWaterInput" placeholder="100" class="modal-input">
         </div>
       </div>
       <div class="profile-input-row" style="margin-top:8px;">
         <div class="profile-input-group">
           <label class="profile-input-label">Carbs (g)</label>
-          <input type="number" id="profileCarbsInput" placeholder="250" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+          <input type="number" id="profileCarbsInput" placeholder="250" class="modal-input">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Fat (g)</label>
-          <input type="number" id="profileFatInput" placeholder="65" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;border-radius:8px;padding:8px;color:var(--text);">
+          <input type="number" id="profileFatInput" placeholder="65" class="modal-input">
         </div>
       </div>
       <button class="profile-save-btn" onclick="saveProfileNutrition()">Save Nutrition</button>
@@ -1604,12 +1598,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <!-- E. Avatar -->
     <div class="profile-section">
       <span class="profile-section-label">Avatar</span>
-
-      <!-- Style toggle: the two prototypes -->
-      <div class="avatar-style-row" id="avatarStyleRow">
-        <button class="profile-pill" data-style="illustrated" onclick="selectAvatarStyle('illustrated')">Illustrated</button>
-        <button class="profile-pill" data-style="rpm" onclick="selectAvatarStyle('rpm')">3D (beta)</button>
-      </div>
 
       <!-- Live preview -->
       <div class="avatar-stage" id="avatarStage"></div>
@@ -1653,12 +1641,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         </div>
       </div>
 
-      <!-- Prototype B controls: Ready Player Me 3D -->
-      <div id="avatarRpmControls" style="display:none;">
-        <button class="avatar-rpm-btn" onclick="openRPMCreator()"><span data-icon="user"></span> Create / edit 3D avatar</button>
-        <div class="avatar-hint">Opens Ready Player Me. Your 3D avatar renders server-side as an image &mdash; no extra weight in the app. Pose: full-body power stance.</div>
-      </div>
-
       <button class="profile-save-btn" onclick="saveProfileAvatar()">Save Avatar</button>
     </div>
 
@@ -1672,17 +1654,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 </div>
 
-<!-- READY PLAYER ME CREATOR (Prototype B) -->
-<div class="rpm-overlay" id="rpmOverlay">
-  <div class="rpm-bar">
-    <div class="rpm-bar-title">Build your 3D avatar</div>
-    <button class="rpm-close" onclick="closeRPMCreator()">✕</button>
-  </div>
-  <iframe class="rpm-frame" id="rpmFrame" allow="camera *; microphone *; clipboard-write" title="Ready Player Me avatar creator"></iframe>
-</div>
-
 <!-- BOTTOM NAV -->
-<div class="bottom-nav" id="bottomNav" style="display:none;">
+<div class="bottom-nav" id="bottomNav">
   <button class="bnav-btn" onclick="openModal('plates')"><span data-icon="plate"></span> Plates</button>
   <button class="bnav-btn" onclick="openModal('calc')"><span data-icon="chart"></span> 1RM</button>
   <button class="bnav-btn" onclick="openModal('history')"><span data-icon="clipboard"></span> Log</button>
@@ -1736,12 +1709,8 @@ function renderIcons(root){
 }
 
 // ═══════════════════════════════════════════════════════
-// HERO IMAGERY — profile-driven, avatar-swappable
-//   Single source of truth: heroSrc(moment). Switch HERO_MODE
-//   to 'avatar' (and provide avatarHeroSrc) to swap photos for
-//   cartoon avatar renders without touching any markup.
+// HERO IMAGERY — heroSrc(moment) returns the right photo for each app moment
 // ═══════════════════════════════════════════════════════
-const HERO_MODE = 'photo'; // 'photo' | 'avatar'
 const HERO_PHOTOS = {
   male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg'],
   female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg']
@@ -1758,7 +1727,6 @@ function userSexKey(){
 }
 function heroSrc(moment){
   const idx = HERO_MOMENTS[moment] != null ? HERO_MOMENTS[moment] : 0;
-  if(HERO_MODE === 'avatar' && typeof avatarHeroSrc === 'function') return avatarHeroSrc(moment, userSexKey());
   return HERO_PHOTOS[userSexKey()][idx];
 }
 function applyHeroImages(root){
@@ -2141,7 +2109,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'fri', label:'Fri · Lower B', color:'var(--purple)', rationale:'Quad and glute session. Friday placement gives 72 hours from Tuesday hinge day. Hack squat as primary — mechanically optimal for tall lifters.',
+        { key:'fri', label:'Fri · Lower B', color:'var(--amber)', rationale:'Quad and glute session. Friday placement gives 72 hours from Tuesday hinge day. Hack squat as primary — mechanically optimal for tall lifters.',
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bm-hack', name:'Hack Squat', badge:'compound', sets:4, w:180, r:8, rest:150, compound:true,
@@ -2292,7 +2260,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'fri', label:'Fri · Lower B', color:'var(--purple)', rationale:'Quad and glute emphasis with unilateral work. Machine compounds allow heavier loading safely. Metabolic treadmill finisher closes the training week and maximizes weekend fat oxidation.',
+        { key:'fri', label:'Fri · Lower B', color:'var(--amber)', rationale:'Quad and glute emphasis with unilateral work. Machine compounds allow heavier loading safely. Metabolic treadmill finisher closes the training week and maximizes weekend fat oxidation.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'tr-lpress', name:'Leg Press', badge:'compound', sets:4, w:270, r:12, rest:120, compound:true,
@@ -2334,7 +2302,7 @@ function getProgram(goal, days, weeks) {
     return [
       { ...ua, key:'push', label:'Day 1 · Push', rationale: ua.rationale },
       { ...ub, key:'pull', label:'Day 2 · Pull', rationale: ub.rationale },
-      { key:'legs', label:'Day 3 · Legs', color:'var(--purple)', rationale:'Combined lower day — hinge and squat patterns in one session.',
+      { key:'legs', label:'Day 3 · Legs', color:'var(--amber)', rationale:'Combined lower day — hinge and squat patterns in one session.',
         blocks:[
           { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0] ] },
           { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0], la.blocks[0].exs[1] ] },
@@ -3584,6 +3552,7 @@ function finishSession() {
   });
   if (hist.length > 100) hist.pop();
   LS.set('tandem_history', hist);
+  Object.keys(sessionSetsMap).forEach(k => delete sessionSetsMap[k]);
 
   const banner = document.getElementById('finishBanner');
   banner.classList.add('show');
@@ -3624,11 +3593,12 @@ function finishSession() {
       .then(({ error }) => { if (error) console.warn('Session complete sync error:', error); });
     showToast(`Session saved \u2713 \u2014 ${Math.round(totalVolume).toLocaleString()} lbs moved`);
 
-    // Advance to next training day
-    const advProg = getProgram(cfg.goal, cfg.days, cfg.weeks);
-    const dayIdx = advProg.findIndex(d => d.key === currentDay);
-    const nextDay = advProg[(dayIdx + 1) % advProg.length]?.key || advProg[0].key;
+    // Advance to next training day (reuse program already computed above)
+    const dayIdx = program.findIndex(d => d.key === currentDay);
+    const nextDay = program[(dayIdx + 1) % program.length]?.key || program[0].key;
     LS.set('tandem_current_day', nextDay);
+    currentCloudSessionId = null;
+    sessionStartTime = null;
   }
 }
 
@@ -3687,6 +3657,8 @@ function resetWeek() {
 }
 
 function showView(id) {
+  Object.keys(S.restTimers || {}).forEach(tid => { clearInterval(S.restTimers[tid]); delete S.restTimers[tid]; });
+  document.querySelectorAll('.rest-timer.on').forEach(el => el.classList.remove('on'));
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
   document.getElementById('bottomNav').style.display = id === 'tracker' ? 'flex' : 'none';
@@ -4431,11 +4403,6 @@ function saveProfileAvatar() {
 //   B) Ready Player Me — lazy iframe creator; the 3D avatar is
 //      rendered server-side to a PNG (no Three.js in the file).
 // ═══════════════════════════════════════════════════════
-// ROADMAP FLAG — 3D (Ready Player Me) avatars are built but NOT shipped.
-// Kept dormant in code for a later release. Flip to true to enable the
-// "3D (beta)" tab, the RPM creator launch, and server-side PNG rendering.
-const AVATAR_3D_ENABLED = false;
-
 let _avUid = 0;
 function _shade(hex, pct){
   hex = (hex || '#C68642').replace('#','');
@@ -4507,64 +4474,10 @@ function buildIdentityAvatar(p, size){
 function refreshAvatarPreview(){
   const stage = document.getElementById('avatarStage');
   if (!stage) return;
-  const profile = LS.get('tandem_profile') || {};
-  let style = profileState.avatarStyle || profile.avatarStyle || 'illustrated';
-  if (!AVATAR_3D_ENABLED) style = 'illustrated';   // 3D is roadmap-only, not shipped
-  profileState.avatarStyle = style;
-  const styleRow = document.getElementById('avatarStyleRow');
-  if (styleRow) styleRow.style.display = AVATAR_3D_ENABLED ? 'flex' : 'none';
-  document.querySelectorAll('#avatarStyleRow .profile-pill').forEach(b=>{
-    b.classList.toggle('active', b.dataset.style === style);
-  });
-  const illus = document.getElementById('avatarIllusControls');
-  const rpm = document.getElementById('avatarRpmControls');
-  if (illus) illus.style.display = style==='illustrated' ? 'block' : 'none';
-  if (rpm) rpm.style.display = style==='rpm' ? 'block' : 'none';
-  if (style==='illustrated'){
-    stage.innerHTML = buildIdentityAvatar(profileState, 148);
-  } else {
-    const id = profileState.rpmAvatarId || profile.rpmAvatarId;
-    stage.innerHTML = id
-      ? `<img src="https://models.readyplayer.me/${id}.png?scene=fullbody-portrait-v1" alt="Your 3D avatar">`
-      : `<div class="avatar-empty">No 3D avatar yet<br>Tap below to build one</div>`;
-  }
+  profileState.avatarStyle = 'illustrated';
+  stage.innerHTML = buildIdentityAvatar(profileState, 148);
 }
 
-function selectAvatarStyle(style){
-  if (style === 'rpm' && !AVATAR_3D_ENABLED) return;   // roadmap-only
-  profileState.avatarStyle = style;
-  refreshAvatarPreview();
-}
-
-function openRPMCreator(){
-  const overlay = document.getElementById('rpmOverlay');
-  const frame = document.getElementById('rpmFrame');
-  if (frame && !frame.src) frame.src = 'https://demo.readyplayer.me/avatar?frameApi&clearCache';
-  if (overlay) overlay.classList.add('open');
-}
-function closeRPMCreator(){
-  const overlay = document.getElementById('rpmOverlay');
-  if (overlay) overlay.classList.remove('open');
-}
-function setRPMAvatar(id){
-  profileState.rpmAvatarId = id;
-  profileState.avatarStyle = 'rpm';
-  const profile = LS.get('tandem_profile') || {};
-  profile.rpmAvatarId = id;
-  profile.avatarStyle = 'rpm';
-  LS.set('tandem_profile', profile);
-  refreshAvatarPreview();
-  showToast('3D avatar linked');
-}
-window.addEventListener('message', function(ev){
-  let json; try { json = typeof ev.data==='string' ? JSON.parse(ev.data) : ev.data; } catch(e){ return; }
-  if (!json || json.source !== 'readyplayerme') return;
-  if (json.eventName === 'v1.avatar.exported' && json.data && json.data.url){
-    const id = String(json.data.url).split('/').pop().replace('.glb','');
-    setRPMAvatar(id);
-    closeRPMCreator();
-  }
-});
 
 // ═══════════════════════════════════════════════════════
 // INIT — check auth session then restore program
