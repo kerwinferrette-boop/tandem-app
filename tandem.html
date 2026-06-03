@@ -1070,13 +1070,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <!-- Header -->
     <div class="dash-header">
       <div class="dash-title">Today</div>
+      <span class="dash-date" id="dashDate"></span>
       <button id="dashRefreshBtn" class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh health data">
         <span>↻</span>
       </button>
     </div>
 
-    <!-- Health Rings -->
-    <span class="dash-section-label">Activity</span>
+    <!-- Health Rings — Activity -->
+    <span class="dash-section-label" id="dashActivityLabel">Activity</span>
     <div class="dash-rings">
       <div class="dash-ring-card" id="dashRingCal">
         <svg class="dash-ring-svg" viewBox="0 0 68 68">
@@ -1092,7 +1093,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
           <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#4a9eff;"/>
         </svg>
         <div class="dash-ring-val" id="dashRingSleepVal">—</div>
-        <div class="dash-ring-label">Sleep (h)</div>
+        <div class="dash-ring-label">Sleep</div>
       </div>
       <div class="dash-ring-card" id="dashRingSteps">
         <svg class="dash-ring-svg" viewBox="0 0 68 68">
@@ -1104,42 +1105,93 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </div>
 
-    <!-- Nutrition -->
+    <!-- Health Rings — Nutrition -->
     <span class="dash-section-label">Nutrition</span>
-    <div class="dash-nutrition">
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashNutCal">—</div>
-        <div class="dash-nut-label">Cal</div>
+    <div class="dash-rings">
+      <div class="dash-ring-card" id="dashRingDietCal">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#FFB020;"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingDietCalVal">—</div>
+        <div class="dash-ring-label">Cal</div>
       </div>
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashNutProtein">—</div>
-        <div class="dash-nut-label">Protein</div>
+      <div class="dash-ring-card" id="dashRingProtein">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#e854a0;"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingProteinVal">—</div>
+        <div class="dash-ring-label">Protein</div>
       </div>
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashNutCarbs">—</div>
-        <div class="dash-nut-label">Carbs</div>
+      <div class="dash-ring-card" id="dashRingCarbs">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#a78bfa;"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingCarbsVal">—</div>
+        <div class="dash-ring-label">Carbs</div>
       </div>
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashNutFat">—</div>
-        <div class="dash-nut-label">Fat</div>
+      <div class="dash-ring-card" id="dashRingFat">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#fb923c;"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingFatVal">—</div>
+        <div class="dash-ring-label">Fat</div>
       </div>
     </div>
 
     <!-- Competition -->
     <span class="dash-section-label">This Week</span>
     <div class="dash-competition">
-      <div class="dash-comp-row">
-        <div class="dash-comp-user">
-          <div class="dash-comp-name" id="dashCompMyName">You</div>
-          <div class="dash-comp-count" id="dashCompMine">0</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px;">workouts</div>
+      <div class="dash-comp-names">
+        <div class="dash-comp-name" id="dashCompMyName">You</div>
+        <div class="dash-comp-vs">vs</div>
+        <div class="dash-comp-name dash-comp-name-right" id="dashCompTheirName">Partner</div>
+      </div>
+      <div class="dash-comp-pts-row">
+        <div class="dash-comp-pts" id="dashCompMyPts">— pts</div>
+        <div></div>
+        <div class="dash-comp-pts dash-comp-pts-right" id="dashCompTheirPts">— pts</div>
+      </div>
+      <div class="dash-comp-bar-track">
+        <div class="dash-comp-bar-fill" id="dashCompBarFill" style="width:50%;"></div>
+      </div>
+      <div class="dash-comp-stats">
+        <div class="dash-comp-stat-cell">
+          <div class="dash-comp-stat-label">Sessions</div>
+          <div class="dash-comp-stat-vals">
+            <span class="dash-comp-stat-mine" id="dashStatSessionsMine">—</span>
+            <span class="dash-comp-stat-sep">/</span>
+            <span class="dash-comp-stat-theirs" id="dashStatSessionsTheirs">—</span>
+          </div>
         </div>
-        <div class="dash-comp-divider">vs</div>
-        <div class="dash-comp-user">
-          <div class="dash-comp-name" id="dashCompTheirName">Partner</div>
-          <div class="dash-comp-count" id="dashCompTheirs">0</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px;">workouts</div>
+        <div class="dash-comp-stat-cell">
+          <div class="dash-comp-stat-label">Streak</div>
+          <div class="dash-comp-stat-vals">
+            <span class="dash-comp-stat-mine" id="dashStatStreakMine">—</span>
+            <span class="dash-comp-stat-sep">/</span>
+            <span class="dash-comp-stat-theirs" id="dashStatStreakTheirs">—</span>
+          </div>
         </div>
+        <div class="dash-comp-stat-cell">
+          <div class="dash-comp-stat-label">PRs</div>
+          <div class="dash-comp-stat-vals">
+            <span class="dash-comp-stat-mine" id="dashStatPRsMine">—</span>
+            <span class="dash-comp-stat-sep">/</span>
+            <span class="dash-comp-stat-theirs" id="dashStatPRsTheirs">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="dash-day-dots">
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot0"></span><span class="dash-day-label">M</span></div>
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot1"></span><span class="dash-day-label">T</span></div>
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot2"></span><span class="dash-day-label">W</span></div>
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot3"></span><span class="dash-day-label">T</span></div>
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot4"></span><span class="dash-day-label">F</span></div>
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot5"></span><span class="dash-day-label">S</span></div>
+        <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot6"></span><span class="dash-day-label">S</span></div>
       </div>
     </div>
 
@@ -2694,7 +2746,14 @@ function renderTracker() {
   });
 
   if (program.length) {
-    currentDay = program[0].key;
+    const savedDay = LS.get('tandem_current_day');
+    currentDay = (savedDay && program.some(d => d.key === savedDay)) ? savedDay : program[0].key;
+    document.querySelectorAll('.day-tab').forEach((tab, i) => {
+      tab.classList.toggle('active', program[i].key === currentDay);
+    });
+    document.querySelectorAll('.workout-view').forEach(v => {
+      v.classList.toggle('active', v.id === 'wv-' + currentDay);
+    });
     S.logged[currentDay] = S.logged[currentDay] || {};
   }
 
@@ -3273,18 +3332,38 @@ function finishSession() {
   // Cloud sync
   syncToCloud();
 
-  // Mark cloud session complete
-  if (currentCloudSessionId && currentUser) {
+  // Mark cloud session complete with all required fields
+  if (currentUser) {
+    const totalVolume = Object.values(sessionSetsMap)
+      .flatMap(sets => sets)
+      .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
     const duration = sessionStartTime
       ? Math.round((Date.now() - sessionStartTime) / 60000)
       : null;
-    sb.from('workout_sessions').upsert({
-      id: currentCloudSessionId,
+    const todayDate = new Date().toISOString().split('T')[0];
+    const phase = getPhase(currentWeek, cfg.goal);
+    const payload = {
+      user_id: currentUser.id,
+      session_date: todayDate,
+      week_number: currentWeek,
+      phase_name: phase.name,
+      day_type: currentDay,
+      program_goal: cfg.goal,
       completed: true,
+      total_volume_lbs: Math.round(totalVolume),
       duration_minutes: duration
-    }, { onConflict: 'id' }).then(({ error }) => {
-      if (error) console.warn('Session complete sync error:', error);
-    });
+    };
+    if (currentCloudSessionId) payload.id = currentCloudSessionId;
+    sb.from('workout_sessions')
+      .upsert(payload, { onConflict: 'user_id,session_date' })
+      .then(({ error }) => { if (error) console.warn('Session complete sync error:', error); });
+    showToast(`Session saved \u2713 \u2014 ${Math.round(totalVolume).toLocaleString()} lbs moved`);
+
+    // Advance to next training day
+    const advProg = getProgram(cfg.goal, cfg.days, cfg.weeks);
+    const dayIdx = advProg.findIndex(d => d.key === currentDay);
+    const nextDay = advProg[(dayIdx + 1) % advProg.length]?.key || advProg[0].key;
+    LS.set('tandem_current_day', nextDay);
   }
 }
 
@@ -3498,14 +3577,23 @@ async function syncToCloud() {
     const lsRows = Object.entries(lastsets).map(([exercise_id, data]) =>
       ({ user_id: uid, exercise_id, data, updated_at: new Date().toISOString() }));
     if (lsRows.length) {
-      const { error } = await sb.from('sets').upsert(lsRows, { onConflict: 'user_id,exercise_id' });
+      const { error } = await sb.from('lastsets').upsert(lsRows, { onConflict: 'user_id,exercise_id' });
       if (error) throw error;
     }
     // Config
     if (Object.keys(cfg).length) {
       const { error } = await sb.from('users').upsert({
-        user_id: uid, ...cfg, current_week: currentWeek, updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+        id: uid,
+        program_goal: cfg.goal,
+        program_days_per_week: cfg.days,
+        sex: cfg.sex,
+        fitness_level: cfg.experience,
+        current_weight_lbs: cfg.weight,
+        goal_weight_lbs: cfg.goalWeight,
+        height_inches: cfg.height,
+        age: cfg.age,
+        current_week: currentWeek
+      }, { onConflict: 'id' });
       if (error) throw error;
     }
     setSyncStatus('synced');
@@ -3519,10 +3607,10 @@ async function syncToCloud() {
 async function syncPRs() {
   if (!currentUser) return;
   const prs = LS.get('tandem_prs') || {};
-  const prRows = Object.entries(prs).map(([exercise_id, estimated_1rm]) =>
-    ({ user_id: currentUser.id, exercise_id, estimated_1rm, updated_at: new Date().toISOString() }));
+  const prRows = Object.entries(prs).map(([exercise_name, best_estimated_1rm_lbs]) =>
+    ({ user_id: currentUser.id, exercise_name, best_estimated_1rm_lbs, updated_at: new Date().toISOString() }));
   if (!prRows.length) return;
-  const { error } = await sb.from('personal_records').upsert(prRows, { onConflict: 'user_id,exercise_id' });
+  const { error } = await sb.from('personal_records').upsert(prRows, { onConflict: 'user_id,exercise_name' });
   if (error) console.warn('PR sync error:', error);
 }
 
@@ -3550,11 +3638,11 @@ async function restoreFromCloud() {
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
     if (prData?.length && !Object.keys(LS.get('tandem_prs') || {}).length) {
       const prs = {};
-      prData.forEach(r => { prs[r.exercise_id] = r.estimated_1rm; });
+      prData.forEach(r => { prs[r.exercise_name] = r.best_estimated_1rm_lbs; });
       LS.set('tandem_prs', prs);
     }
     // Last sets
-    const { data: lsData } = await sb.from('sets').select('*').eq('user_id', uid);
+    const { data: lsData } = await sb.from('lastsets').select('*').eq('user_id', uid);
     if (lsData?.length && !Object.keys(LS.get('tandem_lastsets') || {}).length) {
       const ls = {};
       lsData.forEach(r => { ls[r.exercise_id] = r.data; });
@@ -3562,11 +3650,19 @@ async function restoreFromCloud() {
     }
     // Config
     const { data: configData } = await sb.from('users')
-      .select('*').eq('user_id', uid).single();
+      .select('*').eq('id', uid).single();
     if (configData && !LS.get('tandem_cfg')) {
-      const { user_id, updated_at, current_week, ...cfgData } = configData;
-      LS.set('tandem_cfg', cfgData);
-      LS.set('tandem_week', current_week);
+      LS.set('tandem_cfg', {
+        goal: configData.program_goal,
+        days: configData.program_days_per_week,
+        sex: configData.sex,
+        experience: configData.fitness_level,
+        weight: configData.current_weight_lbs,
+        goalWeight: configData.goal_weight_lbs,
+        height: configData.height_inches,
+        age: configData.age
+      });
+      LS.set('tandem_week', configData.current_week);
     }
     setSyncStatus('synced');
     buildHistoryModal();
@@ -4089,9 +4185,64 @@ window.addEventListener('message', function(ev){
       cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = LS.get('tandem_week') || 1;
+      if (currentUser) {
+        const { data: lastSession } = await sb.from('workout_sessions')
+          .select('session_date,day_type')
+          .eq('user_id', currentUser.id)
+          .eq('completed', true)
+          .order('session_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastSession) {
+          const today = new Date().toISOString().split('T')[0];
+          if (lastSession.session_date <= today) {
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks);
+            const idx = prog.findIndex(d => d.key === lastSession.day_type);
+            if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
+          }
+        }
+      }
       renderTracker(); showView('dashboard');
     } else if (session?.user) {
-      showView('onboard');
+      const uid = session.user.id;
+      const { data: userData } = await sb.from('users').select('*').eq('id', uid).maybeSingle();
+      if (userData?.program_goal) {
+        cfg = {
+          goal: userData.program_goal,
+          days: userData.program_days_per_week,
+          sex: userData.sex,
+          experience: userData.fitness_level,
+          weight: userData.current_weight_lbs,
+          goalWeight: userData.goal_weight_lbs,
+          height: userData.height_inches,
+          age: userData.age
+        };
+        selectedGoal = cfg.goal;
+        selectedDays = cfg.days || 4;
+        selectedSex = cfg.sex || null;
+        selectedExperience = cfg.experience || null;
+        currentWeek = userData.current_week || 1;
+        LS.set('tandem_cfg', cfg);
+        LS.set('tandem_week', currentWeek);
+        const { data: lastSession } = await sb.from('workout_sessions')
+          .select('session_date,day_type')
+          .eq('user_id', currentUser.id)
+          .eq('completed', true)
+          .order('session_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastSession) {
+          const today = new Date().toISOString().split('T')[0];
+          if (lastSession.session_date <= today) {
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks);
+            const idx = prog.findIndex(d => d.key === lastSession.day_type);
+            if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
+          }
+        }
+        renderTracker(); showView('dashboard');
+      } else {
+        showView('onboard');
+      }
     }
     // else: no session, no config → stays on auth view
   } catch(e) {
