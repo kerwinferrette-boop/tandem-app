@@ -197,6 +197,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ob-build-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(24,194,106,.3);}
 .ob-build-btn:active{transform:scale(.98);}
 
+/* Color picker step */
+.color-swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;}
+.color-swatch{width:100%;aspect-ratio:1;border-radius:12px;cursor:pointer;border:3px solid transparent;transition:all .18s;position:relative;}
+.color-swatch.selected{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,0.5);}
+.color-swatch:not(.selected):hover{transform:scale(1.07);}
+.color-ring-preview{display:flex;justify-content:center;margin-bottom:20px;}
+.color-ring{width:88px;height:88px;border-radius:50%;border:5px solid #1B5E38;display:flex;align-items:center;justify-content:center;transition:border-color .2s;background:transparent;}
+.color-ring-initial{font-family:var(--font-display);font-size:34px;font-weight:800;color:#fff;line-height:1;}
+
 /* ═══════════════════════════════
    PHASE BANNER
 ═══════════════════════════════ */
@@ -775,13 +784,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
 
     <!-- Step dots -->
-    <div class="ob-step-label" id="obStepLabel">Step 1 of 5 — Goal</div>
+    <div class="ob-step-label" id="obStepLabel">Step 1 of 6 — Goal</div>
     <div class="ob-steps">
       <div class="ob-step-dot active" id="sdot-0"></div>
       <div class="ob-step-dot" id="sdot-1"></div>
       <div class="ob-step-dot" id="sdot-2"></div>
       <div class="ob-step-dot" id="sdot-3"></div>
       <div class="ob-step-dot" id="sdot-4"></div>
+      <div class="ob-step-dot" id="sdot-5"></div>
     </div>
 
     <!-- Cards -->
@@ -1043,8 +1053,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         </div>
       </div>
 
-      <!-- CARD 5: Review -->
+      <!-- CARD 5: Your Color -->
       <div class="ob-card" id="ob-card-4">
+        <div class="ob-card-title">Your Color</div>
+        <div class="ob-card-sub">This is how you show up in the competition. You can always change it later.</div>
+
+        <span class="ob-label">YOUR COLOR</span>
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:16px;font-weight:300;">This is how you show up in the competition</div>
+
+        <div class="color-swatches" id="colorSwatches">
+          <div class="color-swatch selected" style="background:#1B5E38;" data-color="#1B5E38" onclick="selectThemeColor('#1B5E38',this)"></div>
+          <div class="color-swatch" style="background:#d4a843;" data-color="#d4a843" onclick="selectThemeColor('#d4a843',this)"></div>
+          <div class="color-swatch" style="background:#4A9EFF;" data-color="#4A9EFF" onclick="selectThemeColor('#4A9EFF',this)"></div>
+          <div class="color-swatch" style="background:#B47FFF;" data-color="#B47FFF" onclick="selectThemeColor('#B47FFF',this)"></div>
+          <div class="color-swatch" style="background:#E85454;" data-color="#E85454" onclick="selectThemeColor('#E85454',this)"></div>
+          <div class="color-swatch" style="background:#38D9C0;" data-color="#38D9C0" onclick="selectThemeColor('#38D9C0',this)"></div>
+          <div class="color-swatch" style="background:#FF6B35;" data-color="#FF6B35" onclick="selectThemeColor('#FF6B35',this)"></div>
+          <div class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4" onclick="selectThemeColor('#FF69B4',this)"></div>
+        </div>
+
+        <div class="color-ring-preview">
+          <div class="color-ring" id="colorRingPreview">
+            <span class="color-ring-initial">T</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 6: Review -->
+      <div class="ob-card" id="ob-card-5">
         <div class="ob-card-title">Review & Build</div>
         <div class="ob-card-sub">Everything looks right? Hit build and your program generates instantly.</div>
 
@@ -2553,13 +2589,14 @@ let selectedEquipment = null;
 let selectedDuration = 60;
 let selectedWorkoutTime = null;
 let selectedSecondaryGoal = null;
+let selectedThemeColor = '#1B5E38';
 
 // ═══════════════════════════════════════════════════════
 // ONBOARDING — MULTI-STEP
 // ═══════════════════════════════════════════════════════
 let obCurrentStep = 0;
-const OB_STEPS = 5;
-const OB_LABELS = ['Step 1 of 5 — Goal','Step 2 of 5 — Body Stats','Step 3 of 5 — Schedule','Step 4 of 5 — Training Preferences','Step 5 of 5 — Review'];
+const OB_STEPS = 6;
+const OB_LABELS = ['Step 1 of 6 — Goal','Step 2 of 6 — Body Stats','Step 3 of 6 — Schedule','Step 4 of 6 — Training Preferences','Step 5 of 6 — Your Color','Step 6 of 6 — Review'];
 
 function obStep(dir) {
   if (dir === 1 && !obCanAdvance()) return;
@@ -2696,6 +2733,14 @@ function selectSecondaryGoal(val, el) {
   obUpdateNextState();
 }
 
+function selectThemeColor(color, el) {
+  selectedThemeColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  const ring = document.getElementById('colorRingPreview');
+  if (ring) ring.style.borderColor = color;
+}
+
 function updateWeightGap() {
   const cur = parseFloat(document.getElementById('ob-weight').value);
   const tgt = parseFloat(document.getElementById('ob-target-weight').value);
@@ -2798,6 +2843,13 @@ function populateReview() {
       <div class="review-item-label">Secondary Goal</div>
       <div class="review-item-value">${secGoalMap[selectedSecondaryGoal] || 'None'}</div>
     </div>
+    <div class="review-item">
+      <div class="review-item-label">Your Color</div>
+      <div class="review-item-value" style="display:flex;align-items:center;gap:8px;">
+        <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${selectedThemeColor || '#1B5E38'};flex-shrink:0;"></span>
+        <span style="font-size:13px;font-family:var(--font-mono);">${(selectedThemeColor || '#1B5E38').toUpperCase()}</span>
+      </div>
+    </div>
   `;
 }
 
@@ -2826,7 +2878,8 @@ function buildProgram() {
     preferred_workout_time: selectedWorkoutTime,
     injuries: document.getElementById('ob-injuries').value.trim() || null,
     secondary_goal: selectedSecondaryGoal === 'none' ? null : selectedSecondaryGoal,
-    program_goal: selectedGoal
+    program_goal: selectedGoal,
+    themeColor: selectedThemeColor || '#1B5E38'
   };
   LS.set('tandem_cfg', cfg);
   currentWeek = 1;
@@ -2847,6 +2900,7 @@ function resetProgram() {
   selectedDuration = 60;
   selectedWorkoutTime = null;
   selectedSecondaryGoal = null;
+  selectedThemeColor = '#1B5E38';
   // Reset multi-step state
   obCurrentStep = 0;
   document.querySelectorAll('.ob-card').forEach((c,i) => c.classList.toggle('active', i === 0));
@@ -2854,6 +2908,10 @@ function resetProgram() {
   document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
   document.querySelectorAll('.ob-toggle').forEach(t => { t.classList.remove('selected'); t.classList.remove('active'); });
   document.querySelectorAll('.day-dot').forEach(d => d.classList.remove('selected'));
+  // Reset color swatches to default
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('selected', s.dataset.color === '#1B5E38'));
+  const ring = document.getElementById('colorRingPreview');
+  if (ring) ring.style.borderColor = '#1B5E38';
   // Clear inputs
   ['ob-weight','ob-target-weight','ob-age','ob-weeks','ob-injuries'].forEach(id => {
     const el = document.getElementById(id);
@@ -3800,7 +3858,8 @@ async function syncToCloud() {
         goal_weight_lbs: cfg.goalWeight,
         height_inches: cfg.height,
         age: cfg.age,
-        current_week: currentWeek
+        current_week: currentWeek,
+        theme_color: cfg.themeColor || '#1B5E38'
       }, { onConflict: 'id' });
       if (error) throw error;
     }
