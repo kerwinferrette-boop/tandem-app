@@ -667,6 +667,27 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dash-medal-icon{font-size:20px;display:block;margin-bottom:4px;}
 .dash-cta{width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--accent) 0%,#0E7A45 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.1em;cursor:pointer;transition:all .2s;}
 .dash-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(24,194,106,.3);}
+.dash-date{font-family:var(--font-mono);font-size:12px;color:var(--muted2);flex:1;text-align:center;}
+.dash-comp-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:2px;}
+.dash-comp-name{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
+.dash-comp-name-right{text-align:right;}
+.dash-comp-vs{font-family:var(--font-display);font-size:14px;color:var(--muted2);text-align:center;}
+.dash-comp-pts-row{display:grid;grid-template-columns:1fr auto 1fr;margin-bottom:10px;}
+.dash-comp-pts{font-family:var(--font-display);font-size:28px;line-height:1;}
+.dash-comp-pts-right{text-align:right;}
+.dash-comp-bar-track{height:6px;background:var(--border2);border-radius:3px;margin-bottom:12px;overflow:hidden;}
+.dash-comp-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s ease;}
+.dash-comp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:12px;gap:4px;}
+.dash-comp-stat-cell{text-align:center;background:var(--bg);border-radius:10px;padding:8px 4px;}
+.dash-comp-stat-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-bottom:4px;}
+.dash-comp-stat-vals{display:flex;align-items:baseline;justify-content:center;gap:2px;}
+.dash-comp-stat-mine{font-family:var(--font-display);font-size:18px;color:var(--text);}
+.dash-comp-stat-theirs{font-family:var(--font-display);font-size:14px;color:var(--muted2);}
+.dash-comp-stat-sep{font-size:10px;color:var(--muted2);}
+.dash-day-dots{display:flex;justify-content:space-between;}
+.dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.dash-day-dot{width:10px;height:10px;border-radius:50%;background:var(--border2);display:inline-block;}
+.dash-day-label{font-family:var(--font-mono);font-size:8px;color:var(--muted2);}
 </style>
 </head>
 <body>
@@ -1458,6 +1479,16 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <div class="profile-input-group">
           <label class="profile-input-label">Water (oz)</label>
           <input type="number" id="profileWaterInput" placeholder="100" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+      </div>
+      <div class="profile-input-row" style="margin-top:8px;">
+        <div class="profile-input-group">
+          <label class="profile-input-label">Carbs (g)</label>
+          <input type="number" id="profileCarbsInput" placeholder="250" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;">
+        </div>
+        <div class="profile-input-group">
+          <label class="profile-input-label">Fat (g)</label>
+          <input type="number" id="profileFatInput" placeholder="65" class="modal-input" style="background:var(--s2);border:1px solid var(--border2);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;border-radius:8px;padding:8px;color:var(--text);">
         </div>
       </div>
       <button class="profile-save-btn" onclick="saveProfileNutrition()">Save Nutrition</button>
