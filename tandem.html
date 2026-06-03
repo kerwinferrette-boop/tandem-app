@@ -307,6 +307,32 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .badge-cardio{background:rgba(154,154,172,.08);border:1px solid rgba(154,154,172,.15);color:var(--blue);}
 .badge-warn{background:rgba(232,84,84,.08);border:1px solid rgba(232,84,84,.2);color:var(--red);}
 
+/* ── EQUIPMENT SETUP CARD ── */
+.setup-card{margin:12px 16px 0;background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.setup-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;}
+.setup-toggle-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.setup-toggle-status{font-family:var(--font-mono);font-size:10px;color:var(--accent2);flex:1;text-align:right;margin-right:8px;}
+.setup-toggle-arrow{color:var(--muted);font-size:12px;transition:transform .2s;flex-shrink:0;}
+.setup-card.open .setup-toggle-arrow{transform:rotate(180deg);}
+.setup-body{display:none;padding:0 14px 12px;border-top:1px solid var(--border);}
+.setup-card.open .setup-body{display:block;}
+.eq-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.eq-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);
+  color:var(--muted2);cursor:pointer;transition:all .15s;}
+.eq-btn.active{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
+.eq-db-row{margin-top:10px;display:none;align-items:center;gap:8px;}
+.eq-db-row.show{display:flex;}
+.eq-db-label{font-size:12px;color:var(--muted2);}
+.eq-db-input{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--text);
+  font-family:var(--font-mono);font-size:14px;font-weight:600;padding:6px 8px;width:70px;text-align:center;outline:none;
+  -webkit-appearance:none;}
+.eq-db-input:focus{border-color:var(--accent);}
+.eq-set-btn{background:var(--accent);color:#000;border:none;border-radius:7px;padding:7px 14px;
+  font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.08em;cursor:pointer;}
+.eq-active-label{font-size:11px;color:var(--muted);}
+.eq-alt-note{font-size:10px;color:var(--red);font-family:var(--font-mono);margin-top:3px;line-height:1.45;}
+
 /* ★ PO CHIP — key feature */
 .po-chip{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 8px;
   border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:600;}
@@ -1236,6 +1262,33 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
      VIEW: TRACKER (main app)
 ══════════════════════════════════ -->
 <div class="view" id="view-tracker">
+
+  <!-- Today's Setup -->
+  <div class="setup-card" id="setupCard">
+    <div class="setup-toggle" onclick="toggleSetup()">
+      <span class="setup-toggle-label">Today's Setup</span>
+      <span class="setup-toggle-status" id="setupStatus">Full Gym</span>
+      <span class="setup-toggle-arrow">▾</span>
+    </div>
+    <div class="setup-body">
+      <div class="eq-btns">
+        <button class="eq-btn active" data-tier="full_gym" onclick="selectEquipmentTier(this)">Full Gym</button>
+        <button class="eq-btn" data-tier="standard_gym" onclick="selectEquipmentTier(this)">Standard Gym</button>
+        <button class="eq-btn" data-tier="hotel_full" onclick="selectEquipmentTier(this)">Hotel · Full DB</button>
+        <button class="eq-btn" data-tier="hotel_small" onclick="selectEquipmentTier(this)">Hotel · Small DB</button>
+        <button class="eq-btn" data-tier="dumbbells" onclick="selectEquipmentTier(this)">DBs Only</button>
+      </div>
+      <div class="eq-db-row" id="eqDbRow">
+        <span class="eq-db-label">Max DB weight</span>
+        <input class="eq-db-input" id="eqDbWeight" type="number" placeholder="50" min="5" max="200" step="5">
+        <span class="eq-db-label">lbs</span>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+        <button class="eq-set-btn" onclick="applySetupSelection()">Apply</button>
+        <span class="eq-active-label" id="eqActiveLabel"></span>
+      </div>
+    </div>
+  </div>
 
   <!-- Phase Banner -->
   <div class="phase-banner hero-host" id="phaseBanner">
@@ -2369,6 +2422,113 @@ function getRecommendation(exId, compound, goal) {
   return { weight: rec, arrow, label: `${rec} lbs`, reason };
 }
 
+// ═══════════════════════════════════════════════════════
+// EQUIPMENT SELECTOR
+// ═══════════════════════════════════════════════════════
+const EQ_NEEDS_DB = ['hotel_full','hotel_small','dumbbells'];
+const EQ_LABELS = {
+  full_gym:'Full Gym', standard_gym:'Standard Gym',
+  hotel_full:'Hotel – Full DB', hotel_small:'Hotel – Small DB', dumbbells:'DBs Only'
+};
+const BARBELL_NAMES = ['barbell','deadlift','hip thrust'];
+const DB_SUBS = {
+  'low incline barbell press':'DB Incline Press (same angle)',
+  'romanian deadlift':'DB Romanian Deadlift',
+  'hip thrust':'DB Hip Thrust or Weighted Glute Bridge',
+};
+
+function toggleSetup() {
+  document.getElementById('setupCard').classList.toggle('open');
+}
+
+function selectEquipmentTier(btn) {
+  document.querySelectorAll('.eq-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const needsDb = EQ_NEEDS_DB.includes(btn.dataset.tier);
+  document.getElementById('eqDbRow').classList.toggle('show', needsDb);
+}
+
+function applySetupSelection() {
+  const active = document.querySelector('.eq-btn.active');
+  const tier = active ? active.dataset.tier : 'full_gym';
+  const dbInput = document.getElementById('eqDbWeight');
+  const maxDb = dbInput ? parseInt(dbInput.value) || 0 : 0;
+  sessionStorage.setItem('eq_tier', tier);
+  sessionStorage.setItem('eq_max_db', maxDb);
+  document.getElementById('setupStatus').textContent = EQ_LABELS[tier] || tier;
+  document.getElementById('eqActiveLabel').textContent = tier === 'full_gym'
+    ? '' : `Active: ${EQ_LABELS[tier]}${maxDb ? ` · ${maxDb} lbs max` : ''}`;
+  document.getElementById('setupCard').classList.remove('open');
+  applyEquipmentAdjustments(tier, maxDb);
+}
+
+function classifyPhase(phase, week) {
+  if (phase.name.toLowerCase().includes('deload')) return 'deload';
+  const rep = phaseWeekRep(phase, week);
+  if (rep <= 6) return 'strength';
+  if (rep <= 11) return 'hypertrophy';
+  return 'fat_loss';
+}
+
+function clearEquipmentAdjustments() {
+  document.querySelectorAll('.eq-warn-chip').forEach(el => el.remove());
+  document.querySelectorAll('.eq-alt-note').forEach(el => el.remove());
+  document.querySelectorAll('.ex-reps[data-eq-orig]').forEach(el => {
+    el.textContent = el.dataset.eqOrig;
+    delete el.dataset.eqOrig;
+  });
+}
+
+function applyEquipmentAdjustments(tier, maxDb) {
+  if (tier === 'full_gym') { clearEquipmentAdjustments(); return; }
+
+  const phase = getPhase(currentWeek, cfg.goal);
+  const phaseType = classifyPhase(phase, currentWeek);
+
+  clearEquipmentAdjustments();
+
+  if (phaseType === 'deload') return;
+
+  document.querySelectorAll('.ex-card[id^="ec-"]').forEach(card => {
+    const nameEl = card.querySelector('.ex-name');
+    if (!nameEl) return;
+    const exName = (nameEl.firstChild && nameEl.firstChild.nodeType === 3
+      ? nameEl.firstChild.textContent : nameEl.textContent).trim().toLowerCase();
+    const isCompound = !!card.querySelector('.badge-compound');
+    const exRepsEl = card.querySelector('.ex-reps');
+    const infoEl = card.querySelector('.ex-info');
+
+    if (phaseType === 'strength' && isCompound && maxDb < 80
+        && BARBELL_NAMES.some(b => exName.includes(b))) {
+      const chip = document.createElement('span');
+      chip.className = 'ex-badge badge-warn eq-warn-chip';
+      chip.textContent = '⚠ Equipment limit';
+      nameEl.appendChild(chip);
+
+      if (infoEl) {
+        const note = document.createElement('div');
+        note.className = 'eq-alt-note';
+        const sub = DB_SUBS[exName] || 'DB variation';
+        note.textContent = `DB substitute: ${sub} · Use heaviest available, increase TUT to compensate`;
+        infoEl.appendChild(note);
+      }
+    }
+
+    if (phaseType === 'fat_loss' && tier === 'hotel_small' && maxDb < 30 && exRepsEl) {
+      const orig = exRepsEl.textContent.trim();
+      exRepsEl.dataset.eqOrig = orig;
+      exRepsEl.textContent = orig.replace(/\d+ reps/, '20 reps');
+
+      if (infoEl) {
+        const note = document.createElement('div');
+        note.className = 'eq-alt-note';
+        note.textContent = 'Rep target raised to 20–25 for metabolic stimulus';
+        infoEl.appendChild(note);
+      }
+    }
+  });
+}
+
 function saveSetLS(exId, weight, reps) {
   const lastSets = LS.get('tandem_lastsets') || {};
   const today = new Date().toISOString().split('T')[0];
@@ -2800,6 +2960,23 @@ function renderTracker() {
 
   updateProgress();
   buildNextSessionBanners(program);
+
+  const _eTier = sessionStorage.getItem('eq_tier');
+  const _eDb   = parseInt(sessionStorage.getItem('eq_max_db')) || 0;
+  if (_eTier && _eTier !== 'full_gym') {
+    document.querySelectorAll('.eq-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tier === _eTier);
+    });
+    if (EQ_NEEDS_DB.includes(_eTier)) {
+      document.getElementById('eqDbRow').classList.add('show');
+      const dbInput = document.getElementById('eqDbWeight');
+      if (dbInput && _eDb) dbInput.value = _eDb;
+    }
+    document.getElementById('setupStatus').textContent = EQ_LABELS[_eTier] || _eTier;
+    document.getElementById('eqActiveLabel').textContent =
+      `Active: ${EQ_LABELS[_eTier]}${_eDb ? ` · ${_eDb} lbs max` : ''}`;
+    applyEquipmentAdjustments(_eTier, _eDb);
+  }
 }
 
 function buildDayHTML(day, phase) {
@@ -2856,7 +3033,7 @@ function buildDayHTML(day, phase) {
             <div class="ex-check"></div>
             <div class="ex-info">
               <div class="ex-name">${ex.name}<span class="ex-badge badge-${ex.badge}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">1RM ~${pr1rm}</span>` : ''}</div>
-              <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
+              <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
                 : `${ex.sets} × ${phaseWeekRep(phase, currentWeek)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
@@ -3456,6 +3633,7 @@ function showView(id) {
   document.getElementById('view-' + id).classList.add('active');
   document.getElementById('bottomNav').style.display = id === 'tracker' ? 'flex' : 'none';
   if (id === 'dashboard') loadDashboard();
+  if (id === 'tracker') renderTracker();
 }
 
 function openModal(name) {
