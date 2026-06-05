@@ -3232,7 +3232,7 @@ function logSet(id, i) {
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
     sessionSetsMap[id].push({ set: i+1, w, r, est1rm });
 
-    if (est1rm > prev && r <= 12 && w > 0) {
+    if (est1rm > prev && w > 0) {
       prs[id] = est1rm;
       LS.set('tandem_prs', prs);
       btn.classList.add('pr-set');
@@ -3552,6 +3552,9 @@ function finishSession() {
   });
   if (hist.length > 100) hist.pop();
   LS.set('tandem_history', hist);
+  const totalVolume = Object.values(sessionSetsMap)
+    .flatMap(sets => sets)
+    .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
   Object.keys(sessionSetsMap).forEach(k => delete sessionSetsMap[k]);
 
   const banner = document.getElementById('finishBanner');
@@ -3568,9 +3571,6 @@ function finishSession() {
 
   // Mark cloud session complete with all required fields
   if (currentUser) {
-    const totalVolume = Object.values(sessionSetsMap)
-      .flatMap(sets => sets)
-      .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
     const duration = sessionStartTime
       ? Math.round((Date.now() - sessionStartTime) / 60000)
       : null;
@@ -3590,7 +3590,7 @@ function finishSession() {
     if (currentCloudSessionId) payload.id = currentCloudSessionId;
     sb.from('workout_sessions')
       .upsert(payload, { onConflict: 'user_id,session_date' })
-      .then(({ error }) => { if (error) console.warn('Session complete sync error:', error); });
+      .then(({ error }) => { if (error) { console.warn('Session complete sync error:', error); showToast('Session sync failed — saved locally'); } });
     showToast(`Session saved \u2713 \u2014 ${Math.round(totalVolume).toLocaleString()} lbs moved`);
 
     // Advance to next training day (reuse program already computed above)
@@ -3840,6 +3840,7 @@ async function syncToCloud() {
   } catch(e) {
     console.warn('Sync error:', e);
     setSyncStatus('error');
+    showToast('Sync failed — data saved locally');
   }
 }
 
