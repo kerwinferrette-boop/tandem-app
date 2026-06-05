@@ -3763,6 +3763,7 @@ function skipAuth() {
 async function signOut() {
   await sb.auth.signOut();
   currentUser = null;
+  ['tandem_cfg','tandem_week','tandem_history','tandem_prs','tandem_lastsets','tandem_current_day','tandem_profile'].forEach(k => localStorage.removeItem(k));
   setSyncStatus('offline');
   updateSyncUserInfo();
   closeModal('goal');
@@ -3989,7 +3990,11 @@ async function loadDashboard() {
         .lte('session_date', sunday.toISOString().split('T')[0])
         .eq('completed', true);
       dashboardData.dailyWins = {};
+      dashboardData.weeklySessionsMine = 0;
+      dashboardData.weeklySessionsTheirs = 0;
       (sessions || []).forEach(s => {
+        if (s.user_id === uid) dashboardData.weeklySessionsMine++;
+        else dashboardData.weeklySessionsTheirs++;
         const key = s.session_date;
         const isMine = s.user_id === uid;
         const val = isMine ? 'mine' : 'theirs';
@@ -4003,6 +4008,8 @@ async function loadDashboard() {
       dashboardData.leaderboard = [];
       dashboardData.partnerTargets = null;
       dashboardData.dailyWins = {};
+      dashboardData.weeklySessionsMine = 0;
+      dashboardData.weeklySessionsTheirs = 0;
     }
 
     // 4. Medals — 3 most recent
@@ -4132,7 +4139,7 @@ function renderDashboard() {
         theirsEl.style.fontSize = !iWin ? '18px' : '14px';
       }
     };
-    setStatPair('dashStatSessionsMine','dashStatSessionsTheirs', myLbRow?.sessions_completed, theirLbRow?.sessions_completed);
+    setStatPair('dashStatSessionsMine','dashStatSessionsTheirs', dashboardData.weeklySessionsMine ?? 0, dashboardData.weeklySessionsTheirs ?? 0);
     setStatPair('dashStatStreakMine','dashStatStreakTheirs', myLbRow?.current_streak, theirLbRow?.current_streak);
     setStatPair('dashStatPRsMine','dashStatPRsTheirs', myLbRow?.prs_earned, theirLbRow?.prs_earned);
   }
