@@ -1719,7 +1719,7 @@ const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3 };
 function userSexKey(){
   let s = '';
   // live edit in profile modal takes priority for instant preview
-  try { if(typeof profileState !== 'undefined' && profileState){ s = profileState.gender || profileState.sex || ''; } } catch(e){}
+  try { if(typeof profileState !== 'undefined' && profileState){ s = profileState.sex || profileState.gender || ''; } } catch(e){}
   if(!s){ try { s = (typeof cfg !== 'undefined' && cfg && cfg.sex) || (typeof selectedSex !== 'undefined' && selectedSex) || ''; } catch(e){} }
   if(!s){ try { const p = (typeof LS !== 'undefined' && LS.get && LS.get('tandem_profile')) || {}; s = p.avatar_gender || p.sex || 'M'; } catch(e){ s = 'M'; } }
   s = String(s).toLowerCase();
@@ -2665,9 +2665,9 @@ function selectEquipment(val, el) {
   selectedEquipment = val;
   document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
     if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('active');
+      t.classList.remove('selected');
   });
-  el.classList.add('active');
+  el.classList.add('selected');
   obUpdateNextState();
 }
 
@@ -2675,9 +2675,9 @@ function selectDuration(val, el) {
   selectedDuration = val;
   document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
     if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('active');
+      t.classList.remove('selected');
   });
-  el.classList.add('active');
+  el.classList.add('selected');
   obUpdateNextState();
 }
 
@@ -2685,9 +2685,9 @@ function selectWorkoutTime(val, el) {
   selectedWorkoutTime = val;
   document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
     if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('active');
+      t.classList.remove('selected');
   });
-  el.classList.add('active');
+  el.classList.add('selected');
   obUpdateNextState();
 }
 
@@ -2695,9 +2695,9 @@ function selectSecondaryGoal(val, el) {
   selectedSecondaryGoal = val;
   document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
     if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('active');
+      t.classList.remove('selected');
   });
-  el.classList.add('active');
+  el.classList.add('selected');
   obUpdateNextState();
 }
 
