@@ -716,6 +716,49 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:4px;}
 .dash-day-dot{width:10px;height:10px;border-radius:50%;background:var(--border2);display:inline-block;}
 .dash-day-label{font-family:var(--font-mono);font-size:8px;color:var(--muted2);}
+
+/* ── Bug Report FAB ──────────────────────────────────── */
+.bug-fab{position:fixed;bottom:80px;right:16px;z-index:900;width:40px;height:40px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);transition:opacity .15s;}
+.bug-fab:active{transform:scale(.91);}
+/* ── Bug Report Modal ────────────────────────────────── */
+.bug-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;background:rgba(0,0,0,.52);opacity:0;pointer-events:none;transition:opacity .2s;}
+.bug-overlay.open{opacity:1;pointer-events:auto;}
+.bug-sheet{background:var(--s1);border-radius:18px 18px 0 0;padding:22px 20px 36px;width:100%;max-width:520px;margin:0 auto;transform:translateY(28px);transition:transform .25s cubic-bezier(.32,.72,0,1);}
+.bug-overlay.open .bug-sheet{transform:translateY(0);}
+.bug-title{font-size:18px;font-weight:700;margin-bottom:14px;}
+.bug-textarea{width:100%;min-height:110px;resize:none;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--fg);font-size:14px;padding:10px 12px;font-family:inherit;box-sizing:border-box;outline:none;}
+.bug-textarea:focus{border-color:var(--accent);}
+.bug-file-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted2);margin-top:10px;cursor:pointer;user-select:none;}
+.bug-file-name{font-size:11px;color:var(--muted);margin-top:4px;min-height:14px;}
+.bug-send-btn{width:100%;margin-top:16px;padding:14px;border-radius:12px;background:var(--accent);color:#000;font-weight:700;font-size:15px;border:none;cursor:pointer;}
+.bug-send-btn:disabled{opacity:.5;cursor:not-allowed;}
+/* ── QA Badge ────────────────────────────────────────── */
+.qa-badge-btn{position:relative;display:none;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;border:1px solid var(--border2);background:var(--s2);cursor:pointer;color:var(--muted2);}
+.qa-badge-btn.visible{display:inline-flex;}
+.qa-badge-btn:active{transform:scale(.93);}
+.qa-unread{position:absolute;top:-5px;right:-5px;background:#e85454;color:#fff;font-size:9px;font-weight:700;border-radius:9px;min-width:16px;height:16px;display:none;align-items:center;justify-content:center;padding:0 3px;line-height:1;}
+.qa-unread.has-items{display:flex;}
+/* ── QA Panel ────────────────────────────────────────── */
+.qa-overlay{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .2s;display:flex;flex-direction:column;}
+.qa-overlay.open{opacity:1;pointer-events:auto;}
+.qa-backdrop{flex:1;}
+.qa-sheet{background:var(--s1);border-radius:18px 18px 0 0;padding:20px 16px 44px;max-height:82vh;overflow-y:auto;transform:translateY(28px);transition:transform .25s cubic-bezier(.32,.72,0,1);}
+.qa-overlay.open .qa-sheet{transform:translateY(0);}
+.qa-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.qa-panel-title{font-size:18px;font-weight:700;}
+.qa-panel-close{font-size:22px;color:var(--muted2);cursor:pointer;background:none;border:none;padding:4px 8px;line-height:1;}
+.qa-row{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
+.qa-row:last-child{border-bottom:none;}
+.qa-type-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;flex-shrink:0;margin-top:3px;letter-spacing:.03em;}
+.qa-type-badge.auto{background:rgba(24,194,106,.18);color:var(--accent);}
+.qa-type-badge.user{background:rgba(232,84,84,.16);color:#e85454;}
+.qa-row-content{flex:1;min-width:0;}
+.qa-row-label{font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qa-row-meta{font-size:11px;color:var(--muted2);margin-top:2px;}
+.qa-notion-link{font-size:11px;color:var(--accent);margin-top:3px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none;}
+.qa-resolve-btn{flex-shrink:0;font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--fg);cursor:pointer;white-space:nowrap;}
+.qa-resolve-btn:active{transform:scale(.94);}
+.qa-empty-msg{text-align:center;padding:44px 0;color:var(--muted2);font-size:14px;}
 </style>
 </head>
 <body>
@@ -739,6 +782,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
   <div style="display:flex;align-items:center;gap:6px;">
     <button id="profileBtn" class="nav-pill" onclick="openProfileModal()" title="Profile & Settings" aria-label="Profile and settings" data-icon="user" style="padding:6px 10px;line-height:1;border:none;display:inline-flex;align-items:center;font-size:17px;"></button>
+    <button class="qa-badge-btn" id="qaBadgeBtn" onclick="openQAPanel()" title="QA Review" aria-label="QA Review"><span data-icon="activity"></span><span class="qa-unread" id="qaUnread"></span></button>
     <div class="nav-right" id="navRight">
       <div class="sync-dot" id="syncDot" title="Not synced"></div>
     </div>
@@ -747,6 +791,38 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 <!-- PR TOAST -->
 <div class="pr-toast" id="prToast"><span data-icon="trophy"></span> New PR!</div>
+
+<!-- BUG REPORT FAB -->
+<button class="bug-fab" onclick="openBugModal()" title="Report an issue" aria-label="Report an issue"><span data-icon="alert" data-icon-size="20px"></span></button>
+
+<!-- BUG REPORT MODAL -->
+<div class="bug-overlay" id="modal-bug" onclick="if(event.target===this)closeBugModal()">
+  <div class="bug-sheet">
+    <div class="bug-title">What went wrong?</div>
+    <textarea class="bug-textarea" id="bugDesc" placeholder="Describe what happened..." rows="5"></textarea>
+    <div>
+      <label class="bug-file-label" for="bugFile">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 1 1 4.95 4.95l-9.19 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></svg>
+        Add a screenshot (optional)
+        <input type="file" id="bugFile" accept="image/*" style="display:none" onchange="document.getElementById('bugFileName').textContent=this.files[0]?.name||''">
+      </label>
+      <div class="bug-file-name" id="bugFileName"></div>
+    </div>
+    <button class="bug-send-btn" id="bugSendBtn" onclick="submitBugReport()">Send Report</button>
+  </div>
+</div>
+
+<!-- QA REVIEW PANEL -->
+<div class="qa-overlay" id="modal-qa">
+  <div class="qa-backdrop" onclick="closeQAPanel()"></div>
+  <div class="qa-sheet">
+    <div class="qa-panel-header">
+      <div class="qa-panel-title">QA Feed</div>
+      <button class="qa-panel-close" onclick="closeQAPanel()">✕</button>
+    </div>
+    <div id="qaFeed"><div class="qa-empty-msg">Loading…</div></div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════
      VIEW: ONBOARDING
@@ -3747,8 +3823,9 @@ function logSet(id, i) {
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
           // PR detection — check session cache first to avoid async race on rapid logging
           let isPr = false;
+          const cachedEntry = sessionPrCache[rawName];
           if (w > 0 && r > 0 && est1rm > 0) {
-            const cachedBest = sessionPrCache[rawName] || 0;
+            const cachedBest = cachedEntry?.est1rm || 0;
             if (cachedBest > 0) {
               isPr = est1rm > cachedBest;
             } else {
@@ -3759,10 +3836,9 @@ function logSet(id, i) {
                 .maybeSingle();
               isPr = !existing || est1rm > (existing.best_estimated_1rm_lbs || 0);
             }
-            if (isPr || est1rm > cachedBest) sessionPrCache[rawName] = est1rm;
           }
-          // Insert set row
-          const { error: setErr } = await sb.from('sets').insert({
+          // Insert set row (return id so we can retroactively unflag if a later set beats it)
+          const { data: insertedSet, error: setErr } = await sb.from('sets').insert({
             session_id: sessionUUID,
             user_id: currentUser.id,
             exercise_name: rawName,
@@ -3773,10 +3849,15 @@ function logSet(id, i) {
             rpe: null,
             estimated_1rm_lbs: est1rm > 0 ? est1rm : null,
             is_pr: isPr
-          });
+          }).select('id').single();
           if (setErr) throw setErr;
-          // Upsert personal_records if PR
+          // PR bookkeeping — only the highest est-1RM set this session stays flagged
           if (isPr) {
+            // Retroactively unflag the prior PR set so we don't double-count
+            if (cachedEntry?.setId) {
+              await sb.from('sets').update({ is_pr: false }).eq('id', cachedEntry.setId);
+            }
+            sessionPrCache[rawName] = { est1rm, setId: insertedSet.id };
             const today = new Date().toISOString().split('T')[0];
             const { error: prErr } = await sb.from('personal_records').upsert({
               user_id: currentUser.id,
@@ -5179,6 +5260,166 @@ function refreshAvatarPreview(){
   } catch(e) {
     console.error('Init error:', e);
   }
+})();
+
+// ═══════════════════════════════════════════════════════
+// BUG REPORT
+// ═══════════════════════════════════════════════════════
+function openBugModal() {
+  document.getElementById('modal-bug').classList.add('open');
+  setTimeout(() => document.getElementById('bugDesc').focus(), 80);
+}
+function closeBugModal() {
+  document.getElementById('modal-bug').classList.remove('open');
+  document.getElementById('bugDesc').value = '';
+  document.getElementById('bugFileName').textContent = '';
+  const fi = document.getElementById('bugFile');
+  if (fi) fi.value = '';
+}
+async function submitBugReport() {
+  if (!currentUser) { showToast('Sign in to send a report'); return; }
+  const desc = document.getElementById('bugDesc').value.trim();
+  if (!desc) { document.getElementById('bugDesc').focus(); return; }
+  const btn = document.getElementById('bugSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    let screenshotUrl = null;
+    const file = document.getElementById('bugFile').files[0];
+    if (file) {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = currentUser.id + '/' + Date.now() + '.' + ext;
+      const { data: upData, error: upErr } = await sb.storage
+        .from('bug-report-screenshots').upload(path, file, { upsert: true });
+      if (!upErr && upData) {
+        const { data: sig } = await sb.storage
+          .from('bug-report-screenshots').createSignedUrl(upData.path, 31536000);
+        screenshotUrl = sig?.signedUrl || null;
+      }
+    }
+    const { data: report, error } = await sb.from('user_bug_reports')
+      .insert({ user_id: currentUser.id, description: desc, screenshot_url: screenshotUrl })
+      .select('id').single();
+    if (error) throw error;
+    // fire and forget — expand-and-log-bug enriches the report
+    sb.auth.getSession().then(({ data: { session } }) => {
+      fetch('https://zsvktcvqmppsshtpeljt.supabase.co/functions/v1/expand-and-log-bug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || '') },
+        body: JSON.stringify({ report_id: report.id })
+      }).catch(() => {});
+    });
+    closeBugModal();
+    showToast("Got it. We'll look into it.");
+  } catch(e) {
+    showToast('Something went wrong — try again');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send Report';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// QA PANEL
+// ═══════════════════════════════════════════════════════
+const QA_UID = 'e636007d-194f-4440-a2cc-9bc514957c64';
+
+async function refreshQACount() {
+  if (!currentUser || currentUser.id !== QA_UID) return;
+  const [{ count: c1 }, { count: c2 }] = await Promise.all([
+    sb.from('agent_log').select('id', { count: 'exact', head: true }).eq('resolved', false),
+    sb.from('user_bug_reports').select('id', { count: 'exact', head: true }).neq('status', 'resolved')
+  ]);
+  const total = (c1 || 0) + (c2 || 0);
+  const el = document.getElementById('qaUnread');
+  if (!el) return;
+  el.textContent = total > 0 ? String(total) : '';
+  el.classList.toggle('has-items', total > 0);
+}
+
+async function openQAPanel() {
+  if (!currentUser || currentUser.id !== QA_UID) return;
+  document.getElementById('modal-qa').classList.add('open');
+  await loadQAFeed();
+}
+function closeQAPanel() {
+  document.getElementById('modal-qa').classList.remove('open');
+}
+
+async function loadQAFeed() {
+  const feed = document.getElementById('qaFeed');
+  feed.innerHTML = '<div class="qa-empty-msg">Loading…</div>';
+  const [{ data: logs }, { data: bugs }, { data: users }] = await Promise.all([
+    sb.from('agent_log').select('*').eq('resolved', false)
+      .order('created_at', { ascending: false }).limit(50),
+    sb.from('user_bug_reports').select('*').neq('status', 'resolved')
+      .order('created_at', { ascending: false }).limit(50),
+    sb.from('users').select('id,name,email')
+  ]);
+  const umap = {};
+  (users || []).forEach(u => { umap[u.id] = u.name || u.email || u.id.slice(0, 8); });
+  const items = [
+    ...(logs || []).map(r => ({
+      id: r.id, src: 'agent_log', created_at: r.created_at,
+      badge: 'AUTO', label: r.assertion,
+      notion: (r.details && r.details.notion_url) || null,
+      user_id: r.user_id
+    })),
+    ...(bugs || []).map(r => ({
+      id: r.id, src: 'user_bug_reports', created_at: r.created_at,
+      badge: 'USER', label: r.description,
+      notion: r.notion_page_url || null,
+      user_id: r.user_id,
+      screenshot: r.screenshot_url || null
+    }))
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
+
+  if (!items.length) {
+    feed.innerHTML = '<div class="qa-empty-msg">No unresolved items — all clear.</div>';
+    return;
+  }
+  feed.innerHTML = items.map(item => {
+    const who = umap[item.user_id] || (item.user_id ? item.user_id.slice(0, 8) : '—');
+    const when = new Date(item.created_at).toLocaleString('en-US',
+      { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const label = item.label.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const notionLink = item.notion
+      ? `<a class="qa-notion-link" href="${item.notion}" target="_blank" rel="noopener">Open in Notion →</a>` : '';
+    const screenshotLink = item.screenshot
+      ? `<a class="qa-notion-link" href="${item.screenshot}" target="_blank" rel="noopener">View screenshot →</a>` : '';
+    return `<div class="qa-row" id="qarow-${item.id}">
+      <span class="qa-type-badge ${item.badge.toLowerCase()}">${item.badge}</span>
+      <div class="qa-row-content">
+        <div class="qa-row-label">${label}</div>
+        <div class="qa-row-meta">${who} · ${when}</div>
+        ${notionLink}${screenshotLink}
+      </div>
+      <button class="qa-resolve-btn" onclick="resolveQAItem('${item.id}','${item.src}')">Resolve</button>
+    </div>`;
+  }).join('');
+}
+
+async function resolveQAItem(id, src) {
+  const row = document.getElementById('qarow-' + id);
+  if (row) { row.style.opacity = '0.35'; row.style.pointerEvents = 'none'; }
+  if (src === 'agent_log') {
+    await sb.from('agent_log')
+      .update({ resolved: true, resolved_at: new Date().toISOString() }).eq('id', id);
+  } else {
+    await sb.from('user_bug_reports').update({ status: 'resolved' }).eq('id', id);
+  }
+  if (row) row.remove();
+  refreshQACount();
+}
+
+// Show QA badge for Kerwin after auth resolves
+(async function initQABadge() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user?.id === QA_UID) {
+      const btn = document.getElementById('qaBadgeBtn');
+      if (btn) btn.classList.add('visible');
+      refreshQACount();
+    }
+  } catch(e) {}
 })();
 </script>
 </body>
