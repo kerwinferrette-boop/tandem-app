@@ -1845,7 +1845,8 @@ const VIDEO_IDS = {
   'Seated Leg Curl':            'YyvSfVjQeL0',
 };
 
-function getProgram(goal, days, weeks) {
+function getProgram(goal, days, weeks, sex) {
+  const isFemale = (sex === 'F' || String(sex || '').toLowerCase() === 'f' || String(sex || '').toLowerCase() === 'female');
   const fat = goal === 'fat_burn';
   const muscle = goal === 'build_muscle';
   const transform = goal === 'transform';
@@ -1854,7 +1855,7 @@ function getProgram(goal, days, weeks) {
   const programs = {
     fat_burn: {
       4: [
-        { key:'mon', label:'Mon · Upper Circuit', color:'var(--red)', rationale:'Upper body circuit. Minimal rest keeps heart rate elevated. Compound first, isolation finishers, cardio to close.',
+        { key:'day1', label:'Day 1 · Upper Circuit', color:'var(--red)', rationale:'Upper body circuit. Minimal rest keeps heart rate elevated. Compound first, isolation finishers, cardio to close.',
           blocks:[
             {label:'Compound Block · Rest 60 sec', exs:[
               {id:'fb-bench',  name:'Low Incline Barbell Press', badge:'compound', sets:4, w:115, r:15, rest:60, compound:true,
@@ -1889,7 +1890,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'tue', label:'Tue · Lower Circuit', color:'var(--orange)', rationale:'Lower body fat burn day. Hip hinge + quad work with minimal rest. The legs are the largest muscle group — training them hard burns the most calories.',
+        { key:'day2', label:'Day 2 · Lower Circuit', color:'var(--orange)', rationale:'Lower body fat burn day. Hip hinge + quad work with minimal rest. The legs are the largest muscle group — training them hard burns the most calories.',
           blocks:[
             {label:'Compound Block · Rest 75 sec', exs:[
               {id:'fb-rdl',  name:'Romanian Deadlift', badge:'compound', sets:4, w:115, r:15, rest:75, compound:true,
@@ -1924,7 +1925,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'thu', label:'Thu · Upper Burn', color:'var(--red)', rationale:'Second upper session. Pull-dominant to balance Monday push. Bicep work earns its spot at the end.',
+        { key:'day3', label:'Day 3 · Upper Burn', color:'var(--red)', rationale:'Second upper session. Pull-dominant to balance the first upper day. Bicep work earns its spot at the end.',
           blocks:[
             {label:'Compound Block · Rest 60 sec', exs:[
               {id:'fb-pull', name:'Lat Pulldown', badge:'compound', sets:4, w:90, r:15, rest:60, compound:true,
@@ -1959,7 +1960,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'fri', label:'Fri · Lower Burn', color:'var(--orange)', rationale:'Week-closing lower session. Squat pattern + accessory work. End with Zone 2 to close the training week and protect the weekend recovery.',
+        { key:'day4', label:'Day 4 · Lower Burn', color:'var(--orange)', rationale:'Final lower session. Squat pattern + accessory work. End with Zone 2 to close the training week and protect the weekend recovery.',
           blocks:[
             {label:'Compound Block · Rest 75 sec', exs:[
               {id:'fb-hack', name:'Hack Squat', badge:'compound', sets:4, w:160, r:15, rest:75, compound:true,
@@ -1997,7 +1998,7 @@ function getProgram(goal, days, weeks) {
     },
     build_muscle: {
       4: [
-        { key:'mon', label:'Mon · Upper A', color:'var(--accent)', rationale:'Push-dominant upper day. Horizontal and vertical press when CNS is freshest. Triceps finish because they are pre-fatigued from pressing.',
+        { key:'day1', label:'Day 1 · Upper A', color:'var(--accent)', rationale:'Push-dominant upper day. Horizontal and vertical press when CNS is freshest. Triceps finish because they are pre-fatigued from pressing.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'bm-bench', name:'Low Incline Barbell Press', badge:'compound', sets:4, w:140, r:10, rest:120, compound:true,
@@ -2036,7 +2037,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'tue', label:'Tue · Lower A', color:'var(--blue)', rationale:'Hip hinge dominant lower day. Posterior chain focus. Intentionally not a squat day — Tuesday hinge + Friday squat gives 72 hours between lower sessions.',
+        { key:'day2', label:'Day 2 · Lower A', color:'var(--blue)', rationale:'Hip hinge dominant lower day. Posterior chain focus. Intentionally not a squat day — spacing hinge and squat sessions gives 72 hours between lower sessions.',
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bm-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:135, r:8, rest:150, compound:true,
@@ -2071,7 +2072,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'thu', label:'Thu · Upper B', color:'var(--green)', rationale:'Pull-dominant upper day. Rear delts are treated as a priority here — undertrained in almost every program that doesn\'t make them explicit. Critical for posture and shoulder health.',
+        { key:'day3', label:'Day 3 · Upper B', color:'var(--green)', rationale:'Pull-dominant upper day. Rear delts are treated as a priority here — undertrained in almost every program that doesn\'t make them explicit. Critical for posture and shoulder health.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'bm-pull', name:'Lat Pulldown', badge:'compound', sets:4, w:110, r:10, rest:120, compound:true,
@@ -2109,7 +2110,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'fri', label:'Fri · Lower B', color:'var(--amber)', rationale:'Quad and glute session. Friday placement gives 72 hours from Tuesday hinge day. Hack squat as primary — mechanically optimal for tall lifters.',
+        { key:'day4', label:'Day 4 · Lower B', color:'var(--amber)', rationale:'Quad and glute session. 72 hours from the hinge day. Hack squat as primary — mechanically optimal for tall lifters.',
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bm-hack', name:'Hack Squat', badge:'compound', sets:4, w:180, r:8, rest:150, compound:true,
@@ -2148,7 +2149,7 @@ function getProgram(goal, days, weeks) {
     },
     transform: {
       4: [
-        { key:'mon', label:'Mon · Push + Pull', color:'var(--teal)', rationale:'Superset-driven upper body. Antagonist pairing (push+pull) keeps heart rate elevated while allowing each muscle group partial recovery. MRT structure maximizes calorie burn while building lean mass.',
+        { key:'day1', label:'Day 1 · Push + Pull', color:'var(--teal)', rationale:'Superset-driven upper body. Antagonist pairing (push+pull) keeps heart rate elevated while allowing each muscle group partial recovery. MRT structure maximizes calorie burn while building lean mass.',
           blocks:[
             {label:'Superset A · Rest 90 sec', exs:[
               {id:'tr-dbench', name:'DB Bench Press', badge:'compound', sets:4, w:50, r:10, rest:90, compound:true,
@@ -2188,7 +2189,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'tue', label:'Tue · Lower A', color:'var(--orange)', rationale:'Heavy lower compounds followed by superset accessories and a kettlebell metabolic finisher. The largest muscle groups burn the most calories — training legs hard is the single most effective recomp strategy.',
+        { key:'day2', label:'Day 2 · Lower A', color:'var(--orange)', rationale:'Heavy lower compounds followed by superset accessories and a kettlebell metabolic finisher. The largest muscle groups burn the most calories — training legs hard is the single most effective recomp strategy.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'tr-gsquat', name:'Goblet Squat', badge:'compound', sets:4, w:70, r:12, rest:120, compound:true,
@@ -2220,7 +2221,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'thu', label:'Thu · Pull + Push', color:'var(--blue)', rationale:'Pull-dominant upper day with antagonist supersets. Reverses Monday\'s push emphasis. Balanced upper body development while maintaining metabolic resistance training structure.',
+        { key:'day3', label:'Day 3 · Pull + Push', color:'var(--blue)', rationale:'Pull-dominant upper day with antagonist supersets. Reverses Day 1\'s push emphasis. Balanced upper body development while maintaining metabolic resistance training structure.',
           blocks:[
             {label:'Superset A · Rest 90 sec', exs:[
               {id:'tr-pull',  name:'Lat Pulldown', badge:'compound', sets:4, w:100, r:10, rest:90, compound:true,
@@ -2260,7 +2261,7 @@ function getProgram(goal, days, weeks) {
             ]}
           ]
         },
-        { key:'fri', label:'Fri · Lower B', color:'var(--amber)', rationale:'Quad and glute emphasis with unilateral work. Machine compounds allow heavier loading safely. Metabolic treadmill finisher closes the training week and maximizes weekend fat oxidation.',
+        { key:'day4', label:'Day 4 · Lower B', color:'var(--amber)', rationale:'Quad and glute emphasis with unilateral work. Machine compounds allow heavier loading safely. Metabolic treadmill finisher closes the training block and maximizes fat oxidation.',
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'tr-lpress', name:'Leg Press', badge:'compound', sets:4, w:270, r:12, rest:120, compound:true,
@@ -2300,9 +2301,9 @@ function getProgram(goal, days, weeks) {
   const ppl = (base4) => {
     const [ua, la, ub, lb] = base4;
     return [
-      { ...ua, key:'push', label:'Day 1 · Push', rationale: ua.rationale },
-      { ...ub, key:'pull', label:'Day 2 · Pull', rationale: ub.rationale },
-      { key:'legs', label:'Day 3 · Legs', color:'var(--amber)', rationale:'Combined lower day — hinge and squat patterns in one session.',
+      { ...ua, key:'day1', label:'Day 1 · Push', rationale: ua.rationale },
+      { ...ub, key:'day2', label:'Day 2 · Pull', rationale: ub.rationale },
+      { key:'day3', label:'Day 3 · Legs', color:'var(--amber)', rationale:'Combined lower day — hinge and squat patterns in one session.',
         blocks:[
           { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0] ] },
           { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0], la.blocks[0].exs[1] ] },
@@ -2316,7 +2317,7 @@ function getProgram(goal, days, weeks) {
   const build5 = (base4) => {
     const [ua, la, ub, lb] = base4;
     const shoulders = {
-      key:'wed', label:'Wed · Shoulders + Arms', color:'var(--teal,#38d9c0)', rationale:'Dedicated delt and arm session. Mid-week placement means fresh shoulders after Monday push.',
+      key:'day3', label:'Day 3 · Shoulders + Arms', color:'var(--teal,#38d9c0)', rationale:'Dedicated delt and arm session. Fresh shoulders after Day 1 push.',
       blocks:[
         { label:'Shoulder Block · Rest 90 sec', exs:[
           {id:'s5-ap', name:'Arnold Press', badge:'compound', sets:4, w:40, r:10, rest:90, compound:true,
@@ -2345,14 +2346,14 @@ function getProgram(goal, days, weeks) {
         ]}
       ]
     };
-    return [ua, la, shoulders, ub, lb];
+    return [ua, la, shoulders, {...ub, key:'day4'}, {...lb, key:'day5'}];
   };
 
   // 2-day: Full Body A/B — push+hinge / pull+quad
   const build2 = (base4) => {
     const [ua, la, ub, lb] = base4;
     return [
-      { key:'mon', label:'Day 1 · Full Body A', color:'var(--accent)',
+      { key:'day1', label:'Day 1 · Full Body A', color:'var(--accent)',
         rationale:'Push + hinge emphasis. Bench and RDL are the two primary compounds. Accessories fill upper pull and quad so nothing gets neglected across the week.',
         blocks:[
           { label:'Compound Block', exs:[ ua.blocks[0].exs[0], la.blocks[0].exs[0] ].filter(Boolean) },
@@ -2360,7 +2361,7 @@ function getProgram(goal, days, weeks) {
           { ...(la.blocks.find(b=>b.cardio) || ub.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' }
         ]
       },
-      { key:'thu', label:'Day 2 · Full Body B', color:'var(--blue)',
+      { key:'day2', label:'Day 2 · Full Body B', color:'var(--blue)',
         rationale:'Pull + quad emphasis. Lat pulldown and hack squat as primary compounds. Accessories cover push and posterior chain to balance Day A.',
         blocks:[
           { label:'Compound Block', exs:[ ub.blocks[0].exs[0], lb.blocks[0].exs[0] ].filter(Boolean) },
@@ -2371,9 +2372,455 @@ function getProgram(goal, days, weeks) {
     ];
   };
 
-  if (!programs[goal]) return programs.build_muscle[4];
+  // ─── Female programs ────────────────────────────────────────────────────────
+  const femalePrograms = {
+    fat_burn: {
+      4: [
+        { key:'day1', label:'Day 1 · Upper Circuit', color:'var(--red)', rationale:'Upper body circuit with short rest to keep heart rate elevated.',
+          blocks:[
+            {label:'Compound Block · Rest 60 sec', exs:[
+              {id:'fbf-bench', name:'DB Bench Press', badge:'compound', sets:4, w:20, r:15, rest:60, compound:true,
+               why:'DB press at higher reps creates metabolic demand while developing chest and shoulders.',
+               cues:['Retract shoulder blades before pressing.','Full range — DBs at chest level at bottom.','Controlled 2-sec eccentric every rep.']},
+              {id:'fbf-press', name:'Arnold Press', badge:'compound', sets:3, w:15, r:15, rest:60, compound:true,
+               why:'Full delt recruitment in one movement. The rotation hits all three heads.',
+               cues:['Start palms facing you. Rotate outward as you press.','Elbows slightly in front of torso.','Core braced — no lumbar arch.']},
+            ]},
+            {label:'Accessory Block · Rest 45 sec', exs:[
+              {id:'fbf-lat', name:'Cable Lateral Raise', badge:'isolation', sets:3, w:7.5, r:20, rest:45, compound:false,
+               why:'Lateral delt creates shoulder-to-waist ratio. High reps and short rest maximize development.',
+               cues:['Lead with elbow — pinky slightly higher than thumb.','Stop at shoulder height.','4-sec negative.']},
+              {id:'fbf-kick', name:'Cable Kickback', badge:'isolation', sets:3, w:15, r:20, rest:45, compound:false,
+               why:'Tricep isolation at higher reps. Full extension at the top builds definition.',
+               cues:['Slight forward hinge. Upper arm stays parallel to floor.','Full extension — squeeze 1 second.','Controlled return.']},
+              {id:'fbf-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:20, r:20, rest:45, compound:false,
+               why:'High-rep pushdowns create metabolic demand and definition in the tricep.',
+               cues:['15° forward hinge.','Full extension at bottom. Squeeze 1 second.','Drop weight on final set, continue to failure.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fbf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-rotation movement that builds deep core stability without spinal shear.',
+               cues:['Lie on back. Arms to ceiling, knees at 90°.','Lower opposite arm and leg. Lower back stays pressed to floor.','10 per side = 1 set.']},
+              {id:'fbf-mon-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core stability. Quadratus lumborum and oblique strength.',
+               cues:['Elbow under shoulder. Hips stacked. Drive hips up.','30 sec each side.']},
+            ]},
+            {label:'Cardio Finisher · 25 min', cardio:true, exs:[
+              {id:'fbf-cardio1', name:'Incline Treadmill — Zone 2', badge:'cardio', cardioOnly:true,
+               cardioDesc:'3–4% incline, 3.0–3.3 mph. Glycogen partially depleted — body pulls from fat stores.', zone:'HR 130–145 BPM', duration:25}
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower Circuit', color:'var(--orange)', rationale:'Hip thrust primary — highest glute activation of any exercise. Lower body fat burn through the largest muscle groups.',
+          blocks:[
+            {label:'Compound Block · Rest 75 sec', exs:[
+              {id:'fbf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:15, rest:75, compound:true,
+               why:'Highest glute EMG activation of any exercise. At higher reps, becomes metabolically demanding while building the glutes.',
+               cues:['Bench at shoulder blade base. Feet flat, shoulder-width.','Drive through full foot. 2-sec hold at top.','Chin tucked. Do not hyperextend the spine.']},
+              {id:'fbf-rdl', name:'Romanian Deadlift', badge:'compound', sets:3, w:35, r:15, rest:75, compound:true,
+               why:'Constant hamstring tension throughout. Hip hinge pattern builds posterior chain.',
+               cues:['Push hips back — not down.','DBs against legs throughout descent.','Hamstring stretch at bottom. Drive hips forward at top.']},
+            ]},
+            {label:'Accessory Block · Rest 45 sec', exs:[
+              {id:'fbf-lcurl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:30, r:15, rest:45, compound:false,
+               why:'Direct hamstring isolation. Short rest elevates HR for the cardio transition.',
+               cues:['Hips pressed into pad throughout.','Full extension every rep.','3-sec eccentric.']},
+              {id:'fbf-ext', name:'Leg Extension', badge:'isolation', sets:3, w:30, r:20, rest:45, compound:false,
+               why:'VMO isolation at high reps — the quad muscle that shows composition change first.',
+               cues:['Pad at base of shin.','Full extension, 1-sec squeeze at top.','Slow controlled return.']},
+              {id:'fbf-abd', name:'Abductor Machine', badge:'isolation', sets:3, w:60, r:20, rest:45, compound:false,
+               why:'Glute medius creates hip shape and stabilizes every lower body movement.',
+               cues:['Slight forward lean — loads glute med, not TFL.','Full range, hold at end.','Control the return.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fbf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Posterior chain core pairs with hip hinge day. Direct erector training reduces lower back injury risk.',
+               cues:['Neutral spine. Brace abs before moving.','Rise until body is straight — not hyperextended.','2-sec hold. 3-sec lower.']},
+              {id:'fbf-tue-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Lower rectus abdominis through hip flexion. No neck strain, no lumbar compression.',
+               cues:['Lie flat. Knees at 90°.','Curl hips off the floor using abs.','3-sec eccentric.']},
+            ]},
+            {label:'Cardio Finisher · 25 min', cardio:true, exs:[
+              {id:'fbf-cardio2', name:'Stationary Bike — Zone 2', badge:'cardio', cardioOnly:true,
+               cardioDesc:'Post-leg. Keeps hips and quads moving without impact. Low resistance, steady cadence.', zone:'HR 120–140 BPM', duration:25}
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Upper Burn', color:'var(--red)', rationale:'Pull-dominant upper session. Back and bicep work balanced with shoulder health.',
+          blocks:[
+            {label:'Compound Block · Rest 60 sec', exs:[
+              {id:'fbf-pull', name:'Lat Pulldown', badge:'compound', sets:4, w:40, r:15, rest:60, compound:true,
+               why:'Lat pulldown at short rest hits the largest upper body muscle and creates significant metabolic demand.',
+               cues:['Lean 10–15 degrees back. Lead with elbows.','Full dead hang at top.','Chest up throughout.']},
+              {id:'fbf-row', name:'Seated Cable Row', badge:'compound', sets:4, w:40, r:15, rest:60, compound:true,
+               why:'Upper back development. The muscles that create posture.',
+               cues:['Torso upright. No rocking.','Elbows wide. Handle to lower sternum.','Full scapular protraction between reps.']},
+            ]},
+            {label:'Accessory Block · Rest 45 sec', exs:[
+              {id:'fbf-face', name:'Face Pull', badge:'isolation', sets:3, w:20, r:20, rest:45, compound:false,
+               why:'Shoulder health non-negotiable. Counters internal rotation from pressing.',
+               cues:['Pull to ears. End position: hands behind ears, elbows wide.','Light weight — corrective.']},
+              {id:'fbf-curl', name:'Incline DB Curl', badge:'isolation', sets:3, w:12.5, r:15, rest:45, compound:false,
+               why:'Stretch-position curl creates greater bicep hypertrophy stimulus.',
+               cues:['Arms hang straight at start. Shoulder stays back.','Supinate through the curl.','3-sec slow negative.']},
+              {id:'fbf-ham', name:'Hammer Curl', badge:'isolation', sets:3, w:12.5, r:15, rest:45, compound:false,
+               why:'Brachialis development adds to arm definition.',
+               cues:['Elbow pinned to side. Strict alternating.','Full extension at bottom.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fbf-thu-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Only weighted core exercise with progressive overload. Constant tension builds visible abs.',
+               cues:['Kneel facing cable. Rope at forehead.','Crunch DOWN toward knees.','Hold 1 sec at bottom.']},
+              {id:'fbf-thu-bd', name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Builds lumbar extensors and glute coordination. No spinal compression.',
+               cues:['On all fours. Extend opposite arm and leg.','Back stays level — no rotation.','5-sec hold. 10 per side = 1 set.']},
+            ]},
+            {label:'Cardio Finisher · 25 min', cardio:true, exs:[
+              {id:'fbf-cardio3', name:'Elliptical — Zone 2', badge:'cardio', cardioOnly:true,
+               cardioDesc:'Low-impact full-body. Keeps total burn high without stressing the fatigued back.', zone:'HR 125–145 BPM', duration:25}
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower Burn', color:'var(--orange)', rationale:'Unilateral lower session. Bulgarian split squat primary — single-leg work maximizes glute development and corrects imbalances.',
+          blocks:[
+            {label:'Compound Block · Rest 75 sec', exs:[
+              {id:'fbf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:4, w:15, r:12, rest:75, compound:true,
+               why:'Single-leg compound — maximum glute and quad development. Catches and corrects left-right imbalances.',
+               cues:['Rear foot elevated. Front foot far enough for vertical shin.','Descend straight down.','Drive through the heel of the front foot.']},
+              {id:'fbf-gob', name:'Goblet Squat', badge:'compound', sets:3, w:25, r:15, rest:75, compound:true,
+               why:'Front-loaded squat forces upright torso — superior quad and glute activation.',
+               cues:['Hold DB at chest. Elbows inside knees at bottom.','Below parallel — full depth.','Drive through full foot at top.']},
+            ]},
+            {label:'Accessory Block · Rest 45 sec', exs:[
+              {id:'fbf-slcurl', name:'Single-Leg Curl', badge:'isolation', sets:3, w:20, r:15, rest:45, compound:false,
+               why:'Unilateral hamstring work surfaces and corrects imbalances.',
+               cues:['Hips pressed into pad. No lifting.','Full extension every rep.','3-sec eccentric.']},
+              {id:'fbf-abd2', name:'Abductor Machine', badge:'isolation', sets:3, w:60, r:20, rest:45, compound:false,
+               why:'Glute medius closes the session — essential for hip shape and lower body stability.',
+               cues:['Forward lean. Full range. Hold at end position. Control return.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'fbf-fri-pl', name:'Plank', badge:'core', sets:3, w:0, r:40, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Anti-extension baseline. Reinforces the bracing pattern for the training week close.',
+               cues:['Forearms under shoulders. Hips level.','Squeeze glutes and quads. Breathe.']},
+              {id:'fbf-fri-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion decompresses the spine after lower compounds.',
+               cues:['Hang from bar. Full shoulder extension.','Raise knees to hip height. Controlled.','3-sec lower. No swinging.']},
+            ]},
+            {label:'Cardio Finisher · 25 min', cardio:true, exs:[
+              {id:'fbf-cardio4', name:'Bike — Easy Zone 2', badge:'cardio', cardioOnly:true,
+               cardioDesc:'End of training week. Low resistance. Protect the weekend recovery window.', zone:'HR 110–130 BPM', duration:25}
+            ]}
+          ]
+        }
+      ]
+    },
+    build_muscle: {
+      4: [
+        { key:'day1', label:'Day 1 · Upper A', color:'var(--accent)', rationale:'Push-dominant upper day. Chest and shoulder compounds when CNS is freshest.',
+          blocks:[
+            {label:'Compound Block · Rest 2 min', exs:[
+              {id:'bmf-bench', name:'DB Bench Press', badge:'compound', sets:4, w:20, r:12, rest:120, compound:true,
+               why:'DB press demands more stabilizer recruitment than barbell — greater total muscle activation per rep.',
+               cues:['Retract shoulder blades. DBs at chest level at bottom.','Press to lockout. Squeeze 1 sec at top.','3-sec eccentric every rep.']},
+              {id:'bmf-press', name:'Arnold Press', badge:'compound', sets:3, w:15, r:12, rest:120, compound:true,
+               why:'All three delt heads in one movement.',
+               cues:['Palms facing you at chin. Rotate outward as you press.','Elbows in front of torso plane.','Core braced.']},
+            ]},
+            {label:'Accessory Block · Rest 75 sec', exs:[
+              {id:'bmf-fly', name:'Cable Low-to-High Fly', badge:'isolation', sets:3, w:10, r:15, rest:75, compound:false,
+               why:'Constant cable tension targets the sternal pec through full arc.',
+               cues:['Slight forward lean, soft elbow bend.','Bring elbows together.','2-sec squeeze at the top.']},
+              {id:'bmf-lat', name:'Cable Lateral Raise', badge:'isolation', sets:3, w:7.5, r:15, rest:60, compound:false,
+               why:'Lateral delt builds shoulder-to-waist ratio.',
+               cues:['Lead with elbow. Stop at shoulder height.','4-sec negative.']},
+              {id:'bmf-kick', name:'Cable Kickback', badge:'isolation', sets:3, w:15, r:15, rest:75, compound:false,
+               why:'Tricep isolation for arm definition.',
+               cues:['Upper arm parallel to floor. Full extension — squeeze 1 second.']},
+              {id:'bmf-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:20, r:15, rest:75, compound:false,
+               why:'Lateral and medial head finisher.',
+               cues:['15° lean. Full extension. Drop set on last set.']},
+            ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bmf-mon-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'The only ab exercise with direct progressive overload.',
+               cues:['Rope at forehead. Crunch DOWN toward knees.','1-sec hold. Slow return.']},
+              {id:'bmf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Builds transverse abdominis — the deep brace that protects the spine under load.',
+               cues:['Lie on back. Arms to ceiling, knees 90°.','Lower opposite arm + leg. Back flat.','5-sec descent. 10 per side.']},
+            ]},
+            {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
+              {id:'bmf-c1', name:'Incline Treadmill Walk', badge:'cardio', cardioOnly:true,
+               cardioDesc:'3–4% incline. Post-lift fat oxidation window.', zone:'HR 120–140 BPM', duration:20}
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower A', color:'var(--blue)', rationale:'Hip thrust primary — highest glute activation of any exercise. Pairs with RDL for complete posterior chain.',
+          blocks:[
+            {label:'Compound Block · Rest 2–3 min', exs:[
+              {id:'bmf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:12, rest:150, compound:true,
+               why:'Greatest glute EMG activation. Fully shortened position unique — squats and deadlifts never achieve it.',
+               cues:['Bench at shoulder blades. Feet flat, shoulder-width.','Drive through full foot.','Level hips at top. 2-sec hold every rep.']},
+              {id:'bmf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:35, r:12, rest:120, compound:true,
+               why:'Constant hamstring tension throughout. Completes the posterior chain picture.',
+               cues:['Push hips back — not down.','DBs against legs throughout.','Hamstring stretch at bottom. Drive hips forward at top.']},
+            ]},
+            {label:'Accessory Block · Rest 75 sec', exs:[
+              {id:'bmf-lcurl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:30, r:12, rest:75, compound:false,
+               why:'Knee flexion hits the short head of bicep femoris that RDL barely touches.',
+               cues:['Hips pressed into pad. Full extension every rep.','3-sec eccentric.']},
+              {id:'bmf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:15, r:12, rest:90, compound:true,
+               why:'Unilateral training catches and corrects left-right imbalances.',
+               cues:['Rear foot elevated. Front foot far enough for vertical shin.','Drive through heel of front foot.']},
+              {id:'bmf-calf1', name:'Standing Calf Raise', badge:'isolation', sets:4, w:70, r:20, rest:45, compound:false,
+               why:'Calves respond to volume. High reps, short rest, full range.',
+               cues:['Full hang at bottom, pause. Full rise at top, pause.']},
+            ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bmf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Posterior core on a posterior chain day. Direct erector work prevents breakdown under load.',
+               cues:['Neutral spine. Brace before moving.','Rise until body is straight.','2-sec hold. 3-sec lower.']},
+              {id:'bmf-tue-hlr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion decompresses lumbar after heavy deadlifts.',
+               cues:['Dead hang. Raise knees to hip height or above.','3-sec lowering phase.']},
+            ]},
+            {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
+              {id:'bmf-c2', name:'Stationary Bike', badge:'cardio', cardioOnly:true,
+               cardioDesc:'Post-leg — bike over treadmill. Aids DOMS recovery without impact.', zone:'HR 120–140 BPM', duration:20}
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Upper B', color:'var(--green)', rationale:'Pull-dominant upper day. Rear delts treated as a priority for posture and shoulder health.',
+          blocks:[
+            {label:'Compound Block · Rest 2 min', exs:[
+              {id:'bmf-pull', name:'Lat Pulldown', badge:'compound', sets:4, w:40, r:12, rest:120, compound:true,
+               why:'Widest back muscle. Neutral grip allows fuller ROM and reduces rotator cuff strain.',
+               cues:['Lean back 10–15 degrees.','Lead with elbows into back pockets.','Full dead hang at top.']},
+              {id:'bmf-row', name:'Seated Cable Row', badge:'compound', sets:4, w:45, r:12, rest:120, compound:true,
+               why:'Rhomboids, lower traps, rear delts — posture-building muscles.',
+               cues:['Torso upright. No rocking.','Elbows wide and high. Handle to lower sternum.','Full scapular protraction between reps.']},
+            ]},
+            {label:'Accessory Block · Rest 75 sec', exs:[
+              {id:'bmf-dbr', name:'Single-Arm DB Row', badge:'isolation', sets:3, w:25, r:12, rest:75, compound:false,
+               why:'Unilateral work catches dominant-side compensation.',
+               cues:['Row to hip, not chest.','Let shoulder drop at bottom for full protraction.','Slight rotation at top.']},
+              {id:'bmf-face', name:'Face Pull', badge:'isolation', sets:3, w:20, r:20, rest:45, compound:false,
+               why:'External rotation under load counters internal rotation torque from pressing.',
+               cues:['Pull to ears. Hands end behind ears, elbows wide.','Light weight — corrective.']},
+              {id:'bmf-icurl', name:'Incline DB Curl', badge:'isolation', sets:3, w:12.5, r:12, rest:75, compound:false,
+               why:'Stretch-position loading produces greater hypertrophy than shortened position.',
+               cues:['Arms hang straight. Supinate through curl.','3-sec slow negative.']},
+              {id:'bmf-ham', name:'Hammer Curl', badge:'isolation', sets:3, w:12.5, r:12, rest:75, compound:false,
+               why:'Brachialis development adds to arm definition.',
+               cues:['Elbow pinned. Strict alternating. Full extension.']},
+            ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bmf-thu-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Highest anti-extension activation. Full anterior chain under leverage.',
+               cues:['Start kneeling. Arms straight, wheel under shoulders.','Roll out slowly — back stays neutral.','Pull back by squeezing abs.']},
+              {id:'bmf-thu-pp', name:'Pallof Press', badge:'core', sets:3, w:20, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Most effective anti-rotation exercise with loadable resistance.',
+               cues:['Stand sideways to cable. Press straight out, hold 2 sec.','12 per side.']},
+            ]},
+            {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
+              {id:'bmf-c3', name:'Elliptical', badge:'cardio', cardioOnly:true,
+               cardioDesc:'Upper pull day — elliptical preferred. Low impact.', zone:'HR 120–140 BPM', duration:20}
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower B', color:'var(--amber)', rationale:'Glute and quad session with unilateral emphasis. Bulgarian split squat as primary compound.',
+          blocks:[
+            {label:'Compound Block · Rest 2–3 min', exs:[
+              {id:'bmf-bss2', name:'Bulgarian Split Squat', badge:'compound', sets:4, w:15, r:12, rest:150, compound:true,
+               why:'Per-leg stimulus at significantly lower total load. Each leg works independently.',
+               cues:['Rear foot elevated, laces down.','Front foot far for vertical shin.','Descend straight down. Torso upright.']},
+              {id:'bmf-hip2', name:'Hip Thrust', badge:'compound', sets:3, w:45, r:12, rest:120, compound:true,
+               why:'Fully shortened glute position — no squat achieves it. Primary glute builder.',
+               cues:['Bench at shoulder blades. Drive through full foot.','2-sec hold at top. Level hips.']},
+            ]},
+            {label:'Accessory Block · Rest 75 sec', exs:[
+              {id:'bmf-ext', name:'Leg Extension', badge:'isolation', sets:3, w:30, r:15, rest:75, compound:false,
+               why:'VMO isolation — full extension produces unique quad signal.',
+               cues:['Pad at base of shin. Full extension, 1-sec squeeze.','Slow controlled return.']},
+              {id:'bmf-abd', name:'Abductor Machine', badge:'isolation', sets:3, w:70, r:20, rest:45, compound:false,
+               why:'Glute medius stabilizes every lower body movement.',
+               cues:['Forward lean — loads glute med, not TFL.','Full range, hold at end. Control return.']},
+              {id:'bmf-calf2', name:'Seated Calf Raise', badge:'isolation', sets:4, w:45, r:20, rest:45, compound:false,
+               why:'Soleus — only accessible with bent knee. High volume is the only stimulus it responds to.',
+               cues:['Full stretch and rise. Pause at both ends.']},
+            ]},
+            {label:'Core Block · Rest 45 sec', exs:[
+              {id:'bmf-fri-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:45, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core training after heavy unilateral loads. Reinforces hip-stabilizer chain.',
+               cues:['Elbow under shoulder. Drive hips up. 35 sec each side.']},
+              {id:'bmf-fri-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+               why:'Lower rectus through hip flexion. No neck involvement.',
+               cues:['Roll hips off floor using abs.','3-sec lowering. Feet stay off ground between reps.']},
+            ]},
+            {label:'Zone 2 Finisher · 20 min', cardio:true, exs:[
+              {id:'bmf-c4', name:'Stationary Bike', badge:'cardio', cardioOnly:true,
+               cardioDesc:'End of week. Low resistance. Weekend recovery window.', zone:'HR 110–130 BPM', duration:20}
+            ]}
+          ]
+        }
+      ]
+    },
+    transform: {
+      4: [
+        { key:'day1', label:'Day 1 · Push + Pull', color:'var(--teal)', rationale:'Antagonist supersets — push and pull paired to keep heart rate elevated while allowing partial recovery.',
+          blocks:[
+            {label:'Superset A · Rest 90 sec', exs:[
+              {id:'trf-bench', name:'DB Bench Press', badge:'compound', sets:4, w:20, r:12, rest:90, compound:true,
+               why:'DBs demand more stabilizer recruitment. Superset with rows for elevated heart rate.',
+               cues:['Scapulae retracted. DBs at chest at bottom.','Press to lockout. Squeeze 1 sec at top.','Alternate with rows — no rest between.']},
+              {id:'trf-row', name:'Dumbbell Row', badge:'compound', sets:4, w:25, r:12, rest:90, compound:true,
+               why:'Paired with bench — while chest recovers, back works.',
+               cues:['Row to hip, not chest.','Let shoulder protract at bottom.','Slight rotation at top.']},
+            ]},
+            {label:'Superset B · Rest 60 sec', exs:[
+              {id:'trf-push', name:'Push-Up', badge:'compound', sets:3, w:0, r:15, rest:60, compound:true,
+               why:'Bodyweight push after DB bench pre-exhausts the chest metabolically.',
+               cues:['Hands just outside shoulders. Elbows 45°.','Full lockout at top. Chest to floor.']},
+              {id:'trf-face', name:'Face Pull', badge:'isolation', sets:3, w:20, r:15, rest:60, compound:false,
+               why:'External rotation paired with push-ups. Shoulder health.',
+               cues:['Pull to ears. Elbows wide. Light weight — corrective.']},
+            ]},
+            {label:'Accessory Block · Rest 45 sec', exs:[
+              {id:'trf-lat', name:'Cable Lateral Raise', badge:'isolation', sets:3, w:7.5, r:15, rest:45, compound:false,
+               why:'Shoulder-to-waist ratio builder. Constant cable tension.',
+               cues:['Lead with elbow. Stop at shoulder height. 4-sec negative.']},
+              {id:'trf-kick', name:'Cable Kickback', badge:'isolation', sets:3, w:15, r:15, rest:45, compound:false,
+               why:'Tricep definition. Full extension for maximum contraction.',
+               cues:['Upper arm parallel to floor. Full extension, squeeze.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'trf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Deep core stability. Trains the brace that makes heavy paired sets safer.',
+               cues:['Arms to ceiling, knees 90°. Lower opposite arm + leg. Back flat.','5-sec descent. 10 per side.']},
+              {id:'trf-mon-pp', name:'Pallof Press', badge:'core', sets:3, w:20, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-rotation under load — transfers to pressing and rowing stability.',
+               cues:['Stand sideways to cable. Press straight out, hold 2 sec. 12 per side.']},
+            ]},
+            {label:'HIIT Finisher · 15 min', cardio:true, exs:[
+              {id:'trf-c1', name:'Rower — Intervals', badge:'cardio', cardioOnly:true,
+               cardioDesc:'30 sec hard / 30 sec easy × 15 rounds. Full-body intervals maximize EPOC.', zone:'HR 150–170 BPM intervals', duration:15}
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower A', color:'var(--orange)', rationale:'Hip thrust and RDL as primary compounds. Largest muscle groups burn the most calories.',
+          blocks:[
+            {label:'Compound Block · Rest 2 min', exs:[
+              {id:'trf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:12, rest:120, compound:true,
+               why:'Greatest glute activation. Glutes are the largest muscle — training them hard burns the most calories.',
+               cues:['Bench at shoulder blades. Feet flat, shoulder-width.','Drive through full foot. 2-sec hold at top.','Level hips. Chin tucked.']},
+              {id:'trf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:35, r:12, rest:120, compound:true,
+               why:'Posterior chain under constant tension. Complements hip thrust for total lower body development.',
+               cues:['Hip hinge — hips back, not down.','DBs against legs throughout.','Hamstring stretch at bottom. Drive hips forward.']},
+            ]},
+            {label:'Superset Block · Rest 60 sec', exs:[
+              {id:'trf-ext', name:'Leg Extension', badge:'isolation', sets:3, w:30, r:15, rest:60, compound:false,
+               why:'Quad isolation paired with hamstring curl — antagonist superset. Brutal metabolic pump.',
+               cues:['Pad at base of shin. Full extension, 1-sec squeeze.']},
+              {id:'trf-lcurl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:30, r:15, rest:60, compound:false,
+               why:'Paired with extensions — while quads recover, hamstrings work.',
+               cues:['Hips pressed into pad. Full extension every rep. 3-sec eccentric.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'trf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Posterior core on a heavy lower day. Direct erector work accelerates adaptation.',
+               cues:['Neutral spine. Brace abs. Lift until body is straight. 2-sec hold.']},
+              {id:'trf-tue-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral stability for the recomp athlete. Anti-lateral core for HIIT.',
+               cues:['Elbow under shoulder. Stack hips. 35 sec each side.']},
+            ]},
+            {label:'Metabolic Finisher · 15 min', cardio:true, exs:[
+              {id:'trf-c2', name:'KB Swing — Intervals', badge:'cardio', cardioOnly:true,
+               cardioDesc:'30 sec on / 30 sec off × 15 rounds. Posterior chain power + cardiovascular conditioning.', zone:'HR 145–165 BPM intervals', duration:15}
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Pull + Push', color:'var(--blue)', rationale:'Pull-dominant upper with antagonist supersets. Reverses Monday push emphasis.',
+          blocks:[
+            {label:'Superset A · Rest 90 sec', exs:[
+              {id:'trf-pull', name:'Lat Pulldown', badge:'compound', sets:4, w:40, r:12, rest:90, compound:true,
+               why:'Widest back muscle — V-taper foundation. Paired with pressing for elevated heart rate.',
+               cues:['Lean back 10–15°. Lead with elbows.','Full dead hang at top.']},
+              {id:'trf-apress', name:'Arnold Press', badge:'compound', sets:4, w:15, r:12, rest:90, compound:true,
+               why:'Full three-head delt recruitment. Paired with pulldowns — while delts press, lats recover.',
+               cues:['Palms facing you at chin. Rotate outward.','Elbows in front of torso throughout.']},
+            ]},
+            {label:'Superset B · Rest 60 sec', exs:[
+              {id:'trf-crow', name:'Seated Cable Row', badge:'compound', sets:3, w:45, r:12, rest:60, compound:true,
+               why:'Horizontal pull — rhomboids, mid-traps, rear delts. Posture-building muscles.',
+               cues:['Torso upright. Elbows wide. Handle to lower sternum.','Full scapular protraction between reps.']},
+              {id:'trf-fly', name:'Cable Low-to-High Fly', badge:'isolation', sets:3, w:10, r:12, rest:60, compound:false,
+               why:'Constant tension chest fly. Paired with rows — chest works while back recovers.',
+               cues:['Slight forward lean, soft elbow bend. Bring elbows together.','2-sec squeeze at top.']},
+            ]},
+            {label:'Accessory Block · Rest 45 sec', exs:[
+              {id:'trf-icurl', name:'Incline DB Curl', badge:'isolation', sets:3, w:12.5, r:12, rest:45, compound:false,
+               why:'Stretch-position bicep loading — superior hypertrophy signal.',
+               cues:['Arms hang straight. Supinate through curl. 3-sec negative.']},
+              {id:'trf-pushd', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:20, r:15, rest:45, compound:false,
+               why:'Lateral and medial head isolation. Short rest keeps metabolic cost high.',
+               cues:['15° lean. Full extension. Drop 30% on last set.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'trf-thu-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Loaded flexion counterbalances the spinal extension from pulling movements.',
+               cues:['Rope at forehead. Crunch DOWN — elbows toward knees.','1-sec hold. Slow return.']},
+              {id:'trf-thu-bd', name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Erector and glute coordination. Active recovery on high-volume upper day.',
+               cues:['All fours. Opposite arm + leg extended. Back level. 5-sec hold. 10 per side.']},
+            ]},
+            {label:'HIIT Finisher · 15 min', cardio:true, exs:[
+              {id:'trf-c3', name:'Bike — Sprint Intervals', badge:'cardio', cardioOnly:true,
+               cardioDesc:'20 sec all-out / 40 sec cruise × 15 rounds. Preserve muscle while creating EPOC.', zone:'HR 150–175 BPM sprints', duration:15}
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower B', color:'var(--amber)', rationale:'Unilateral lower emphasis. Bulgarian split squat primary. Metabolic finisher closes the training week.',
+          blocks:[
+            {label:'Compound Block · Rest 2 min', exs:[
+              {id:'trf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:4, w:15, r:12, rest:120, compound:true,
+               why:'Maximum per-leg stimulus at lower total load. Each leg works independently.',
+               cues:['Rear foot elevated. Front foot far for vertical shin.','Descend straight down. Torso upright.']},
+              {id:'trf-hip2', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:12, rest:120, compound:true,
+               why:'Closes lower day with maximum glute stimulus.',
+               cues:['Bench at shoulder blades. 2-sec hold at top. Level hips.']},
+            ]},
+            {label:'Superset Block · Rest 60 sec', exs:[
+              {id:'trf-goblet', name:'Goblet Squat', badge:'compound', sets:3, w:25, r:15, rest:60, compound:true,
+               why:'Front-loaded squat forces upright torso — superior quad activation.',
+               cues:['Hold DB at chest. Elbows inside knees. Below parallel. Drive through full foot.']},
+              {id:'trf-calf', name:'Standing Calf Raise', badge:'isolation', sets:3, w:70, r:20, rest:60, compound:false,
+               why:'Calves respond to volume. Paired with squats to keep HR elevated.',
+               cues:['Full hang at bottom. Full rise at top. Pause at both ends.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'trf-fri-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Highest anti-extension activation. Anterior core is warm after lower compounds.',
+               cues:['Kneel, wheel under shoulders. Roll out slowly — back stays neutral.','Pull back by squeezing abs.']},
+              {id:'trf-fri-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion decompresses spine after heavy lower work. Closes training week.',
+               cues:['Hang from bar. Raise knees to hip height. 3-sec lower. No swinging.']},
+            ]},
+            {label:'Metabolic Finisher · 15 min', cardio:true, exs:[
+              {id:'trf-c4', name:'Incline Treadmill — Intervals', badge:'cardio', cardioOnly:true,
+               cardioDesc:'1 min fast walk (10% incline) / 1 min easy × 7–8 rounds. Joint-friendly after heavy legs.', zone:'HR 135–160 BPM intervals', duration:15}
+            ]}
+          ]
+        }
+      ]
+    }
+  };
+  // ─── End female programs ─────────────────────────────────────────────────────
 
-  const base = programs[goal][4] || programs.build_muscle[4];
+  const activePrograms = isFemale ? femalePrograms : programs;
+
+  if (!activePrograms[goal]) return activePrograms.build_muscle?.[4] || programs.build_muscle[4];
+
+  const base = activePrograms[goal][4] || programs.build_muscle[4];
   if (days === 2) return build2(base);
   if (days === 3) return ppl(base);
   if (days === 5) return build5(base);
@@ -2855,6 +3302,7 @@ function buildProgram() {
 
   renderTracker();
   showView('dashboard');
+  syncToCloud();
 }
 
 function resetProgram() {
@@ -2912,7 +3360,7 @@ function goHome() {
 // RENDER TRACKER
 // ═══════════════════════════════════════════════════════
 function renderTracker() {
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
   const phase = getPhase(currentWeek, cfg.goal);
 
   // Phase banner
@@ -3191,6 +3639,7 @@ const loggedSetsMap = {}; // exId → [false,false,...]
 const sessionSetsMap = {};
 let currentCloudSessionId = null;
 let sessionStartTime = null;
+const sessionPrCache = {}; // exerciseName → best est1rm seen this session; prevents async PR double-count
 
 async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
@@ -3292,19 +3741,25 @@ function logSet(id, i) {
           const cardEl = document.getElementById('ec-' + id);
           const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
           // Exercise category from day label (upper / lower / full_body / day key)
-          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks);
+          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
           const dayObj = prog?.find(d => d.key === currentDay);
           const dl = dayObj?.label || '';
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
-          // PR detection against personal_records
+          // PR detection — check session cache first to avoid async race on rapid logging
           let isPr = false;
           if (w > 0 && r > 0 && est1rm > 0) {
-            const { data: existing } = await sb.from('personal_records')
-              .select('best_estimated_1rm_lbs')
-              .eq('user_id', currentUser.id)
-              .eq('exercise_name', rawName)
-              .maybeSingle();
-            isPr = !existing || est1rm > (existing.best_estimated_1rm_lbs || 0);
+            const cachedBest = sessionPrCache[rawName] || 0;
+            if (cachedBest > 0) {
+              isPr = est1rm > cachedBest;
+            } else {
+              const { data: existing } = await sb.from('personal_records')
+                .select('best_estimated_1rm_lbs')
+                .eq('user_id', currentUser.id)
+                .eq('exercise_name', rawName)
+                .maybeSingle();
+              isPr = !existing || est1rm > (existing.best_estimated_1rm_lbs || 0);
+            }
+            if (isPr || est1rm > cachedBest) sessionPrCache[rawName] = est1rm;
           }
           // Insert set row
           const { error: setErr } = await sb.from('sets').insert({
@@ -3653,7 +4108,7 @@ function finishSession() {
   banner.scrollIntoView({behavior:'smooth'});
 
   // Rebuild next session banners with new data
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
   buildNextSessionBanners(program);
   updateProgress();
 
@@ -3762,6 +4217,7 @@ function finishSession() {
     localStorage.removeItem('tandem_session_start_time');
     currentCloudSessionId = null;
     sessionStartTime = null;
+    Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
   }
 }
 
@@ -3981,9 +4437,10 @@ async function syncToCloud() {
         program_days_per_week: cfg.days,
         sex: cfg.sex,
         fitness_level: cfg.experience,
+        start_weight_lbs: cfg.weight,
         current_weight_lbs: cfg.weight,
         goal_weight_lbs: cfg.goalWeight,
-        height_inches: cfg.height,
+        height_inches: cfg.heightIn,
         age: cfg.age,
         current_week: currentWeek,
         theme_color: cfg.themeColor || '#1B5E38'
@@ -4110,7 +4567,7 @@ async function loadDashboard() {
 
     // 2. Current user targets + partner_id
     const { data: userRow } = await sb.from('users')
-      .select('partner_id, display_name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g')
+      .select('partner_id, name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g')
       .eq('id', uid).maybeSingle();
     dashboardData.userTargets = userRow || null;
 
@@ -4125,7 +4582,7 @@ async function loadDashboard() {
 
       // 3b. Partner display info (theme_color from users table)
       const { data: partnerRow } = await sb.from('users')
-        .select('display_name, theme_color').eq('id', pid).maybeSingle();
+        .select('name, theme_color').eq('id', pid).maybeSingle();
       dashboardData.partnerTargets = partnerRow || null;
 
       // 3c. Weekly sessions for day dots
@@ -4245,8 +4702,8 @@ function renderDashboard() {
   const theirPtsEl = document.getElementById('dashCompTheirPts');
   const barFill = document.getElementById('dashCompBarFill');
 
-  if (myNameEl) myNameEl.textContent = myLbRow?.name || ut?.display_name || currentUser?.email?.split('@')[0] || 'You';
-  if (theirNameEl) theirNameEl.textContent = theirLbRow?.name || dashboardData.partnerTargets?.display_name || 'Partner';
+  if (myNameEl) myNameEl.textContent = myLbRow?.name || ut?.name || currentUser?.email?.split('@')[0] || 'You';
+  if (theirNameEl) theirNameEl.textContent = theirLbRow?.name || dashboardData.partnerTargets?.name || 'Partner';
 
   if (!hasPartner) {
     if (myPtsEl) { myPtsEl.textContent = '— pts'; myPtsEl.style.color = ''; }
@@ -4670,7 +5127,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks);
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }
@@ -4708,7 +5165,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks);
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }
