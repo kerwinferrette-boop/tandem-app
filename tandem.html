@@ -4515,14 +4515,20 @@ async function syncToCloud() {
       const { error } = await sb.from('users').upsert({
         id: uid,
         program_goal: cfg.goal,
+        program_weeks: cfg.weeks || null,
         program_days_per_week: cfg.days,
         sex: cfg.sex,
         fitness_level: cfg.experience,
-        start_weight_lbs: cfg.weight,
-        current_weight_lbs: cfg.weight,
-        goal_weight_lbs: cfg.goalWeight,
-        height_inches: cfg.heightIn,
-        age: cfg.age,
+        equipment: cfg.equipment || null,
+        workout_duration_minutes: cfg.workout_duration_minutes || null,
+        preferred_workout_time: cfg.preferred_workout_time || null,
+        injuries: cfg.injuries || null,
+        secondary_goal: cfg.secondary_goal || null,
+        start_weight_lbs: cfg.weight || null,
+        current_weight_lbs: cfg.weight || null,
+        goal_weight_lbs: cfg.targetWeight || cfg.goalWeight || null,
+        height_inches: cfg.heightIn || cfg.height || null,
+        age: cfg.age || null,
         current_week: currentWeek,
         theme_color: cfg.themeColor || '#1B5E38'
       }, { onConflict: 'id' });
@@ -5231,12 +5237,21 @@ function refreshAvatarPreview(){
         cfg = {
           goal: userData.program_goal,
           days: userData.program_days_per_week,
+          weeks: userData.program_weeks || 12,
           sex: userData.sex,
           experience: userData.fitness_level,
+          equipment: userData.equipment || null,
+          workout_duration_minutes: userData.workout_duration_minutes || null,
+          preferred_workout_time: userData.preferred_workout_time || null,
+          injuries: userData.injuries || null,
+          secondary_goal: userData.secondary_goal || null,
           weight: userData.current_weight_lbs,
+          targetWeight: userData.goal_weight_lbs,
           goalWeight: userData.goal_weight_lbs,
+          heightIn: userData.height_inches,
           height: userData.height_inches,
-          age: userData.age
+          age: userData.age,
+          themeColor: userData.theme_color || '#1B5E38'
         };
         selectedGoal = cfg.goal;
         selectedDays = cfg.days || 4;
