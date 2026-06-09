@@ -1124,10 +1124,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <div class="auth-sent">
           <div class="auth-sent-icon" data-icon="key"></div>
           <div class="auth-sent-title">Enter Your Code</div>
-          <div class="auth-sent-sub">We sent a 6-digit code to <strong id="authSentEmail"></strong>.<br>Check your inbox (and spam).</div>
+          <div class="auth-sent-sub">We sent a sign-in code to <strong id="authSentEmail"></strong>.<br>Check your inbox (and spam).</div>
         </div>
-        <span class="auth-field-label" style="margin-top:14px;">6-digit code</span>
-        <input class="auth-input" type="text" inputmode="numeric" id="authOTPCode" placeholder="000000" maxlength="6" autocomplete="one-time-code" style="text-align:center;font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:.3em;">
+        <span class="auth-field-label" style="margin-top:14px;">Sign-in code</span>
+        <input class="auth-input" type="text" inputmode="numeric" id="authOTPCode" placeholder="00000000" maxlength="8" autocomplete="one-time-code" style="text-align:center;font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:.3em;">
         <button class="auth-send-btn" onclick="verifyOTP()">Verify →</button>
         <button class="auth-skip" style="margin-top:4px;" onclick="document.getElementById('authOTPState').style.display='none';document.getElementById('authFormInner').style.display='block';">← Back</button>
         <button class="auth-skip" onclick="skipAuth()" style="margin-top:4px;">Continue without signing in</button>
@@ -3192,6 +3192,43 @@ const sessionSetsMap = {};
 let currentCloudSessionId = null;
 let sessionStartTime = null;
 
+async function startOrResumeSession() {
+  if (!currentUser) throw new Error('Not signed in');
+  const storedId = localStorage.getItem('tandem_active_session_id');
+  if (storedId) {
+    const { data } = await sb.from('workout_sessions')
+      .select('id')
+      .eq('id', storedId)
+      .eq('user_id', currentUser.id)
+      .eq('completed', false)
+      .maybeSingle();
+    if (data?.id) {
+      if (!localStorage.getItem('tandem_session_start_time')) {
+        localStorage.setItem('tandem_session_start_time', String(Date.now()));
+      }
+      return data.id;
+    }
+    localStorage.removeItem('tandem_active_session_id');
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const phase = getPhase(currentWeek, cfg.goal);
+  const { data: newSession, error } = await sb.from('workout_sessions').insert({
+    user_id: currentUser.id,
+    session_date: today,
+    week_number: currentWeek,
+    day_type: currentDay,
+    program_goal: cfg.goal,
+    phase_name: phase?.name || null,
+    completed: false
+  }).select('id').single();
+  if (error) throw error;
+  localStorage.setItem('tandem_active_session_id', newSession.id);
+  if (!localStorage.getItem('tandem_session_start_time')) {
+    localStorage.setItem('tandem_session_start_time', String(Date.now()));
+  }
+  return newSession.id;
+}
+
 function initExLogging(exId, sets) {
   if (!loggedSetsMap[exId]) loggedSetsMap[exId] = Array(sets).fill(false);
 }
@@ -3245,6 +3282,63 @@ function logSet(id, i) {
       wEl.classList.add('done'); rEl.classList.add('done');
     }
     startRest(id);
+
+    // Fire-and-forget real-time set sync to Supabase
+    if (currentUser) {
+      (async () => {
+        try {
+          const sessionUUID = await startOrResumeSession();
+          // Human-readable name from DOM card heading
+          const cardEl = document.getElementById('ec-' + id);
+          const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
+          // Exercise category from day label (upper / lower / full_body / day key)
+          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks);
+          const dayObj = prog?.find(d => d.key === currentDay);
+          const dl = dayObj?.label || '';
+          const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
+          // PR detection against personal_records
+          let isPr = false;
+          if (w > 0 && r > 0 && est1rm > 0) {
+            const { data: existing } = await sb.from('personal_records')
+              .select('best_estimated_1rm_lbs')
+              .eq('user_id', currentUser.id)
+              .eq('exercise_name', rawName)
+              .maybeSingle();
+            isPr = !existing || est1rm > (existing.best_estimated_1rm_lbs || 0);
+          }
+          // Insert set row
+          const { error: setErr } = await sb.from('sets').insert({
+            session_id: sessionUUID,
+            user_id: currentUser.id,
+            exercise_name: rawName,
+            exercise_category: exCat,
+            set_number: i + 1,
+            weight_lbs: w,
+            reps: r,
+            rpe: null,
+            estimated_1rm_lbs: est1rm > 0 ? est1rm : null,
+            is_pr: isPr
+          });
+          if (setErr) throw setErr;
+          // Upsert personal_records if PR
+          if (isPr) {
+            const today = new Date().toISOString().split('T')[0];
+            const { error: prErr } = await sb.from('personal_records').upsert({
+              user_id: currentUser.id,
+              exercise_name: rawName,
+              best_estimated_1rm_lbs: est1rm,
+              achieved_weight_lbs: w,
+              achieved_reps: r,
+              achieved_date: today,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,exercise_name' });
+            if (prErr) throw prErr;
+          }
+        } catch(e) {
+          console.error('Set sync error:', e);
+        }
+      })();
+    }
   } else {
     btn.classList.remove('logged','pr-set');
     wEl.classList.remove('done','pr'); rEl.classList.remove('done','pr');
@@ -3566,37 +3660,106 @@ function finishSession() {
   // Cloud sync
   syncToCloud();
 
-  // Mark cloud session complete with all required fields
-  if (currentUser) {
-    const totalVolume = Object.values(sessionSetsMap)
-      .flatMap(sets => sets)
-      .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
-    const duration = sessionStartTime
-      ? Math.round((Date.now() - sessionStartTime) / 60000)
-      : null;
-    const todayDate = new Date().toISOString().split('T')[0];
-    const phase = getPhase(currentWeek, cfg.goal);
-    const payload = {
-      user_id: currentUser.id,
-      session_date: todayDate,
-      week_number: currentWeek,
-      phase_name: phase.name,
-      day_type: currentDay,
-      program_goal: cfg.goal,
-      completed: true,
-      total_volume_lbs: Math.round(totalVolume),
-      duration_minutes: duration
-    };
-    if (currentCloudSessionId) payload.id = currentCloudSessionId;
-    sb.from('workout_sessions')
-      .upsert(payload, { onConflict: 'user_id,session_date' })
-      .then(({ error }) => { if (error) console.warn('Session complete sync error:', error); });
-    showToast(`Session saved \u2713 \u2014 ${Math.round(totalVolume).toLocaleString()} lbs moved`);
+  // Compute volume from the history snapshot (sessionSetsMap already cleared above)
+  const snapshotExercises = hist[0]?.exercises || {};
+  const localVolume = Object.values(snapshotExercises)
+    .flatMap(sets => sets)
+    .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
 
-    // Advance to next training day (reuse program already computed above)
-    const dayIdx = program.findIndex(d => d.key === currentDay);
-    const nextDay = program[(dayIdx + 1) % program.length]?.key || program[0].key;
-    LS.set('tandem_current_day', nextDay);
+  // Advance to next training day (reuse program already computed above)
+  const dayIdx = program.findIndex(d => d.key === currentDay);
+  const nextDay = program[(dayIdx + 1) % program.length]?.key || program[0].key;
+  LS.set('tandem_current_day', nextDay);
+
+  // Cloud: mark session complete + update streaks
+  if (currentUser) {
+    const sessionUUID = localStorage.getItem('tandem_active_session_id');
+    const startTime = localStorage.getItem('tandem_session_start_time');
+
+    if (!sessionUUID) {
+      showToast('No active session found \u2014 start a workout first');
+    } else {
+      const duration = startTime
+        ? Math.round((Date.now() - Number(startTime)) / 60000)
+        : null;
+      const todayDate = new Date().toISOString().split('T')[0];
+
+      (async () => {
+        try {
+          // 1. Get true volume from sets already written to DB
+          const { data: setRows } = await sb.from('sets')
+            .select('weight_lbs, reps')
+            .eq('session_id', sessionUUID);
+          const dbVolume = (setRows || []).reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
+          const totalVolume = dbVolume > 0 ? Math.round(dbVolume) : Math.round(localVolume);
+
+          // 2. Mark session complete
+          const { error: wsError } = await sb.from('workout_sessions')
+            .update({
+              completed: true,
+              total_volume_lbs: totalVolume,
+              duration_minutes: duration
+            })
+            .eq('id', sessionUUID)
+            .eq('user_id', currentUser.id);
+          if (wsError) throw wsError;
+
+          // 3. Count PRs in this session
+          const { count: prCount } = await sb.from('sets')
+            .select('id', { count: 'exact', head: true })
+            .eq('session_id', sessionUUID)
+            .eq('is_pr', true);
+
+          // 4. Upsert streaks — 10 pts/session + 5 pts/PR
+          const sessionPoints = 10 + (prCount || 0) * 5;
+          const { data: existing } = await sb.from('streaks')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+          if (!existing) {
+            const { error: sErr } = await sb.from('streaks').insert({
+              user_id: currentUser.id,
+              current_streak_days: 1,
+              longest_streak_days: 1,
+              total_sessions: 1,
+              total_prs: prCount || 0,
+              total_volume_lbs: totalVolume,
+              weekly_points: sessionPoints,
+              last_session_date: todayDate,
+              updated_at: new Date().toISOString()
+            });
+            if (sErr) throw sErr;
+          } else {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
+            const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
+            const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
+            const { error: sErr } = await sb.from('streaks').update({
+              current_streak_days: newStreak,
+              longest_streak_days: newLongest,
+              total_sessions: (existing.total_sessions || 0) + 1,
+              total_prs: (existing.total_prs || 0) + (prCount || 0),
+              total_volume_lbs: (existing.total_volume_lbs || 0) + totalVolume,
+              weekly_points: (existing.weekly_points || 0) + sessionPoints,
+              last_session_date: todayDate,
+              updated_at: new Date().toISOString()
+            }).eq('user_id', currentUser.id);
+            if (sErr) throw sErr;
+          }
+
+          showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
+        } catch(e) {
+          console.error('Session finish sync error:', e);
+          showToast(`Session saved locally \u2014 ${Math.round(localVolume).toLocaleString()} lbs moved`);
+        }
+      })();
+    }
+
+    localStorage.removeItem('tandem_active_session_id');
+    localStorage.removeItem('tandem_session_start_time');
     currentCloudSessionId = null;
     sessionStartTime = null;
   }
@@ -3718,7 +3881,7 @@ async function sendOTP() {
   pendingAuthEmail = email;
   const btn = document.querySelector('.auth-send-btn');
   if (btn) { btn.textContent = 'Sending...'; btn.disabled = true; }
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + '/' } });
   if (error) {
     if (btn) { btn.textContent = 'Send Sign-in Code →'; btn.disabled = false; }
     alert('Error: ' + error.message);
@@ -3732,7 +3895,7 @@ async function sendOTP() {
 
 async function verifyOTP() {
   const token = document.getElementById('authOTPCode')?.value?.trim();
-  if (!token || token.length < 6) { alert('Enter the 6-digit code from your email.'); return; }
+  if (!token || token.length < 6) { alert('Enter the sign-in code from your email.'); return; }
   const btns = document.querySelectorAll('.auth-send-btn');
   btns.forEach(b => { b.textContent = 'Verifying...'; b.disabled = true; });
   const { data, error } = await sb.auth.verifyOtp({
@@ -3799,15 +3962,7 @@ async function syncToCloud() {
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-    // Sessions
-    const hist = (LS.get('tandem_history') || []).map(s => ({
-      id: String(s.id || Date.now()), user_id: uid,
-      date: s.date, week: s.week, goal: s.goal, day: s.day, exercises: s.exercises
-    }));
-    if (hist.length) {
-      const { error } = await sb.from('workout_sessions').upsert(hist, { onConflict: 'id' });
-      if (error) throw error;
-    }
+    // Sessions are created/completed in real-time by startOrResumeSession() and finishSession() — do not upsert here
     // PRs
     await syncPRs();
     // Last sets
