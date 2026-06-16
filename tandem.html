@@ -2543,13 +2543,13 @@ function buildDayHTML(day, phase) {
             <div class="set-hdr">
               <div class="set-hdr-cell">Set</div>
               <div class="set-hdr-cell">lbs</div>
-              <div class="set-hdr-cell">Reps</div>
-              <div class="set-hdr-cell">Vol</div>
+              <div class="set-hdr-cell">${ex.unit === 'sec' ? 'sec' : 'Reps'}</div>
+              <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek))}
+            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek), ex.unit)}
             <div class="set-actions">
-              <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r})">+ Set</div>
+              <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${ex.unit || 'reps'}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
               <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>
@@ -2593,18 +2593,19 @@ function buildDayHTML(day, phase) {
   return html;
 }
 
-function buildSetRows(id, sets, w, r) {
+function buildSetRows(id, sets, w, r, unit) {
   let html = '';
-  for (let i = 0; i < sets; i++) html += setRowHTML(id, i, w, r);
+  for (let i = 0; i < sets; i++) html += setRowHTML(id, i, w, r, unit);
   return html;
 }
 
-function setRowHTML(id, i, w, r) {
-  return `<div class="set-row" id="sr-${id}-${i}">
+function setRowHTML(id, i, w, r, unit) {
+  const timed = unit === 'sec';
+  return `<div class="set-row" id="sr-${id}-${i}" data-unit="${timed ? 'sec' : 'reps'}">
     <div class="set-num">S${i+1}</div>
     <input class="set-input" type="number" inputmode="decimal" value="${w}" id="${id}-w${i}" oninput="onSetInput('${id}',${i})">
     <input class="set-input" type="number" inputmode="numeric" value="${r}" id="${id}-r${i}" oninput="onSetInput('${id}',${i})">
-    <div class="set-vol" id="${id}-v${i}">${Math.round(w*r)}</div>
+    <div class="set-vol" id="${id}-v${i}">${timed ? '—' : Math.round(w*r)}</div>
     <button class="set-btn" id="${id}-b${i}" onclick="logSet('${id}',${i})">✓</button>
     <button class="set-del" style="display:none" onclick="event.stopPropagation();deleteSet('${id}',${i},this)">✕</button>
   </div>`;
@@ -2699,8 +2700,9 @@ function onSetInput(id, i) {
   const w = parseFloat(document.getElementById(`${id}-w${i}`)?.value) || 0;
   const r = parseInt(document.getElementById(`${id}-r${i}`)?.value) || 0;
   const v = document.getElementById(`${id}-v${i}`);
-  if (v) v.textContent = Math.round(w * r);
-  if (w && r) {
+  const timed = document.getElementById(`sr-${id}-${i}`)?.dataset.unit === 'sec';
+  if (v) v.textContent = timed ? '—' : Math.round(w * r);
+  if (!timed && w && r) {
     const est = calcRM(w, r);
     const liveEl = document.getElementById(`i1rm-${id}`);
     const pctsEl = document.getElementById(`ipcts-${id}`);
@@ -2821,7 +2823,7 @@ function logSet(id, i) {
   updateProgress();
 }
 
-function addSet(id, w, r) {
+function addSet(id, w, r, unit) {
   const sl = document.getElementById('sl-' + id);
   const acts = sl.querySelector('.set-actions');
   const i = loggedSetsMap[id]?.length || 0;
@@ -2830,7 +2832,7 @@ function addSet(id, w, r) {
   const lastW = document.getElementById(`${id}-w${i-1}`)?.value || w;
   const lastR = document.getElementById(`${id}-r${i-1}`)?.value || r;
   const div = document.createElement('div');
-  div.innerHTML = setRowHTML(id, i, lastW, lastR);
+  div.innerHTML = setRowHTML(id, i, lastW, lastR, unit);
   sl.insertBefore(div.firstElementChild, acts);
   const newRow = sl.querySelector(`#sr-${id}-${i}`);
   if (newRow) {
@@ -3804,7 +3806,7 @@ function renderDashboard() {
   // Date in header
   const dateEl = document.getElementById('dashDate');
   if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    dateEl.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   // Activity label — sync pending state
