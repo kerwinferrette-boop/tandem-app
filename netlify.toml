@@ -1,5 +1,5 @@
 [build]
-  command = "mkdir -p _site && cp tandem.html _site/index.html && cp -r public _site/ 2>/dev/null || true"
+  command = "mkdir -p _site && cp tandem.html _site/index.html && cp programs.js _site/ && cp -r public _site/ 2>/dev/null || true"
   publish = "_site"
 
 [build.environment]
