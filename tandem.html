@@ -1911,12 +1911,96 @@ function getWeekTarget(exerciseName, week, goal, oneRM, sex, compound1RMs) {
   return { weight: null, source: 'none' };
 }
 
-function getRecommendation(exId, compound, goal) {
+// EPIC-9 Step C: Write calibrated 1RMs on W1D1 completion (idempotent).
+// Called from finishSession() — wrapped in its own try/catch there.
+async function computeCalibration1RMs(sessionUUID, userId) {
+  // Idempotency: skip if user is already calibrated
+  const { data: userRow } = await sb.from('users')
+    .select('calibration_complete')
+    .eq('id', userId)
+    .single();
+  if (userRow?.calibration_complete) return;
+
+  // Fetch all sets logged in this session
+  const { data: sessionSets } = await sb.from('sets')
+    .select('exercise_name, weight_lbs, reps')
+    .eq('session_id', sessionUUID);
+  if (!sessionSets || !sessionSets.length) return;
+
+  // Best Epley 1RM per exercise — same calcRM(w,r) as set-logging path
+  const best1RMs = {};
+  for (const s of sessionSets) {
+    if (!s.exercise_name || !s.weight_lbs || !s.reps) continue;
+    const est = Math.round(calcRM(s.weight_lbs, s.reps));
+    if (!best1RMs[s.exercise_name] || est > best1RMs[s.exercise_name])
+      best1RMs[s.exercise_name] = est;
+  }
+  const exNames = Object.keys(best1RMs);
+  if (!exNames.length) return;
+
+  // Fetch existing personal_records — preserve higher-of logic
+  const { data: existingPRs } = await sb.from('personal_records')
+    .select('exercise_name, best_estimated_1rm_lbs')
+    .eq('user_id', userId)
+    .in('exercise_name', exNames);
+  const existingMap = {};
+  (existingPRs || []).forEach(p => { existingMap[p.exercise_name] = p.best_estimated_1rm_lbs || 0; });
+
+  // Only upsert where new estimate exceeds existing stored value
+  const rows = exNames
+    .filter(name => best1RMs[name] > (existingMap[name] || 0))
+    .map(name => ({
+      user_id: userId,
+      exercise_name: name,
+      best_estimated_1rm_lbs: best1RMs[name],
+      is_calibrated: true,
+      calibration_session_id: sessionUUID
+    }));
+
+  if (rows.length) {
+    await sb.from('personal_records')
+      .upsert(rows, { onConflict: 'user_id,exercise_name' });
+  }
+
+  // Mark user calibration complete
+  await sb.from('users')
+    .update({ calibration_complete: true, calibration_session_id: sessionUUID })
+    .eq('id', userId);
+}
+
+function getRecommendation(exId, compound, goal, exName, sex) {
   const lastSets = LS.get('tandem_lastsets') || {};
   const entry = lastSets[exId];
   const phase = getPhase(currentWeek, goal);
   const topRange = phaseWeekRep(phase, currentWeek);
   const inc = compound ? phase.incComp : phase.incAcc;
+
+  // EPIC-9 Step C: %1RM path for calibrated users
+  const prs = LS.get('tandem_prs') || {};
+  const oneRM = prs[exId];
+  if (oneRM) {
+    const tgt = getWeekTarget(exName || null, currentWeek, goal, oneRM, sex || null, null);
+    if (tgt.weight != null) {
+      const g = goal === 'burn_fat' ? 'fat_burn' : goal;
+      const table = PROGRESSION[g] || PROGRESSION.build_muscle;
+      const wk = Math.min(Math.max(currentWeek, 2), 8);
+      const pct = Math.round((table[wk] || 0) * 100);
+      const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform' };
+      const goalLabel = goalLabels[g] || g;
+      const displayName = exName || exId;
+      const reason = `${tgt.weight} lbs — ${pct}% of your ${Math.round(oneRM)} lb ${displayName} 1RM, Week ${currentWeek} ${goalLabel}`;
+      if (!entry) {
+        return { weight: tgt.weight, arrow: 'new', label: `${tgt.weight} lbs`, reason };
+      }
+      // Arrow still driven by reps vs topRange — exactly as flat-increment path
+      const { minReps } = entry;
+      let arrow;
+      if (minReps >= topRange) arrow = 'up';
+      else if (minReps >= topRange - 3) arrow = 'same';
+      else arrow = 'down';
+      return { weight: tgt.weight, arrow, label: `${tgt.weight} lbs`, reason };
+    }
+  }
 
   if (!entry) return { weight: null, arrow: 'new', label: 'First session', reason: 'Log this session to set your baseline' };
 
@@ -2580,7 +2664,7 @@ function buildDayHTML(day, phase) {
 
     block.exs.forEach((ex, ei) => {
       if (!ex) return;
-      const rec = getRecommendation(ex.id, ex.compound, cfg.goal);
+      const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
       const pr1rm = (LS.get('tandem_prs') || {})[ex.id];
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
@@ -2728,7 +2812,7 @@ function buildNextSessionBanners(program) {
     if (!relevant.length) { banner.classList.remove('show'); return; }
     banner.classList.add('show');
     grid.innerHTML = relevant.slice(0,6).map(ex => {
-      const rec = getRecommendation(ex.id, ex.compound, cfg.goal);
+      const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
       const icon = rec.arrow === 'up' ? '↑' : rec.arrow === 'down' ? '↓' : '→';
       return `<div class="nsb-item">
         <div class="nsb-ex">${ex.name}</div>
@@ -3314,6 +3398,13 @@ function finishSession() {
               updated_at: new Date().toISOString()
             }).eq('user_id', currentUser.id);
             if (sErr) throw sErr;
+          }
+
+          // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
+          try {
+            await computeCalibration1RMs(sessionUUID, currentUser.id);
+          } catch(calErr) {
+            console.warn('Calibration 1RM write skipped:', calErr);
           }
 
           showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
