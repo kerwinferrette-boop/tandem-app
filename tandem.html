@@ -1846,6 +1846,71 @@ function getPhase(week, goal) {
   return phases[phases.length - 1];
 }
 
+// ═══════════════════════════════════════════════════════
+// EPIC-9 · v0.5 FORMULA LAYER — compute starting weights from
+// calibrated 1RM instead of static program values ("Excel formulas
+// not typed values"). Source of truth: Notion EPIC-9. Only used to
+// fill the first-session gap (no logged history yet) — once a user
+// logs a set, getRecommendation's progressive-overload logic wins.
+// ═══════════════════════════════════════════════════════
+const PROGRESSION = {
+  fat_burn:     { 2: 0.52, 3: 0.55, 4: 0.50, 5: 0.55, 6: 0.58, 7: 0.61, 8: 0.52 },
+  build_muscle: { 2: 0.65, 3: 0.68, 4: 0.60, 5: 0.68, 6: 0.72, 7: 0.75, 8: 0.62 },
+  transform:    { 2: 0.68, 3: 0.58, 4: 0.72, 5: 0.55, 6: 0.72, 7: 0.75, 8: 0.58 }
+};
+
+const ACCESSORY_FACTORS = {
+  'Leg Curl':              { from: 'Romanian Deadlift', factor: 0.45 },
+  'Leg Extension':         { from: 'Squat',             factor: 0.50 },
+  'Cable Kickback':        { from: 'Hip Thrust',        factor: 0.25 },
+  'Lateral Raise':         { from: 'Overhead Press',    factor: 0.20 },
+  'Face Pull':             { from: 'Row',               factor: 0.35 },
+  'Hammer Curl':           { from: 'Row',               factor: 0.40 },
+  'Tricep Pushdown':       { from: 'Bench Press',       factor: 0.35 },
+  'Hip Abduction Machine': { from: 'Hip Thrust',        factor: 0.40 }
+};
+
+const DEFAULT_WEIGHTS = {
+  female: {
+    'Hip Thrust': 45, 'Romanian Deadlift': 35, 'Goblet Squat': 25,
+    'Bulgarian Split Squat': 15, 'DB Bench Press': 20, 'Dumbbell Row': 25,
+    'Lat Pulldown': 40, 'Arnold Press': 15, 'Cable Lateral Raise': 7.5,
+    'Leg Curl': 30, 'Cable Kickback': 15, 'Leg Extension': 30
+  },
+  male: {
+    'Barbell Squat': 135, 'Hack Squat': 135, 'Romanian Deadlift': 135,
+    'Leg Press': 180, 'Barbell Bench Press': 135, 'DB Bench Press': 50,
+    'Barbell Row': 95, 'Dumbbell Row': 50, 'Lat Pulldown': 80,
+    'Overhead Press': 75, 'Cable Lateral Raise': 15, 'Leg Curl': 60,
+    'Leg Extension': 70
+  }
+};
+
+function roundTo5(w) { return Math.round(w / 5) * 5; }
+
+// Resolution order: calibrated 1RM × week factor → accessory derivation
+// → sex-aware default. Returns { weight, source } so callers can decide
+// whether to trust it (only 'calibrated'/'derived' override curated ex.w).
+function getWeekTarget(exerciseName, week, goal, oneRM, sex, compound1RMs) {
+  const g = goal === 'burn_fat' ? 'fat_burn' : goal;
+  const table = PROGRESSION[g] || PROGRESSION.build_muscle;
+  const wk = Math.min(Math.max(week, 2), 8);
+  const factor = table[wk];
+
+  if (oneRM && factor) {
+    return { weight: roundTo5(oneRM * factor), source: 'calibrated' };
+  }
+  const acc = ACCESSORY_FACTORS[exerciseName];
+  if (acc && compound1RMs && compound1RMs[acc.from]) {
+    return { weight: roundTo5(compound1RMs[acc.from] * acc.factor), source: 'derived' };
+  }
+  const sexKey = (sex === 'female' || sex === 'F' || sex === 'f') ? 'female' : 'male';
+  const def = DEFAULT_WEIGHTS[sexKey][exerciseName];
+  if (def != null) return { weight: def, source: 'default' };
+
+  return { weight: null, source: 'none' };
+}
+
 function getRecommendation(exId, compound, goal) {
   const lastSets = LS.get('tandem_lastsets') || {};
   const entry = lastSets[exId];
@@ -2471,6 +2536,14 @@ function renderTracker() {
 }
 
 function buildDayHTML(day, phase) {
+  // EPIC-9: build a name→1RM map across this day's exercises so the formula
+  // layer can derive accessory targets from calibrated compound 1RMs.
+  const _dayPrs = LS.get('tandem_prs') || {};
+  const dayCompound1RMs = {};
+  day.blocks.forEach(b => (b.exs || []).forEach(e => {
+    if (e && _dayPrs[e.id]) dayCompound1RMs[e.name] = _dayPrs[e.id];
+  }));
+
   let html = `
     <div class="day-header" style="--dhc:${day.color}">
       <div class="dh-top">
@@ -2481,10 +2554,6 @@ function buildDayHTML(day, phase) {
         </div>
       </div>
       <div class="dh-rationale">${day.rationale}</div>
-    </div>
-    <div class="nsb" id="nsb-${day.key}">
-      <div class="nsb-title">Next Session Targets</div>
-      <div class="nsb-grid" id="nsbGrid-${day.key}"></div>
     </div>
   `;
 
@@ -2512,8 +2581,18 @@ function buildDayHTML(day, phase) {
     block.exs.forEach((ex, ei) => {
       if (!ex) return;
       const rec = getRecommendation(ex.id, ex.compound, cfg.goal);
-      const startW = rec.weight || ex.w;
       const pr1rm = (LS.get('tandem_prs') || {})[ex.id];
+      let startW = rec.weight || ex.w;
+      // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
+      // compute a starting weight from the user's calibrated 1RM instead of
+      // the static program value. Only trust calibrated/derived sources —
+      // keep the curated ex.w default otherwise. Skip core/timed exercises.
+      if (rec.weight == null && !ex.isCore) {
+        const tgt = getWeekTarget(ex.name, currentWeek, cfg.goal, pr1rm || null, cfg.sex, dayCompound1RMs);
+        if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
+          startW = tgt.weight;
+        }
+      }
 
       const arrowIcon = rec.arrow === 'up' ? '↑' : rec.arrow === 'down' ? '↓' : rec.arrow === 'new' ? '★' : '→';
       const videoId = VIDEO_IDS[ex.name];
@@ -2588,6 +2667,16 @@ function buildDayHTML(day, phase) {
       html += `<div class="mob-item" onclick="toggleMob(this)"><div class="mob-check"></div><div><div class="mob-name">${m.name}</div><div class="mob-detail">${m.detail}</div></div></div>`;
     });
   }
+
+  // EPIC-9 / BUG-129545c0: Next Session Targets relocated below the workout so
+  // it reads as a genuine post-session preview instead of sitting above the
+  // current session. Populated by buildNextSessionBanners() (id lookup).
+  html += `
+    <div class="nsb" id="nsb-${day.key}">
+      <div class="nsb-title">Next Session Targets</div>
+      <div class="nsb-grid" id="nsbGrid-${day.key}"></div>
+    </div>
+  `;
 
   html += `<div style="height:8px;"></div>`;
   return html;
