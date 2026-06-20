@@ -557,10 +557,123 @@ function getProgram(goal, days, weeks, sex) {
     }
   };
 
+  // ── BUG-31: substitution pool used by dedupeConsecutiveDays backfill ──────
+  // Exercises chosen to fit pull/push/isolation slots without naming anything
+  // that already appears in the standard 4-day bases, minimising collision risk.
+  const SUBSTITUTIONS = [
+    {id:'sub-sarm',  name:'Single-Arm DB Row',     badge:'isolation', sets:3, w:60, r:12, rest:60, compound:false,
+     why:'Unilateral pull — catches dominant-side compensation when bilateral rows are the only remaining pull.',
+     cues:['Row to hip, not chest.','Let shoulder drop at bottom — full protraction.']},
+    {id:'sub-sapl',  name:'Straight-Arm Pulldown', badge:'isolation', sets:3, w:40, r:15, rest:45, compound:false,
+     why:'Lat isolation through full arc with zero bicep involvement. Ideal pull-day filler.',
+     cues:['Arms straight throughout.','Drive elbows toward hips — squeeze lats at bottom.']},
+    {id:'sub-rfly',  name:'Reverse Fly',            badge:'isolation', sets:3, w:15, r:15, rest:45, compound:false,
+     why:'Rear delt isolation for shoulder health on pull-focused days.',
+     cues:['Slight forward lean. Lead with elbows wide.','Light weight — corrective work.']},
+    {id:'sub-dbsp',  name:'DB Shoulder Press',      badge:'compound',  sets:3, w:30, r:12, rest:75, compound:true,
+     why:'Overhead push pattern to maintain delt compound volume when primary is stripped.',
+     cues:['Press overhead. Elbows slightly in front.','No lumbar arch — brace throughout.']},
+    {id:'sub-bayrow',name:'Bayesian Cable Curl',    badge:'isolation', sets:3, w:25, r:12, rest:45, compound:false,
+     why:'Bicep isolation with cable behind body — unique stretch position unavailable from standard curls.',
+     cues:['Cable at hip height behind body.','Curl with shoulder pinned back.']},
+    {id:'sub-lrow',  name:'Landmine Row',            badge:'compound',  sets:3, w:70, r:10, rest:75, compound:true,
+     why:'Compound pull with neutral grip — different stimulus than cable row, no spine compression.',
+     cues:['Hinge at hip. Drive elbow to hip. Chest tall throughout.']},
+  ];
+
+  // ── BUG-31: remove consecutive-day exercise name collisions ──────────────
+  // Operates on name.trim().toLowerCase() — catches id-mismatches like
+  // s5-ap ("Arnold Press") vs tr-press ("Arnold Press").
+  // Applied at the end of build5(), ppl(), and build2() before returning.
+  const dedupeConsecutiveDays = (days, { wrap = false, minPerDay = 4 } = {}) => {
+    // Shallow-clone block arrays so the hand-authored 4-day bases are untouched.
+    const result = days.map(day => ({
+      ...day,
+      blocks: day.blocks.map(b => ({ ...b, exs: b.exs ? [...b.exs] : [] }))
+    }));
+
+    const getNames = (day) => {
+      const s = new Set();
+      for (const b of day.blocks) {
+        if (b.cardio) continue;
+        for (const ex of b.exs) { if (!ex.cardioOnly) s.add(ex.name.trim().toLowerCase()); }
+      }
+      return s;
+    };
+
+    // Count non-cardio, non-core exercises — the "main" work that must meet minPerDay.
+    const countMain = (day) => {
+      let n = 0;
+      for (const b of day.blocks) {
+        if (b.cardio) continue;
+        for (const ex of b.exs) { if (!ex.cardioOnly && !ex.isCore) n++; }
+      }
+      return n;
+    };
+
+    const pairs = [];
+    for (let i = 0; i < result.length - 1; i++) pairs.push([i, i + 1]);
+    if (wrap && result.length > 1) pairs.push([result.length - 1, 0]);
+
+    for (const [pi, ci] of pairs) {
+      const prevNames = getNames(result[pi]);
+
+      // Remove from the later day any exercise whose name already appears on the earlier day.
+      for (const b of result[ci].blocks) {
+        if (b.cardio) continue;
+        b.exs = b.exs.filter(ex =>
+          ex.cardioOnly || !prevNames.has(ex.name.trim().toLowerCase())
+        );
+      }
+
+      // Backfill if removal dropped the day below minPerDay.
+      const shortage = minPerDay - countMain(result[ci]);
+      if (shortage > 0) {
+        const currNames = getNames(result[ci]);
+        const nextNames = ci + 1 < result.length ? getNames(result[ci + 1]) : new Set();
+        let filled = 0;
+
+        for (const sub of SUBSTITUTIONS) {
+          if (filled >= shortage) break;
+          const key = sub.name.trim().toLowerCase();
+          // Skip if it would collide with prev, curr, or next day.
+          if (currNames.has(key) || prevNames.has(key) || nextNames.has(key)) continue;
+
+          // Append to the last non-cardio non-core block; if none, insert before cardio.
+          let placed = false;
+          for (let bi = result[ci].blocks.length - 1; bi >= 0; bi--) {
+            const b = result[ci].blocks[bi];
+            if (!b.cardio && !(b.label || '').toLowerCase().includes('core')) {
+              b.exs.push(sub);
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            const at = result[ci].blocks.findIndex(b => b.cardio);
+            result[ci].blocks.splice(
+              at >= 0 ? at : result[ci].blocks.length,
+              0,
+              { label:'Supplemental Block', exs:[sub] }
+            );
+          }
+          currNames.add(key);
+          filled++;
+        }
+
+        if (filled < shortage) {
+          console.warn(`[dedup] ${result[ci].key}: day short by ${shortage - filled} after dedup — no clean substitute available`);
+        }
+      }
+    }
+
+    return result;
+  };
+
   // 3-day versions: compress to Push/Pull/Legs
   const ppl = (base4) => {
     const [ua, la, ub, lb] = base4;
-    return [
+    return dedupeConsecutiveDays([
       { ...ua, key:'day1', label:'Day 1 · Push', rationale: ua.rationale },
       { ...ub, key:'day2', label:'Day 2 · Pull', rationale: ub.rationale },
       { key:'day3', label:'Day 3 · Legs', color:'var(--amber)', rationale:'Combined lower day — hinge and squat patterns in one session.',
@@ -570,7 +683,7 @@ function getProgram(goal, days, weeks, sex) {
           { label:'Zone 2 · 22 min', cardio:true, exs:[ {...la.blocks[2].exs[0], duration:22} ] }
         ]
       }
-    ];
+    ]);
   };
 
   // 5-day: add dedicated shoulder/arms day
@@ -606,15 +719,15 @@ function getProgram(goal, days, weeks, sex) {
         ]}
       ]
     };
-    return [ua, la, shoulders,
+    return dedupeConsecutiveDays([ua, la, shoulders,
       {...ub, key:'day4', label: ub.label.replace(/^Day \d+/, 'Day 4')},
-      {...lb, key:'day5', label: lb.label.replace(/^Day \d+/, 'Day 5')}];
+      {...lb, key:'day5', label: lb.label.replace(/^Day \d+/, 'Day 5')}]);
   };
 
   // 2-day: Full Body A/B — push+hinge / pull+quad
   const build2 = (base4) => {
     const [ua, la, ub, lb] = base4;
-    return [
+    return dedupeConsecutiveDays([
       { key:'day1', label:'Day 1 · Full Body A', color:'var(--accent)',
         rationale:'Push + hinge emphasis. Bench and RDL are the two primary compounds. Accessories fill upper pull and quad so nothing gets neglected across the week.',
         blocks:[
@@ -631,7 +744,7 @@ function getProgram(goal, days, weeks, sex) {
           { ...(lb.blocks.find(b=>b.cardio) || la.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' }
         ]
       }
-    ];
+    ]);
   };
 
   // ─── Female programs ────────────────────────────────────────────────────────

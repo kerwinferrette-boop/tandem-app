@@ -1,0 +1,8 @@
+{
+  "name": "tandem",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "validate:programs": "node scripts/validate-programs.mjs"
+  }
+}
