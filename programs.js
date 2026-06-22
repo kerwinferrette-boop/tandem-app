@@ -678,8 +678,10 @@ function getProgram(goal, days, weeks, sex) {
       { ...ub, key:'day2', label:'Day 2 · Pull', rationale: ub.rationale },
       { key:'day3', label:'Day 3 · Legs', color:'var(--amber)', rationale:'Combined lower day — hinge and squat patterns in one session.',
         blocks:[
-          { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0] ] },
-          { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0], la.blocks[0].exs[1] ] },
+          // BUG: la.blocks[0].exs[1] is the hinge day's SECOND compound — it belongs in the
+          // Compound Block, not tacked onto the accessory tail after isolations (R3 mis-order).
+          { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0], la.blocks[0].exs[1] ] },
+          { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0] ] },
           { label:'Zone 2 · 22 min', cardio:true, exs:[ {...la.blocks[2].exs[0], duration:22} ] }
         ]
       }
@@ -939,14 +941,17 @@ function getProgram(goal, days, weeks, sex) {
               {id:'bmf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:35, r:12, rest:120, compound:true,
                why:'Constant hamstring tension throughout. Completes the posterior chain picture.',
                cues:['Push hips back — not down.','DBs against legs throughout.','Hamstring stretch at bottom. Drive hips forward at top.']},
+              // Bulgarian Split Squat is a compound — keep it in the Compound Block, not sandwiched
+              // between isolations in the Accessory Block (its prime movers, quads, aren't pre-exhausted
+              // by the preceding Lying Leg Curl, so accessory placement was a genuine R3 mis-order).
+              {id:'bmf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:15, r:12, rest:90, compound:true,
+               why:'Unilateral training catches and corrects left-right imbalances.',
+               cues:['Rear foot elevated. Front foot far enough for vertical shin.','Drive through heel of front foot.']},
             ]},
             {label:'Accessory Block · Rest 75 sec', exs:[
               {id:'bmf-lcurl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:30, r:12, rest:75, compound:false,
                why:'Knee flexion hits the short head of bicep femoris that RDL barely touches.',
                cues:['Hips pressed into pad. Full extension every rep.','3-sec eccentric.']},
-              {id:'bmf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:15, r:12, rest:90, compound:true,
-               why:'Unilateral training catches and corrects left-right imbalances.',
-               cues:['Rear foot elevated. Front foot far enough for vertical shin.','Drive through heel of front foot.']},
               {id:'bmf-calf1', name:'Standing Calf Raise', badge:'isolation', sets:4, w:70, r:20, rest:45, compound:false,
                why:'Calves respond to volume. High reps, short rest, full range.',
                cues:['Full hang at bottom, pause. Full rise at top, pause.']},

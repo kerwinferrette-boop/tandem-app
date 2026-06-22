@@ -37,3 +37,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# static build output
+/_site/
+
+# FUSE filesystem artifacts
+.fuse_hidden*
+
+# local tooling state
+/.superpowers/

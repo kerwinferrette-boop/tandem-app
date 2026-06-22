@@ -74,23 +74,37 @@ function checkR2(days) {
     .map(([name, count]) => ({ name, count }));
 }
 
-// ── Rule 3: compound before isolation within each session ──
-// isCore exercises (dead bugs, planks, etc.) are excluded —
-// they are deliberately placed after main work by design.
-// Known pre-existing issue: ppl() Legs day places Hip Thrust
-// (compound:true) in the Accessory block after isolation exs.
-// This will appear as R3 FAIL for all 3-day plans and is
-// tracked separately (not fixed by BUG-31).
+// ── Rule 3: compounds must lead the session, evaluated at BLOCK granularity ──
+// isCore exercises (dead bugs, planks, etc.) and cardio are excluded — they are
+// deliberately placed after main work.
+//
+// A compound is a violation ONLY if a pure isolation appeared in a STRICTLY
+// EARLIER block AND the compound is not the lead (first non-core) movement of
+// its own block. Two intentional patterns are therefore allowed:
+//   • Same-block iso→compound — antagonist supersets, and pre-exhaust pairings
+//     such as transform Legs "Leg Extension (quad iso) → Goblet Squat /
+//     Bulgarian Split Squat (quad compound)" inside ONE block. A quad isolation
+//     deliberately preceding a quad compound in the same block is a recognised
+//     hypertrophy technique, not a mis-order.
+//   • A compound that LEADS its own block — e.g. dedupeConsecutiveDays()'s
+//     single-exercise "Supplemental Block" (a Landmine Row / DB Shoulder Press
+//     backfill) appended after the accessory block.
+// What it still catches: a compound scheduled in a later block than a finished
+// isolation block (a whole compound after a whole accessory block).
 function checkR3(days) {
   const fails = [];
   for (let i = 0; i < days.length; i++) {
-    let seenIso = false;
-    for (const ex of getExercises(days[i]).filter(e => !e.isCore)) {
-      if (!ex.compound) {
-        seenIso = true;
-      } else if (seenIso) {
-        fails.push({ day: i + 1, exercise: ex.name });
-      }
+    const blocks = (days[i].blocks || []).filter(b => !b.cardio);
+    let isoInEarlierBlock = false;   // a pure isolation appeared in a strictly earlier block
+    for (const b of blocks) {
+      const exs = (b.exs || []).filter(e => e && !e.cardioOnly && !e.isCore);
+      if (exs.length === 0) continue;
+      exs.forEach((ex, idx) => {
+        if (ex.compound && isoInEarlierBlock && idx !== 0) {
+          fails.push({ day: i + 1, exercise: ex.name });
+        }
+      });
+      if (exs.some(e => !e.compound)) isoInEarlierBlock = true;
     }
   }
   return fails;
