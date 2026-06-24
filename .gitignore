@@ -46,3 +46,7 @@ next-env.d.ts
 
 # local tooling state
 /.superpowers/
+
+# Claude Code personal (machine-local) settings — keep out of the repo.
+# The shared, portable loop ship-gate lives in .claude/settings.json instead.
+.claude/settings.local.json

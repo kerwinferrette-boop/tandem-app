@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Write",
+      "WebSearch",
+      "Bash(awk *)",
+      "Bash(node --check *)",
+      "Bash(npm run validate:programs)",
+      "Bash(npm run *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log *)",
+      "Bash(git ls-files*)",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "mcp__c881d872-7ab1-4b69-9a5f-68102d539a0e__notion-search",
+      "mcp__c881d872-7ab1-4b69-9a5f-68102d539a0e__notion-fetch",
+      "mcp__c881d872-7ab1-4b69-9a5f-68102d539a0e__notion-update-page",
+      "mcp__c881d872-7ab1-4b69-9a5f-68102d539a0e__notion-create-pages",
+      "mcp__c881d872-7ab1-4b69-9a5f-68102d539a0e__notion-create-comment",
+      "mcp__supabase__execute_sql"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git push *)",
+      "Bash(git commit:*)",
+      "Bash(git commit *)",
+      "Bash(gh pr *)",
+      "Bash(gh pr:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(npx netlify-cli *)",
+      "Bash(npx --yes netlify deploy:*)",
+      "mcp__07df308e-e02b-407b-b8de-465aa658ceab__netlify-deploy-services-updater",
+      "mcp__supabase__apply_migration"
+    ]
+  }
+}
