@@ -1851,8 +1851,32 @@ function phaseWeekRep(phase, week) {
   return reps[Math.min(Math.max(offset, 0), reps.length - 1)] || 10;
 }
 
-function getPhase(week, goal) {
-  const phases = PHASES[goal] || PHASES.build_muscle;
+// Length-scaled periodisation: the 4 phases (Foundation/Build/Power/Peak) are
+// authored against a 12-week template but must span any program length. Split
+// totalWeeks into 4 contiguous segments and rewrite each phase's weeks range.
+// Remainder weeks are handed to the earliest phases (longer base-building).
+// For totalWeeks=12 this reproduces the original [1,3][4,6][7,9][10,12] exactly.
+function scaledPhases(goal, totalWeeks) {
+  const base = PHASES[goal] || PHASES.build_muscle;
+  const n = base.length;
+  const T = Math.max(Number(totalWeeks) || 12, n); // at least 1 week per phase
+  const per = Math.floor(T / n);
+  let rem = T - per * n;
+  let start = 1;
+  return base.map(p => {
+    const len = per + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem--;
+    const end = start + len - 1;
+    const scaled = { ...p, weeks: [start, end] };
+    start = end + 1;
+    return scaled;
+  });
+}
+
+function getPhase(week, goal, totalWeeks) {
+  const T = totalWeeks != null ? totalWeeks
+          : ((typeof cfg !== 'undefined' && cfg && cfg.weeks) || 12);
+  const phases = scaledPhases(goal, T);
   for (const p of phases) {
     if (week >= p.weeks[0] && week <= p.weeks[1]) return p;
   }
@@ -2097,7 +2121,7 @@ function clearEquipmentAdjustments() {
 function applyEquipmentAdjustments(tier, maxDb) {
   if (tier === 'full_gym') { clearEquipmentAdjustments(); return; }
 
-  const phase = getPhase(currentWeek, cfg.goal);
+  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const phaseType = classifyPhase(phase, currentWeek);
 
   clearEquipmentAdjustments();
@@ -2540,10 +2564,12 @@ function goHome() {
 // ═══════════════════════════════════════════════════════
 function renderTracker() {
   const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
-  const phase = getPhase(currentWeek, cfg.goal);
+  const _phases = scaledPhases(cfg.goal, cfg.weeks);
+  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
+  const _phaseNum = _phases.findIndex(p => p === phase || (p.name === phase.name)) + 1 || 1;
 
   // Phase banner
-  document.getElementById('pbEyebrow').textContent = `Phase ${Math.ceil(currentWeek / 3)} · ${cfg.goal.replace('_',' ').toUpperCase()}`;
+  document.getElementById('pbEyebrow').textContent = `Phase ${_phaseNum} · ${cfg.goal.replace('_',' ').toUpperCase()}`;
   document.getElementById('pbName').textContent = phase.name;
   document.getElementById('pbIntent').textContent = phase.intent;
   document.getElementById('pbReps').textContent = `This week: ${phaseWeekRep(phase, currentWeek)} reps · Phase range: ${phase.reps}`;
@@ -2858,7 +2884,7 @@ async function startOrResumeSession() {
     localStorage.removeItem('tandem_active_session_id');
   }
   const today = localDateStr(); // BUG-018/027: local day, not UTC
-  const phase = getPhase(currentWeek, cfg.goal);
+  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const { data: newSession, error } = await sb.from('workout_sessions').insert({
     user_id: currentUser.id,
     session_date: today,
@@ -3117,7 +3143,7 @@ function startRest(id) {
     }
   } catch (_) { /* fall through to normal rest behavior */ }
   if (S.restTimers[id]) clearInterval(S.restTimers[id]);
-  const phase = getPhase(currentWeek, cfg.goal);
+  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   // detect compound vs accessory from card class
   const card = document.getElementById('ec-' + id);
   const isCompound = card?.querySelector('.badge-compound') !== null;
