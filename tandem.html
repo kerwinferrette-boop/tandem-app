@@ -1037,6 +1037,37 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
           </div>
         </div>
 
+        <!-- Muscle Emphasis -->
+        <div class="ob-section">
+          <span class="ob-label">Muscle Emphasis</span>
+          <div class="ob-toggle-row three">
+            <div class="ob-toggle selected" onclick="selectEmphasis('balanced',this)">
+              <div class="ob-toggle-icon" data-icon="activity"></div>
+              <div class="ob-toggle-label">Balanced</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEmphasis('upper_body',this)">
+              <div class="ob-toggle-icon" data-icon="zap"></div>
+              <div class="ob-toggle-label">Upper Body</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEmphasis('lower_body',this)">
+              <div class="ob-toggle-icon" data-icon="chevrons-down"></div>
+              <div class="ob-toggle-label">Lower Body</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEmphasis('back_heavy',this)">
+              <div class="ob-toggle-icon" data-icon="layers"></div>
+              <div class="ob-toggle-label">Back Heavy</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEmphasis('push_heavy',this)">
+              <div class="ob-toggle-icon" data-icon="arrow-up-right"></div>
+              <div class="ob-toggle-label">Push Heavy</div>
+            </div>
+            <div class="ob-toggle" onclick="selectEmphasis('glute_focused',this)">
+              <div class="ob-toggle-icon" data-icon="heart"></div>
+              <div class="ob-toggle-label">Glute Focus</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Session Length -->
         <div class="ob-section">
           <span class="ob-label">Session Length</span>
@@ -2134,6 +2165,7 @@ let selectedDays = null;
 let selectedSex = null;
 let selectedExperience = null;
 let selectedEquipment = null;
+let selectedEmphasis = 'balanced';
 let selectedDuration = 60;
 let selectedWorkoutTime = null;
 let selectedSecondaryGoal = null;
@@ -2243,6 +2275,16 @@ function selectExperience(exp, el) {
 
 function selectEquipment(val, el) {
   selectedEquipment = val;
+  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
+    if (t.closest('.ob-section') === el.closest('.ob-section'))
+      t.classList.remove('selected');
+  });
+  el.classList.add('selected');
+  obUpdateNextState();
+}
+
+function selectEmphasis(val, el) {
+  selectedEmphasis = val;
   document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
     if (t.closest('.ob-section') === el.closest('.ob-section'))
       t.classList.remove('selected');
@@ -2424,6 +2466,7 @@ function buildProgram() {
     sex: selectedSex,
     experience: selectedExperience,
     equipment: selectedEquipment,
+    emphasis: selectedEmphasis || 'balanced',
     workout_duration_minutes: selectedDuration,
     preferred_workout_time: selectedWorkoutTime,
     injuries: document.getElementById('ob-injuries').value.trim() || null,
@@ -2496,7 +2539,7 @@ function goHome() {
 // RENDER TRACKER
 // ═══════════════════════════════════════════════════════
 function renderTracker() {
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
   const phase = getPhase(currentWeek, cfg.goal);
 
   // Phase banner
@@ -2648,8 +2691,10 @@ function buildDayHTML(day, phase) {
 
     html += `<div class="block-label">${block.label}</div>`;
 
-    block.exs.forEach((ex, ei) => {
-      if (!ex) return;
+    block.exs.forEach((_ex, ei) => {
+      if (!_ex) return;
+      // Phase substitution resolver — phases can declare exercise swaps via subs map
+      const ex = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
       const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
       const pr1rm = (LS.get('tandem_prs') || {})[ex.id];
       let startW = rec.weight || ex.w;
@@ -2661,6 +2706,17 @@ function buildDayHTML(day, phase) {
         const tgt = getWeekTarget(ex.name, currentWeek, cfg.goal, pr1rm || null, cfg.sex, dayCompound1RMs);
         if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
           startW = tgt.weight;
+        }
+        // Phase-substituted exercise with no history: scale by oneRmFactor relative to the
+        // original exercise's projected weight (fallback only — history supersedes this).
+        if (_ex.id !== ex.id && typeof EXERCISE_BANK !== 'undefined') {
+          const bankEntry = Object.values(EXERCISE_BANK).find(e => e.name === ex.name);
+          if (bankEntry?.oneRmFactor != null) {
+            const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
+              (LS.get('tandem_prs') || {})[_ex.id] || null, cfg.sex, dayCompound1RMs);
+            const origW = origTgt.weight ?? _ex.w;
+            if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
+          }
         }
       }
 
@@ -2880,7 +2936,7 @@ function logSet(id, i) {
           const cardEl = document.getElementById('ec-' + id);
           const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
           // Exercise category from day label (upper / lower / full_body / day key)
-          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
           const dayObj = prog?.find(d => d.key === currentDay);
           const dl = dayObj?.label || '';
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
@@ -3051,7 +3107,7 @@ function startRest(id) {
   // Rest only fires after the final exercise of the superset block, so the
   // timer runs between rounds instead of between partner exercises.
   try {
-    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
     const dayObj = prog?.find(d => d.key === currentDay);
     const blk = dayObj?.blocks?.find(b =>
       !b.cardio && /superset/i.test(b.label || '') && b.exs?.some(e => e && e.id === id));
@@ -3252,7 +3308,7 @@ function finishSession() {
   banner.classList.add('show');
   banner.scrollIntoView({behavior:'smooth'});
 
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
   updateProgress();
 
   // Cloud sync
@@ -3633,6 +3689,7 @@ async function syncToCloud() {
         sex: cfg.sex,
         fitness_level: cfg.experience,
         equipment: cfg.equipment || null,
+        muscle_emphasis: cfg.emphasis || 'balanced',
         workout_duration_minutes: cfg.workout_duration_minutes || null,
         preferred_workout_time: cfg.preferred_workout_time || null,
         injuries: cfg.injuries || null,
@@ -3861,6 +3918,7 @@ async function syncFromCloud() {
       sex: userData.sex,
       experience: userData.fitness_level,
       equipment: userData.equipment || null,
+      emphasis: userData.muscle_emphasis || 'balanced',
       workout_duration_minutes: userData.workout_duration_minutes || null,
       preferred_workout_time: userData.preferred_workout_time || null,
       injuries: userData.injuries || null,
@@ -3878,6 +3936,7 @@ async function syncFromCloud() {
     selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null;
     selectedExperience = cfg.experience || null;
+    selectedEmphasis = cfg.emphasis || 'balanced';
     currentWeek = userData.current_week || 1;
     LS.set('tandem_cfg', cfg);
     LS.set('tandem_week', currentWeek);
@@ -3906,7 +3965,7 @@ async function syncFromCloud() {
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
-        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
         const idx = prog.findIndex(d => d.key === lastDone.day_type);
         if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
       }
@@ -4533,7 +4592,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }
