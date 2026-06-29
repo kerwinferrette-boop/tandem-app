@@ -2528,7 +2528,8 @@ function renderTracker() {
   const _progDay = getProgramDayNumber();
   const _wn = document.getElementById('wnLabel');
   _wn.textContent =
-    `Week ${currentWeek} of ${cfg.weeks}` + (_progDay ? ` · Day ${_progDay}` : '');
+    `Week ${currentWeek} of ${cfg.weeks}` +
+    (_progDay === 'rest' ? ' · Rest Day' : _progDay ? ` · Day ${_progDay}` : '');
   // BUG-006: overdue badge when a scheduled day has passed without a completed session
   const _overdue = getOverdueDays();
   if (_overdue) {
@@ -2850,7 +2851,7 @@ async function startOrResumeSession() {
     }
     localStorage.removeItem('tandem_active_session_id');
   }
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr(new Date());
   const phase = getPhase(currentWeek, cfg.goal);
   const { data: newSession, error } = await sb.from('workout_sessions').insert({
     user_id: currentUser.id,
@@ -3040,7 +3041,7 @@ async function saveExerciseToCloud(id) {
   try {
     const sessionPayload = {
       user_id: currentUser.id,
-      session_date: new Date().toISOString(),
+      session_date: localDateStr(new Date()),
       week_number: currentWeek,
       day_type: currentDay,
       program_goal: cfg.goal,
@@ -3331,7 +3332,7 @@ function finishSession() {
       const duration = startTime
         ? Math.round((Date.now() - Number(startTime)) / 60000)
         : null;
-      const todayDate = new Date().toISOString().split('T')[0];
+      const todayDate = localDateStr(new Date());
 
       (async () => {
         try {
@@ -3383,7 +3384,7 @@ function finishSession() {
           } else {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            const yesterdayStr = localDateStr(yesterday);
             const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
             const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
             const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
@@ -3741,28 +3742,50 @@ async function restoreFromCloud() {
   }
 }
 
-// ── getProgramDayNumber() — BUG-005 fix ──
-// Returns the current program day (1–7, resets weekly) anchored to cfg.startDate, or null if no anchor.
-function getProgramDayNumber() {
-  if (!cfg?.startDate) return null;
-  const start = new Date(cfg.startDate + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.floor((today - start) / 86400000);
-  if (diffDays < 0) return null; // program hasn't started yet
-  return (diffDays % 7) + 1;
+// ── localDateStr() — BUG-27/BUG-18 timezone fix ──
+// Returns YYYY-MM-DD in LOCAL time so session_date storage and dot-key display
+// use the same calendar day regardless of the user's UTC offset.
+function localDateStr(d) {
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
 }
 
-// ── getOverdueDays() — BUG-006 fix ──
-// Days since the last completed session, but only when that gap exceeds the expected
-// cadence (ceil(7 / cfg.days) days between sessions). Returns 0 when on track,
-// when nothing is completed yet (grace period), or when no program is configured.
+// ── CADENCE_MAP — BUG-30 fix ──
+// Explicit per-plan-length week templates (0=Mon … 6=Sun).
+// null slots are rest days. For 2-day and 5-day cadences Kerwin should confirm
+// the spread is acceptable before shipping.
+const CADENCE_MAP = {
+  4: ['day1', 'day2', null, 'day3', 'day4', null, null],   // Mon/Tue rest Thu/Fri rest/rest
+  3: ['day1',  null, 'day2',  null, 'day3',  null, null],  // Mon/Wed/Fri (PPL spread)
+  5: ['day1', 'day2',  null, 'day3', 'day4', 'day5', null], // Mon/Tue/Thu/Fri/Sat — confirm with Kerwin
+  2: ['day1',  null,   null, 'day2',  null,   null,  null], // Mon/Thu — confirm with Kerwin
+};
+
+// ── getProgramDayNumber() — BUG-005/BUG-30 fix ──
+// Returns the scheduled program day number (1–N) for today per the cadence map,
+// 'rest' when today is an explicit rest day, or null when there is no anchor.
+function getProgramDayNumber() {
+  if (!cfg?.startDate) return null;
+  const map = CADENCE_MAP[cfg.days];
+  if (!map) return null;
+  const start = new Date(cfg.startDate + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((today - start) / 86400000);
+  if (diffDays < 0) return null;
+  const key = map[diffDays % 7];
+  if (key === null) return 'rest';
+  return parseInt(key.replace('day', ''), 10);
+}
+
+// ── getOverdueDays() — BUG-006/BUG-30 fix ──
+// Counts missed TRAINING days (non-null cadence slots) between the last completed
+// session and today. Returns 0 when on track or no program is configured.
 function getOverdueDays() {
-  if (!cfg?.days) return 0;
+  if (!cfg?.days || !cfg?.startDate) return 0;
+  const map = CADENCE_MAP[cfg.days];
   const hist = LS.get('tandem_history') || [];
   let last = null;
   hist.forEach(h => {
-    if (h.completed === false) return; // cloud-hydrated incomplete sessions don't count
+    if (h.completed === false) return;
     const raw = h.session_date || h.date;
     if (!raw) return;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -3772,8 +3795,18 @@ function getOverdueDays() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   last.setHours(0, 0, 0, 0);
   const gap = Math.floor((today - last) / 86400000);
-  const allowed = Math.ceil(7 / cfg.days);
-  return gap > allowed ? gap : 0;
+  if (!map) {
+    // Unknown cadence — fall back to original heuristic
+    const allowed = Math.ceil(7 / cfg.days);
+    return gap > allowed ? gap : 0;
+  }
+  const start = new Date(cfg.startDate + 'T00:00:00');
+  const lastDiff = Math.floor((last - start) / 86400000);
+  let missed = 0;
+  for (let i = 1; i < gap; i++) {
+    if (map[(lastDiff + i) % 7] !== null) missed++;
+  }
+  return missed;
 }
 
 // ── syncFromCloud() — BUG-003 fix ──
@@ -3925,8 +3958,8 @@ async function loadDashboard() {
       const { data: sessions } = await sb.from('workout_sessions')
         .select('user_id, session_date')
         .in('user_id', [uid, pid])
-        .gte('session_date', monday.toISOString().split('T')[0])
-        .lte('session_date', sunday.toISOString().split('T')[0])
+        .gte('session_date', localDateStr(monday))
+        .lte('session_date', localDateStr(sunday))
         .eq('completed', true);
       dashboardData.dailyWins = {};
       (sessions || []).forEach(s => {
@@ -4088,7 +4121,7 @@ function renderDashboard() {
     if (!dotEl) return;
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const key = d.toISOString().split('T')[0];
+    const key = localDateStr(d);
     const outcome = dashboardData.dailyWins[key];
     if (outcome === 'mine') {
       dotEl.style.background = myColor;
