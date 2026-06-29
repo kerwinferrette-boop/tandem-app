@@ -27,25 +27,37 @@ Log row (with its own Untested story) and worked through that channel.
 
 ---
 
-## The ship gate (important — read this)
+## The ship gate (important — read this) — `loop/autofix` branch model
 
-The loop is allowed to **edit and fix code in your working tree**. It is **blocked** (via the
-`deny` list in `.claude/settings.local.json`) from:
+The loop is allowed to **edit and fix code, commit it, and push it to a dedicated
+`loop/autofix` branch** — and open/update a PR against `main`. It is **blocked** (via the
+`deny` list in the committed `.claude/settings.json`, which travels with the repo into the
+remote clone) from anything that would actually ship:
 
-- `git commit` / `git push`
-- `gh pr ...`
+- `git push` to **main** (any refspec that lands on main), plus force-push / `--mirror`
+- `gh pr merge`
 - `netlify deploy` / the Netlify deploy MCP
 - Supabase `apply_migration`
 
 So when the loop marks a story **Resolved**, that means **code-complete + independently verified
-by a fresh subagent** — NOT shipped to production. **Shipping stays your manual step:** review the
-working-tree diff, commit, push, deploy, device-verify. tandem-tpm then reconciles the Resolved
-story back onto its linked Bug/Epic.
+by a fresh subagent, pushed to `loop/autofix` and surfaced in a PR** — NOT merged or shipped to
+production. **Merging + deploying stays your manual step:** review the PR diff, merge to `main`,
+let Netlify build, device-verify. tandem-tpm then reconciles the Resolved story back onto its
+linked Bug/Epic.
 
-> Heads-up: that deny list is global to this repo, so it will also block *your own* attended
-> pushes from a Claude Code session here. You normally push from your own terminal anyway, so this
-> shouldn't bite — but if you want to push from inside Claude Code, temporarily remove the
-> `git push` / `git commit` lines from `settings.local.json`.
+> Platform note: **Claude Code on the web already restricts each cloud session's pushes to its
+> own working branch** — it physically cannot push to `main` from a session. The `loop/autofix`
+> branch is therefore the platform-native flow, and our `deny` rules are belt-and-suspenders for
+> when you run the loop locally too.
+>
+> Server-side backstop (do this once): turn on **branch protection on `main`** in GitHub
+> (Settings → Branches → require a PR before merging). That makes "nothing ships without your
+> review" a guarantee at the repo level, not just a permission rule.
+>
+> Local caveat: your machine-local `.claude/settings.local.json` currently denies *all* `git
+> push`/`git commit`. That's fine for the remote runner (it doesn't use your local file), but if
+> you ever want the loop to push `loop/autofix` from a **local** Claude Code session, mirror the
+> push/commit allow + main-only deny from `settings.json` into `settings.local.json`.
 
 ---
 
@@ -76,8 +88,8 @@ and confirm the linkage. In Claude Code:
 ```
 Run the project-goal skill for Tandem. Load the Goal Record, compute progress against the User
 Story Coverage tracker, pick the next batch (cap 5), and hand exactly that batch to feature-loop.
-Stop after one cycle and show me: what got seeded, what was tested, any fix diffs in the working
-tree, and what Verify concluded. Do not commit, push, or deploy.
+Stop after one cycle and show me: what got seeded, what was tested, any fix diffs, and what Verify
+concluded. Keep all edits in the working tree for this smoke run — do not commit, push, or deploy.
 ```
 
 What you should see:
@@ -100,9 +112,11 @@ Once the single cycle looks right, launch the durable loop in Claude Code:
 
 ```
 /loop until: project-goal reports "GOAL MET" for Tandem — each cycle, invoke project-goal to pick
-the next batch (cap 5), then feature-loop to catalog/test/fix/verify that batch, then write the
-cycle log to the Goal Record. Never commit, push, or deploy — leave fixes in the working tree for
-Kerwin to ship.
+the next batch (cap 5), then feature-loop to catalog/test/fix/verify that batch. For every story
+Verify confirms Resolved, commit the fix and push it to the loop/autofix branch (create it from
+main if it doesn't exist; never push to main), then open or update a single PR titled
+"loop/autofix — Tandem auto-fixes for review". Finally write the cycle log to the Goal Record.
+Never push to main, never deploy, never run a migration — leave merging for Kerwin to review.
 ```
 
 Each cycle repeats catalog → test → fix → verify on the next ≤5 stories and updates the Goal
@@ -119,7 +133,8 @@ Record, stopping when the Definition of Done is met:
 - **It doesn't self-fire in the morning.** `/loop` only keeps going while *this terminal session
   stays open*. For an unattended overnight run you'd need a separate scheduler (and to confirm
   current Claude Code session/expiry limits before relying on it for a multi-day run).
-- **It won't ship.** Commit / push / deploy / migrate are gated to you (see ship gate above).
+- **It won't ship.** It commits + pushes to `loop/autofix` and opens a PR, but merging to `main`,
+  deploying, and migrations are gated to you (see ship gate above).
 - **It won't reverse-engineer the app.** Catalog is `tracker_seeded` (`loop-config.md`). New work
   enters only as a Bug & QA Log row.
 - **It won't run schema/auth/RLS/sync/calibration changes autonomously** — those hit
@@ -134,14 +149,16 @@ Record, stopping when the Definition of Done is met:
 - Story stuck **Needs Human** → open it, it'll name the gap (often a decision only you can make,
   e.g. the 4-day weekly-cadence day-of-week mapping for BUG-30). Resolve the decision, then the
   next cycle re-queues it.
-- A fix you don't like → just `git checkout -- <file>` to drop the working-tree edit; the story
-  goes back to Failing and will be retried (max 2 attempts/story before it escalates).
+- A fix you don't like → just don't merge that commit from the `loop/autofix` PR (or drop it from
+  the branch); the story goes back to Failing and will be retried (max 2 attempts/story before it
+  escalates). For a smoke-run working-tree edit, `git checkout -- <file>` still drops it.
 - Want to pause the whole objective → set `STATUS: Active` → `STATUS: Abandoned` (with a reason)
   in the Goal Record's `## State` block; the loop's `until:` stops matching `GOAL MET` but you've
   recorded why.
 
 ---
 
-_Config: `.claude/loop-config.md` · Permissions/gate: `.claude/settings.local.json` ·
+_Config: `.claude/loop-config.md` · Portable gate (travels to remote clone): `.claude/settings.json` ·
+Personal/local gate: `.claude/settings.local.json` ·
 Tracker: Tandem User Story Coverage (`fcfd09db-695c-4e01-93a2-90bed2abacdc`) ·
 Goal Record: https://app.notion.com/p/389ca37f935b81998d2bcebf0a364c52_

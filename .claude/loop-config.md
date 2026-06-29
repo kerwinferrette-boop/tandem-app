@@ -78,3 +78,24 @@ Human/Resolved/Skipped], plus relations Linked Bug → Bug & QA Log
 This keeps granularity clean: per-behavior user stories live in User Story Coverage
 (the loop's working tracker), the Bug Log and Epics stay as the human-facing queues,
 and tandem-tpm reconciles a story's Resolved status back onto its linked Bug/Epic.
+
+## Loop-closure: the `loop/autofix` branch
+
+The loop runs in an **ephemeral remote clone** (Claude Code on the web), so fixes have to
+leave the workspace by being **pushed to a branch** — they cannot stay in a working tree that
+gets wiped, and they must never land on `main`.
+
+Convention (enforced by `.claude/settings.json`):
+
+- Base every cycle's work off `main`; commit verified fixes onto a branch named **`loop/autofix`**
+  (`git switch -c loop/autofix` the first time, `git switch loop/autofix` thereafter).
+- Push that branch and open/update **one** PR titled `loop/autofix — Tandem auto-fixes for review`.
+- `git push` to `main`, force-push, `gh pr merge`, `netlify deploy`, and `supabase apply_migration`
+  are **denied**. Claude Code on the web also restricts each session's push to its own working
+  branch, so this is the platform-native flow.
+- Kerwin reviews + merges the PR, then deploys + device-verifies. tandem-tpm reconciles status.
+
+Remote-environment wiring (one-time): the repo `kerwinferrette-boop/tandem-app` must be connected
+as the session **Source** via the Claude GitHub integration, and `.claude/settings.json` +
+`.claude/skills/` + this config must be **committed on `main`** so the fresh clone actually
+contains the loop's brain.
