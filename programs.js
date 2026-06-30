@@ -1475,6 +1475,64 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis) {
     ]);
   };
 
+  // ── TASK-3: pressing dedup for the 5-day split ───────────────────────────
+  // build5 inserts a dedicated Shoulders+Arms day (Day 3) whose primary press is
+  // Arnold Press. Several 4-day bases ALSO press on Day 1 (e.g. both male and
+  // female fat_burn Day 1 use Arnold Press), but Day 1 and Day 3 are NON-adjacent
+  // so dedupeConsecutiveDays never sees the collision. The result is the same
+  // overhead press twice in one microcycle. Swap the shoulders-day press to a
+  // distinct overhead variant whenever it already appears on another day.
+  const PRESS_ALTERNATES = [
+    {id:'s5-ap-arnold',  name:'Arnold Press',            badge:'compound', sets:4, w:40, r:10, rest:90, compound:true,
+     why:'Full three-head delt recruitment in one movement.',
+     cues:['Palms facing you at start. Rotate through press.','Elbows in front of torso plane throughout.']},
+    {id:'s5-ap-dbsp',    name:'Seated DB Shoulder Press', badge:'compound', sets:4, w:45, r:10, rest:90, compound:true,
+     why:'Strict vertical press — maximal anterior/medial delt load with back support removing momentum.',
+     cues:['Press straight up, stack wrists over elbows.','Ribs down, brace — no lumbar arch.']},
+    {id:'s5-ap-ohp',     name:'Barbell Overhead Press',   badge:'compound', sets:4, w:75, r:8,  rest:90, compound:true,
+     why:'Highest absolute-load overhead press — total shoulder-girdle strength.',
+     cues:['Bar over mid-foot. Squeeze glutes, press, shrug at top.','Head through the window at lockout.']},
+    {id:'s5-ap-pushpress',name:'Push Press',              badge:'compound', sets:4, w:85, r:6,  rest:90, compound:true,
+     why:'Leg drive overloads the delts beyond strict-press capacity for a power stimulus.',
+     cues:['Short dip — knees only.','Drive through the dip, finish with the arms.']},
+    {id:'s5-ap-zpress',  name:'Z-Press',                  badge:'compound', sets:4, w:55, r:8,  rest:90, compound:true,
+     why:'Seated-on-floor press removes all leg and back contribution — pure shoulder plus core stability.',
+     cues:['Legs straight on the floor, tall spine.','Press without leaning back.']},
+  ];
+
+  const isPress = (name) => /press|bench|\bdip\b|push-up/i.test(name || '');
+
+  const dedupePressingBuild5 = (days) => {
+    const shoulders = days.find(d => d.key === 'day3');
+    if (!shoulders) return days;
+    // pressing names used on every OTHER day
+    const otherPress = new Set();
+    days.forEach(d => {
+      if (d === shoulders) return;
+      (d.blocks || []).forEach(b => { if (b.cardio) return;
+        (b.exs || []).forEach(ex => { if (ex && !ex.cardioOnly && isPress(ex.name)) otherPress.add(ex.name.trim().toLowerCase()); });
+      });
+    });
+    // every name in the whole split — so we never swap into another collision
+    const allNames = new Set();
+    days.forEach(d => (d.blocks || []).forEach(b => (b.exs || []).forEach(ex => ex && allNames.add(ex.name.trim().toLowerCase()))));
+    // swap the shoulders-day compound press if it collides
+    for (const b of shoulders.blocks) {
+      if (b.cardio) continue;
+      for (let i = 0; i < b.exs.length; i++) {
+        const ex = b.exs[i];
+        if (ex && ex.compound && isPress(ex.name) && otherPress.has(ex.name.trim().toLowerCase())) {
+          const alt = PRESS_ALTERNATES.find(a => !allNames.has(a.name.trim().toLowerCase()));
+          if (alt) {
+            b.exs[i] = { ...alt };
+            allNames.add(alt.name.trim().toLowerCase());
+          }
+        }
+      }
+    }
+    return days;
+  };
+
   // 5-day: add dedicated shoulder/arms day
   const build5 = (base4) => {
     const [ua, la, ub, lb] = base4;
@@ -1508,9 +1566,9 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis) {
         ]}
       ]
     };
-    return dedupeConsecutiveDays([ua, la, shoulders,
+    return dedupeConsecutiveDays(dedupePressingBuild5([ua, la, shoulders,
       {...ub, key:'day4', label: ub.label.replace(/^Day \d+/, 'Day 4')},
-      {...lb, key:'day5', label: lb.label.replace(/^Day \d+/, 'Day 5')}]);
+      {...lb, key:'day5', label: lb.label.replace(/^Day \d+/, 'Day 5')}]));
   };
 
   // 2-day: Full Body A/B — push+hinge / pull+quad
