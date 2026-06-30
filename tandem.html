@@ -2008,7 +2008,7 @@ async function computeCalibration1RMs(sessionUUID, userId) {
 function getRecommendation(exId, compound, goal, exName, sex) {
   const lastSets = LS.get('tandem_lastsets') || {};
   const entry = lastSets[exId];
-  const phase = getPhase(currentWeek, goal);
+  const phase = getPhase(currentWeek, goal, cfg.weeks);
   const topRange = phaseWeekRep(phase, currentWeek);
   const inc = compound ? phase.incComp : phase.incAcc;
 
@@ -3374,7 +3374,7 @@ function finishSession() {
           resolvedId = rec?.id || null;
           if (!resolvedId) {
             // No cloud row at all — create one so we can mark it complete
-            const phase = getPhase(currentWeek, cfg.goal);
+            const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
             const { data: newRow } = await sb.from('workout_sessions').insert({
               user_id: currentUser.id,
               session_date: localDateStr(),
@@ -3894,7 +3894,7 @@ function getProgramDayNumber() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diffDays = Math.floor((today - start) / 86400000);
   if (diffDays < 0) return null;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
   if (!program?.length) return null;
   return computeWeekCadence(cfg.days, cfg.goal, program)[diffDays % 7]; // 'dayN' or 'rest'
 }
@@ -3904,7 +3904,7 @@ function getProgramDayNumber() {
 // instead of the static ceil(7/days) which was goal-blind and plan-length-blind.
 function getOverdueDays() {
   if (!cfg?.days || !cfg?.startDate) return 0;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
   if (!program?.length) return 0;
   const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
   const tSlots = cadence.reduce((a, s, i) => (s !== 'rest' ? [...a, i] : a), []);
