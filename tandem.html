@@ -275,23 +275,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dh-chip.hi{background:var(--accent-dim);border-color:rgba(24,194,106,.28);color:var(--accent);}
 .dh-rationale{font-size:12px;color:var(--muted2);line-height:1.65;font-weight:300;}
 
-/* ── NEXT SESSION BANNER ── */
-.nsb{margin:0 0 10px;background:linear-gradient(135deg,rgba(154,154,172,0.07) 0%,var(--s1) 70%);
-  border:1px solid rgba(154,154,172,0.22);border-radius:12px;padding:12px 14px;display:none;}
-.nsb.show{display:block;}
-.nsb-title{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
-.nsb-title::after{content:'';flex:1;height:1px;background:rgba(154,154,172,.2);}
-.nsb-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.nsb-item{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
-.nsb-ex{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.nsb-rec{font-family:var(--font-mono);font-size:12px;display:flex;align-items:center;gap:4px;}
-.nsb-arrow{font-size:12px;}
-.nsb-arrow.up{color:var(--green);}
-.nsb-arrow.same{color:var(--accent);}
-.nsb-arrow.down{color:var(--red);}
-.nsb-reason{font-size:10px;color:var(--muted);margin-top:2px;}
-
 /* ── BLOCK LABEL ── */
 .block-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--accent);margin:14px 0 7px;display:flex;align-items:center;gap:8px;}
@@ -597,7 +580,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 @media(max-width:420px){
   .ob-row{grid-template-columns:1fr;}
-  .nsb-grid{grid-template-columns:1fr;}
   .pct-grid{grid-template-columns:repeat(3,1fr);}
 }
 
@@ -2524,12 +2506,16 @@ function renderTracker() {
   document.getElementById('pbReps').textContent = `This week: ${phaseWeekRep(phase, currentWeek)} reps · Phase range: ${phase.reps}`;
   document.getElementById('pbWeekNum').textContent = currentWeek;
   document.getElementById('pbTotalWeeks').textContent = cfg.weeks;
-  // EPIC-006 step 7: show program day in tracker header (hidden when no startDate anchor)
-  const _progDay = getProgramDayNumber();
+  // BUG-030: getProgramDayNumber now returns 'dayN' | 'rest' | null (not a bare number)
+  const _progDayKey = getProgramDayNumber();
   const _wn = document.getElementById('wnLabel');
-  _wn.textContent =
-    `Week ${currentWeek} of ${cfg.weeks}` +
-    (_progDay === 'rest' ? ' · Rest Day' : _progDay ? ` · Day ${_progDay}` : '');
+  if (_progDayKey === 'rest') {
+    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks} \u00b7 Rest Day`;
+  } else if (_progDayKey) {
+    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${parseInt(_progDayKey.replace('day', ''))}`;
+  } else {
+    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks}`;
+  }
   // BUG-006: overdue badge when a scheduled day has passed without a completed session
   const _overdue = getOverdueDays();
   if (_overdue) {
@@ -2600,7 +2586,6 @@ function renderTracker() {
   document.getElementById('bottomNav').style.display = 'flex';
 
   updateProgress();
-  buildNextSessionBanners(program);
 
   const _eTier = sessionStorage.getItem('eq_tier');
   const _eDb   = parseInt(sessionStorage.getItem('eq_max_db')) || 0;
@@ -2753,16 +2738,6 @@ function buildDayHTML(day, phase) {
     });
   }
 
-  // EPIC-9 / BUG-129545c0: Next Session Targets relocated below the workout so
-  // it reads as a genuine post-session preview instead of sitting above the
-  // current session. Populated by buildNextSessionBanners() (id lookup).
-  html += `
-    <div class="nsb" id="nsb-${day.key}">
-      <div class="nsb-title">Next Session Targets</div>
-      <div class="nsb-grid" id="nsbGrid-${day.key}"></div>
-    </div>
-  `;
-
   html += `<div style="height:8px;"></div>`;
   return html;
 }
@@ -2800,31 +2775,6 @@ function getMobility(dayKey, goal) {
 }
 
 // ═══════════════════════════════════════════════════════
-// NEXT SESSION BANNERS
-// ═══════════════════════════════════════════════════════
-function buildNextSessionBanners(program) {
-  const lastSets = LS.get('tandem_lastsets') || {};
-  program.forEach(day => {
-    const allExs = day.blocks.flatMap(b => b.exs.filter(e => e && e.id && !e.cardioOnly));
-    const relevant = allExs.filter(e => lastSets[e.id]);
-    const banner = document.getElementById('nsb-' + day.key);
-    const grid = document.getElementById('nsbGrid-' + day.key);
-    if (!banner || !grid) return;
-    if (!relevant.length) { banner.classList.remove('show'); return; }
-    banner.classList.add('show');
-    grid.innerHTML = relevant.slice(0,6).map(ex => {
-      const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
-      const icon = rec.arrow === 'up' ? '↑' : rec.arrow === 'down' ? '↓' : '→';
-      return `<div class="nsb-item">
-        <div class="nsb-ex">${ex.name}</div>
-        <div class="nsb-rec"><span class="nsb-arrow ${rec.arrow}">${icon}</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent2);margin-left:3px;">${rec.label}</span></div>
-        <div class="nsb-reason">${rec.reason}</div>
-      </div>`;
-    }).join('');
-  });
-}
-
-// ═══════════════════════════════════════════════════════
 // SET LOGGING
 // ═══════════════════════════════════════════════════════
 const loggedSetsMap = {}; // exId → [false,false,...]
@@ -2851,7 +2801,7 @@ async function startOrResumeSession() {
     }
     localStorage.removeItem('tandem_active_session_id');
   }
-  const today = localDateStr(new Date());
+  const today = localDateStr(); // BUG-018/027: local day, not UTC
   const phase = getPhase(currentWeek, cfg.goal);
   const { data: newSession, error } = await sb.from('workout_sessions').insert({
     user_id: currentUser.id,
@@ -3041,7 +2991,7 @@ async function saveExerciseToCloud(id) {
   try {
     const sessionPayload = {
       user_id: currentUser.id,
-      session_date: localDateStr(new Date()),
+      session_date: localDateStr(), // BUG-018/027: local day, not UTC timestamp
       week_number: currentWeek,
       day_type: currentDay,
       program_goal: cfg.goal,
@@ -3302,9 +3252,7 @@ function finishSession() {
   banner.classList.add('show');
   banner.scrollIntoView({behavior:'smooth'});
 
-  // Rebuild next session banners with new data
   const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
-  buildNextSessionBanners(program);
   updateProgress();
 
   // Cloud sync
@@ -3326,95 +3274,130 @@ function finishSession() {
     const sessionUUID = localStorage.getItem('tandem_active_session_id');
     const startTime = localStorage.getItem('tandem_session_start_time');
 
-    if (!sessionUUID) {
-      showToast('No active session found \u2014 start a workout first');
-    } else {
+    // BUG-017: recover cloud session ID if localStorage entry was lost
+    // (lazy cloud create in logSet failed, or ID cleared before Finish was tapped).
+    // Recovery runs inside the IIFE so it can use await without making finishSession async.
+    (async () => {
+      let resolvedId = sessionUUID;
+      if (!resolvedId) {
+        try {
+          const { data: rec } = await sb.from('workout_sessions')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .eq('session_date', localDateStr())
+            .eq('completed', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          resolvedId = rec?.id || null;
+          if (!resolvedId) {
+            // No cloud row at all — create one so we can mark it complete
+            const phase = getPhase(currentWeek, cfg.goal);
+            const { data: newRow } = await sb.from('workout_sessions').insert({
+              user_id: currentUser.id,
+              session_date: localDateStr(),
+              week_number: currentWeek,
+              day_type: currentDay,
+              program_goal: cfg.goal,
+              phase_name: phase?.name || null,
+              completed: false
+            }).select('id').single();
+            resolvedId = newRow?.id || null;
+          }
+        } catch (recErr) {
+          console.warn('BUG-017 session recovery failed:', recErr);
+        }
+      }
+
+      if (!resolvedId) {
+        showToast(`Session saved locally \u2014 ${Math.round(localVolume).toLocaleString()} lbs moved`);
+        return;
+      }
+
       const duration = startTime
         ? Math.round((Date.now() - Number(startTime)) / 60000)
         : null;
-      const todayDate = localDateStr(new Date());
+      const todayDate = localDateStr(); // BUG-018/027: local day, not UTC
 
-      (async () => {
-        try {
-          // 1. Get true volume from sets already written to DB
-          const { data: setRows } = await sb.from('sets')
-            .select('weight_lbs, reps')
-            .eq('session_id', sessionUUID);
-          const dbVolume = (setRows || []).reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
-          const totalVolume = dbVolume > 0 ? Math.round(dbVolume) : Math.round(localVolume);
+      try {
+        // 1. Get true volume from sets already written to DB
+        const { data: setRows } = await sb.from('sets')
+          .select('weight_lbs, reps')
+          .eq('session_id', resolvedId);
+        const dbVolume = (setRows || []).reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
+        const totalVolume = dbVolume > 0 ? Math.round(dbVolume) : Math.round(localVolume);
 
-          // 2. Mark session complete
-          const { error: wsError } = await sb.from('workout_sessions')
-            .update({
-              completed: true,
-              total_volume_lbs: totalVolume,
-              duration_minutes: duration,
-              session_type: 'strength' // EPIC-006 step 8; EPIC-012 will set endurance/event types
-            })
-            .eq('id', sessionUUID)
-            .eq('user_id', currentUser.id);
-          if (wsError) throw wsError;
+        // 2. Mark session complete
+        const { error: wsError } = await sb.from('workout_sessions')
+          .update({
+            completed: true,
+            total_volume_lbs: totalVolume,
+            duration_minutes: duration,
+            session_type: 'strength' // EPIC-006 step 8; EPIC-012 will set endurance/event types
+          })
+          .eq('id', resolvedId)
+          .eq('user_id', currentUser.id);
+        if (wsError) throw wsError;
 
-          // 3. Count PRs in this session
-          const { count: prCount } = await sb.from('sets')
-            .select('id', { count: 'exact', head: true })
-            .eq('session_id', sessionUUID)
-            .eq('is_pr', true);
+        // 3. Count PRs in this session
+        const { count: prCount } = await sb.from('sets')
+          .select('id', { count: 'exact', head: true })
+          .eq('session_id', resolvedId)
+          .eq('is_pr', true);
 
-          // 4. Upsert streaks — 10 pts/session + 5 pts/PR
-          const sessionPoints = 10 + (prCount || 0) * 5;
-          const { data: existing } = await sb.from('streaks')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
+        // 4. Upsert streaks — 10 pts/session + 5 pts/PR
+        const sessionPoints = 10 + (prCount || 0) * 5;
+        const { data: existing } = await sb.from('streaks')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
 
-          if (!existing) {
-            const { error: sErr } = await sb.from('streaks').insert({
-              user_id: currentUser.id,
-              current_streak_days: 1,
-              longest_streak_days: 1,
-              total_sessions: 1,
-              total_prs: prCount || 0,
-              total_volume_lbs: totalVolume,
-              weekly_points: sessionPoints,
-              last_session_date: todayDate,
-              updated_at: new Date().toISOString()
-            });
-            if (sErr) throw sErr;
-          } else {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = localDateStr(yesterday);
-            const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
-            const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
-            const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
-            const { error: sErr } = await sb.from('streaks').update({
-              current_streak_days: newStreak,
-              longest_streak_days: newLongest,
-              total_sessions: (existing.total_sessions || 0) + 1,
-              total_prs: (existing.total_prs || 0) + (prCount || 0),
-              total_volume_lbs: (existing.total_volume_lbs || 0) + totalVolume,
-              weekly_points: (existing.weekly_points || 0) + sessionPoints,
-              last_session_date: todayDate,
-              updated_at: new Date().toISOString()
-            }).eq('user_id', currentUser.id);
-            if (sErr) throw sErr;
-          }
-
-          // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
-          try {
-            await computeCalibration1RMs(sessionUUID, currentUser.id);
-          } catch(calErr) {
-            console.warn('Calibration 1RM write skipped:', calErr);
-          }
-
-          showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
-        } catch(e) {
-          console.error('Session finish sync error:', e);
-          showToast(`Session saved locally \u2014 ${Math.round(localVolume).toLocaleString()} lbs moved`);
+        if (!existing) {
+          const { error: sErr } = await sb.from('streaks').insert({
+            user_id: currentUser.id,
+            current_streak_days: 1,
+            longest_streak_days: 1,
+            total_sessions: 1,
+            total_prs: prCount || 0,
+            total_volume_lbs: totalVolume,
+            weekly_points: sessionPoints,
+            last_session_date: todayDate,
+            updated_at: new Date().toISOString()
+          });
+          if (sErr) throw sErr;
+        } else {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
+          const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
+          const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
+          const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
+          const { error: sErr } = await sb.from('streaks').update({
+            current_streak_days: newStreak,
+            longest_streak_days: newLongest,
+            total_sessions: (existing.total_sessions || 0) + 1,
+            total_prs: (existing.total_prs || 0) + (prCount || 0),
+            total_volume_lbs: (existing.total_volume_lbs || 0) + totalVolume,
+            weekly_points: (existing.weekly_points || 0) + sessionPoints,
+            last_session_date: todayDate,
+            updated_at: new Date().toISOString()
+          }).eq('user_id', currentUser.id);
+          if (sErr) throw sErr;
         }
-      })();
-    }
+
+        // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
+        try {
+          await computeCalibration1RMs(resolvedId, currentUser.id);
+        } catch(calErr) {
+          console.warn('Calibration 1RM write skipped:', calErr);
+        }
+
+        showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
+      } catch(e) {
+        console.error('Session finish sync error:', e);
+        showToast(`Session saved locally \u2014 ${Math.round(localVolume).toLocaleString()} lbs moved`);
+      }
+    })();
 
     localStorage.removeItem('tandem_active_session_id');
     localStorage.removeItem('tandem_session_start_time');
@@ -3742,50 +3725,113 @@ async function restoreFromCloud() {
   }
 }
 
-// ── localDateStr() — BUG-27/BUG-18 timezone fix ──
-// Returns YYYY-MM-DD in LOCAL time so session_date storage and dot-key display
-// use the same calendar day regardless of the user's UTC offset.
-function localDateStr(d) {
-  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+// ── localDateStr() — BUG-018/027 fix ──
+// Returns YYYY-MM-DD in the user's LOCAL timezone. Using toISOString() emits the
+// UTC date, which rolls a day forward for evening workouts in western timezones
+// (e.g. a Fri 8pm ET session was stored as Saturday — "Wednesday marked done" /
+// "today is Friday not Saturday"). All calendar-day keys — session_date and the
+// dashboard day-dots — must agree on the user's local day.
+function localDateStr(d = new Date()) {
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 }
 
-// ── CADENCE_MAP — BUG-30 fix ──
-// Explicit per-plan-length week templates (0=Mon … 6=Sun).
-// null slots are rest days. For 2-day and 5-day cadences Kerwin should confirm
-// the spread is acceptable before shipping.
-const CADENCE_MAP = {
-  4: ['day1', 'day2', null, 'day3', 'day4', null, null],   // Mon/Tue rest Thu/Fri rest/rest
-  3: ['day1',  null, 'day2',  null, 'day3',  null, null],  // Mon/Wed/Fri (PPL spread)
-  5: ['day1', 'day2',  null, 'day3', 'day4', 'day5', null], // Mon/Tue/Thu/Fri/Sat — confirm with Kerwin
-  2: ['day1',  null,   null, 'day2',  null,   null,  null], // Mon/Thu — confirm with Kerwin
+// ── SCIENCE-BASED CADENCE ENGINE — BUG-030 fix ──
+// Derives weekly training schedules from exercise-science recovery principles
+// rather than a static (diffDays%7)+1 counter that ignores plan length and goal.
+// Two levers per goal: minimum hours of rest between same-muscle-group sessions,
+// and maximum consecutive training days before a forced rest day.
+const RECOVERY_PARAMS = {
+  build_muscle: { sameGroupHours: 48, maxConsecutive: 2 }, // 48h between same groups; 2-on 1-off blocks
+  fat_burn:     { sameGroupHours: 24, maxConsecutive: 3 }, // cardio tolerates more consecutive days
+  transform:    { sameGroupHours: 36, maxConsecutive: 2 }, // intermediate
 };
 
-// ── getProgramDayNumber() — BUG-005/BUG-30 fix ──
-// Returns the scheduled program day number (1–N) for today per the cadence map,
-// 'rest' when today is an explicit rest day, or null when there is no anchor.
+// Classify a day label into a muscle group for conflict detection.
+// Push and Pull are kept separate so they can be placed adjacent (different muscles).
+function muscleGroupFromLabel(label) {
+  const l = (label || '').toLowerCase();
+  if (/full.body|full body/.test(l)) return 'full';
+  if (/lower|legs/.test(l)) return 'lower';
+  if (/pull/.test(l) && !/push/.test(l)) return 'pull';
+  if (/push/.test(l) && !/pull/.test(l)) return 'push';
+  if (/upper|shoulder|arm/.test(l)) return 'upper';
+  return 'full';
+}
+
+// Returns false if placing dayIdx at slotIdx violates:
+//   - sameGroupMinGap: too few slots between same-muscle-group sessions (recovery science)
+//   - maxConsecutive: too many back-to-back training days without rest (fatigue accumulation)
+function canPlaceDay(placed, groups, dayIdx, slotIdx, sameGroupMinGap, maxConsecutive) {
+  let streak = 0;
+  for (let s = slotIdx - 1; s >= 0; s--) {
+    if (placed.some(p => p.slot === s)) streak++;
+    else break;
+  }
+  if (streak >= maxConsecutive) return false;
+  const myGroup = groups[dayIdx];
+  if (myGroup !== 'full') {
+    for (const p of placed) {
+      if (groups[p.dayIdx] === myGroup && (slotIdx - p.slot) < sameGroupMinGap) return false;
+    }
+  }
+  return true;
+}
+
+// Greedy 7-slot cadence: places N training days as early as possible while
+// respecting same-group recovery gaps and max-consecutive limits.
+// Example outputs: build_muscle 4-day → ['day1','day2','rest','day3','day4','rest','rest']
+//                  fat_burn 4-day    → ['day1','day2','day3','rest','day4','rest','rest']
+function computeWeekCadence(numDays, goal, dayObjects) {
+  const rec = RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle;
+  const sameGroupMinGap = Math.ceil(rec.sameGroupHours / 24); // hours → day slots
+  const maxConsecutive  = rec.maxConsecutive;
+  const groups = dayObjects.map(d => muscleGroupFromLabel(d.label));
+  const slots  = Array(7).fill('rest');
+  const placed = [];
+  let cursor = 0;
+  for (let i = 0; i < numDays; i++) {
+    while (cursor < 7 && !canPlaceDay(placed, groups, i, cursor, sameGroupMinGap, maxConsecutive)) {
+      cursor++;
+    }
+    if (cursor >= 7) break;
+    slots[cursor] = dayObjects[i].key;
+    placed.push({ slot: cursor, dayIdx: i });
+    cursor++;
+  }
+  return slots;
+}
+
+// ── getProgramDayNumber() — BUG-030 rewrite ──
+// Returns today's program day key ('day1'..'dayN'), 'rest', or null.
+// Science-based cadence via computeWeekCadence replaces bare (diffDays%7)+1 counter
+// which returned Day 5/6/7 on a 4-day plan and had no concept of rest days.
 function getProgramDayNumber() {
-  if (!cfg?.startDate) return null;
-  const map = CADENCE_MAP[cfg.days];
-  if (!map) return null;
+  if (!cfg?.startDate || !cfg?.goal) return null;
   const start = new Date(cfg.startDate + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diffDays = Math.floor((today - start) / 86400000);
   if (diffDays < 0) return null;
-  const key = map[diffDays % 7];
-  if (key === null) return 'rest';
-  return parseInt(key.replace('day', ''), 10);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+  if (!program?.length) return null;
+  return computeWeekCadence(cfg.days, cfg.goal, program)[diffDays % 7]; // 'dayN' or 'rest'
 }
 
-// ── getOverdueDays() — BUG-006/BUG-30 fix ──
-// Counts missed TRAINING days (non-null cadence slots) between the last completed
-// session and today. Returns 0 when on track or no program is configured.
+// ── getOverdueDays() — BUG-030 rewrite ──
+// Derives the allowed gap from the cadence's minimum inter-session spacing (+ 1 grace day)
+// instead of the static ceil(7/days) which was goal-blind and plan-length-blind.
 function getOverdueDays() {
   if (!cfg?.days || !cfg?.startDate) return 0;
-  const map = CADENCE_MAP[cfg.days];
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
+  if (!program?.length) return 0;
+  const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
+  const tSlots = cadence.reduce((a, s, i) => (s !== 'rest' ? [...a, i] : a), []);
+  let minGap = 7;
+  for (let i = 1; i < tSlots.length; i++) minGap = Math.min(minGap, tSlots[i] - tSlots[i - 1]);
+  const allowed = minGap + 1; // one extra grace day
   const hist = LS.get('tandem_history') || [];
   let last = null;
   hist.forEach(h => {
-    if (h.completed === false) return;
+    if (h.completed === false) return; // cloud-hydrated incomplete sessions don't count
     const raw = h.session_date || h.date;
     if (!raw) return;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -3795,18 +3841,7 @@ function getOverdueDays() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   last.setHours(0, 0, 0, 0);
   const gap = Math.floor((today - last) / 86400000);
-  if (!map) {
-    // Unknown cadence — fall back to original heuristic
-    const allowed = Math.ceil(7 / cfg.days);
-    return gap > allowed ? gap : 0;
-  }
-  const start = new Date(cfg.startDate + 'T00:00:00');
-  const lastDiff = Math.floor((last - start) / 86400000);
-  let missed = 0;
-  for (let i = 1; i < gap; i++) {
-    if (map[(lastDiff + i) % 7] !== null) missed++;
-  }
-  return missed;
+  return gap > allowed ? gap : 0;
 }
 
 // ── syncFromCloud() — BUG-003 fix ──
@@ -3869,7 +3904,7 @@ async function syncFromCloud() {
     // Advance the day pointer past the last completed session
     const lastDone = sessions?.find(s => s.completed && s.session_date);
     if (lastDone) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
         const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex);
         const idx = prog.findIndex(d => d.key === lastDone.day_type);
@@ -4121,7 +4156,7 @@ function renderDashboard() {
     if (!dotEl) return;
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const key = localDateStr(d);
+    const key = localDateStr(d); // BUG-018/027: local day, not UTC
     const outcome = dashboardData.dailyWins[key];
     if (outcome === 'mine') {
       dotEl.style.background = myColor;
