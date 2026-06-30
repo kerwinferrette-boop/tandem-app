@@ -740,21 +740,15 @@ const EXERCISE_BANK = {
 };
 
 // ═══════════════════════════════════════════════════════
-// DYNAMIC PROGRAM GENERATOR
-// buildDynamicProgram(goal, days, weeks, sex, tier, emphasis)
-//   → returns a 4-day base array (same shape as static programs)
-//     or null on failure (callers fall back to static)
+// INJURY-AWARE FILTERING
+// makeInjuryBlocked(injuries) → predicate (name) => bool
+//   Maps free-text injury keywords to contraindicated movement-name
+//   regexes. Used both inside the dynamic generator's bank() filter and
+//   as a final prune pass (pruneInjuries) on the assembled program — the
+//   prune catches statically-injected days (e.g. build5's shoulder block)
+//   that bypass the bank filter.
 // ═══════════════════════════════════════════════════════
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
-  const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
-  const tierOrder = ['home','hotel_gym','full_gym'];
-  const reqIdx = tierOrder.indexOf(tier || 'full_gym');
-
-  // injury-aware filtering: cfg.injuries is free text (e.g. "bad knees, lower
-  // back, shoulder impingement"). Match keywords → contraindicated movement-name
-  // patterns. Exclusions are deliberately narrow so a safe primary compound
-  // always survives in each muscle group (verified against EXERCISE_BANK); if a
-  // day is left without a primary the usable-check below returns null → static.
+function makeInjuryBlocked(injuries) {
   const INJURY_RULES = [
     { kw:/knee/i,                                                ban:/lunge|bulgarian|step-up|hack squat|leg extension|sissy/i },
     { kw:/(lower ?back|lumbar|spine|herniat|\bdisc\b|sciatic)/i, ban:/deadlift|romanian|good morning|barbell row|bent-?over|\brdl\b|back squat/i },
@@ -765,7 +759,43 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
   ];
   const injStr = String(injuries || '');
   const injuryBans = INJURY_RULES.filter(r => r.kw.test(injStr)).map(r => r.ban);
-  const injuryBlocked = (name) => injuryBans.some(re => re.test(name || ''));
+  return (name) => injuryBans.some(re => re.test(name || ''));
+}
+
+// pruneInjuries(program, injuries) → program with contraindicated movements
+//   removed from each day's blocks. Safe to apply only on the dynamic path,
+//   where every day/block/exercise object is freshly constructed (no shared
+//   static mutation). This catches statically-injected exercises (e.g.
+//   build5's shoulder block) that bypass the bank-level filter. Guards
+//   against emptying a day: a prune that would leave a day with no
+//   exercises at all is rolled back for that day.
+function pruneInjuries(program, injuries) {
+  if (!program || !injuries) return program;
+  const blocked = makeInjuryBlocked(injuries);
+  for (const day of program) {
+    if (!day || !Array.isArray(day.blocks)) continue;
+    const prunedBlocks = day.blocks
+      .map(b => ({ ...b, exs: (b.exs || []).filter(ex => !blocked(ex.name)) }))
+      .filter(b => b.exs.length);
+    const total = prunedBlocks.reduce((n, b) => n + b.exs.length, 0);
+    if (total > 0) day.blocks = prunedBlocks;
+  }
+  return program;
+}
+
+// ═══════════════════════════════════════════════════════
+// DYNAMIC PROGRAM GENERATOR
+// buildDynamicProgram(goal, days, weeks, sex, tier, emphasis)
+//   → returns a 4-day base array (same shape as static programs)
+//     or null on failure (callers fall back to static)
+// ═══════════════════════════════════════════════════════
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
+  const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
+  const tierOrder = ['home','hotel_gym','full_gym'];
+  const reqIdx = tierOrder.indexOf(tier || 'full_gym');
+
+  // injury-aware filtering (shared predicate — see makeInjuryBlocked)
+  const injuryBlocked = makeInjuryBlocked(injuries);
 
   // filter helpers
   const tierOk = (ex) => tierOrder.indexOf(ex.tier) <= reqIdx;
@@ -2057,10 +2087,12 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries) {
   if (equipment || emphasis || injuries) {
     const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries);
     if (generated) {
-      if (days === 2) return build2(generated);
-      if (days === 3) return ppl(generated);
-      if (days === 5) return build5(generated);
-      return generated;
+      // Final injury prune — catches statically-injected exercises (build5's
+      // shoulder block) that bypass the bank-level filter inside the generator.
+      if (days === 2) return pruneInjuries(build2(generated), injuries);
+      if (days === 3) return pruneInjuries(ppl(generated), injuries);
+      if (days === 5) return pruneInjuries(build5(generated), injuries);
+      return pruneInjuries(generated, injuries);
     }
   }
 
