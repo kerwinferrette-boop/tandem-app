@@ -745,10 +745,27 @@ const EXERCISE_BANK = {
 //   → returns a 4-day base array (same shape as static programs)
 //     or null on failure (callers fall back to static)
 // ═══════════════════════════════════════════════════════
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis) {
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const tierOrder = ['home','hotel_gym','full_gym'];
   const reqIdx = tierOrder.indexOf(tier || 'full_gym');
+
+  // injury-aware filtering: cfg.injuries is free text (e.g. "bad knees, lower
+  // back, shoulder impingement"). Match keywords → contraindicated movement-name
+  // patterns. Exclusions are deliberately narrow so a safe primary compound
+  // always survives in each muscle group (verified against EXERCISE_BANK); if a
+  // day is left without a primary the usable-check below returns null → static.
+  const INJURY_RULES = [
+    { kw:/knee/i,                                                ban:/lunge|bulgarian|step-up|hack squat|leg extension|sissy/i },
+    { kw:/(lower ?back|lumbar|spine|herniat|\bdisc\b|sciatic)/i, ban:/deadlift|romanian|good morning|barbell row|bent-?over|\brdl\b|back squat/i },
+    { kw:/(shoulder|impinge|rotator|labrum|ac ?joint)/i,        ban:/overhead press|arnold|push press|z-press|upright row|behind|military|shoulder press|landmine press/i },
+    { kw:/(elbow|tennis|golfer)/i,                              ban:/skull ?crusher|overhead extension|close-grip/i },
+    { kw:/wrist/i,                                              ban:/barbell curl|skull ?crusher|upright row/i },
+    { kw:/(hip|groin)/i,                                        ban:/sumo|bulgarian|deep squat/i },
+  ];
+  const injStr = String(injuries || '');
+  const injuryBans = INJURY_RULES.filter(r => r.kw.test(injStr)).map(r => r.ban);
+  const injuryBlocked = (name) => injuryBans.some(re => re.test(name || ''));
 
   // filter helpers
   const tierOk = (ex) => tierOrder.indexOf(ex.tier) <= reqIdx;
@@ -758,7 +775,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis) {
   };
   const bank = ({groups, cat, excl=[]}) =>
     Object.values(EXERCISE_BANK).filter(e =>
-      tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name));
+      tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name));
 
   // emphasis tag → bank emphasis tag
   const emphMap = {back_heavy:'back',push_heavy:'push',pull_heavy:'pull',
@@ -878,20 +895,9 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis) {
   }
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
-
-  // Dynamic path — use exercise bank when equipment or emphasis is specified
-  if (equipment || emphasis) {
-    const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus);
-    if (generated) {
-      if (days === 2) return build2(generated);
-      if (days === 3) return ppl(generated);
-      if (days === 5) return build5(generated);
-      return generated;
-    }
-  }
 
   const isFemale = (sex === 'F' || String(sex || '').toLowerCase() === 'f' || String(sex || '').toLowerCase() === 'female');
   const fat = goal === 'fat_burn';
@@ -2042,6 +2048,21 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis) {
   // ─── End female programs ─────────────────────────────────────────────────────
 
   const activePrograms = isFemale ? femalePrograms : programs;
+
+  // Dynamic path — use exercise bank when equipment, emphasis, or injuries are
+  // specified. Injuries trigger the generator so contraindicated movements can be
+  // filtered out (the static programs can't be filtered). This block lives here,
+  // after the build2/ppl/build5 const helpers above are initialized — calling them
+  // from the top of getProgram hit their temporal dead zone (TDZ).
+  if (equipment || emphasis || injuries) {
+    const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries);
+    if (generated) {
+      if (days === 2) return build2(generated);
+      if (days === 3) return ppl(generated);
+      if (days === 5) return build5(generated);
+      return generated;
+    }
+  }
 
   if (!activePrograms[goal]) return activePrograms.build_muscle?.[4] || programs.build_muscle[4];
 

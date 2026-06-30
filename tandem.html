@@ -2563,7 +2563,7 @@ function goHome() {
 // RENDER TRACKER
 // ═══════════════════════════════════════════════════════
 function renderTracker() {
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
   const _phases = scaledPhases(cfg.goal, cfg.weeks);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const _phaseNum = _phases.findIndex(p => p === phase || (p.name === phase.name)) + 1 || 1;
@@ -2962,7 +2962,7 @@ function logSet(id, i) {
           const cardEl = document.getElementById('ec-' + id);
           const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
           // Exercise category from day label (upper / lower / full_body / day key)
-          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
+          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
           const dayObj = prog?.find(d => d.key === currentDay);
           const dl = dayObj?.label || '';
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
@@ -3133,7 +3133,7 @@ function startRest(id) {
   // Rest only fires after the final exercise of the superset block, so the
   // timer runs between rounds instead of between partner exercises.
   try {
-    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
+    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
     const dayObj = prog?.find(d => d.key === currentDay);
     const blk = dayObj?.blocks?.find(b =>
       !b.cardio && /superset/i.test(b.label || '') && b.exs?.some(e => e && e.id === id));
@@ -3334,7 +3334,7 @@ function finishSession() {
   banner.classList.add('show');
   banner.scrollIntoView({behavior:'smooth'});
 
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
   updateProgress();
 
   // Cloud sync
@@ -3991,7 +3991,7 @@ async function syncFromCloud() {
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
-        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
+        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
         const idx = prog.findIndex(d => d.key === lastDone.day_type);
         if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
       }
@@ -4618,7 +4618,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis);
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }
