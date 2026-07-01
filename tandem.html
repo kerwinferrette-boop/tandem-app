@@ -2069,13 +2069,43 @@ const EQ_LABELS = {
   full_gym:'Full Gym', standard_gym:'Standard Gym',
   hotel_full:'Hotel – Full DB', hotel_small:'Hotel – Small DB', dumbbells:'DBs Only'
 };
-const BARBELL_NAMES = ['barbell','deadlift','hip thrust'];
-const DB_SUBS = {
-  'low incline barbell press':'DB Incline Press (same angle)',
-  'romanian deadlift':'DB Romanian Deadlift',
-  'hip thrust':'DB Hip Thrust or Weighted Glute Bridge',
-};
 
+// ── Canonical tier mapping: 5 UI tiers / onboarding equipment → bank filter ──
+// Bank tiers are 'full_gym' | 'hotel_gym' | 'home' (an exercise is allowed when
+// its required tier is <= the resolved tier). The 5 selector tiers and the
+// onboarding cfg.equipment vocabulary both collapse into these.
+const EQ_TIER_TO_BANK = {
+  full_gym:'full_gym', standard_gym:'full_gym',
+  hotel_full:'hotel_gym', hotel_small:'hotel_gym', dumbbells:'hotel_gym'
+};
+const CFG_EQ_TO_BANK = {
+  full_gym:'full_gym', barbell_rack:'full_gym',
+  home_dumbbells:'hotel_gym', bodyweight:'home'
+};
+// Source priority: live selector (sessionStorage.eq_tier) → onboarding cfg → full_gym.
+function resolveEquipmentTier() {
+  const sess = sessionStorage.getItem('eq_tier');
+  if (sess && EQ_TIER_TO_BANK[sess]) return EQ_TIER_TO_BANK[sess];
+  if (cfg.equipment && CFG_EQ_TO_BANK[cfg.equipment]) return CFG_EQ_TO_BANK[cfg.equipment];
+  return 'full_gym';
+}
+// Dumbbell weight cap for hotel/small-DB tiers (0/NaN = uncapped).
+function resolveMaxDb() {
+  const v = parseInt(sessionStorage.getItem('eq_max_db'), 10);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+// Variety seed for the engine: per-user (start date) so partners differ, plus the
+// current week and phase index so accessories rotate weekly and primaries rotate
+// only at phase boundaries (stable within a mesocycle).
+function rotationContext() {
+  let phaseIdx = 0;
+  try {
+    const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
+    const phases = scaledPhases(cfg.goal, cfg.weeks);
+    phaseIdx = Math.max(0, phases.findIndex(p => p.name === phase.name));
+  } catch (e) { /* defaults fine pre-onboarding */ }
+  return { seed: cfg.startDate || '', week: currentWeek, phase: phaseIdx };
+}
 function toggleSetup() {
   document.getElementById('setupCard').classList.toggle('open');
 }
@@ -2098,74 +2128,9 @@ function applySetupSelection() {
   document.getElementById('eqActiveLabel').textContent = tier === 'full_gym'
     ? '' : `Active: ${EQ_LABELS[tier]}${maxDb ? ` · ${maxDb} lbs max` : ''}`;
   document.getElementById('setupCard').classList.remove('open');
-  applyEquipmentAdjustments(tier, maxDb);
-}
-
-function classifyPhase(phase, week) {
-  if (phase.name.toLowerCase().includes('deload')) return 'deload';
-  const rep = phaseWeekRep(phase, week);
-  if (rep <= 6) return 'strength';
-  if (rep <= 11) return 'hypertrophy';
-  return 'fat_loss';
-}
-
-function clearEquipmentAdjustments() {
-  document.querySelectorAll('.eq-warn-chip').forEach(el => el.remove());
-  document.querySelectorAll('.eq-alt-note').forEach(el => el.remove());
-  document.querySelectorAll('.ex-reps[data-eq-orig]').forEach(el => {
-    el.textContent = el.dataset.eqOrig;
-    delete el.dataset.eqOrig;
-  });
-}
-
-function applyEquipmentAdjustments(tier, maxDb) {
-  if (tier === 'full_gym') { clearEquipmentAdjustments(); return; }
-
-  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
-  const phaseType = classifyPhase(phase, currentWeek);
-
-  clearEquipmentAdjustments();
-
-  if (phaseType === 'deload') return;
-
-  document.querySelectorAll('.ex-card[id^="ec-"]').forEach(card => {
-    const nameEl = card.querySelector('.ex-name');
-    if (!nameEl) return;
-    const exName = (nameEl.firstChild && nameEl.firstChild.nodeType === 3
-      ? nameEl.firstChild.textContent : nameEl.textContent).trim().toLowerCase();
-    const isCompound = !!card.querySelector('.badge-compound');
-    const exRepsEl = card.querySelector('.ex-reps');
-    const infoEl = card.querySelector('.ex-info');
-
-    if (phaseType === 'strength' && isCompound && maxDb < 80
-        && BARBELL_NAMES.some(b => exName.includes(b))) {
-      const chip = document.createElement('span');
-      chip.className = 'ex-badge badge-warn eq-warn-chip';
-      chip.textContent = '⚠ Equipment limit';
-      nameEl.appendChild(chip);
-
-      if (infoEl) {
-        const note = document.createElement('div');
-        note.className = 'eq-alt-note';
-        const sub = DB_SUBS[exName] || 'DB variation';
-        note.textContent = `DB substitute: ${sub} · Use heaviest available, increase TUT to compensate`;
-        infoEl.appendChild(note);
-      }
-    }
-
-    if (phaseType === 'fat_loss' && tier === 'hotel_small' && maxDb < 30 && exRepsEl) {
-      const orig = exRepsEl.textContent.trim();
-      exRepsEl.dataset.eqOrig = orig;
-      exRepsEl.textContent = orig.replace(/\d+ reps/, '20 reps');
-
-      if (infoEl) {
-        const note = document.createElement('div');
-        note.className = 'eq-alt-note';
-        note.textContent = 'Rep target raised to 20–25 for metabolic stimulus';
-        infoEl.appendChild(note);
-      }
-    }
-  });
+  // Regenerate the workout from the engine with the new tier — real exercise
+  // swaps, not warning chips.
+  renderProgramViews();
 }
 
 function saveSetLS(exId, weight, reps) {
@@ -2563,7 +2528,6 @@ function goHome() {
 // RENDER TRACKER
 // ═══════════════════════════════════════════════════════
 function renderTracker() {
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
   const _phases = scaledPhases(cfg.goal, cfg.weeks);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const _phaseNum = _phases.findIndex(p => p === phase || (p.name === phase.name)) + 1 || 1;
@@ -2609,39 +2573,8 @@ function renderTracker() {
     <strong style="color:var(--text)">Weight increment (accessories):</strong> +${phase.incAcc} lbs
   `;
 
-  // Build day tabs + workout views
-  const tabsEl = document.getElementById('dayTabs');
-  const viewsEl = document.getElementById('workoutViews');
-  tabsEl.innerHTML = '';
-  viewsEl.innerHTML = '';
-
-  program.forEach((day, i) => {
-    // Tab
-    const tab = document.createElement('div');
-    tab.className = 'day-tab' + (i === 0 ? ' active' : '');
-    tab.textContent = day.label;
-    tab.onclick = () => switchDay(day.key, tab);
-    tabsEl.appendChild(tab);
-
-    // View
-    const view = document.createElement('div');
-    view.className = 'workout-view' + (i === 0 ? ' active' : '');
-    view.id = 'wv-' + day.key;
-    view.innerHTML = buildDayHTML(day, phase);
-    viewsEl.appendChild(view);
-  });
-
-  if (program.length) {
-    const savedDay = LS.get('tandem_current_day');
-    currentDay = (savedDay && program.some(d => d.key === savedDay)) ? savedDay : program[0].key;
-    document.querySelectorAll('.day-tab').forEach((tab, i) => {
-      tab.classList.toggle('active', program[i].key === currentDay);
-    });
-    document.querySelectorAll('.workout-view').forEach(v => {
-      v.classList.toggle('active', v.id === 'wv-' + currentDay);
-    });
-    S.logged[currentDay] = S.logged[currentDay] || {};
-  }
+  // Build day tabs + workout views from the dynamic engine
+  renderProgramViews();
 
   // Nav
   document.getElementById('navRight').innerHTML = `
@@ -2670,7 +2603,44 @@ function renderTracker() {
     document.getElementById('setupStatus').textContent = EQ_LABELS[_eTier] || _eTier;
     document.getElementById('eqActiveLabel').textContent =
       `Active: ${EQ_LABELS[_eTier]}${_eDb ? ` · ${_eDb} lbs max` : ''}`;
-    applyEquipmentAdjustments(_eTier, _eDb);
+  }
+}
+
+// Build day tabs + workout views from the engine. Self-contained so a live
+// equipment-tier change can regenerate the day without a full renderTracker().
+function renderProgramViews() {
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
+  const tabsEl = document.getElementById('dayTabs');
+  const viewsEl = document.getElementById('workoutViews');
+  if (!tabsEl || !viewsEl) return;
+  tabsEl.innerHTML = '';
+  viewsEl.innerHTML = '';
+
+  program.forEach((day, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'day-tab' + (i === 0 ? ' active' : '');
+    tab.textContent = day.label;
+    tab.onclick = () => switchDay(day.key, tab);
+    tabsEl.appendChild(tab);
+
+    const view = document.createElement('div');
+    view.className = 'workout-view' + (i === 0 ? ' active' : '');
+    view.id = 'wv-' + day.key;
+    view.innerHTML = buildDayHTML(day, phase);
+    viewsEl.appendChild(view);
+  });
+
+  if (program.length) {
+    const savedDay = LS.get('tandem_current_day');
+    currentDay = (savedDay && program.some(d => d.key === savedDay)) ? savedDay : program[0].key;
+    document.querySelectorAll('.day-tab').forEach((tab, i) => {
+      tab.classList.toggle('active', program[i].key === currentDay);
+    });
+    document.querySelectorAll('.workout-view').forEach(v => {
+      v.classList.toggle('active', v.id === 'wv-' + currentDay);
+    });
+    S.logged[currentDay] = S.logged[currentDay] || {};
   }
 }
 
@@ -2962,7 +2932,7 @@ function logSet(id, i) {
           const cardEl = document.getElementById('ec-' + id);
           const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
           // Exercise category from day label (upper / lower / full_body / day key)
-          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
           const dayObj = prog?.find(d => d.key === currentDay);
           const dl = dayObj?.label || '';
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
@@ -3133,7 +3103,7 @@ function startRest(id) {
   // Rest only fires after the final exercise of the superset block, so the
   // timer runs between rounds instead of between partner exercises.
   try {
-    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
     const dayObj = prog?.find(d => d.key === currentDay);
     const blk = dayObj?.blocks?.find(b =>
       !b.cardio && /superset/i.test(b.label || '') && b.exs?.some(e => e && e.id === id));
@@ -3334,7 +3304,7 @@ function finishSession() {
   banner.classList.add('show');
   banner.scrollIntoView({behavior:'smooth'});
 
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
   updateProgress();
 
   // Cloud sync
@@ -3894,7 +3864,7 @@ function getProgramDayNumber() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diffDays = Math.floor((today - start) / 86400000);
   if (diffDays < 0) return null;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
   if (!program?.length) return null;
   return computeWeekCadence(cfg.days, cfg.goal, program)[diffDays % 7]; // 'dayN' or 'rest'
 }
@@ -3904,7 +3874,7 @@ function getProgramDayNumber() {
 // instead of the static ceil(7/days) which was goal-blind and plan-length-blind.
 function getOverdueDays() {
   if (!cfg?.days || !cfg?.startDate) return 0;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
   if (!program?.length) return 0;
   const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
   const tSlots = cadence.reduce((a, s, i) => (s !== 'rest' ? [...a, i] : a), []);
@@ -3991,7 +3961,7 @@ async function syncFromCloud() {
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
-        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
         const idx = prog.findIndex(d => d.key === lastDone.day_type);
         if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
       }
@@ -4618,7 +4588,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, cfg.equipment, cfg.emphasis, cfg.injuries);
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }

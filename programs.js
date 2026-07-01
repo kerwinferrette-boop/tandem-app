@@ -217,6 +217,18 @@ const EXERCISE_BANK = {
     emphasis:['chest','push','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Cable maintains constant tension through the full arc — dumbbells go slack at the top. Low-to-high arc preferentially loads the clavicular pec fibres in the shortened position where they produce peak force.',
     cues:['Set cables at ankle height','Slight forward lean','Soft elbows — this is not a press','Squeeze at the top like hugging a barrel']},
+  'db-fly':{
+    name:'DB Fly', videoId:null,
+    muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt']},
+    emphasis:['chest','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
+    why:'The chest isolation when no cable stack is available. The deep bottom-position stretch loads the sternal pec fibres in the lengthened position, where the strongest hypertrophy stimulus occurs.',
+    cues:['Lie flat, dumbbells above chest, palms facing','Soft elbow bend held constant — open at the shoulder, not the elbow','Lower until a deep pec stretch, upper arms near parallel to floor','Squeeze back up along the same arc; do not press']},
+  'band-chest-fly':{
+    name:'Band Chest Fly', videoId:null,
+    muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt']},
+    emphasis:['chest','push','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Band tension rises through the arc, peaking in the shortened position where the pec produces most force — the inverse of a dumbbell fly. Pure travel-friendly chest isolation needing only a band and an anchor.',
+    cues:['Anchor the band behind you at chest height','Soft elbows, hug forward until hands meet','Squeeze the pecs hard for one count','Resist the band back to a full stretch']},
 
   // ── SHOULDERS — comprehensive ─────────────────────────
   'arnold-press':{
@@ -517,6 +529,18 @@ const EXERCISE_BANK = {
     emphasis:['quads','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The only isolation exercise for the quadriceps. The rectus femoris (bi-articular quad head) is placed under stretch here that compound movements cannot achieve. Essential for complete quad development.',
     cues:['Adjust pad to sit just above ankle — not on the foot','Slow to full extension; do not kick','Hold at the top for one second — peak quad contraction','Lower slowly — the eccentric matters as much as the lift']},
+  'sissy-squat':{
+    name:'Sissy Squat', videoId:null,
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis']},
+    emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher at home or a hotel.',
+    cues:['Hold a support for balance; rise onto the balls of the feet','Drive knees forward and lean the torso back in one line','Lower until you feel a deep quad stretch — hips stay open','Squeeze the quads to return; add a plate hugged to the chest to progress']},
+  'reverse-nordic':{
+    name:'Reverse Nordic', videoId:null,
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis']},
+    emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience with zero equipment.',
+    cues:['Kneel tall, hips fully extended, core braced','Lean the whole body back in a straight line from knees to head','Lower as far as quad control allows — no hip bend','Pull back up with the quads; hold a wall or band to assist if needed']},
   'goblet-squat':{
     name:'Goblet Squat', videoId:'MeIiIdhvXT4',
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis'],secondary:['glute_max','core']},
@@ -567,6 +591,12 @@ const EXERCISE_BANK = {
     emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Reduces hamstring strain injury risk by 50–70% per multiple RCTs. The eccentric-only loading at long muscle lengths is unique and irreplaceable. The single highest return-on-investment exercise in sports medicine.',
     cues:['Anchor feet under heavy object or have partner hold','Lower as slowly as possible using hamstrings — catch yourself with hands','Goal is to resist as long as possible on the way down','Beginner: use hands to help push up; advanced: pull back up with hamstrings']},
+  'slider-leg-curl':{
+    name:'Slider Leg Curl', videoId:null,
+    muscleGroups:{primary:['hamstring_bicep_femoris','hamstring_semimembranous']},
+    emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Replicates the machine leg curl with only a towel or furniture slider. Lying glute-bridge position keeps the hips extended while the knees flex, loading the hamstrings concentrically and eccentrically — a true knee-flexion isolation when no machine exists.',
+    cues:['Lie supine, heels on sliders/towels, hips lifted to a bridge','Keep hips up throughout — do not let them sag','Extend legs out under control, then curl heels back to the glutes','Both legs together to start; single-leg to progress']},
   'good-morning':{
     name:'Good Morning', videoId:null,
     muscleGroups:{primary:['hamstring','erector_spinae','glute_max']},
@@ -617,6 +647,18 @@ const EXERCISE_BANK = {
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available. Can be loaded with a plate across the hips.',
     cues:['Supine on floor, feet flat and close to hips','Drive through heels; lift hips until body is a plank','Squeeze glutes hard at top — hold two counts','Lower with control; do not drop hips to the floor between reps']},
+  'single-leg-glute-bridge':{
+    name:'Single-Leg Glute Bridge', videoId:null,
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
+    emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Doubles the load on one glute using only bodyweight, exposing and correcting side-to-side imbalances the two-leg bridge hides. The go-to glute isolation when no bench or weight is available.',
+    cues:['Supine, one foot flat, the other leg extended','Drive through the planted heel; keep hips level — no tilt','Squeeze the glute hard at the top for two counts','Lower with control; complete all reps, then switch sides']},
+  'banded-hip-abduction':{
+    name:'Banded Hip Abduction', videoId:null,
+    muscleGroups:{primary:['glute_medius','glute_minimus']},
+    emphasis:['glutes','lower_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band replaces the abductor machine with near-identical isolation anywhere.',
+    cues:['Loop a mini-band just above the knees','Standing or side-lying, drive the knee out against the band','Keep the pelvis still — move only at the hip','Slow return; never let the band snap the leg back']},
 
   // ── CALVES ────────────────────────────────────────────
   'standing-calf-raise':{
@@ -643,6 +685,12 @@ const EXERCISE_BANK = {
     emphasis:['lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Doubles the eccentric load versus bilateral — providing 2× the resistance with bodyweight alone. Progressed by adding a loaded backpack, holding a dumbbell, or increasing tempo.',
     cues:['Stand on one foot on a step edge — heel hanging off','Lower to full stretch position','Rise to max height; single-leg focus prevents compensation','If too easy, add load; if too hard, hold a wall lightly']},
+  'db-standing-calf-raise':{
+    name:'DB Standing Calf Raise', videoId:null,
+    muscleGroups:{primary:['gastrocnemius']},
+    emphasis:['lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
+    why:'Brings external load to the straight-knee calf raise without a machine — a dumbbell in each hand plus a step edge fully recruits both gastrocnemius heads. The hotel-gym answer to the standing calf machine.',
+    cues:['Stand tall on a step edge, balls of feet on, heels hanging','Hold a dumbbell in each hand, arms relaxed at sides','Full stretch at the bottom, then rise to maximum tiptoe height','Pause one count at the top; 3-count lower — no bouncing']},
 
   // ── CORE ──────────────────────────────────────────────
   'dead-bug':{
@@ -789,8 +837,22 @@ function pruneInjuries(program, injuries) {
 //   → returns a 4-day base array (same shape as static programs)
 //     or null on failure (callers fall back to static)
 // ═══════════════════════════════════════════════════════
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation) {
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
+  const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
+  // Rotation context drives week-to-week variety. seed = per-user (start date),
+  // so paired partners aren't identical; week rotates accessories; phase rotates
+  // primary compounds (stable within a mesocycle to preserve overload tracking).
+  const rot = rotation || {};
+  const rotSeed  = String(rot.seed || '');
+  const rotWeek  = Number.isFinite(rot.week)  ? rot.week  : 1;
+  const rotPhase = Number.isFinite(rot.phase) ? rot.phase : 0;
+  // FNV-1a string hash → stable 32-bit unsigned int.
+  const hashStr = (str) => {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  };
   const tierOrder = ['home','hotel_gym','full_gym'];
   const reqIdx = tierOrder.indexOf(tier || 'full_gym');
 
@@ -812,10 +874,17 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
     glute_focused:'glutes',core_focused:'core',upper_body:'upper_body',lower_body:'lower_body'};
   const emphTag = emphMap[emphasis] || null;
 
-  const pick = (cands) => {
+  // Deterministic seeded selection. Emphasis preference still narrows the pool
+  // first; within the resulting pool a seeded hash chooses the candidate so the
+  // program is stable on reload yet varies per user and over time.
+  const pick = (cands, slot, tmpl) => {
     if (!cands.length) return null;
-    if (emphTag) { const b = cands.filter(e => e.emphasis&&e.emphasis.includes(emphTag)); if (b.length) return b[0]; }
-    return cands[0];
+    let pool = cands;
+    if (emphTag) { const b = cands.filter(e => e.emphasis && e.emphasis.includes(emphTag)); if (b.length) pool = b; }
+    const isPrimary = slot && (slot.role === 'primary' || slot.role === 'secondary');
+    const block = isPrimary ? rotPhase : rotWeek;
+    const seedStr = `${rotSeed}|${goal}|${tmpl ? tmpl.key : ''}|${slot ? slot.role : ''}|${block}`;
+    return pool[hashStr(seedStr) % pool.length];
   };
 
   // base starting weight from equipment + sex
@@ -825,7 +894,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
     if (e.equipment==='barbell')   return Math.round((isFemale?55:95)*f/5)*5;
     if (e.equipment==='machine')   return Math.round((isFemale?40:70)*f/5)*5;
     if (e.equipment==='cable')     return isFemale?20:35;
-    if (e.equipment==='dumbbell')  return Math.round((isFemale?15:35)*f/2.5)*2.5;
+    if (e.equipment==='dumbbell')  return Math.min(Math.round((isFemale?15:35)*f/2.5)*2.5, dbCap);
     return 0; // bodyweight / band
   };
 
@@ -895,12 +964,30 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
 
   const used = new Set();
 
+  // Shoulders + Arms day — bank-driven (consumed only by the 5-day split via
+  // build5). Built after the 4 base days so it reuses the same `used` set and
+  // therefore avoids duplicating Day-1 push / Day-4 upper picks. Roles: the delt
+  // compound is 'primary' (rotates per phase); the rest are accessories (weekly).
+  const SHOULDER_TEMPLATE = {
+    key:'day3', label:'Day 3 · Shoulders + Arms', color:'var(--teal,#38d9c0)',
+    rationale:'Dedicated delt and arm session. Fresh shoulders after Day 1 push.',
+    shoulderSlots:[
+      {role:'primary', groups:['anterior_delt','lateral_delt'], cat:'compound'},
+      {role:'acc1',    groups:['lateral_delt'],                 cat:'isolation'},
+      {role:'acc2',    groups:['posterior_delt','rhomboid'],    cat:'isolation'},
+    ],
+    armSlots:[
+      {role:'acc3',    groups:['tricep'],                       cat:'isolation'},
+      {role:'acc4',    groups:['bicep'],                        cat:'isolation'},
+    ],
+  };
+
   try {
-    return TEMPLATES.map(tmpl => {
+    const result = TEMPLATES.map(tmpl => {
       const exs = {};
       tmpl.slots.forEach(s => {
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
-        const chosen = pick(cands);
+        const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
       });
       const cardioPool = bank({groups:tmpl.cardioGroups, cat:'cardio', excl:[...used]});
@@ -919,13 +1006,32 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries) {
 
       return {key:tmpl.key, label:tmpl.label, color:tmpl.color, rationale:tmpl.rationale, blocks};
     });
+
+    // Build the Shoulders + Arms day and attach it for build5 (5-day split only).
+    const sa = SHOULDER_TEMPLATE;
+    const fillSlots = (slots) => slots.map(s => {
+      const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
+      const chosen = pick(cands, s, sa);
+      if (chosen) { used.add(chosen.name); return makeEx(chosen, sa.key+'-'+s.role, {sets:s.cat==='compound'?4:3}); }
+      return null;
+    }).filter(Boolean);
+    const shoulderExs = fillSlots(sa.shoulderSlots);
+    const armExs = fillSlots(sa.armSlots);
+    const saBlocks = [];
+    if (shoulderExs.length) saBlocks.push({label:'Shoulder Block · Rest 90 sec', exs:shoulderExs});
+    if (armExs.length)      saBlocks.push({label:'Arms Block · Rest 75 sec', exs:armExs});
+    if (saBlocks.length) {
+      result.shouldersArmsDay = {key:sa.key, label:sa.label, color:sa.color, rationale:sa.rationale, blocks:saBlocks};
+    }
+
+    return result;
   } catch(err) {
     console.warn('buildDynamicProgram error:', err);
     return null;
   }
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
@@ -1572,7 +1678,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries) {
   // 5-day: add dedicated shoulder/arms day
   const build5 = (base4) => {
     const [ua, la, ub, lb] = base4;
-    const shoulders = {
+    // Bank-driven Shoulders + Arms day (attached by buildDynamicProgram). The
+    // hardcoded block remains ONLY as an emergency fallback if the bank can't
+    // fill the day (e.g. severe injury filter wiping all delt/arm candidates).
+    const shoulders = base4.shouldersArmsDay || {
       key:'day3', label:'Day 3 · Shoulders + Arms', color:'var(--teal,#38d9c0)', rationale:'Dedicated delt and arm session. Fresh shoulders after Day 1 push.',
       blocks:[
         { label:'Shoulder Block · Rest 90 sec', exs:[
@@ -2079,23 +2188,26 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries) {
 
   const activePrograms = isFemale ? femalePrograms : programs;
 
-  // Dynamic path — use exercise bank when equipment, emphasis, or injuries are
-  // specified. Injuries trigger the generator so contraindicated movements can be
-  // filtered out (the static programs can't be filtered). This block lives here,
-  // after the build2/ppl/build5 const helpers above are initialized — calling them
-  // from the top of getProgram hit their temporal dead zone (TDZ).
-  if (equipment || emphasis || injuries) {
-    const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries);
-    if (generated) {
-      // Final injury prune — catches statically-injected exercises (build5's
-      // shoulder block) that bypass the bank-level filter inside the generator.
-      if (days === 2) return pruneInjuries(build2(generated), injuries);
-      if (days === 3) return pruneInjuries(ppl(generated), injuries);
-      if (days === 5) return pruneInjuries(build5(generated), injuries);
-      return pruneInjuries(generated, injuries);
-    }
+  // Dynamic engine — ALWAYS the source of every workout. The exercise bank is the
+  // single source of truth; equipment tier, emphasis, and injuries all flow through
+  // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
+  // helpers above are initialized — calling them from the top of getProgram hit
+  // their temporal dead zone (TDZ).
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation);
+  if (generated) {
+    // Final injury prune — catches statically-injected exercises (build5's
+    // shoulder block) that bypass the bank-level filter inside the generator.
+    if (days === 2) return pruneInjuries(build2(generated), injuries);
+    if (days === 3) return pruneInjuries(ppl(generated), injuries);
+    if (days === 5) return pruneInjuries(build5(generated), injuries);
+    return pruneInjuries(generated, injuries);
   }
 
+  // ── Silent emergency fallback ──────────────────────────────────────────────
+  // The generator should never return null in normal use. If it does (bank gap,
+  // unknown goal), fall back to the curated static base so the user still gets a
+  // workout. This path is NOT expected in production — warn so it's caught.
+  console.warn('[getProgram] dynamic engine returned null — falling back to static base', { goal, days, tier });
   if (!activePrograms[goal]) return activePrograms.build_muscle?.[4] || programs.build_muscle[4];
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
