@@ -1907,6 +1907,19 @@ const ACCESSORY_FACTORS = {
   'Hip Abduction Machine': { from: 'Hip Thrust',        factor: 0.40 }
 };
 
+// C7: ACCESSORY_FACTORS 'from' keys are canonical movement patterns, but bank
+// exercise names are specific variants ('Flat Barbell Press', 'Barbell Squat',
+// 'Seated Cable Row'...). Map variants → canonical so the derived path fires.
+// Restrictive on purpose — a miss just falls through to defaults.
+const COMPOUND_PATTERNS = {
+  'Bench Press':       /\b(bench|flat|incline)\b.*\bpress\b/i,
+  'Squat':             /\bsquat\b/i,
+  'Hip Thrust':        /\bhip thrust\b/i,
+  'Overhead Press':    /\b(overhead|shoulder|arnold|military)\b.*\bpress\b/i,
+  'Row':               /\brow\b/i,
+  'Romanian Deadlift': /\b(romanian deadlift|rdl)\b/i
+};
+
 const DEFAULT_WEIGHTS = {
   female: {
     'Hip Thrust': 45, 'Romanian Deadlift': 35, 'Goblet Squat': 25,
@@ -2014,7 +2027,7 @@ function getRecommendation(exId, compound, goal, exName, sex) {
 
   // EPIC-9 Step C: %1RM path for calibrated users
   const prs = LS.get('tandem_prs') || {};
-  const oneRM = prs[exId];
+  const oneRM = (exName && prs[exName]) ?? prs[exId]; // C7: name-first, id fallback
   if (oneRM) {
     const tgt = getWeekTarget(exName || null, currentWeek, goal, oneRM, sex || null, null);
     if (tgt.weight != null) {
@@ -2650,7 +2663,17 @@ function buildDayHTML(day, phase) {
   const _dayPrs = LS.get('tandem_prs') || {};
   const dayCompound1RMs = {};
   day.blocks.forEach(b => (b.exs || []).forEach(e => {
-    if (e && _dayPrs[e.id]) dayCompound1RMs[e.name] = _dayPrs[e.id];
+    // C7: name-first (canonical key), id fallback for legacy entries
+    const _rm = e && (_dayPrs[e.name] ?? _dayPrs[e.id]);
+    if (!_rm) return;
+    dayCompound1RMs[e.name] = _rm;
+    // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
+    // derivation matches variant names. Max wins if multiple variants match.
+    for (const [canon, rx] of Object.entries(COMPOUND_PATTERNS)) {
+      if (rx.test(e.name)) {
+        dayCompound1RMs[canon] = Math.max(dayCompound1RMs[canon] || 0, _rm);
+      }
+    }
   }));
 
   let html = `
@@ -2692,7 +2715,8 @@ function buildDayHTML(day, phase) {
       // Phase substitution resolver — phases can declare exercise swaps via subs map
       const ex = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
       const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
-      const pr1rm = (LS.get('tandem_prs') || {})[ex.id];
+      const _prStore = LS.get('tandem_prs') || {};
+      const pr1rm = _prStore[ex.name] ?? _prStore[ex.id]; // C7: name-first
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
       // compute a starting weight from the user's calibrated 1RM instead of
@@ -2709,7 +2733,7 @@ function buildDayHTML(day, phase) {
           const bankEntry = Object.values(EXERCISE_BANK).find(e => e.name === ex.name);
           if (bankEntry?.oneRmFactor != null) {
             const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
-              (LS.get('tandem_prs') || {})[_ex.id] || null, cfg.sex, dayCompound1RMs);
+              (_prStore[_ex.name] ?? _prStore[_ex.id]) || null, cfg.sex, dayCompound1RMs);
             const origW = origTgt.weight ?? _ex.w;
             if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
           }
@@ -2903,18 +2927,24 @@ function logSet(id, i) {
     const r = parseInt(rEl.value) || 0;
     const est1rm = Math.round(calcRM(w, r));
     const prs = LS.get('tandem_prs') || {};
-    const prev = prs[id] || 0;
+    // C7: canonical PR key = exercise NAME (matches personal_records + survives
+    // bank slot-id churn across rotation). Resolve from the card heading, same
+    // as the Supabase set-insert path. Legacy id-keyed entries still readable.
+    const prCardEl = document.getElementById('ec-' + id);
+    const prExName = prCardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
+    const prev = prs[prExName] ?? prs[id] ?? 0;
 
     saveSetLS(id, w, r);
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
     sessionSetsMap[id].push({ set: i+1, w, r, est1rm });
 
     if (est1rm > prev && r <= 12 && w > 0) {
-      prs[id] = est1rm;
+      prs[prExName] = est1rm;                 // C7: write by canonical name
+      if (prExName !== id) delete prs[id];    // C7: retire any legacy id-keyed entry
       LS.set('tandem_prs', prs);
       btn.classList.add('pr-set');
       wEl.classList.add('pr'); rEl.classList.add('pr');
-      showToast(`${svgIcon('trophy')} PR — ${id.replace(/\w+-/,'')} · ${est1rm} lbs`);
+      showToast(`${svgIcon('trophy')} PR — ${prExName} · ${est1rm} lbs`);
       document.getElementById('ec-' + id)?.classList.add('pr-beat');
       syncPRs(); // background sync on PR beat
     } else {
@@ -3246,7 +3276,7 @@ function buildPRModal() {
     <div class="pr-item">
       <div class="pr-rank">${i+1}</div>
       <div class="pr-info">
-        <div class="pr-name">${id.replace(/^\w+-/,'').replace(/-/g,' ')}</div>
+        <div class="pr-name">${/^[a-z0-9]+(-[a-z0-9]+)+$/.test(id) ? id.replace(/^\w+-/,'').replace(/-/g,' ') : id}</div>
         <div class="pr-data">Estimated 1RM · Tandem tracked</div>
       </div>
       <div style="text-align:right">
@@ -3712,7 +3742,12 @@ async function syncToCloud() {
 async function syncPRs() {
   if (!currentUser) return;
   const prs = LS.get('tandem_prs') || {};
-  const prRows = Object.entries(prs).map(([exercise_name, best_estimated_1rm_lbs]) =>
+  // C7: keys are canonical exercise NAMES. Skip legacy slot-id-shaped keys
+  // (all-lowercase hyphenated, no space — e.g. 'day1-c0', 'tr-incdb') so
+  // junk ids never pollute personal_records.exercise_name.
+  const isLegacyIdKey = k => /^[a-z0-9]+(-[a-z0-9]+)+$/.test(k) && !k.includes(' ');
+  const prRows = Object.entries(prs).filter(([k]) => !isLegacyIdKey(k))
+    .map(([exercise_name, best_estimated_1rm_lbs]) =>
     ({ user_id: currentUser.id, exercise_name, best_estimated_1rm_lbs, updated_at: new Date().toISOString() }));
   if (!prRows.length) return;
   const { error } = await sb.from('personal_records').upsert(prRows, { onConflict: 'user_id,exercise_name' });
