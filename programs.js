@@ -1617,13 +1617,15 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     ]);
   };
 
-  // ── TASK-3: pressing dedup for the 5-day split ───────────────────────────
-  // build5 inserts a dedicated Shoulders+Arms day (Day 3) whose primary press is
-  // Arnold Press. Several 4-day bases ALSO press on Day 1 (e.g. both male and
-  // female fat_burn Day 1 use Arnold Press), but Day 1 and Day 3 are NON-adjacent
-  // so dedupeConsecutiveDays never sees the collision. The result is the same
-  // overhead press twice in one microcycle. Swap the shoulders-day press to a
-  // distinct overhead variant whenever it already appears on another day.
+  // ── TASK-3 / C4: pressing dedup — LEGACY-FALLBACK-ONLY ────────────────────
+  // The bank builds the Shoulders+Arms day against the shared `used` set, so a
+  // bank-supplied day can never duplicate another day's press at selection time.
+  // This machinery therefore only runs when build5 falls back to the hardcoded
+  // shoulders day (bank couldn't fill it), where Day 1 vs Day 3 are NON-adjacent
+  // and dedupeConsecutiveDays never sees the collision. Substitution hierarchy
+  // after C4: (1) bank selection with `used` exclusion — primary, (2)
+  // dedupeConsecutiveDays + SUBSTITUTIONS — universal final safety net, (3)
+  // dedupePressingBuild5 — hardcoded-fallback shoulders day only.
   const PRESS_ALTERNATES = [
     {id:'s5-ap-arnold',  name:'Arnold Press',            badge:'compound', sets:4, w:40, r:10, rest:90, compound:true,
      why:'Full three-head delt recruitment in one movement.',
@@ -1711,9 +1713,12 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
         ]}
       ]
     };
-    return dedupeConsecutiveDays(dedupePressingBuild5([ua, la, shoulders,
+    const days5 = [ua, la, shoulders,
       {...ub, key:'day4', label: ub.label.replace(/^Day \d+/, 'Day 4')},
-      {...lb, key:'day5', label: lb.label.replace(/^Day \d+/, 'Day 5')}]));
+      {...lb, key:'day5', label: lb.label.replace(/^Day \d+/, 'Day 5')}];
+    // C4: bank-built shoulders day already dedupes at selection time (shared
+    // `used` set) — legacy press-swap only guards the hardcoded fallback.
+    return dedupeConsecutiveDays(base4.shouldersArmsDay ? days5 : dedupePressingBuild5(days5));
   };
 
   // 2-day: Full Body A/B — push+hinge / pull+quad
