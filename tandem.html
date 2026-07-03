@@ -2873,8 +2873,13 @@ async function startOrResumeSession() {
       if (!localStorage.getItem('tandem_session_start_time')) {
         localStorage.setItem('tandem_session_start_time', String(Date.now()));
       }
+      // C11 diagnostic: remember the FIRST session id this workout ran under
+      if (!localStorage.getItem('tandem_c11_first_session_id')) {
+        localStorage.setItem('tandem_c11_first_session_id', data.id);
+      }
       return data.id;
     }
+    console.error('[C11] stored active session id was stale/invalid — minting a new session', { storedId });
     localStorage.removeItem('tandem_active_session_id');
   }
   const today = localDateStr(); // BUG-018/027: local day, not UTC
@@ -2892,6 +2897,10 @@ async function startOrResumeSession() {
   localStorage.setItem('tandem_active_session_id', newSession.id);
   if (!localStorage.getItem('tandem_session_start_time')) {
     localStorage.setItem('tandem_session_start_time', String(Date.now()));
+  }
+  // C11 diagnostic: remember the FIRST session id this workout ran under
+  if (!localStorage.getItem('tandem_c11_first_session_id')) {
+    localStorage.setItem('tandem_c11_first_session_id', newSession.id);
   }
   return newSession.id;
 }
@@ -3355,6 +3364,8 @@ function finishSession() {
   if (currentUser) {
     const sessionUUID = localStorage.getItem('tandem_active_session_id');
     const startTime = localStorage.getItem('tandem_session_start_time');
+    // C11 diagnostic: capture synchronously — outer block clears storage below
+    const c11FirstId = localStorage.getItem('tandem_c11_first_session_id');
 
     // BUG-017: recover cloud session ID if localStorage entry was lost
     // (lazy cloud create in logSet failed, or ID cleared before Finish was tapped).
@@ -3396,6 +3407,14 @@ function finishSession() {
         return;
       }
 
+      // C11 diagnostic (logging only, no behavior change): flag when the id
+      // we're completing differs from the id the workout STARTED under, i.e.
+      // sets may be split across two workout_sessions rows.
+      if (c11FirstId && c11FirstId !== resolvedId) {
+        console.error('[C11] session id mismatch at finish — sets may be orphaned', {
+          startedAs: c11FirstId, finishingAs: resolvedId, recovered: !sessionUUID });
+      }
+
       const duration = startTime
         ? Math.round((Date.now() - Number(startTime)) / 60000)
         : null;
@@ -3406,6 +3425,12 @@ function finishSession() {
         const { data: setRows } = await sb.from('sets')
           .select('weight_lbs, reps')
           .eq('session_id', resolvedId);
+        // C11 diagnostic: a completed session with ZERO cloud sets means the
+        // per-set sync wrote to a different session id (or never fired).
+        if (!setRows?.length && Object.keys(snapshotExercises).length) {
+          console.error('[C11] completing session with 0 cloud sets despite local sets logged', {
+            sessionId: resolvedId, localExercises: Object.keys(snapshotExercises).length });
+        }
         const dbVolume = (setRows || []).reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
         const totalVolume = dbVolume > 0 ? Math.round(dbVolume) : Math.round(localVolume);
 
@@ -3483,6 +3508,7 @@ function finishSession() {
 
     localStorage.removeItem('tandem_active_session_id');
     localStorage.removeItem('tandem_session_start_time');
+    localStorage.removeItem('tandem_c11_first_session_id'); // C11 diagnostic reset
     currentCloudSessionId = null;
     sessionStartTime = null;
     Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
