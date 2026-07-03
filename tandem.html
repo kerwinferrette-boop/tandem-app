@@ -3735,6 +3735,10 @@ async function syncToCloud() {
         id: uid,
         name: profileName,
         email: currentUser?.email,
+        // C8: users.program_goal is THE canonical goal column. users.program_type
+        // exists in the schema but is a dead/ghost column — never written or read
+        // by the app. Do not switch any code to program_type; drop it in a future
+        // schema cleanup migration instead.
         program_goal: cfg.goal,
         program_weeks: cfg.weeks || null,
         program_days_per_week: cfg.days,
