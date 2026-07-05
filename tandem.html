@@ -279,6 +279,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .block-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--accent);margin:14px 0 7px;display:flex;align-items:center;gap:8px;}
 .block-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(24,194,106,.3),transparent);}
+.block-coach-tip{font-size:11px;color:var(--muted2);line-height:1.5;margin:-2px 0 10px;font-weight:300;}
 
 /* ── EXERCISE CARD ── */
 .ex-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s;}
@@ -512,7 +513,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .calc-field{display:flex;flex-direction:column;gap:5px;}
 .calc-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
 .calc-input{background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);
-  font-family:var(--font-mono);font-size:22px;font-weight:600;padding:12px 14px;
+  font-family:var(--font-mono);font-size:22px;font-weight:600;padding:12px 14px;width:100%;
   text-align:center;outline:none;-webkit-appearance:none;}
 .calc-input:focus{border-color:var(--accent);}
 .calc-result{background:linear-gradient(135deg,var(--accent-dim) 0%,var(--s2) 60%);border:1px solid rgba(24,194,106,.3);
@@ -2695,6 +2696,11 @@ function buildDayHTML(day, phase) {
     }
 
     html += `<div class="block-label">${block.label}</div>`;
+    if (/superset/i.test(block.label || '')) {
+      const restMatch = /rest\s+(\d+)/i.exec(block.label || '');
+      const restSec = restMatch ? restMatch[1] : '90';
+      html += `<div class="block-coach-tip">Perform both exercises back-to-back with no rest between them. Rest ${restSec} sec after completing the full pair.</div>`;
+    }
 
     block.exs.forEach((_ex, ei) => {
       if (!_ex) return;

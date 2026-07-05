@@ -228,7 +228,7 @@ const EXERCISE_BANK = {
     name:'Band Chest Fly', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt']},
     emphasis:['chest','push','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Band tension rises through the arc, peaking in the shortened position where the pec produces most force — the inverse of a dumbbell fly. Pure travel-friendly chest isolation needing only a band and an anchor.',
+    why:'Band tension rises through the arc, peaking in the shortened position where the pec produces most force — the inverse of a dumbbell fly. Pure chest isolation needing only a band and an anchor.',
     cues:['Anchor the band behind you at chest height','Soft elbows, hug forward until hands meet','Squeeze the pecs hard for one count','Resist the band back to a full stretch']},
 
   // ── SHOULDERS — comprehensive ─────────────────────────
@@ -320,7 +320,7 @@ const EXERCISE_BANK = {
     name:'Prone T-Raise', videoId:null,
     muscleGroups:{primary:['posterior_delt','middle_trap'],secondary:['rhomboid']},
     emphasis:['shoulders','back','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting. Alongside Y-raise, it completes the upper back health trifecta for anyone training at home or travelling.',
+    why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting. Alongside Y-raise, it completes the upper back health trifecta.',
     cues:['Lie face down; arms straight out to the sides (T position)','Thumbs pointing up (external rotation)','Lift arms by squeezing shoulder blades — height matters less than contraction','Lower slowly; repeat with full range of motion']},
   'upright-row':{
     name:'Upright Row', videoId:null,
@@ -420,7 +420,7 @@ const EXERCISE_BANK = {
     name:'Band Pull-Apart', videoId:null,
     muscleGroups:{primary:['posterior_delt','rhomboid','external_rotator']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The simplest tool for external rotation and posterior delt health. Constant band tension mirrors the load profile of cable face pulls without any machine. Essential for hotel or home training.',
+    why:'The simplest tool for external rotation and posterior delt health. Constant band tension mirrors the load profile of cable face pulls without any machine.',
     cues:['Hold band at shoulder height, arms extended','Pull the band apart until it touches your chest','Squeeze shoulder blades together at peak','Controlled return — band tension all the way back to start']},
 
   // ── BICEPS ────────────────────────────────────────────
@@ -502,7 +502,7 @@ const EXERCISE_BANK = {
     name:'DB Kickback', videoId:null,
     muscleGroups:{primary:['tricep_lateral','tricep_medial']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Fully extends the elbow against gravity at a position where the tricep is maximally shortened. Useful for hotel/home sessions where no cable is available. Better than cable for lateral head contraction quality.',
+    why:'Fully extends the elbow against gravity at a position where the tricep is maximally shortened. Better than cable for lateral head contraction quality.',
     cues:['Hinge forward, upper arm parallel to floor throughout','Only the forearm moves — hinge at the elbow','Extend until arm is fully straight — hold one count','Lower slowly; resist the temptation to swing']},
 
   // ── QUADS ─────────────────────────────────────────────
@@ -534,7 +534,7 @@ const EXERCISE_BANK = {
     name:'Sissy Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher at home or a hotel.',
+    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher requiring nothing but bodyweight.',
     cues:['Hold a support for balance; rise onto the balls of the feet','Drive knees forward and lean the torso back in one line','Lower until you feel a deep quad stretch — hips stay open','Squeeze the quads to return; add a plate hugged to the chest to progress']},
   'reverse-nordic':{
     name:'Reverse Nordic', videoId:null,
@@ -546,7 +546,7 @@ const EXERCISE_BANK = {
     name:'Goblet Squat', videoId:'MeIiIdhvXT4',
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis'],secondary:['glute_max','core']},
     emphasis:['quads','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'The counterbalance weight allows an upright torso and deep knee bend that many lifters cannot achieve in a barbell squat. Best learning tool for squat mechanics and an excellent hotel or home quad compound.',
+    why:'The counterbalance weight allows an upright torso and deep knee bend that many lifters cannot achieve in a barbell squat. Best learning tool for squat mechanics and an excellent quad compound in any setting.',
     cues:['Hold DB or KB at chest height — elbows between knees at bottom','Push knees out over toes','Chest tall throughout — do not collapse forward','Drive up through the heels']},
   'bulgarian-split-squat':{
     name:'Bulgarian Split Squat', videoId:'2C-uNgKwPLE',
@@ -608,7 +608,7 @@ const EXERCISE_BANK = {
     name:'DB RDL', videoId:null,
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae']},
     emphasis:['hamstrings','glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'Identical hip hinge to barbell RDL but accessible in any gym or hotel. The dumbbell version allows a slightly more natural arc and is easier to set up without a squat rack.',
+    why:'Identical hip hinge to barbell RDL but accessible with just a pair of dumbbells. The dumbbell version allows a slightly more natural arc and is easier to set up without a squat rack.',
     cues:['Dumbbells hang at thigh level — slide them down the legs','Hip hinge back; feel the hamstring stretch at the bottom','Flat back throughout — brace the core hard','Drive hips forward to return; squeeze glutes at the top']},
 
   // ── GLUTES ────────────────────────────────────────────
@@ -690,7 +690,7 @@ const EXERCISE_BANK = {
     name:'DB Standing Calf Raise', videoId:null,
     muscleGroups:{primary:['gastrocnemius']},
     emphasis:['lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Brings external load to the straight-knee calf raise without a machine — a dumbbell in each hand plus a step edge fully recruits both gastrocnemius heads. The hotel-gym answer to the standing calf machine.',
+    why:'Brings external load to the straight-knee calf raise without a machine — a dumbbell in each hand plus a step edge fully recruits both gastrocnemius heads. A simple free-weight answer to the standing calf machine.',
     cues:['Stand tall on a step edge, balls of feet on, heels hanging','Hold a dumbbell in each hand, arms relaxed at sides','Full stretch at the bottom, then rise to maximum tiptoe height','Pause one count at the top; 3-count lower — no bouncing']},
 
   // ── CORE ──────────────────────────────────────────────
@@ -766,7 +766,7 @@ const EXERCISE_BANK = {
     name:'Stationary Bike', videoId:null,
     muscleGroups:{primary:['quad','glute_max','hamstring']},
     emphasis:['lower_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
-    why:'Zero impact on joints — ideal when legs are sore from squats and lunges. Cycle ergometers produce excellent Zone 2 cardio data in sports science research. Widely available in hotel gyms.',
+    why:'Zero impact on joints — ideal when legs are sore from squats and lunges. Cycle ergometers produce excellent Zone 2 cardio data in sports science research. Widely available in most gyms.',
     cues:['Seat height: slight knee bend at bottom of pedal stroke','Moderate resistance — not easy spinning, not grinding','Heart rate 60–70% of max','20 minutes minimum for meaningful aerobic benefit']},
   'elliptical':{
     name:'Elliptical', videoId:null,
