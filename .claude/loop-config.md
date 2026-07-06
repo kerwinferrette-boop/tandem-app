@@ -79,21 +79,40 @@ This keeps granularity clean: per-behavior user stories live in User Story Cover
 (the loop's working tracker), the Bug Log and Epics stay as the human-facing queues,
 and tandem-tpm reconciles a story's Resolved status back onto its linked Bug/Epic.
 
-## Loop-closure: the `loop/autofix` branch
+## Loop-closure: push on verify, don't sit on the working tree
 
 The loop runs in an **ephemeral remote clone** (Claude Code on the web), so fixes have to
-leave the workspace by being **pushed to a branch** — they cannot stay in a working tree that
-gets wiped, and they must never land on `main`.
+leave the workspace by being **pushed and opened as a PR** — a working-tree-only fix does not
+survive to the next cycle. Cycles 8–12 proved this the hard way: BUG-10/BUG-32/BUG-36 and
+EPIC-20 were each independently verified Resolved and then silently lost when their container
+was reclaimed, some more than once, because they were left uncommitted per an earlier
+"leave it for review" ship-gate that nobody was actually reviewing in time.
 
-Convention (enforced by `.claude/settings.json`):
+**Standing policy as of 2026-07-06 (Kerwin, in-session):** once a fix passes independent
+verification and stays within the scope-lock (`tandem.html` + `programs.js` only), **commit
+and push it — do not wait for a live per-cycle go-ahead.** This supersedes any "HARD STOP,
+leave everything uncommitted" phrasing that shows up in an individual `/loop` invocation's
+prompt text; that phrasing predates this policy and reflected the old, broken model.
 
-- Base every cycle's work off `main`; commit verified fixes onto a branch named **`loop/autofix`**
-  (`git switch -c loop/autofix` the first time, `git switch loop/autofix` thereafter).
-- Push that branch and open/update **one** PR titled `loop/autofix — Tandem auto-fixes for review`.
-- `git push` to `main`, force-push, `gh pr merge`, `netlify deploy`, and `supabase apply_migration`
-  are **denied**. Claude Code on the web also restricts each session's push to its own working
-  branch, so this is the platform-native flow.
-- Kerwin reviews + merges the PR, then deploys + device-verifies. tandem-tpm reconciles status.
+Mechanics:
+
+- Each Claude Code on the web session is assigned its own branch by the harness (e.g.
+  `claude/determined-volta-*`) and is restricted to pushing that branch — there is no durable
+  shared `loop/autofix` branch across sessions, so don't try to force one. Commit verified
+  fixes on the session's own branch, push it, and open a PR to `main` for that cycle's batch.
+  If the branch already has an open PR from earlier in the same session, update it instead of
+  opening a second one.
+- If a still-open, unmerged PR or an unmerged branch with verified fixes on it already exists
+  from a *prior* session (check `list_pull_requests` and, for orphaned branches, `notion`
+  Evidence fields before starting a new fix), don't silently duplicate that work — either build
+  on top of it (cherry-pick) or flag it plainly in the cycle report so it doesn't pile up
+  unnoticed the way `claude/determined-volta-z16gpt` briefly did.
+- Still **absolutely denied, no exception**: merging the PR, pushing straight to `main`,
+  force-push, `netlify deploy`, and `supabase apply_migration`. Those stay human-only —
+  Kerwin reviews + merges the PR, then deploys + device-verifies. tandem-tpm reconciles status.
+- This does not loosen anything else in this config: scope-lock, `max_fix_attempts_per_story`,
+  the forbidden-ops list, and "independent verification required before Resolved" all still
+  apply exactly as written above.
 
 Remote-environment wiring (one-time): the repo `kerwinferrette-boop/tandem-app` must be connected
 as the session **Source** via the Claude GitHub integration, and `.claude/settings.json` +
