@@ -3603,12 +3603,36 @@ function finishSession() {
         return;
       }
 
-      // C11 diagnostic (logging only, no behavior change): flag when the id
-      // we're completing differs from the id the workout STARTED under, i.e.
-      // sets may be split across two workout_sessions rows.
+      // C11 behavioral fix (2026-07-06, Kerwin-approved): when the id we're
+      // completing differs from the id the workout STARTED under, sets are
+      // split/orphaned across two workout_sessions rows. Repair: consolidate
+      // the started row's sets onto the completing row, then delete the
+      // now-empty orphan (only if it's still incomplete — never touch a
+      // previously completed session).
       if (c11FirstId && c11FirstId !== resolvedId) {
-        console.error('[C11] session id mismatch at finish — sets may be orphaned', {
+        console.error('[C11] session id mismatch at finish — consolidating', {
           startedAs: c11FirstId, finishingAs: resolvedId, recovered: !sessionUUID });
+        try {
+          const { data: firstRow } = await sb.from('workout_sessions')
+            .select('id, completed')
+            .eq('id', c11FirstId)
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+          if (firstRow && firstRow.completed === false) {
+            const { error: repointErr } = await sb.from('sets')
+              .update({ session_id: resolvedId })
+              .eq('session_id', c11FirstId)
+              .eq('user_id', currentUser.id);
+            if (!repointErr) {
+              await sb.from('workout_sessions').delete()
+                .eq('id', c11FirstId)
+                .eq('user_id', currentUser.id)
+                .eq('completed', false);
+            }
+          }
+        } catch (mergeErr) {
+          console.error('[C11] consolidation failed — completing anyway', mergeErr);
+        }
       }
 
       const duration = startTime
@@ -3618,14 +3642,31 @@ function finishSession() {
 
       try {
         // 1. Get true volume from sets already written to DB
-        const { data: setRows } = await sb.from('sets')
+        let { data: setRows } = await sb.from('sets')
           .select('weight_lbs, reps')
           .eq('session_id', resolvedId);
-        // C11 diagnostic: a completed session with ZERO cloud sets means the
-        // per-set sync wrote to a different session id (or never fired).
+        // C11 behavioral fix: never silently complete an empty session. If the
+        // cloud has 0 sets but local sets were logged, re-sync them from the
+        // history snapshot (same row shape as saveExerciseToCloud) first.
         if (!setRows?.length && Object.keys(snapshotExercises).length) {
-          console.error('[C11] completing session with 0 cloud sets despite local sets logged', {
+          console.error('[C11] 0 cloud sets despite local sets logged — re-syncing', {
             sessionId: resolvedId, localExercises: Object.keys(snapshotExercises).length });
+          const rescueRows = Object.entries(snapshotExercises)
+            .flatMap(([exId, sets]) => (sets || []).map(s => ({
+              session_id: resolvedId,
+              user_id: currentUser.id,
+              exercise_name: exId,
+              set_number: s.set || 1,
+              weight_lbs: parseFloat(s.w) || 0,
+              reps: parseInt(s.r) || 0,
+              estimated_1rm_lbs: s.est1rm || null
+            })))
+            .filter(s => s.weight_lbs > 0 && s.reps > 0);
+          if (rescueRows.length) {
+            const { error: rescueErr } = await sb.from('sets').insert(rescueRows);
+            if (rescueErr) console.error('[C11] set re-sync failed:', rescueErr);
+            else setRows = rescueRows;
+          }
         }
         const dbVolume = (setRows || []).reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
         const totalVolume = dbVolume > 0 ? Math.round(dbVolume) : Math.round(localVolume);
@@ -4926,36 +4967,9 @@ async function submitBugReport() {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// WEEKLY STAKES (STUB — EPIC-14, not yet implemented)
-// ═══════════════════════════════════════════════════════
-// Feature-flagged no-op shells. Do NOT enable until the
-// weekly_stakes + nudge_log migration is applied (see
-// migrations/weekly_stakes.sql) and EPIC-14 is In Progress.
-const FEATURES = { weeklyStakes: false };
-
-// Loads the active week's stake for the couple and renders it on the dashboard.
-async function loadWeeklyStakes() {
-  if (!FEATURES.weeklyStakes) return null;
-  // EPIC-14: sb.from('weekly_stakes').select('*') for current ISO week,
-  // render stake card on dashboard, show win/loss state from competition data.
-  return null;
-}
-
-// Evaluates Sunday-night winner from competition_leaderboard weekly totals.
-async function evaluateWeeklyStakes() {
-  if (!FEATURES.weeklyStakes) return null;
-  // EPIC-14: compare weekly volume/sessions between partners, write result
-  // to weekly_stakes.winner_user_id, trigger sendNudge() for the loser.
-  return null;
-}
-
-// Records a nudge event (push/visual) when a partner falls behind.
-async function sendNudge(targetUserId, nudgeType) {
-  if (!FEATURES.weeklyStakes) return false;
-  // EPIC-14: insert into nudge_log, rate-limit to 1/day per pair.
-  return false;
-}
+// C10: weeklyStakes stubs REMOVED 2026-07-06 (Kerwin call — supersedes the
+// keep-gated plan). EPIC-14 rebuilds from its spec + migrations/weekly_stakes.sql
+// when scheduled; no FEATURES flag remains.
 
 // ═══════════════════════════════════════════════════════
 // QA PANEL
