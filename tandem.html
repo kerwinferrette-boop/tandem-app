@@ -844,6 +844,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div class="ob-step-dot" id="sdot-3"></div>
       <div class="ob-step-dot" id="sdot-4"></div>
       <div class="ob-step-dot" id="sdot-5"></div>
+      <div class="ob-step-dot" id="sdot-6"></div>
     </div>
 
     <!-- Cards -->
@@ -1171,8 +1172,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         </div>
       </div>
 
-      <!-- CARD 6: Review -->
+      <!-- CARD 6: Baseline Estimates (EPIC-9 Step A) -->
       <div class="ob-card" id="ob-card-5">
+        <div class="ob-card-title">Baseline Estimates</div>
+        <div class="ob-card-sub">Optional — rough guesses are fine. If you know roughly what you can lift for 8-10 solid reps, Week 1 starts dialed-in instead of generic. Skip anything you're unsure of; your first session calibrates the rest.</div>
+
+        <span class="ob-label">WHAT CAN YOU LIFT FOR 8–10 REPS?</span>
+        <div id="obEstimateList" style="margin-top:12px;">
+          <!-- populated by renderBaselineEstimates() based on selected sex -->
+        </div>
+      </div>
+
+      <!-- CARD 7: Review -->
+      <div class="ob-card" id="ob-card-6">
         <div class="ob-card-title">Review & Build</div>
         <div class="ob-card-sub">Everything looks right? Hit build and your program generates instantly.</div>
 
@@ -1938,27 +1950,129 @@ const DEFAULT_WEIGHTS = {
 
 function roundTo5(w) { return Math.round(w / 5) * 5; }
 
-// Resolution order: calibrated 1RM × week factor → accessory derivation
-// → sex-aware default. Returns { weight, source } so callers can decide
-// whether to trust it (only 'calibrated'/'derived' override curated ex.w).
-function getWeekTarget(exerciseName, week, goal, oneRM, sex, compound1RMs) {
+// EPIC-9: bank exercise names → the ACCESSORY_FACTORS row they inherit.
+// Explicit name list (not regex) on purpose — a miss falls through to
+// defaults, which is safer than deriving a barbell load for a band move.
+const ACCESSORY_ALIASES = {
+  'Lying Leg Curl': 'Leg Curl', 'Seated Leg Curl': 'Leg Curl', 'Single-Leg Curl': 'Leg Curl',
+  'Cable Lateral Raise': 'Lateral Raise', 'DB Lateral Raise': 'Lateral Raise',
+  'Lateral Raise Machine': 'Lateral Raise', 'Single-Arm Cable Lateral Raise': 'Lateral Raise',
+  'Tricep Rope Pushdown': 'Tricep Pushdown',
+  'Abductor Machine': 'Hip Abduction Machine'
+};
+
+// EPIC-9: scale the authored 7-point intensity curve (weeks 2-8) across the
+// user's actual program length via linear interpolation. An 8-week program
+// reproduces the authored table exactly; a 12-week program stretches the same
+// wave (base → build → deload → reload → peak → deload) across weeks 2-12.
+// Week 1 is calibration; weeks past totalWeeks clamp to the final factor.
+function weekFactor(goal, week, totalWeeks) {
   const g = goal === 'burn_fat' ? 'fat_burn' : goal;
   const table = PROGRESSION[g] || PROGRESSION.build_muscle;
-  const wk = Math.min(Math.max(week, 2), 8);
-  const factor = table[wk];
+  const N = Math.max(Number(totalWeeks) || 8, 3);
+  const wk = Math.min(Math.max(week, 2), N);
+  const pos = 2 + ((wk - 2) * 6) / (N - 2);          // map week 2..N onto 2..8
+  const lo = Math.max(2, Math.min(8, Math.floor(pos)));
+  const hi = Math.max(2, Math.min(8, Math.ceil(pos)));
+  return table[lo] + (table[hi] - table[lo]) * (pos - lo);
+}
+
+// Resolution order: calibrated 1RM × week factor → accessory derivation
+// → sex-aware default. Returns { weight, source, factor?, from? } so callers
+// can decide whether to trust it (only 'calibrated'/'derived' override ex.w)
+// and explain the prescription ("68% of your 1RM" / "derived from Squat").
+function getWeekTarget(exerciseName, week, goal, oneRM, sex, compound1RMs, totalWeeks) {
+  const T = totalWeeks ?? ((typeof cfg !== 'undefined' && cfg && cfg.weeks) || 8);
+  const factor = weekFactor(goal, week, T);
 
   if (oneRM && factor) {
-    return { weight: roundTo5(oneRM * factor), source: 'calibrated' };
+    return { weight: roundTo5(oneRM * factor), source: 'calibrated', factor };
   }
-  const acc = ACCESSORY_FACTORS[exerciseName];
+  const accKey = ACCESSORY_ALIASES[exerciseName] || exerciseName;
+  const acc = ACCESSORY_FACTORS[accKey];
   if (acc && compound1RMs && compound1RMs[acc.from]) {
-    return { weight: roundTo5(compound1RMs[acc.from] * acc.factor), source: 'derived' };
+    return { weight: roundTo5(compound1RMs[acc.from] * acc.factor), source: 'derived', from: acc.from, factor: acc.factor };
   }
   const sexKey = (sex === 'female' || sex === 'F' || sex === 'f') ? 'female' : 'male';
   const def = DEFAULT_WEIGHTS[sexKey][exerciseName];
   if (def != null) return { weight: def, source: 'default' };
 
   return { weight: null, source: 'none' };
+}
+
+// EPIC-9: full weekly target map for one exercise — persisted to
+// personal_records.week_targets jsonb ({ "2": 95, "3": 100, ... }).
+function computeWeekTargets(oneRM, goal, totalWeeks) {
+  const T = Math.max(Number(totalWeeks) || 8, 3);
+  const targets = {};
+  for (let w = 2; w <= T; w++) targets[w] = roundTo5(oneRM * weekFactor(goal, w, T));
+  return targets;
+}
+
+// EPIC-9: recompute + persist week_targets for the given exercise names
+// (fire-and-forget — failures never block the session flow).
+async function persistWeekTargets(names) {
+  if (!currentUser || !names || !names.length) return;
+  try {
+    const prs = LS.get('tandem_prs') || {};
+    const working = LS.get('tandem_working1rm') || {};
+    const T = (typeof cfg !== 'undefined' && cfg && cfg.weeks) || 8;
+    const goal = (typeof cfg !== 'undefined' && cfg && cfg.goal) || 'build_muscle';
+    for (const name of names) {
+      const rm = working[name]?.rm ?? prs[name];
+      if (!rm) continue;
+      await sb.from('personal_records')
+        .update({ week_targets: computeWeekTargets(rm, goal, T) })
+        .eq('user_id', currentUser.id)
+        .eq('exercise_name', name);
+    }
+  } catch (e) { console.warn('week_targets persist skipped:', e); }
+}
+
+// EPIC-9 living feedback loop: nudge the WORKING 1RM (tandem_working1rm)
+// ±2.5% based on session performance. The stored all-time PR (tandem_prs /
+// personal_records) is never lowered by this — only the working number moves,
+// so next week's %1RM targets track how the lifter is actually performing.
+//   up:   every logged set hit the top of this week's rep range → ×1.025
+//   down: every logged set fell 3+ reps short of the top       → ×0.975
+// Skips core/timed work and cardio. Recomputes week_targets for changed names.
+function nudgeWorking1RMs(sessionExs, program) {
+  if (!sessionExs || !Object.keys(sessionExs).length) return;
+  const day = (program || []).find(d => d.key === currentDay);
+  if (!day) return;
+  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
+  const topRange = phaseWeekRep(phase, currentWeek);
+  const prs = LS.get('tandem_prs') || {};
+  const working = LS.get('tandem_working1rm') || {};
+  const changed = [];
+
+  day.blocks.forEach(block => {
+    if (block.cardio) return;
+    (block.exs || []).forEach(ex => {
+      if (!ex || ex.isCore || ex.unit === 'sec') return;
+      const sets = sessionExs[ex.id];
+      if (!sets || !sets.length) return;
+      const reps = sets.map(s => parseInt(s.r) || 0);
+      const minReps = Math.min(...reps);
+      const maxReps = Math.max(...reps);
+      const base = working[ex.name]?.rm ?? prs[ex.name] ?? prs[ex.id];
+      if (!base || typeof base !== 'number') return;
+
+      let dir = null;
+      if (minReps >= topRange) dir = 'up';
+      else if (maxReps <= topRange - 3) dir = 'down';
+      if (!dir) return;
+
+      const rm = Math.round(base * (dir === 'up' ? 1.025 : 0.975) * 10) / 10;
+      working[ex.name] = { rm, date: localDateStr(), dir };
+      changed.push(ex.name);
+    });
+  });
+
+  if (changed.length) {
+    LS.set('tandem_working1rm', working);
+    persistWeekTargets(changed); // async fire-and-forget; own try/catch
+  }
 }
 
 // EPIC-9 Step C: Write calibrated 1RMs on W1D1 completion (idempotent).
@@ -1996,7 +2110,11 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   const existingMap = {};
   (existingPRs || []).forEach(p => { existingMap[p.exercise_name] = p.best_estimated_1rm_lbs || 0; });
 
-  // Only upsert where new estimate exceeds existing stored value
+  // Only upsert where new estimate exceeds existing stored value.
+  // EPIC-9: also persist the full weekly target map (week_targets jsonb)
+  // so prescriptions are queryable/syncable, not just computed in the UI.
+  const calGoal = (typeof cfg !== 'undefined' && cfg && cfg.goal) || 'build_muscle';
+  const calWeeks = (typeof cfg !== 'undefined' && cfg && cfg.weeks) || 8;
   const rows = exNames
     .filter(name => best1RMs[name] > (existingMap[name] || 0))
     .map(name => ({
@@ -2004,7 +2122,8 @@ async function computeCalibration1RMs(sessionUUID, userId) {
       exercise_name: name,
       best_estimated_1rm_lbs: best1RMs[name],
       is_calibrated: true,
-      calibration_session_id: sessionUUID
+      calibration_session_id: sessionUUID,
+      week_targets: computeWeekTargets(best1RMs[name], calGoal, calWeeks)
     }));
 
   if (rows.length) {
@@ -2025,31 +2144,46 @@ function getRecommendation(exId, compound, goal, exName, sex) {
   const topRange = phaseWeekRep(phase, currentWeek);
   const inc = compound ? phase.incComp : phase.incAcc;
 
-  // EPIC-9 Step C: %1RM path for calibrated users
+  // EPIC-9 Step C/D: %1RM path for calibrated users. The WORKING 1RM (nudged
+  // ±2.5% by session performance) is preferred over the all-time PR so the
+  // prescription is living — the stored PR itself is never touched by nudges.
   const prs = LS.get('tandem_prs') || {};
-  const oneRM = (exName && prs[exName]) ?? prs[exId]; // C7: name-first, id fallback
-  if (oneRM) {
-    const tgt = getWeekTarget(exName || null, currentWeek, goal, oneRM, sex || null, null);
-    if (tgt.weight != null) {
-      const g = goal === 'burn_fat' ? 'fat_burn' : goal;
-      const table = PROGRESSION[g] || PROGRESSION.build_muscle;
-      const wk = Math.min(Math.max(currentWeek, 2), 8);
-      const pct = Math.round((table[wk] || 0) * 100);
-      const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform' };
-      const goalLabel = goalLabels[g] || g;
-      const displayName = exName || exId;
-      const reason = `${tgt.weight} lbs — ${pct}% of your ${Math.round(oneRM)} lb ${displayName} 1RM, Week ${currentWeek} ${goalLabel}`;
-      if (!entry) {
-        return { weight: tgt.weight, arrow: 'new', label: `${tgt.weight} lbs`, reason };
-      }
-      // Arrow still driven by reps vs topRange — exactly as flat-increment path
-      const { minReps } = entry;
-      let arrow;
-      if (minReps >= topRange) arrow = 'up';
-      else if (minReps >= topRange - 3) arrow = 'same';
-      else arrow = 'down';
-      return { weight: tgt.weight, arrow, label: `${tgt.weight} lbs`, reason };
+  const working = LS.get('tandem_working1rm') || {};
+  const oneRM = (exName && working[exName]?.rm)
+    ?? ((exName && prs[exName]) ?? prs[exId]); // C7: name-first, id fallback
+
+  // EPIC-9 Step E: canonical compound 1RM map (working-first) so accessories
+  // without their own record derive from adjacent compounds — this was the
+  // dormant path behind "reps change but the load doesn't" (QA 26cb1738).
+  const compound1RMs = {};
+  const rmSource = { ...prs };
+  for (const [nm, w] of Object.entries(working)) if (w?.rm) rmSource[nm] = w.rm;
+  for (const [nm, rm] of Object.entries(rmSource)) {
+    if (!rm || typeof rm !== 'number') continue;
+    for (const [canon, rx] of Object.entries(COMPOUND_PATTERNS)) {
+      if (rx.test(nm)) compound1RMs[canon] = Math.max(compound1RMs[canon] || 0, rm);
     }
+  }
+
+  const tgt = getWeekTarget(exName || null, currentWeek, goal, oneRM || null, sex || null, compound1RMs, cfg.weeks);
+  if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
+    const g = goal === 'burn_fat' ? 'fat_burn' : goal;
+    const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform' };
+    const goalLabel = goalLabels[g] || g;
+    const displayName = exName || exId;
+    const reason = tgt.source === 'calibrated'
+      ? `${tgt.weight} lbs — ${Math.round(tgt.factor * 100)}% of your ${Math.round(oneRM)} lb ${displayName} 1RM, Week ${currentWeek} ${goalLabel}`
+      : `${tgt.weight} lbs — ${Math.round(tgt.factor * 100)}% of your ${tgt.from} 1RM (moves as it moves)`;
+    if (!entry) {
+      return { weight: tgt.weight, arrow: 'new', label: `${tgt.weight} lbs`, reason };
+    }
+    // Arrow still driven by reps vs topRange — exactly as flat-increment path
+    const { minReps } = entry;
+    let arrow;
+    if (minReps >= topRange) arrow = 'up';
+    else if (minReps >= topRange - 3) arrow = 'same';
+    else arrow = 'down';
+    return { weight: tgt.weight, arrow, label: `${tgt.weight} lbs`, reason };
   }
 
   if (!entry) return { weight: null, arrow: 'new', label: 'First session', reason: 'Log this session to set your baseline' };
@@ -2177,8 +2311,46 @@ let selectedThemeColor = '#1B5E38';
 // ONBOARDING — MULTI-STEP
 // ═══════════════════════════════════════════════════════
 let obCurrentStep = 0;
-const OB_STEPS = 6;
-const OB_LABELS = ['Step 1 of 6 — Goal','Step 2 of 6 — Body Stats','Step 3 of 6 — Schedule','Step 4 of 6 — Training Preferences','Step 5 of 6 — Your Color','Step 6 of 6 — Review'];
+const OB_STEPS = 7;
+const OB_LABELS = ['Step 1 of 7 — Goal','Step 2 of 7 — Body Stats','Step 3 of 7 — Schedule','Step 4 of 7 — Training Preferences','Step 5 of 7 — Your Color','Step 6 of 7 — Baseline Estimates','Step 7 of 7 — Review'];
+
+// EPIC-9 Step A: sex-specific compound lists for optional baseline estimates.
+// Names must EXACTLY match programs.js EXERCISE_BANK names — W1 prefill and
+// PR seeding key on exact-name match.
+const OB_ESTIMATE_LISTS = {
+  female: ['Hip Thrust', 'Goblet Squat', 'Romanian Deadlift', 'DB Bench Press', 'Dumbbell Row'],
+  male:   ['Barbell Back Squat', 'Flat Barbell Press', 'Barbell Row', 'Romanian Deadlift', 'Barbell Overhead Press']
+};
+
+function renderBaselineEstimates() {
+  const wrap = document.getElementById('obEstimateList');
+  if (!wrap) return;
+  // Preserve anything already typed if the user goes back and forth
+  const prior = {};
+  wrap.querySelectorAll('input[data-est-name]').forEach(inp => {
+    if (inp.value) prior[inp.dataset.estName] = inp.value;
+  });
+  const sexKey = (selectedSex === 'female') ? 'female' : 'male';
+  wrap.innerHTML = OB_ESTIMATE_LISTS[sexKey].map(name => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+      <div style="font-size:13px;color:var(--text);">${name}</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input class="ob-input" type="number" inputmode="decimal" min="0" step="5" placeholder="—"
+          data-est-name="${name}" value="${prior[name] || ''}"
+          style="width:80px;text-align:center;margin:0;">
+        <span style="font-size:11px;color:var(--muted2);">lbs</span>
+      </div>
+    </div>`).join('');
+}
+
+function collectBaselineEstimates() {
+  const out = {};
+  document.querySelectorAll('#obEstimateList input[data-est-name]').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (v > 0) out[inp.dataset.estName] = v;
+  });
+  return out;
+}
 
 function obStep(dir) {
   if (dir === 1 && !obCanAdvance()) return;
@@ -2211,6 +2383,7 @@ function obStep(dir) {
 
   // FIX BUG 7: use 'block' not 'flex' for button display
   const nextBtn = document.getElementById('obNextBtn');
+  if (obCurrentStep === 5) renderBaselineEstimates(); // EPIC-9 Step A: sex known by now
   if (obCurrentStep === OB_STEPS - 1) {
     nextBtn.style.display = 'none';
     populateReview();
@@ -2475,7 +2648,10 @@ function buildProgram() {
     secondary_goal: selectedSecondaryGoal === 'none' ? null : selectedSecondaryGoal,
     program_goal: selectedGoal,
     startDate,
-    themeColor: selectedThemeColor || '#1B5E38'
+    themeColor: selectedThemeColor || '#1B5E38',
+    // EPIC-9 Step A: optional 8-10-rep estimates keyed by exact bank name.
+    // Used ONLY as W1 prefill when no calibrated/derived target exists.
+    onboardingEstimates: collectBaselineEstimates()
   };
   LS.set('tandem_cfg', cfg);
   currentWeek = 1;
@@ -2661,10 +2837,11 @@ function buildDayHTML(day, phase) {
   // EPIC-9: build a name→1RM map across this day's exercises so the formula
   // layer can derive accessory targets from calibrated compound 1RMs.
   const _dayPrs = LS.get('tandem_prs') || {};
+  const _dayWorking = LS.get('tandem_working1rm') || {};
   const dayCompound1RMs = {};
   day.blocks.forEach(b => (b.exs || []).forEach(e => {
-    // C7: name-first (canonical key), id fallback for legacy entries
-    const _rm = e && (_dayPrs[e.name] ?? _dayPrs[e.id]);
+    // EPIC-9: working 1RM first (living number), then C7 name-first PR, id fallback
+    const _rm = e && (_dayWorking[e.name]?.rm ?? _dayPrs[e.name] ?? _dayPrs[e.id]);
     if (!_rm) return;
     dayCompound1RMs[e.name] = _rm;
     // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
@@ -2716,16 +2893,22 @@ function buildDayHTML(day, phase) {
       const ex = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
       const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
       const _prStore = LS.get('tandem_prs') || {};
-      const pr1rm = _prStore[ex.name] ?? _prStore[ex.id]; // C7: name-first
+      // EPIC-9: effective 1RM = working (living) number first, then all-time PR
+      const pr1rm = _dayWorking[ex.name]?.rm ?? _prStore[ex.name] ?? _prStore[ex.id]; // C7: name-first
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
       // compute a starting weight from the user's calibrated 1RM instead of
       // the static program value. Only trust calibrated/derived sources —
       // keep the curated ex.w default otherwise. Skip core/timed exercises.
       if (rec.weight == null && !ex.isCore) {
-        const tgt = getWeekTarget(ex.name, currentWeek, cfg.goal, pr1rm || null, cfg.sex, dayCompound1RMs);
+        const tgt = getWeekTarget(ex.name, currentWeek, cfg.goal, pr1rm || null, cfg.sex, dayCompound1RMs, cfg.weeks);
         if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
           startW = tgt.weight;
+        } else {
+          // EPIC-9 Step A: no calibrated/derived target yet (typically W1) —
+          // if the user gave an onboarding estimate for this exact exercise, use it.
+          const obEst = (cfg.onboardingEstimates || {})[ex.name];
+          if (obEst > 0) startW = obEst;
         }
         // Phase-substituted exercise with no history: scale by oneRmFactor relative to the
         // original exercise's projected weight (fallback only — history supersedes this).
@@ -2733,7 +2916,8 @@ function buildDayHTML(day, phase) {
           const bankEntry = Object.values(EXERCISE_BANK).find(e => e.name === ex.name);
           if (bankEntry?.oneRmFactor != null) {
             const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
-              (_prStore[_ex.name] ?? _prStore[_ex.id]) || null, cfg.sex, dayCompound1RMs);
+              (_dayWorking[_ex.name]?.rm ?? _prStore[_ex.name] ?? _prStore[_ex.id]) || null,
+              cfg.sex, dayCompound1RMs, cfg.weeks);
             const origW = origTgt.weight ?? _ex.w;
             if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
           }
@@ -2951,6 +3135,12 @@ function logSet(id, i) {
       prs[prExName] = est1rm;                 // C7: write by canonical name
       if (prExName !== id) delete prs[id];    // C7: retire any legacy id-keyed entry
       LS.set('tandem_prs', prs);
+      // EPIC-9: a true PR also lifts the working 1RM (never lowers it)
+      const wk1 = LS.get('tandem_working1rm') || {};
+      if (wk1[prExName] && est1rm > wk1[prExName].rm) {
+        wk1[prExName] = { rm: est1rm, date: localDateStr(), dir: 'pr' };
+        LS.set('tandem_working1rm', wk1);
+      }
       btn.classList.add('pr-set');
       wEl.classList.add('pr'); rEl.classList.add('pr');
       showToast(`${svgIcon('trophy')} PR — ${prExName} · ${est1rm} lbs`);
@@ -3355,6 +3545,12 @@ function finishSession() {
     .flatMap(sets => sets)
     .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
 
+  // EPIC-9: living feedback loop — nudge working 1RMs from this session's
+  // performance. currentDay still points at the finished day here (only the
+  // LS key advances below/above), so the day lookup matches what was logged.
+  try { nudgeWorking1RMs(snapshotExercises, program); }
+  catch (e) { console.warn('1RM nudge skipped:', e); }
+
   // Advance to next training day (reuse program already computed above)
   const dayIdx = program.findIndex(d => d.key === currentDay);
   const nextDay = program[(dayIdx + 1) % program.length]?.key || program[0].key;
@@ -3750,6 +3946,8 @@ async function syncToCloud() {
         preferred_workout_time: cfg.preferred_workout_time || null,
         injuries: cfg.injuries || null,
         secondary_goal: cfg.secondary_goal || null,
+        // EPIC-9 Step A: optional onboarding lift estimates (jsonb, name→lbs)
+        onboarding_estimates: (cfg.onboardingEstimates && Object.keys(cfg.onboardingEstimates).length) ? cfg.onboardingEstimates : null,
         start_weight_lbs: cfg.weight || null,
         current_weight_lbs: cfg.weight || null,
         goal_weight_lbs: cfg.targetWeight || cfg.goalWeight || null,
@@ -3991,7 +4189,9 @@ async function syncFromCloud() {
       height: userData.height_inches,
       age: userData.age,
       startDate: userData.program_start_date || null,
-      themeColor: userData.theme_color || '#1B5E38'
+      themeColor: userData.theme_color || '#1B5E38',
+      // EPIC-9 Step A: restore onboarding estimates on device re-login
+      onboardingEstimates: userData.onboarding_estimates || {}
     };
     selectedGoal = cfg.goal;
     selectedDays = cfg.days || 4;
