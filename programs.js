@@ -30,7 +30,8 @@ const ICONS = {
   chart:'<path d="M3 21h18M7 21v-7M12 21V8M17 21v-10"/>',
   plate:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/>',
   save:'<path d="M5 3h11l3 3v15H5V3ZM8.5 3v5h6V3M8.5 21v-7h7v7"/>',
-  alert:'<path d="M12 3 21 19H3L12 3ZM12 10v4M12 17h.01"/>'
+  alert:'<path d="M12 3 21 19H3L12 3ZM12 10v4M12 17h.01"/>',
+  swap:'<path d="M4 8h13M13 4l4 4-4 4M20 16H7M11 20l-4-4 4-4"/>'
 };
 function svgIcon(name, size){
   const p = ICONS[name]; if(!p) return '';
@@ -829,6 +830,30 @@ function pruneInjuries(program, injuries) {
     if (total > 0) day.blocks = prunedBlocks;
   }
   return program;
+}
+
+// ═══════════════════════════════════════════════════════
+// EXERCISE SUBSTITUTION
+// getExerciseSubstitutes(exName, tier, injuries, limit)
+//   → array of EXERCISE_BANK entries to swap exName for: same category,
+//     sharing a primary muscle group, tier-appropriate (won't suggest a
+//     barbell move at a hotel/home tier), and injury-safe. Reuses the
+//     tierOrder + makeInjuryBlocked patterns from buildDynamicProgram.
+// ═══════════════════════════════════════════════════════
+function getExerciseSubstitutes(exName, tier, injuries, limit) {
+  const entry = Object.values(EXERCISE_BANK).find(e => e.name === exName);
+  if (!entry) return [];
+  const tierOrder = ['home','hotel_gym','full_gym'];
+  const reqIdx = tierOrder.indexOf(tier || 'full_gym');
+  const injuryBlocked = makeInjuryBlocked(injuries);
+  const primaryGroups = entry.muscleGroups?.primary || [];
+  const candidates = Object.values(EXERCISE_BANK).filter(e =>
+    e.name !== exName &&
+    e.category === entry.category &&
+    tierOrder.indexOf(e.tier) <= reqIdx &&
+    !injuryBlocked(e.name) &&
+    (e.muscleGroups?.primary || []).some(g => primaryGroups.includes(g)));
+  return candidates.slice(0, limit || 5);
 }
 
 // ═══════════════════════════════════════════════════════

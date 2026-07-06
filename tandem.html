@@ -397,6 +397,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .rest-skip{background:none;border:1px solid var(--border);border-radius:5px;padding:4px 9px;
   font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;}
 
+/* Exercise substitution */
+.swap-picker{display:none;flex-direction:column;gap:6px;margin:0 0 8px;padding:10px;
+  background:var(--s2);border:1px solid var(--border2);border-radius:10px;}
+.swap-picker.open{display:flex;}
+.swap-opt{padding:8px 10px;border-radius:8px;background:var(--s1);border:1px solid var(--border2);
+  cursor:pointer;font-size:13px;color:var(--text);}
+.swap-opt:hover{border-color:var(--accent);}
+.swap-empty{font-size:12px;color:var(--muted2);padding:4px 2px;}
+
 /* Coaching detail */
 .ex-detail{display:none;padding:0 12px 10px;}
 .ex-card.open .ex-detail{display:block;}
@@ -407,7 +416,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .cue-dot{color:var(--accent);flex-shrink:0;}
 
 /* Video embed */
-.ex-video-wrap{margin-bottom:10px;}
+.ex-video-wrap:not(:empty){margin-bottom:10px;}
 .ex-video-btn{width:100%;padding:9px 12px;background:rgba(255,0,0,.08);border:1px solid rgba(255,0,0,.2);
   border-radius:8px;color:#ff6b6b;font-family:var(--font-mono);font-size:10px;
   letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;}
@@ -2724,7 +2733,7 @@ function buildDayHTML(day, phase) {
           <div class="ex-header">
             <div class="ex-check"></div>
             <div class="ex-info">
-              <div class="ex-name">${ex.name}<span class="ex-badge badge-${ex.badge}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">1RM ~${pr1rm}</span>` : ''}</div>
+              <div class="ex-name"><span id="en-${ex.id}">${ex.name}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">1RM ~${pr1rm}</span>` : ''}</div>
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
@@ -2753,8 +2762,10 @@ function buildDayHTML(day, phase) {
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${ex.unit || 'reps'}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
+              <div class="set-act" onclick="event.stopPropagation();openSwapPicker('${ex.id}')">${svgIcon('swap')} Swap</div>
               <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>
             </div>
+            <div class="swap-picker" id="swap-${ex.id}"></div>
           </div>
           <div class="rest-timer" id="rt-${ex.id}">
             <div class="rest-lbl">Rest</div>
@@ -2763,15 +2774,13 @@ function buildDayHTML(day, phase) {
             <button class="rest-skip" onclick="skipRest('${ex.id}')">Skip</button>
           </div>
           <div class="ex-detail">
-            <div class="ex-why">${ex.why || ''}</div>
-            ${(ex.cues||[]).length ? `<div class="ex-cues">${ex.cues.map(c=>`<div class="ex-cue"><div class="cue-dot">→</div><div>${c}</div></div>`).join('')}</div>` : ''}
-            ${videoId ? `
-              <div class="ex-video-wrap">
+            <div class="ex-why" id="why-${ex.id}">${ex.why || ''}</div>
+            <div class="ex-cues-wrap" id="cueswrap-${ex.id}">${(ex.cues||[]).length ? `<div class="ex-cues">${ex.cues.map(c=>`<div class="ex-cue"><div class="cue-dot">→</div><div>${c}</div></div>`).join('')}</div>` : ''}</div>
+            <div class="ex-video-wrap" id="vidwrap-${ex.id}">${videoId ? `
                 <button class="ex-video-btn" onclick="loadVideo('${ex.id}','${videoId}',this)">
                   <span class="yt-icon">▶</span> Watch Tutorial — ${ex.name}
                 </button>
-                <div class="ex-video-frame" id="vid-${ex.id}"></div>
-              </div>` : ''}
+                <div class="ex-video-frame" id="vid-${ex.id}"></div>` : ''}</div>
           </div>
           <div class="ex-notes-wrap">
             <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."></textarea>
@@ -3156,6 +3165,70 @@ function loadVideo(exId, ytId, btn) {
   frame.innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1" allowfullscreen allow="autoplay"></iframe>`;
   frame.classList.add('show');
   btn.innerHTML = `<span class="yt-icon">✕</span> Close Video`;
+}
+
+// ═══════════════════════════════════════════════════════
+// EXERCISE SUBSTITUTION — Swap button on each exercise card
+// ═══════════════════════════════════════════════════════
+function openSwapPicker(id) {
+  const picker = document.getElementById('swap-' + id);
+  const nameEl = document.getElementById('en-' + id);
+  if (!picker || !nameEl) return;
+  const wasOpen = picker.classList.contains('open');
+  document.querySelectorAll('.swap-picker.open').forEach(p => p.classList.remove('open'));
+  if (wasOpen) return;
+  const subs = getExerciseSubstitutes(nameEl.textContent, resolveEquipmentTier(), cfg.injuries, 5);
+  picker.innerHTML = subs.length
+    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}',${JSON.stringify(s.name)})">${s.name}</div>`).join('')
+    : `<div class="swap-empty">No substitutes available for your equipment tier.</div>`;
+  picker.classList.add('open');
+}
+
+function applySwap(id, newName) {
+  const entry = Object.values(EXERCISE_BANK).find(e => e.name === newName);
+  if (!entry) return;
+  const nameEl = document.getElementById('en-' + id);
+  const badgeEl = document.getElementById('eb-' + id);
+  const whyEl = document.getElementById('why-' + id);
+  const cuesWrap = document.getElementById('cueswrap-' + id);
+  const vidWrap = document.getElementById('vidwrap-' + id);
+  const picker = document.getElementById('swap-' + id);
+  // Adjust weight targets for the substitute's relative strength, using the same
+  // oneRmFactor-scaling already applied to phase-substituted exercises elsewhere
+  // (see the _ex.id !== ex.id branch in buildDayHTML). Skipped when either exercise
+  // has no oneRmFactor (bodyweight/band/timed movements) — weight isn't a meaningful
+  // target there, so the set rows are left as-is rather than guessed at.
+  const oldEntry = nameEl ? Object.values(EXERCISE_BANK).find(e => e.name === nameEl.textContent) : null;
+  const ratio = (oldEntry?.oneRmFactor && entry.oneRmFactor) ? (entry.oneRmFactor / oldEntry.oneRmFactor) : null;
+  if (ratio != null) {
+    let i = 0, wInput;
+    while ((wInput = document.getElementById(`${id}-w${i}`))) {
+      const w = parseFloat(wInput.value);
+      if (Number.isFinite(w) && w > 0) wInput.value = Math.round((w * ratio) / 2.5) * 2.5;
+      onSetInput(id, i);
+      i++;
+    }
+  }
+  if (nameEl) nameEl.textContent = entry.name;
+  if (badgeEl) {
+    const badge = entry.category === 'compound' ? 'compound' : 'isolation';
+    badgeEl.textContent = badge;
+    badgeEl.className = 'ex-badge badge-' + badge;
+  }
+  if (whyEl) whyEl.textContent = entry.why || '';
+  if (cuesWrap) {
+    cuesWrap.innerHTML = (entry.cues || []).length
+      ? `<div class="ex-cues">${entry.cues.map(c => `<div class="ex-cue"><div class="cue-dot">→</div><div>${c}</div></div>`).join('')}</div>`
+      : '';
+  }
+  if (vidWrap) {
+    const vId = VIDEO_IDS[entry.name];
+    vidWrap.innerHTML = vId
+      ? `<button class="ex-video-btn" onclick="loadVideo('${id}','${vId}',this)"><span class="yt-icon">▶</span> Watch Tutorial — ${entry.name}</button><div class="ex-video-frame" id="vid-${id}"></div>`
+      : '';
+  }
+  if (picker) { picker.classList.remove('open'); picker.innerHTML = ''; }
+  showToast(`Swapped to ${entry.name}`);
 }
 
 // ═══════════════════════════════════════════════════════
