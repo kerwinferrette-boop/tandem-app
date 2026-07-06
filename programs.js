@@ -887,8 +887,45 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     return pool[hashStr(seedStr) % pool.length];
   };
 
+  // EPIC-9 Step B: NSCA-informed untrained-lifter starting weights, keyed by
+  // exact EXERCISE_BANK name. Where a name matches, this OVERRIDES the generic
+  // baseW() formula below (Kerwin: "keep baseW, matrix as override"). Source:
+  // Notion EPIC-9 default-weight matrices.
+  const NSCA_DEFAULTS = isFemale ? {
+    'Hip Thrust': 45, 'Barbell Hip Thrust': 45,
+    'Romanian Deadlift': 35, 'DB RDL': 35,
+    'Goblet Squat': 25,
+    'Bulgarian Split Squat': 15,
+    'DB Bench Press': 20,
+    'Dumbbell Row': 25,
+    'Lat Pulldown': 40,
+    'Arnold Press': 15,
+    'Cable Lateral Raise': 7.5,
+    'Lying Leg Curl': 30, 'Seated Leg Curl': 30,
+    'Cable Kickback': 15,
+    'Leg Extension': 30
+  } : {
+    'Barbell Back Squat': 135, 'Hack Squat': 135,
+    'Romanian Deadlift': 135,
+    'Leg Press': 180,
+    'Flat Barbell Press': 135,
+    'DB Bench Press': 50,
+    'Barbell Row': 95,
+    'Dumbbell Row': 50,
+    'Lat Pulldown': 80,
+    'Barbell Overhead Press': 75,
+    'Cable Lateral Raise': 15,
+    'Lying Leg Curl': 60, 'Seated Leg Curl': 60,
+    'Leg Extension': 70
+  };
+
   // base starting weight from equipment + sex
   const baseW = (e) => {
+    const nsca = NSCA_DEFAULTS[e.name];
+    if (nsca != null) {
+      // dumbbell entries in the matrix are per-hand — still respect the user's cap
+      return e.equipment === 'dumbbell' ? Math.min(nsca, dbCap) : nsca;
+    }
     const m = isFemale ? 0.55 : 1.0;
     const f = e.oneRmFactor || 1.0;
     if (e.equipment==='barbell')   return Math.round((isFemale?55:95)*f/5)*5;
