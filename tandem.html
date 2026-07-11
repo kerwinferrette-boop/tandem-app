@@ -4927,37 +4927,6 @@ async function submitBugReport() {
 }
 
 // ═══════════════════════════════════════════════════════
-// WEEKLY STAKES (STUB — EPIC-14, not yet implemented)
-// ═══════════════════════════════════════════════════════
-// Feature-flagged no-op shells. Do NOT enable until the
-// weekly_stakes + nudge_log migration is applied (see
-// migrations/weekly_stakes.sql) and EPIC-14 is In Progress.
-const FEATURES = { weeklyStakes: false };
-
-// Loads the active week's stake for the couple and renders it on the dashboard.
-async function loadWeeklyStakes() {
-  if (!FEATURES.weeklyStakes) return null;
-  // EPIC-14: sb.from('weekly_stakes').select('*') for current ISO week,
-  // render stake card on dashboard, show win/loss state from competition data.
-  return null;
-}
-
-// Evaluates Sunday-night winner from competition_leaderboard weekly totals.
-async function evaluateWeeklyStakes() {
-  if (!FEATURES.weeklyStakes) return null;
-  // EPIC-14: compare weekly volume/sessions between partners, write result
-  // to weekly_stakes.winner_user_id, trigger sendNudge() for the loser.
-  return null;
-}
-
-// Records a nudge event (push/visual) when a partner falls behind.
-async function sendNudge(targetUserId, nudgeType) {
-  if (!FEATURES.weeklyStakes) return false;
-  // EPIC-14: insert into nudge_log, rate-limit to 1/day per pair.
-  return false;
-}
-
-// ═══════════════════════════════════════════════════════
 // QA PANEL
 // ═══════════════════════════════════════════════════════
 const QA_UID = 'e636007d-194f-4440-a2cc-9bc514957c64';
