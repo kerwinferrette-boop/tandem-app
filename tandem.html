@@ -3066,6 +3066,27 @@ async function startOrResumeSession() {
     console.error('[C11] stored active session id was stale/invalid — minting a new session', { storedId });
     localStorage.removeItem('tandem_active_session_id');
   }
+  // C11 enforcement: this workout may already have logged sets under a first
+  // session id (recorded below / on an earlier resume within this workout).
+  // Try to resume THAT row before minting a second workout_sessions row for
+  // the same workout — minting a second row is what orphans sets under an
+  // abandoned id when tandem_active_session_id gets lost mid-workout.
+  const c11FirstIdOnResume = localStorage.getItem('tandem_c11_first_session_id');
+  if (c11FirstIdOnResume && c11FirstIdOnResume !== storedId) {
+    const { data: firstRow } = await sb.from('workout_sessions')
+      .select('id')
+      .eq('id', c11FirstIdOnResume)
+      .eq('user_id', currentUser.id)
+      .eq('completed', false)
+      .maybeSingle();
+    if (firstRow?.id) {
+      localStorage.setItem('tandem_active_session_id', firstRow.id);
+      if (!localStorage.getItem('tandem_session_start_time')) {
+        localStorage.setItem('tandem_session_start_time', String(Date.now()));
+      }
+      return firstRow.id;
+    }
+  }
   const today = localDateStr(); // BUG-018/027: local day, not UTC
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const { data: newSession, error } = await sb.from('workout_sessions').insert({
@@ -3603,12 +3624,43 @@ function finishSession() {
         return;
       }
 
-      // C11 diagnostic (logging only, no behavior change): flag when the id
-      // we're completing differs from the id the workout STARTED under, i.e.
-      // sets may be split across two workout_sessions rows.
+      // C11 re-sync-before-complete guard: the id we're completing differs
+      // from the id the workout STARTED under, so sets may be split across
+      // two workout_sessions rows. Re-point any sets still sitting under the
+      // abandoned first-session id onto the id we're about to finalize, and
+      // close out the abandoned row, BEFORE computing volume/PRs/streaks below.
+      // Known limitation: tandem_c11_first_session_id is one localStorage key
+      // shared by every tab on this device, so two simultaneous workout tabs
+      // on the same device could cross-contaminate each other's session ids.
+      // Not fixed here — needs per-tab identity (sessionStorage or a schema
+      // change) to close properly.
       if (c11FirstId && c11FirstId !== resolvedId) {
-        console.error('[C11] session id mismatch at finish — sets may be orphaned', {
-          startedAs: c11FirstId, finishingAs: resolvedId, recovered: !sessionUUID });
+        try {
+          const { data: movedSets, error: moveErr } = await sb.from('sets')
+            .update({ session_id: resolvedId })
+            .eq('session_id', c11FirstId)
+            .eq('user_id', currentUser.id)
+            .select('id');
+          if (moveErr) throw moveErr;
+          if (movedSets?.length) {
+            console.warn('[C11] re-pointed orphaned sets onto the finishing session', {
+              from: c11FirstId, to: resolvedId, count: movedSets.length });
+          }
+          // The abandoned row is now guaranteed to have zero sets (just moved
+          // them all out above). Delete it outright rather than marking it
+          // completed — history restore reads workout_sessions with no
+          // completed filter (see restoreFromCloud/hydrateFromCloud), so a
+          // left-behind row of ANY status would surface as a phantom
+          // 0-lbs/empty workout the next time history is rebuilt from cloud.
+          await sb.from('workout_sessions')
+            .delete()
+            .eq('id', c11FirstId)
+            .eq('user_id', currentUser.id)
+            .eq('completed', false);
+        } catch (moveErr) {
+          console.error('[C11] failed to re-point orphaned sets — finishing without merge', {
+            startedAs: c11FirstId, finishingAs: resolvedId, error: moveErr });
+        }
       }
 
       const duration = startTime
@@ -3621,8 +3673,9 @@ function finishSession() {
         const { data: setRows } = await sb.from('sets')
           .select('weight_lbs, reps')
           .eq('session_id', resolvedId);
-        // C11 diagnostic: a completed session with ZERO cloud sets means the
-        // per-set sync wrote to a different session id (or never fired).
+        // C11 diagnostic: a completed session with ZERO cloud sets, even after
+        // the re-point above, means the per-set sync never fired at all this
+        // session (not a split-id case) — nothing to merge from, just log it.
         if (!setRows?.length && Object.keys(snapshotExercises).length) {
           console.error('[C11] completing session with 0 cloud sets despite local sets logged', {
             sessionId: resolvedId, localExercises: Object.keys(snapshotExercises).length });
