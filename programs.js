@@ -372,6 +372,12 @@ const EXERCISE_BANK = {
     emphasis:['back','biceps','pull','upper_body'], equipment:'bodyweight', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Supinated grip shifts load heavily toward biceps versus pull-ups. Most people can chin-up before they can pull-up — a useful progression. Bicep involvement makes it a two-muscle-in-one movement for smaller day counts.',
     cues:['Supinated grip (palms toward face)','Full dead hang at bottom','Elbows drive down and in toward hips','Chin clears bar — pause at top']},
+  'table-inverted-row':{
+    name:'Table Inverted Row', videoId:null,
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid']},
+    emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
+    why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
+    cues:['Lie under a sturdy table, hands gripping the edge, body straight','Pull chest toward the table edge, squeezing shoulder blades together','Keep the body rigid — no hip sag','Lower under control; walk feet further out to increase difficulty']},
   'straight-arm-pulldown':{
     name:'Straight-Arm Pulldown', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['long_head_tricep','posterior_delt']},
@@ -542,6 +548,12 @@ const EXERCISE_BANK = {
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience with zero equipment.',
     cues:['Kneel tall, hips fully extended, core braced','Lean the whole body back in a straight line from knees to head','Lower as far as quad control allows — no hip bend','Pull back up with the quads; hold a wall or band to assist if needed']},
+  'bodyweight-squat':{
+    name:'Bodyweight Squat', videoId:null,
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis'],secondary:['glute_max']},
+    emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
+    why:'The zero-equipment squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available; add tempo, pauses, or a loaded backpack to progress.',
+    cues:['Feet shoulder-width, toes slightly out','Sit hips back and down — knees track over toes','Drive through the whole foot to stand','Chest tall throughout — brace the core before descending']},
   'goblet-squat':{
     name:'Goblet Squat', videoId:'MeIiIdhvXT4',
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis'],secondary:['glute_max','core']},
@@ -574,6 +586,12 @@ const EXERCISE_BANK = {
     emphasis:['hamstrings','glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Trains the hamstring in its most important function: hip extension under eccentric load. The stretch position at the bottom produces the highest mechanotransduction signal of any hamstring exercise. Fundamental for any strength program.',
     cues:['Hip hinge, not a squat — push hips back','Bar stays in contact with legs throughout','Feel the hamstring stretch; stop before lower back rounds','Drive hips forward to return — squeeze glutes at top']},
+  'bodyweight-single-leg-rdl':{
+    name:'Single-Leg Romanian Deadlift', videoId:null,
+    muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae']},
+    emphasis:['hamstrings','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
+    why:'The zero-equipment hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL with no equipment required.',
+    cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
     muscleGroups:{primary:['hamstring_bicep_femoris']},
@@ -756,6 +774,18 @@ const EXERCISE_BANK = {
     cues:['Sit at 45° with feet elevated (harder) or on floor (easier)','Rotate from the torso, not just the arms','Touch the floor beside each hip each rep','Brace the core throughout — do not let the spine collapse']},
 
   // ── CARDIO / CONDITIONING ─────────────────────────────
+  'jumping-jacks':{
+    name:'Jumping Jacks', videoId:null,
+    muscleGroups:{primary:['full_body','glute_max'],secondary:['calf']},
+    emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
+    why:'Zero-equipment full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
+    cues:['Land softly, knees soft on impact','Full arm extension overhead each rep','Steady rhythm — this is Zone 2, not a sprint','20+ min continuous, or interval with High Knees']},
+  'high-knees':{
+    name:'High Knees', videoId:null,
+    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
+    why:'Zero-equipment hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work with no equipment required.',
+    cues:['Drive knees to hip height, quick cadence','Land on the balls of the feet','Pump the arms to maintain rhythm','Moderate, sustainable pace for Zone 2 duration']},
   'incline-treadmill':{
     name:'Incline Treadmill', videoId:null,
     muscleGroups:{primary:['glute_max','hamstring','calf']},
@@ -1592,25 +1622,35 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // ── BUG-31: substitution pool used by dedupeConsecutiveDays backfill ──────
   // Exercises chosen to fit pull/push/isolation slots without naming anything
   // that already appears in the standard 4-day bases, minimising collision risk.
+  // GEN-fix (persona-matrix R9): each sub now carries the equipment tier it
+  // actually requires so the backfill loop below can skip anything above the
+  // user's requested tier — previously these had no tier field at all, so a
+  // 'home' (bodyweight-only) user could get backfilled a cable/DB exercise.
   const SUBSTITUTIONS = [
-    {id:'sub-sarm',  name:'Single-Arm DB Row',     badge:'isolation', sets:3, w:60, r:12, rest:60, compound:false,
+    {id:'sub-sarm',  name:'Single-Arm DB Row',     badge:'isolation', tier:'hotel_gym', sets:3, w:60, r:12, rest:60, compound:false,
      why:'Unilateral pull — catches dominant-side compensation when bilateral rows are the only remaining pull.',
      cues:['Row to hip, not chest.','Let shoulder drop at bottom — full protraction.']},
-    {id:'sub-sapl',  name:'Straight-Arm Pulldown', badge:'isolation', sets:3, w:40, r:15, rest:45, compound:false,
+    {id:'sub-sapl',  name:'Straight-Arm Pulldown', badge:'isolation', tier:'full_gym', sets:3, w:40, r:15, rest:45, compound:false,
      why:'Lat isolation through full arc with zero bicep involvement. Ideal pull-day filler.',
      cues:['Arms straight throughout.','Drive elbows toward hips — squeeze lats at bottom.']},
-    {id:'sub-rfly',  name:'Reverse Fly',            badge:'isolation', sets:3, w:15, r:15, rest:45, compound:false,
+    {id:'sub-rfly',  name:'Reverse Fly',            badge:'isolation', tier:'hotel_gym', sets:3, w:15, r:15, rest:45, compound:false,
      why:'Rear delt isolation for shoulder health on pull-focused days.',
      cues:['Slight forward lean. Lead with elbows wide.','Light weight — corrective work.']},
-    {id:'sub-dbsp',  name:'DB Shoulder Press',      badge:'compound',  sets:3, w:30, r:12, rest:75, compound:true,
+    {id:'sub-dbsp',  name:'DB Shoulder Press',      badge:'compound',  tier:'hotel_gym', sets:3, w:30, r:12, rest:75, compound:true,
      why:'Overhead push pattern to maintain delt compound volume when primary is stripped.',
      cues:['Press overhead. Elbows slightly in front.','No lumbar arch — brace throughout.']},
-    {id:'sub-bayrow',name:'Bayesian Cable Curl',    badge:'isolation', sets:3, w:25, r:12, rest:45, compound:false,
+    {id:'sub-bayrow',name:'Bayesian Cable Curl',    badge:'isolation', tier:'full_gym', sets:3, w:25, r:12, rest:45, compound:false,
      why:'Bicep isolation with cable behind body — unique stretch position unavailable from standard curls.',
      cues:['Cable at hip height behind body.','Curl with shoulder pinned back.']},
-    {id:'sub-lrow',  name:'Landmine Row',            badge:'compound',  sets:3, w:70, r:10, rest:75, compound:true,
+    {id:'sub-lrow',  name:'Landmine Row',            badge:'compound',  tier:'full_gym', sets:3, w:70, r:10, rest:75, compound:true,
      why:'Compound pull with neutral grip — different stimulus than cable row, no spine compression.',
      cues:['Hinge at hip. Drive elbow to hip. Chest tall throughout.']},
+    {id:'sub-ipu',   name:'Incline Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
+     why:'Zero-equipment push filler — hands elevated on a chair/counter reduces load versus a standard push-up, useful when the push-day pool is already exhausted.',
+     cues:['Hands on a stable elevated surface, body in a straight line.','Lower chest to the surface, press back up.']},
+    {id:'sub-bpa',   name:'Band Pull-Apart',        badge:'isolation', tier:'home', sets:3, w:0, r:20, rest:30, compound:false,
+     why:'Zero-equipment (or light-band) rear-delt/upper-back filler — safe volume add when the pull-day pool is already exhausted.',
+     cues:['Arms straight, band or towel at chest height.','Pull apart squeezing shoulder blades together; control the return.']},
   ];
 
   // ── BUG-31: remove consecutive-day exercise name collisions ──────────────
@@ -1624,11 +1664,18 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
       blocks: day.blocks.map(b => ({ ...b, exs: b.exs ? [...b.exs] : [] }))
     }));
 
+    // GEN-fix (persona-matrix R6): core exercises are exempted from cross-day
+    // collision tracking the same way cardio already is (see cardioPool reuse
+    // comment above) — repeating Plank/Dead Bug across training days is normal
+    // ab programming, not a duplicate-lift bug. Without this, a small tier's
+    // core pool (e.g. 'home', 7 entries) can pick the same pair on both days
+    // of a 2-day split, dedup strips day 2's as "duplicates," and the block
+    // is left empty since backfill deliberately skips core blocks.
     const getNames = (day) => {
       const s = new Set();
       for (const b of day.blocks) {
         if (b.cardio) continue;
-        for (const ex of b.exs) { if (!ex.cardioOnly) s.add(ex.name.trim().toLowerCase()); }
+        for (const ex of b.exs) { if (!ex.cardioOnly && !ex.isCore) s.add(ex.name.trim().toLowerCase()); }
       }
       return s;
     };
@@ -1654,7 +1701,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
       for (const b of result[ci].blocks) {
         if (b.cardio) continue;
         b.exs = b.exs.filter(ex =>
-          ex.cardioOnly || !prevNames.has(ex.name.trim().toLowerCase())
+          ex.cardioOnly || ex.isCore || !prevNames.has(ex.name.trim().toLowerCase())
         );
       }
 
@@ -1667,6 +1714,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
 
         for (const sub of SUBSTITUTIONS) {
           if (filled >= shortage) break;
+          // GEN-fix (persona-matrix R9): never backfill an exercise whose
+          // required tier exceeds the user's requested equipment tier.
+          const TIER_RANK = { home:0, hotel_gym:1, full_gym:2 };
+          if ((TIER_RANK[sub.tier] ?? 2) > (TIER_RANK[tier] ?? 2)) continue;
           const key = sub.name.trim().toLowerCase();
           // Skip if it would collide with prev, curr, or next day.
           if (currNames.has(key) || prevNames.has(key) || nextNames.has(key)) continue;
@@ -1713,8 +1764,8 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     const legsBlocks = [
       // BUG: la.blocks[0].exs[1] is the hinge day's SECOND compound — it belongs in the
       // Compound Block, not tacked onto the accessory tail after isolations (R3 mis-order).
-      { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0], la.blocks[0].exs[1] ] },
-      { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0] ] },
+      { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0], la.blocks[0].exs[1] ].filter(Boolean) },
+      { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0] ].filter(Boolean) },
     ];
     if (legsCore) legsBlocks.push({ ...legsCore, exs:[...legsCore.exs] });
     if (legsCardio) legsBlocks.push({ label:'Zone 2 · 22 min', cardio:true, exs:[ {...legsCardio, duration:22} ] });
