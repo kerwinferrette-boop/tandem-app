@@ -700,13 +700,13 @@ const EXERCISE_BANK = {
     why:'McGill-approved anti-extension movement. Forces the core to resist spinal extension while contralateral limbs move — exactly what the core does during every compound lift. Zero spinal shear. Safest core exercise for any lower back history.',
     cues:['Press lower back FLAT into floor throughout — this is the whole exercise','Move opposite arm and leg simultaneously','Breathe out as you lower the limbs','If the back lifts, the set is over']},
   'plank':{
-    name:'Plank', videoId:'pSHjTRCQxIw',
+    name:'Plank', videoId:'pSHjTRCQxIw', unit:'sec',
     muscleGroups:{primary:['transverse_abdominis','rectus_abdominis'],secondary:['erector_spinae','glute_max']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'Anti-extension core training — builds the ability to resist spinal extension under load, exactly the demand during heavy squats and deadlifts.',
     cues:['Forearms on floor, elbows under shoulders','Body in a straight line from head to heels','Squeeze glutes and abs simultaneously','Breathe normally — if you cannot breathe, reduce the duration']},
   'side-plank':{
-    name:'Side Plank', videoId:null,
+    name:'Side Plank', videoId:null, unit:'sec',
     muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'McGill Big 3 staple — the only exercise that loads the lateral core (QL and obliques) without spinal compression. QL weakness is the most overlooked contributor to lower back pain.',
@@ -943,11 +943,15 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       badge: entry.category==='compound'?'compound':'isolation',
       sets: overrides.sets ?? (entry.category==='compound'?4:3),
       w: baseW(entry),
-      r: 10,
+      r: entry.unit==='sec' ? 30 : 10,   // timed holds target 30 sec, not 10 "reps"
       rest: entry.category==='compound'?90:60,
       compound: entry.category==='compound',
       isCore: entry.category==='core',
       cardioOnly: entry.category==='cardio',
+      // GEN-fix: carry movement-type metadata through to the logging layer.
+      // unit 'sec' = timed hold (Plank/Side Plank) — r becomes seconds, not reps.
+      unit: entry.unit || 'reps',
+      equipment: entry.equipment || null,
       why: entry.why||'',
       cues: entry.cues||[],
       ...overrides
@@ -982,7 +986,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['bicep'],                                    cat:'isolation'},
         {role:'acc2',      groups:['posterior_delt','rhomboid'],                cat:'isolation'},
         {role:'acc3',      groups:['lateral_delt'],                             cat:'isolation'},
-      ], cardioGroups:['full_body','lower_body'] },
+      ], cardioGroups:['lat_dorsi','quad','glute_max'] },
     { key:'day4', label:'Day 4 · Lower Quad', color:'var(--purple,#a78bfa)',
       rationale:'Squat pattern emphasis — quads, glutes. Isolation finishers for quad and glute medius.',
       slots:[
@@ -991,8 +995,14 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['quad_rectus_femoris','quad_vastus'],        cat:'isolation'},
         {role:'acc2',      groups:['glute_max','glute_medius'],                 cat:'isolation'},
         {role:'acc3',      groups:['gastrocnemius','calf'],                     cat:'isolation'},
-      ], cardioGroups:['full_body','lower_body'] },
+      ], cardioGroups:['quad','glute_max','hamstring'] },
   ];
+
+  // GEN-fix (Bug 39aca37f…71a0): core muscle groups every day's Core Block
+  // draws from. groupsMatch's prefix rule ('oblique' → oblique_external /
+  // oblique_internal) covers all 10 EXERCISE_BANK core entries.
+  const CORE_GROUPS = ['rectus_abdominis','transverse_abdominis','oblique',
+    'quadratus_lumborum','erector_spinae'];
 
   // Check we have at least one compound per day template
   const usable = TEMPLATES.every(t =>
@@ -1027,17 +1037,36 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
       });
+      // GEN-fix: if every group-matched cardio candidate is excluded, allow
+      // reuse rather than silently dropping the finisher (cardio repeats
+      // across days are fine — Zone 2 is a modality, not a lift).
       const cardioPool = bank({groups:tmpl.cardioGroups, cat:'cardio', excl:[...used]});
-      const cardioEx = cardioPool[0] || null;
+      const cardioEx = cardioPool[0] || bank({groups:tmpl.cardioGroups, cat:'cardio'})[0] || null;
 
       const compExs = [exs.primary, exs.secondary].filter(Boolean)
         .map((e,i) => makeEx(e, tmpl.key+'-c'+i));
       const accExs = ['acc1','acc2','acc3'].map((k,i) => exs[k]
         ? makeEx(exs[k], tmpl.key+'-a'+i, {sets:3}) : null).filter(Boolean);
 
+      // GEN-fix (Bug 39aca37f…71a0): every generated training day carries a
+      // Core Block — mirrors the hand-authored layouts (2 core movements,
+      // 3 sets, 30-sec rest). Falls back to reuse if the bank pool exhausts
+      // (home tier has only 7 core entries for 8+ slots).
+      const dayCore = new Set();
+      const coreExs = ['core1','core2'].map((role,i) => {
+        const cands = bank({groups:CORE_GROUPS, cat:'core', excl:[...used]});
+        const pool = cands.length ? cands
+          : bank({groups:CORE_GROUPS, cat:'core'}).filter(e => !dayCore.has(e.name));
+        const chosen = pick(pool, {role}, tmpl);
+        if (!chosen) return null;
+        used.add(chosen.name); dayCore.add(chosen.name);
+        return makeEx(chosen, tmpl.key+'-k'+i, {sets:3, rest:30});
+      }).filter(Boolean);
+
       const blocks = [];
       if (compExs.length) blocks.push({label:'Compound Block', exs:compExs});
       if (accExs.length)  blocks.push({label:'Accessory Block', exs:accExs});
+      if (coreExs.length) blocks.push({label:'Core Block · Rest 30 sec', exs:coreExs});
       if (cardioEx) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
         makeEx(cardioEx, tmpl.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
 
@@ -1054,9 +1083,21 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     }).filter(Boolean);
     const shoulderExs = fillSlots(sa.shoulderSlots);
     const armExs = fillSlots(sa.armSlots);
+    // GEN-fix: shoulders day is a training day — it gets a Core Block too.
+    const saCore = new Set();
+    const saCoreExs = ['core1','core2'].map((role,i) => {
+      const cands = bank({groups:CORE_GROUPS, cat:'core', excl:[...used]});
+      const pool = cands.length ? cands
+        : bank({groups:CORE_GROUPS, cat:'core'}).filter(e => !saCore.has(e.name));
+      const chosen = pick(pool, {role}, sa);
+      if (!chosen) return null;
+      used.add(chosen.name); saCore.add(chosen.name);
+      return makeEx(chosen, sa.key+'-k'+i, {sets:3, rest:30});
+    }).filter(Boolean);
     const saBlocks = [];
     if (shoulderExs.length) saBlocks.push({label:'Shoulder Block · Rest 90 sec', exs:shoulderExs});
     if (armExs.length)      saBlocks.push({label:'Arms Block · Rest 75 sec', exs:armExs});
+    if (saCoreExs.length)   saBlocks.push({label:'Core Block · Rest 30 sec', exs:saCoreExs});
     if (saBlocks.length) {
       result.shouldersArmsDay = {key:sa.key, label:sa.label, color:sa.color, rationale:sa.rationale, blocks:saBlocks};
     }
@@ -1639,17 +1680,24 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // 3-day versions: compress to Push/Pull/Legs
   const ppl = (base4) => {
     const [ua, la, ub, lb] = base4;
+    // GEN-fix: locate cardio/core by block shape, NOT position — the generated
+    // base days now carry a Core Block at index 2, so la.blocks[2] is no
+    // longer guaranteed to be the cardio finisher.
+    const legsCardio = (la.blocks.find(b=>b.cardio) || lb.blocks.find(b=>b.cardio) || {exs:[]}).exs[0] || null;
+    const legsCore = la.blocks.find(b => !b.cardio && (b.label||'').toLowerCase().includes('core')) || null;
+    const legsBlocks = [
+      // BUG: la.blocks[0].exs[1] is the hinge day's SECOND compound — it belongs in the
+      // Compound Block, not tacked onto the accessory tail after isolations (R3 mis-order).
+      { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0], la.blocks[0].exs[1] ] },
+      { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0] ] },
+    ];
+    if (legsCore) legsBlocks.push({ ...legsCore, exs:[...legsCore.exs] });
+    if (legsCardio) legsBlocks.push({ label:'Zone 2 · 22 min', cardio:true, exs:[ {...legsCardio, duration:22} ] });
     return dedupeConsecutiveDays([
       { ...ua, key:'day1', label:'Day 1 · Push', rationale: ua.rationale },
       { ...ub, key:'day2', label:'Day 2 · Pull', rationale: ub.rationale },
       { key:'day3', label:'Day 3 · Legs', color:'var(--amber)', rationale:'Combined lower day — hinge and squat patterns in one session.',
-        blocks:[
-          // BUG: la.blocks[0].exs[1] is the hinge day's SECOND compound — it belongs in the
-          // Compound Block, not tacked onto the accessory tail after isolations (R3 mis-order).
-          { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0], la.blocks[0].exs[1] ] },
-          { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0] ] },
-          { label:'Zone 2 · 22 min', cardio:true, exs:[ {...la.blocks[2].exs[0], duration:22} ] }
-        ]
+        blocks: legsBlocks
       }
     ]);
   };
@@ -1761,22 +1809,32 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // 2-day: Full Body A/B — push+hinge / pull+quad
   const build2 = (base4) => {
     const [ua, la, ub, lb] = base4;
+    // GEN-fix: carry a Core Block into each full-body day (day A from the
+    // push day, day B from the quad day — distinct exercises via the
+    // generator's shared `used` set).
+    const coreOf = (d) => d.blocks.find(b => !b.cardio && (b.label||'').toLowerCase().includes('core')) || null;
+    const coreA = coreOf(ua) || coreOf(la);
+    const coreB = coreOf(lb) || coreOf(ub);
+    const dayABlocks = [
+      { label:'Compound Block', exs:[ ua.blocks[0].exs[0], la.blocks[0].exs[0] ].filter(Boolean) },
+      { label:'Accessory Block', exs:[ ub.blocks[0].exs[1], lb.blocks[1]?.exs[0], la.blocks[1]?.exs[2] || la.blocks[1]?.exs[1] ].filter(Boolean) },
+    ];
+    if (coreA) dayABlocks.push({ ...coreA, exs:[...coreA.exs] });
+    dayABlocks.push({ ...(la.blocks.find(b=>b.cardio) || ub.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' });
+    const dayBBlocks = [
+      { label:'Compound Block', exs:[ ub.blocks[0].exs[0], lb.blocks[0].exs[0] ].filter(Boolean) },
+      { label:'Accessory Block', exs:[ ua.blocks[0].exs[1], la.blocks[1]?.exs[0], ub.blocks[1]?.exs[1] ].filter(Boolean) },
+    ];
+    if (coreB) dayBBlocks.push({ ...coreB, exs:[...coreB.exs] });
+    dayBBlocks.push({ ...(lb.blocks.find(b=>b.cardio) || la.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' });
     return dedupeConsecutiveDays([
       { key:'day1', label:'Day 1 · Full Body A', color:'var(--accent)',
         rationale:'Push + hinge emphasis. Bench and RDL are the two primary compounds. Accessories fill upper pull and quad so nothing gets neglected across the week.',
-        blocks:[
-          { label:'Compound Block', exs:[ ua.blocks[0].exs[0], la.blocks[0].exs[0] ].filter(Boolean) },
-          { label:'Accessory Block', exs:[ ub.blocks[0].exs[1], lb.blocks[1]?.exs[0], la.blocks[1]?.exs[2] || la.blocks[1]?.exs[1] ].filter(Boolean) },
-          { ...(la.blocks.find(b=>b.cardio) || ub.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' }
-        ]
+        blocks: dayABlocks
       },
       { key:'day2', label:'Day 2 · Full Body B', color:'var(--blue)',
         rationale:'Pull + quad emphasis. Lat pulldown and hack squat as primary compounds. Accessories cover push and posterior chain to balance Day A.',
-        blocks:[
-          { label:'Compound Block', exs:[ ub.blocks[0].exs[0], lb.blocks[0].exs[0] ].filter(Boolean) },
-          { label:'Accessory Block', exs:[ ua.blocks[0].exs[1], la.blocks[1]?.exs[0], ub.blocks[1]?.exs[1] ].filter(Boolean) },
-          { ...(lb.blocks.find(b=>b.cardio) || la.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' }
-        ]
+        blocks: dayBBlocks
       }
     ]);
   };

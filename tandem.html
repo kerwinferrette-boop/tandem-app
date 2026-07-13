@@ -360,6 +360,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .set-input:focus{border-color:var(--accent);}
 .set-input.done{border-color:rgba(63,224,140,.4);color:var(--green);background:rgba(63,224,140,.04);}
 .set-input.pr{border-color:rgba(255,176,32,.5);color:var(--amber);}
+.set-input.bw{border-style:dashed;}
+.set-input.bw::placeholder{color:var(--muted);opacity:.7;font-size:10px;letter-spacing:.05em;}
 .set-vol{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center;}
 .set-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);
   color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
@@ -2927,6 +2929,14 @@ function buildDayHTML(day, phase) {
       const arrowIcon = rec.arrow === 'up' ? '↑' : rec.arrow === 'down' ? '↓' : rec.arrow === 'new' ? '★' : '→';
       const videoId = VIDEO_IDS[ex.name];
 
+      // LOG 3-way input model: 'sec' = timed hold (seconds only, weight locked),
+      // 'bw' = bodyweight/band reps (weight blank w/ BW placeholder — still typeable
+      // for weighted pull-ups/dips), 'reps' = standard weight × reps.
+      // ex.unit/ex.equipment flow from programs.js makeEx; authored exercises
+      // without equipment metadata stay 'reps' (no behavior change).
+      const inputMode = ex.unit === 'sec' ? 'sec'
+        : (ex.equipment === 'bodyweight' || ex.equipment === 'band') ? 'bw' : 'reps';
+
       html += `
         <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" onclick="toggleExCard(this)">
           <div class="ex-header">
@@ -2951,14 +2961,14 @@ function buildDayHTML(day, phase) {
           <div class="set-logger" id="sl-${ex.id}">
             <div class="set-hdr">
               <div class="set-hdr-cell">Set</div>
-              <div class="set-hdr-cell">lbs</div>
+              <div class="set-hdr-cell">${inputMode === 'sec' ? '—' : inputMode === 'bw' ? 'BW' : 'lbs'}</div>
               <div class="set-hdr-cell">${ex.unit === 'sec' ? 'sec' : 'Reps'}</div>
               <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek), ex.unit)}
+            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek), inputMode)}
             <div class="set-actions">
-              <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${ex.unit || 'reps'}')">+ Set</div>
+              <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${inputMode}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
               <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>
@@ -3009,12 +3019,24 @@ function buildSetRows(id, sets, w, r, unit) {
 }
 
 function setRowHTML(id, i, w, r, unit) {
+  // unit: 'sec' timed hold | 'bw' bodyweight-reps | 'reps' weighted (default).
+  // Weight cell stays in the DOM in all three modes (logSet reads it non-optionally,
+  // and the 6-col grid depends on it):
+  //   sec  → readonly '—' (seconds live in the reps input; no 1RM from holds)
+  //   bw   → empty w/ 'BW' placeholder, still editable for weighted pull-ups/dips
+  //   reps → prefilled number, unchanged
   const timed = unit === 'sec';
-  return `<div class="set-row" id="sr-${id}-${i}" data-unit="${timed ? 'sec' : 'reps'}">
+  const bw = unit === 'bw';
+  const wCell = timed
+    ? `<input class="set-input bw" type="text" value="" placeholder="—" readonly tabindex="-1" id="${id}-w${i}">`
+    : bw
+    ? `<input class="set-input bw" type="number" inputmode="decimal" value="" placeholder="BW" id="${id}-w${i}" oninput="onSetInput('${id}',${i})">`
+    : `<input class="set-input" type="number" inputmode="decimal" value="${w}" id="${id}-w${i}" oninput="onSetInput('${id}',${i})">`;
+  return `<div class="set-row" id="sr-${id}-${i}" data-unit="${timed ? 'sec' : bw ? 'bw' : 'reps'}">
     <div class="set-num">S${i+1}</div>
-    <input class="set-input" type="number" inputmode="decimal" value="${w}" id="${id}-w${i}" oninput="onSetInput('${id}',${i})">
+    ${wCell}
     <input class="set-input" type="number" inputmode="numeric" value="${r}" id="${id}-r${i}" oninput="onSetInput('${id}',${i})">
-    <div class="set-vol" id="${id}-v${i}">${timed ? '—' : Math.round(w*r)}</div>
+    <div class="set-vol" id="${id}-v${i}">${timed ? '—' : bw ? (r || 0) : Math.round(w*r)}</div>
     <button class="set-btn" id="${id}-b${i}" onclick="logSet('${id}',${i})">✓</button>
     <button class="set-del" style="display:none" onclick="event.stopPropagation();deleteSet('${id}',${i},this)">✕</button>
   </div>`;
@@ -3093,8 +3115,10 @@ function onSetInput(id, i) {
   const w = parseFloat(document.getElementById(`${id}-w${i}`)?.value) || 0;
   const r = parseInt(document.getElementById(`${id}-r${i}`)?.value) || 0;
   const v = document.getElementById(`${id}-v${i}`);
-  const timed = document.getElementById(`sr-${id}-${i}`)?.dataset.unit === 'sec';
-  if (v) v.textContent = timed ? '—' : Math.round(w * r);
+  const unit = document.getElementById(`sr-${id}-${i}`)?.dataset.unit || 'reps';
+  const timed = unit === 'sec';
+  // bw with no typed weight → volume = reps; typed weight upgrades to w×r
+  if (v) v.textContent = timed ? '—' : (unit === 'bw' && !w) ? (r || 0) : Math.round(w * r);
   if (!timed && w && r) {
     const est = calcRM(w, r);
     const liveEl = document.getElementById(`i1rm-${id}`);
@@ -3316,9 +3340,13 @@ async function manualSaveExercise(id) {
     showToast('Log at least one set first');
     return;
   }
-  const hasValidSet = sets.some(s => (parseFloat(s.w) > 0) && (parseInt(s.r) > 0));
+  // LOG 3-way model: bodyweight ('bw') and timed ('sec') exercises legitimately
+  // log weight 0 — only demand w>0 on standard weighted rows.
+  const rowUnit = document.querySelector(`#sl-${id} .set-row`)?.dataset.unit || 'reps';
+  const hasValidSet = sets.some(s =>
+    (parseInt(s.r) > 0) && (rowUnit !== 'reps' || parseFloat(s.w) > 0));
   if (!hasValidSet) {
-    showToast('Enter weight and reps before saving');
+    showToast(rowUnit === 'reps' ? 'Enter weight and reps before saving' : 'Log at least one set first');
     return;
   }
   await saveExerciseToCloud(id);
