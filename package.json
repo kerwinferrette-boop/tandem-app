@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "validate:programs": "node scripts/validate-programs.mjs"
+    "validate:programs": "node scripts/validate-programs.mjs",
+    "verify": "node scripts/verify.mjs"
   }
 }
