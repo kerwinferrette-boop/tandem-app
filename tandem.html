@@ -2141,7 +2141,11 @@ async function computeCalibration1RMs(sessionUUID, userId) {
 
 function getRecommendation(exId, compound, goal, exName, sex) {
   const lastSets = LS.get('tandem_lastsets') || {};
-  const entry = lastSets[exId];
+  // C-fix (2026-07-13): read by NAME (stable identity). No id fallback — a
+  // recycled slot-id can hold another movement's set, which is exactly the
+  // churn bug. Absent a name-keyed entry, treat as no history (First session),
+  // which correctly routes to the %1RM engine / bank base instead of a stale weight.
+  const entry = exName ? lastSets[exName] : lastSets[exId];
   const phase = getPhase(currentWeek, goal, cfg.weeks);
   const topRange = phaseWeekRep(phase, currentWeek);
   const inc = compound ? phase.incComp : phase.incAcc;
@@ -2282,16 +2286,25 @@ function applySetupSelection() {
   renderProgramViews();
 }
 
-function saveSetLS(exId, weight, reps) {
+// C-fix (2026-07-13): key lastsets by exercise NAME, mirroring the C7 PR fix.
+// Bank slot-ids (exId) are recycled across rotations, so an id-keyed lastset can
+// belong to a DIFFERENT movement next rotation — the root of the phantom
+// "45 + 2.5 = 47.5" prescription (Incline DB Curl inheriting another lift's set).
+// The name is the stable identity that matches personal_records. Legacy id-keyed
+// entries are deleted on write so the churn path can never be read again.
+function saveSetLS(exId, weight, reps, exName) {
   const lastSets = LS.get('tandem_lastsets') || {};
+  const key = exName || exId;
   const today = new Date().toISOString().split('T')[0];
-  const ex = lastSets[exId];
+  const ex = lastSets[key];
   if (!ex || ex.date !== today) {
-    lastSets[exId] = { minReps: reps, weight, date: today };
+    lastSets[key] = { minReps: reps, weight, date: today, name: key };
   } else {
-    lastSets[exId].minReps = Math.min(ex.minReps, reps);
-    lastSets[exId].weight = weight;
+    lastSets[key].minReps = Math.min(ex.minReps, reps);
+    lastSets[key].weight = weight;
+    lastSets[key].name = key;
   }
+  if (exName && exName !== exId && lastSets[exId]) delete lastSets[exId];
   LS.set('tandem_lastsets', lastSets);
 }
 
@@ -3151,7 +3164,7 @@ function logSet(id, i) {
     const prExName = prCardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
     const prev = prs[prExName] ?? prs[id] ?? 0;
 
-    saveSetLS(id, w, r);
+    saveSetLS(id, w, r, prExName);
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
     sessionSetsMap[id].push({ set: i+1, w, r, est1rm });
 
@@ -4073,16 +4086,30 @@ async function restoreFromCloud() {
     }
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
-    if (prData?.length && !Object.keys(LS.get('tandem_prs') || {}).length) {
-      const prs = {};
-      prData.forEach(r => { prs[r.exercise_name] = r.best_estimated_1rm_lbs; });
+    // C-fix (2026-07-13): MERGE cloud PRs into local instead of the old
+    // all-or-nothing empty-guard. A PR written on one device was invisible to
+    // another that already had any local data — the desync behind the phantom
+    // Incline DB Curl PR. Take the higher 1RM per exercise (monotonic; never lower).
+    if (prData?.length) {
+      const prs = LS.get('tandem_prs') || {};
+      prData.forEach(r => {
+        const v = Number(r.best_estimated_1rm_lbs);
+        if (!Number.isFinite(v)) return;
+        if (prs[r.exercise_name] == null || v > prs[r.exercise_name]) prs[r.exercise_name] = v;
+      });
       LS.set('tandem_prs', prs);
     }
     // Last sets
     const { data: lsData } = await sb.from('lastsets').select('*').eq('user_id', uid);
-    if (lsData?.length && !Object.keys(LS.get('tandem_lastsets') || {}).length) {
-      const ls = {};
-      lsData.forEach(r => { ls[r.exercise_id] = r.data; });
+    // C-fix (2026-07-13): MERGE cloud lastsets, newest-date-wins per key, instead
+    // of the empty-guard. Legacy id-keyed rows load as harmless cruft (reads are
+    // name-keyed post-fix); name-keyed rows carry cross-device overload memory.
+    if (lsData?.length) {
+      const ls = LS.get('tandem_lastsets') || {};
+      lsData.forEach(r => {
+        const cur = ls[r.exercise_id];
+        if (!cur || (r.data?.date && (!cur.date || r.data.date > cur.date))) ls[r.exercise_id] = r.data;
+      });
       LS.set('tandem_lastsets', ls);
     }
     // Config
@@ -4278,16 +4305,30 @@ async function syncFromCloud() {
     }
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
-    if (prData?.length && !Object.keys(LS.get('tandem_prs') || {}).length) {
-      const prs = {};
-      prData.forEach(r => { prs[r.exercise_name] = r.best_estimated_1rm_lbs; });
+    // C-fix (2026-07-13): MERGE cloud PRs into local instead of the old
+    // all-or-nothing empty-guard. A PR written on one device was invisible to
+    // another that already had any local data — the desync behind the phantom
+    // Incline DB Curl PR. Take the higher 1RM per exercise (monotonic; never lower).
+    if (prData?.length) {
+      const prs = LS.get('tandem_prs') || {};
+      prData.forEach(r => {
+        const v = Number(r.best_estimated_1rm_lbs);
+        if (!Number.isFinite(v)) return;
+        if (prs[r.exercise_name] == null || v > prs[r.exercise_name]) prs[r.exercise_name] = v;
+      });
       LS.set('tandem_prs', prs);
     }
     // Last sets (progressive overload data)
     const { data: lsData } = await sb.from('lastsets').select('*').eq('user_id', uid);
-    if (lsData?.length && !Object.keys(LS.get('tandem_lastsets') || {}).length) {
-      const ls = {};
-      lsData.forEach(r => { ls[r.exercise_id] = r.data; });
+    // C-fix (2026-07-13): MERGE cloud lastsets, newest-date-wins per key, instead
+    // of the empty-guard. Legacy id-keyed rows load as harmless cruft (reads are
+    // name-keyed post-fix); name-keyed rows carry cross-device overload memory.
+    if (lsData?.length) {
+      const ls = LS.get('tandem_lastsets') || {};
+      lsData.forEach(r => {
+        const cur = ls[r.exercise_id];
+        if (!cur || (r.data?.date && (!cur.date || r.data.date > cur.date))) ls[r.exercise_id] = r.data;
+      });
       LS.set('tandem_lastsets', ls);
     }
     // Advance the day pointer past the last completed session
