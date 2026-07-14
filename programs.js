@@ -700,13 +700,13 @@ const EXERCISE_BANK = {
     why:'McGill-approved anti-extension movement. Forces the core to resist spinal extension while contralateral limbs move — exactly what the core does during every compound lift. Zero spinal shear. Safest core exercise for any lower back history.',
     cues:['Press lower back FLAT into floor throughout — this is the whole exercise','Move opposite arm and leg simultaneously','Breathe out as you lower the limbs','If the back lifts, the set is over']},
   'plank':{
-    name:'Plank', videoId:'pSHjTRCQxIw', unit:'sec',
+    name:'Plank', videoId:'pSHjTRCQxIw', unit:'sec', secs:60,
     muscleGroups:{primary:['transverse_abdominis','rectus_abdominis'],secondary:['erector_spinae','glute_max']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'Anti-extension core training — builds the ability to resist spinal extension under load, exactly the demand during heavy squats and deadlifts.',
     cues:['Forearms on floor, elbows under shoulders','Body in a straight line from head to heels','Squeeze glutes and abs simultaneously','Breathe normally — if you cannot breathe, reduce the duration']},
   'side-plank':{
-    name:'Side Plank', videoId:null, unit:'sec',
+    name:'Side Plank', videoId:null, unit:'sec', secs:45,
     muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'McGill Big 3 staple — the only exercise that loads the lateral core (QL and obliques) without spinal compression. QL weakness is the most overlooked contributor to lower back pain.',
@@ -943,7 +943,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       badge: entry.category==='compound'?'compound':'isolation',
       sets: overrides.sets ?? (entry.category==='compound'?4:3),
       w: baseW(entry),
-      r: entry.unit==='sec' ? 30 : 10,   // timed holds target 30 sec, not 10 "reps"
+      r: entry.unit==='sec' ? (entry.secs || 45) : 10,   // timed holds: per-entry secs (Plank 60 / Side Plank 45, Kerwin 2026-07-13), 45 default
       rest: entry.category==='compound'?90:60,
       compound: entry.category==='compound',
       isCore: entry.category==='core',

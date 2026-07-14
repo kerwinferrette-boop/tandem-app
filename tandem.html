@@ -2139,7 +2139,7 @@ async function computeCalibration1RMs(sessionUUID, userId) {
     .eq('id', userId);
 }
 
-function getRecommendation(exId, compound, goal, exName, sex) {
+function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   const lastSets = LS.get('tandem_lastsets') || {};
   // C-fix (2026-07-13): read by NAME (stable identity). No id fallback — a
   // recycled slot-id can hold another movement's set, which is exactly the
@@ -2147,7 +2147,10 @@ function getRecommendation(exId, compound, goal, exName, sex) {
   // which correctly routes to the %1RM engine / bank base instead of a stale weight.
   const entry = exName ? lastSets[exName] : lastSets[exId];
   const phase = getPhase(currentWeek, goal, cfg.weeks);
-  const topRange = phaseWeekRep(phase, currentWeek);
+  // Weighted-core path (2026-07-13): callers may pass the exercise's own rep
+  // target (ex.r) so core work progresses against ITS prescription, not the
+  // lifting phase rep scheme.
+  const topRange = repTarget || phaseWeekRep(phase, currentWeek);
   const inc = compound ? phase.incComp : phase.incAcc;
 
   // EPIC-9 Step C/D: %1RM path for calibrated users. The WORKING 1RM (nudged
@@ -2906,7 +2909,21 @@ function buildDayHTML(day, phase) {
       if (!_ex) return;
       // Phase substitution resolver — phases can declare exercise swaps via subs map
       const ex = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
-      const rec = getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex);
+      // LOG 3-way input model: 'sec' = timed hold (seconds only, weight locked),
+      // 'bw' = bodyweight/band reps (weight blank w/ BW placeholder — still typeable
+      // for weighted pull-ups/dips), 'reps' = standard weight × reps.
+      // ex.unit/ex.equipment flow from programs.js makeEx; authored exercises
+      // without equipment metadata stay 'reps' (no behavior change).
+      const inputMode = ex.unit === 'sec' ? 'sec'
+        : (ex.equipment === 'bodyweight' || ex.equipment === 'band') ? 'bw' : 'reps';
+      // Core progression (Kerwin 2026-07-13): weighted core (Cable Crunch, DB/KB
+      // oblique work) DOES progress — via getRecommendation with the exercise's
+      // OWN rep target (ex.r), not the lifting phase rep. Timed/bodyweight core
+      // gets no load progression ("otherwise, no need") — hold steady.
+      const rec = (ex.isCore && inputMode !== 'reps')
+        ? { weight: null, arrow: 'same', label: 'Hold steady',
+            reason: ex.unit === 'sec' ? 'Timed hold — progress by holding longer' : 'Bodyweight — quality reps over load' }
+        : getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex, ex.isCore ? ex.r : null);
       const _prStore = LS.get('tandem_prs') || {};
       // EPIC-9: effective 1RM = working (living) number first, then all-time PR
       const pr1rm = _dayWorking[ex.name]?.rm ?? _prStore[ex.name] ?? _prStore[ex.id]; // C7: name-first
@@ -2941,14 +2958,6 @@ function buildDayHTML(day, phase) {
 
       const arrowIcon = rec.arrow === 'up' ? '↑' : rec.arrow === 'down' ? '↓' : rec.arrow === 'new' ? '★' : '→';
       const videoId = VIDEO_IDS[ex.name];
-
-      // LOG 3-way input model: 'sec' = timed hold (seconds only, weight locked),
-      // 'bw' = bodyweight/band reps (weight blank w/ BW placeholder — still typeable
-      // for weighted pull-ups/dips), 'reps' = standard weight × reps.
-      // ex.unit/ex.equipment flow from programs.js makeEx; authored exercises
-      // without equipment metadata stay 'reps' (no behavior change).
-      const inputMode = ex.unit === 'sec' ? 'sec'
-        : (ex.equipment === 'bodyweight' || ex.equipment === 'band') ? 'bw' : 'reps';
 
       html += `
         <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" onclick="toggleExCard(this)">
