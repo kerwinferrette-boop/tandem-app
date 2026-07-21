@@ -84,10 +84,31 @@ verification:
     awk '/<script>/{f=1;next}/<\/script>/{f=0}f' tandem.html > /tmp/extracted.js
     && node --check /tmp/extracted.js
     && node --check programs.js
-  validate_command: "npm run validate:programs"   # EPIC-24 validator (scripts/validate-programs.mjs)
-  persona_matrix_command: "npm run validate:personas"  # scripts/persona-matrix.mjs — see catalog.self_generated_sources above; run every cycle, not just when fixing a generator story
+  validate_command: "npm run validate:programs"   # EPIC-24 validator — 24 combos, Rules 1-5
+  persona_matrix_command: "npm run validate:personas"  # scripts/persona-matrix.mjs — see
+                                # catalog.self_generated_sources above; run every cycle, not
+                                # just when fixing a generator story. 504 combos, Rules 6-9.
+  ship_gate_command: "npm run verify"   # full gate: syntax + validate:programs + C7 smoke
+                                # (calibrated/derived weight override) + lastsets churn smoke
   test_command: "per-story SQL assertion (see each story's Test Assertion SQL field)"
   db_connector: "Supabase MCP — project zsvktcvqmppsshtpeljt"
+
+  standing_test_sweep:   # Kerwin's directive, 2026-07-21 — run every cycle that touches
+                          # generation code (EXERCISE_BANK, bank()/pick(), dedupe*, getProgram),
+                          # not only when a story's own narrow assertion calls for it.
+    - "1. Test against each feature, not just the current batch's stories."
+    - "2. Run generation through BOTH matrices every time: validate_command AND
+       persona_matrix_command — not one or the other."
+    - "3. Also run ship_gate_command every time (it exercises paths — calibrated/derived
+       weight override, lastsets identity — the other two don't touch; it silently failed
+       for a full cycle before Kerwin caught it directly on 2026-07-21) and probe edge cases
+       between generations beyond the enumerated combos (e.g. bank-insertion-order stability —
+       does adding one exercise silently reassign exercises in an unrelated muscle group? —
+       see BUG-45's dummy-entry insertion test for the pattern)."
+    - "4. Report back mapping each finding to the specific code fix that resolves it. Log the
+       run as a page in run_log_db (Files Modified / What Was Accomplished / Linked Bugs), and
+       record each fix in the Bug & QA Log's \"Code Fix\" column (added 2026-07-21) on its bug row —
+       not just pass/fail counts."
 
 safety:
   max_items_per_cycle: 5
