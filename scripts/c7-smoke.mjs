@@ -76,11 +76,11 @@ const prog = getProgram('build_muscle', 5, 12, 'male');
 const allNames = new Set();
 prog.forEach(d => d.blocks.forEach(b => (b.exs || []).forEach(e => e && allNames.add(e.name))));
 check("bank generates 'Flat Barbell Press' (build_muscle/5d/male)", allNames.has('Flat Barbell Press'), true);
-check("bank generates 'High Incline Barbell Press'", allNames.has('High Incline Barbell Press'), true);
+check("bank generates 'Low Incline Barbell Press'", allNames.has('Low Incline Barbell Press'), true);
 
 // Replicate buildDayHTML's dayCompound1RMs registration verbatim (L2841-2854).
 // Two variants of the same pattern seeded — canonical key must take the MAX.
-const _dayWorking = { 'Flat Barbell Press': { rm: 150 }, 'High Incline Barbell Press': { rm: 130 } };
+const _dayWorking = { 'Flat Barbell Press': { rm: 150 }, 'Low Incline Barbell Press': { rm: 130 } };
 const _dayPrs = {};
 const dayCompound1RMs = {};
 prog.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
@@ -91,7 +91,7 @@ prog.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
     if (rx.test(e.name)) dayCompound1RMs[canon] = Math.max(dayCompound1RMs[canon] || 0, _rm);
   }
 })));
-check("C7: canonical 'Bench Press' = max(Flat 150, High Incline 130)", dayCompound1RMs['Bench Press'], 150);
+check("C7: canonical 'Bench Press' = max(Flat 150, Low Incline 130)", dayCompound1RMs['Bench Press'], 150);
 
 const der = getWeekTarget('Tricep Rope Pushdown', 3, 'build_muscle', null, 'male', dayCompound1RMs, 8);
 check('derived source (via ACCESSORY_ALIASES → Tricep Pushdown)', der.source, 'derived');
