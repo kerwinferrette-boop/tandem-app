@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "validate:programs": "node scripts/validate-programs.mjs",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "validate:personas": "node scripts/persona-matrix.mjs"
   }
 }
