@@ -895,19 +895,13 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation) {
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
-  // Rotation context drives week-to-week variety. seed = per-user (start date),
-  // so paired partners aren't identical; week rotates accessories; phase rotates
-  // primary compounds (stable within a mesocycle to preserve overload tracking).
+  // Rotation context drives variety over time: week rotates accessories; phase
+  // rotates primary compounds (stable within a mesocycle to preserve overload
+  // tracking). Selection itself is priority-ordered, not seeded/random — see
+  // bank()'s sort and pick() below.
   const rot = rotation || {};
-  const rotSeed  = String(rot.seed || '');
   const rotWeek  = Number.isFinite(rot.week)  ? rot.week  : 1;
   const rotPhase = Number.isFinite(rot.phase) ? rot.phase : 0;
-  // FNV-1a string hash → stable 32-bit unsigned int.
-  const hashStr = (str) => {
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h >>> 0;
-  };
   const tierOrder = ['home','hotel_gym','full_gym'];
   const reqIdx = tierOrder.indexOf(tier || 'full_gym');
 
@@ -920,26 +914,48 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     const all = [...(ex.muscleGroups.primary||[]),...(ex.muscleGroups.secondary||[])];
     return groups.some(g => all.some(a => a === g || a.startsWith(g+'_') || a.startsWith(g)));
   };
+  // GEN-fix (exercise-selection mechanism): bank() now returns a candidate
+  // pool in a fixed, explainable priority order instead of raw EXERCISE_BANK
+  // object-insertion order. Compounds (oneRmFactor is non-null) rank by
+  // relative loading capacity descending — the same biomechanical signal
+  // baseW() already uses to set starting weight, so the "primary" choice for
+  // a muscle group is whichever compound the bank itself already claims has
+  // the highest load ceiling / most direct recruitment. Isolation/core/cardio
+  // have no oneRmFactor (there's no single "best" accessory variant backed
+  // by evidence the same way) — those rank alphabetically, purely so the
+  // pool order is deterministic and independent of where a new bank entry
+  // happens to be inserted. Either way, adding an exercise to the bank can
+  // no longer silently reassign exercises in unrelated, already-generated
+  // programs — the fragility that caused the C7 regression.
   const bank = ({groups, cat, excl=[]}) =>
     Object.values(EXERCISE_BANK).filter(e =>
-      tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name));
+      tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name))
+      .sort((a, b) => {
+        if (a.oneRmFactor != null || b.oneRmFactor != null) {
+          const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
+          if (diff !== 0) return diff;
+        }
+        return a.name.localeCompare(b.name);
+      });
 
   // emphasis tag → bank emphasis tag
   const emphMap = {back_heavy:'back',push_heavy:'push',pull_heavy:'pull',
     glute_focused:'glutes',core_focused:'core',upper_body:'upper_body',lower_body:'lower_body'};
   const emphTag = emphMap[emphasis] || null;
 
-  // Deterministic seeded selection. Emphasis preference still narrows the pool
-  // first; within the resulting pool a seeded hash chooses the candidate so the
-  // program is stable on reload yet varies per user and over time.
+  // Deterministic, priority-ordered selection — no hashing, nothing random.
+  // Emphasis preference narrows the pool first; within the resulting
+  // (already priority-sorted) pool, primary/secondary compounds walk the
+  // list by mesocycle phase and accessories walk it by week — purposeful
+  // variety over time/program segment, always landing on the next-best
+  // candidate in the scientifically-ordered list rather than an arbitrary one.
   const pick = (cands, slot, tmpl) => {
     if (!cands.length) return null;
     let pool = cands;
     if (emphTag) { const b = cands.filter(e => e.emphasis && e.emphasis.includes(emphTag)); if (b.length) pool = b; }
     const isPrimary = slot && (slot.role === 'primary' || slot.role === 'secondary');
     const block = isPrimary ? rotPhase : rotWeek;
-    const seedStr = `${rotSeed}|${goal}|${tmpl ? tmpl.key : ''}|${slot ? slot.role : ''}|${block}`;
-    return pool[hashStr(seedStr) % pool.length];
+    return pool[((block % pool.length) + pool.length) % pool.length];
   };
 
   // EPIC-9 Step B: NSCA-informed untrained-lifter starting weights, keyed by

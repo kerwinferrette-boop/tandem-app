@@ -2260,9 +2260,9 @@ function resolveMaxDb() {
   const v = parseInt(sessionStorage.getItem('eq_max_db'), 10);
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
-// Variety seed for the engine: per-user (start date) so partners differ, plus the
-// current week and phase index so accessories rotate weekly and primaries rotate
-// only at phase boundaries (stable within a mesocycle).
+// Variety context for the engine: current week and phase index, so
+// accessories rotate weekly and primary compounds rotate only at phase
+// boundaries (stable within a mesocycle) — see bank()/pick() in programs.js.
 function rotationContext() {
   let phaseIdx = 0;
   try {
@@ -2270,7 +2270,7 @@ function rotationContext() {
     const phases = scaledPhases(cfg.goal, cfg.weeks);
     phaseIdx = Math.max(0, phases.findIndex(p => p.name === phase.name));
   } catch (e) { /* defaults fine pre-onboarding */ }
-  return { seed: cfg.startDate || '', week: currentWeek, phase: phaseIdx };
+  return { week: currentWeek, phase: phaseIdx };
 }
 function toggleSetup() {
   document.getElementById('setupCard').classList.toggle('open');
