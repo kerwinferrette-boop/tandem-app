@@ -1082,6 +1082,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       {role:'acc3',    groups:['tricep'],                       cat:'isolation'},
       {role:'acc4',    groups:['bicep'],                        cat:'isolation'},
     ],
+    cardioGroups:['full_body','lower_body','glute_max'],
   };
 
   try {
@@ -1149,10 +1150,16 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       used.add(chosen.name); saCore.add(chosen.name);
       return makeEx(chosen, sa.key+'-k'+i, {sets:3, rest:30});
     }).filter(Boolean);
+    // GEN-fix (persona-matrix R7): shoulders day is a training day — it needs
+    // a cardio finisher too, same as every other generated day.
+    const saCardioPool = bank({groups:sa.cardioGroups, cat:'cardio', excl:[...used]});
+    const saCardioEx = saCardioPool[0] || bank({groups:sa.cardioGroups, cat:'cardio'})[0] || null;
     const saBlocks = [];
     if (shoulderExs.length) saBlocks.push({label:'Shoulder Block · Rest 90 sec', exs:shoulderExs});
     if (armExs.length)      saBlocks.push({label:'Arms Block · Rest 75 sec', exs:armExs});
     if (saCoreExs.length)   saBlocks.push({label:'Core Block · Rest 30 sec', exs:saCoreExs});
+    if (saCardioEx) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
+      makeEx(saCardioEx, sa.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
     if (saBlocks.length) {
       result.shouldersArmsDay = {key:sa.key, label:sa.label, color:sa.color, rationale:sa.rationale, blocks:saBlocks};
     }
@@ -1871,6 +1878,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           {id:'s5-hc', name:'Hammer Curl', badge:'isolation', sets:3, w:35, r:12, rest:75, compound:false,
            why:'Brachialis development — physically pushes bicep up.',
            cues:['Elbow pinned. Strict alternating.']},
+        ]},
+        { label:'Zone 2 · 22 min', cardio:true, exs:[
+          {id:'s5-card', name:'Stationary Bike — Zone 2', badge:'cardio', cardioOnly:true,
+           cardioDesc:'Low-impact finisher after upper-body accessory work. Steady cadence, easy resistance.', zone:'HR 120–140 BPM', duration:22}
         ]}
       ]
     };
