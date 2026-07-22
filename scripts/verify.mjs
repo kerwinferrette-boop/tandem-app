@@ -46,6 +46,7 @@ const CHECKS = [
   { name: 'validate:programs (24 combos, Rules 1-5)', run: () => execFileSync('node', [join(scriptsDir, 'validate-programs.mjs')], { stdio: 'inherit' }) },
   { name: 'C7 smoke (calibrated/derived override, startW precedence)', run: () => execFileSync('node', [join(scriptsDir, 'c7-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'lastsets churn smoke (name-keyed identity, no slot-id inheritance)', run: () => execFileSync('node', [join(scriptsDir, 'lastsets-churn-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'doctrine conformance (Notion law — see /DOCTRINE.md)', run: () => execFileSync('node', [join(scriptsDir, 'doctrine.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];

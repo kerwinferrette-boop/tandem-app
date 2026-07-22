@@ -90,6 +90,7 @@ verification:
                                 # just when fixing a generator story. 504 combos, Rules 6-9.
   ship_gate_command: "npm run verify"   # full gate: syntax + validate:programs + C7 smoke
                                 # (calibrated/derived weight override) + lastsets churn smoke
+                                # + DOCTRINE conformance (Notion law — scripts/doctrine.mjs)
   test_command: "per-story SQL assertion (see each story's Test Assertion SQL field)"
   db_connector: "Supabase MCP — project zsvktcvqmppsshtpeljt"
 
@@ -109,6 +110,19 @@ verification:
        run as a page in run_log_db (Files Modified / What Was Accomplished / Linked Bugs), and
        record each fix in the Bug & QA Log's \"Code Fix\" column (added 2026-07-21) on its bug row —
        not just pass/fail counts."
+
+  doctrine_is_law:   # Kerwin's directive, 2026-07-22 — the Notion collection is LAW, not reference.
+                      # This is how the engine stays cohesive instead of drifting into random lifts.
+    - "Notion is the source of truth; /DOCTRINE.md mirrors it; scripts/doctrine.mjs enforces it inside
+       ship_gate_command. A change that violates an ACTIVE D-invariant CANNOT ship — it is wrong by
+       definition, not a judgment call."
+    - "EVERY program-touching bug fix / feature / QA story must name the governing Notion doc
+       (5-Goal Taxonomy / Programming Architecture Reference / Exercise Science Schema v0.5 /
+       Periodization Spec) and state how it conforms, in the Epic/Bug entry. No citation, no ship."
+    - "When you build a phase that makes a PENDING invariant true (D4 deloads, D5 supersets, D7
+       per-length layout, …), PROMOTE it to an ACTIVE assertion in doctrine.mjs in the SAME change.
+       Never delete a PENDING to make the gate green; never weaken the gate to pass. If doctrine
+       itself must change, change Notion first, then /DOCTRINE.md and doctrine.mjs together."
 
 safety:
   max_items_per_cycle: 5
