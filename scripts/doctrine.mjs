@@ -29,8 +29,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, PHASES: GOAL_PHASES } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, PHASES }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -168,6 +168,23 @@ for (const goal of ['transform', 'fat_burn']) for (const days of [2, 3, 4, 5, 6]
   if ((p || []).some(d => (d.blocks || []).some(b => /compound/i.test(b.label || '') && b.superset))) fail('D5', `${goal}/${days}d/${sex}: a Compound Block was supersetted (primary lifts must never superset)`);
 }
 
+// ── D10 (ACTIVE) — Rep schemes honor each goal's taxonomy band ─────────────────
+// Science audit 2026-07-22. Fat Burn = high-rep circuits (>=10 reps); Build Muscle =
+// hypertrophy 6-15 (NEVER 1-5 max-strength — that is the separate Strength goal, and
+// reps 5-30 give equivalent hypertrophy volume-equated to failure); Transform = mixed
+// 8-12. This is what the "Peak Strength inside a hypertrophy goal" / "6-rep Fat Burn"
+// drift got wrong; the gate now blocks it.
+const REP_BANDS = { fat_burn: [10, 20], build_muscle: [6, 15], transform: [8, 12] };
+let d10Checked = 0;
+for (const [goal, [lo, hi]] of Object.entries(REP_BANDS)) {
+  for (const phase of (GOAL_PHASES[goal] || [])) {
+    for (const r of String(phase.reps).split('·').map(Number)) {
+      d10Checked++;
+      if (!(r >= lo && r <= hi)) fail('D10', `${goal} phase "${phase.name}": ${r} reps outside its taxonomy band ${lo}-${hi}`);
+    }
+  }
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -185,6 +202,7 @@ console.log(`  D3  compound-first ordering`);
 console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
 console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
+console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 

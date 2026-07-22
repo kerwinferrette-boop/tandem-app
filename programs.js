@@ -52,16 +52,25 @@ function renderIcons(root){
 // Phase definitions per goal
 const PHASES = {
   fat_burn: [
-    {name:'Metabolic Foundation', intent:'Build work capacity and movement quality. High rep start, descending across the 3-week block — volume then intensity.',             weeks:[1,3],  reps:'15·12·10', restComp:60,  restAcc:45,  incComp:2.5, incAcc:2.5, pctTop:10, pctInc:10},
-    {name:'Metabolic Intensify',  intent:'Increase load while maintaining short rest. The sweet spot for fat loss + strength.',                                             weeks:[4,6],  reps:'12·10·8',  restComp:75,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:10},
-    {name:'Power Burn',           intent:'Heavy compounds, metabolic finishers. Most demanding phase for simultaneous fat loss.',                                           weeks:[7,9],  reps:'10·8·6',   restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:8},
-    {name:'Peak Conditioning',    intent:'Maximum output. You are significantly leaner and stronger than week 1.',                                                          weeks:[10,12],reps:'8·7·6',    restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6}
+    // Science audit 2026-07-22 (Finding 1): Fat Burn is high-rep circuits by its 5-Goal Taxonomy
+    // definition. Reps stay HIGH (12-15) across every block; progress by adding LOAD, never by
+    // dropping into strength reps. Short rest + the circuit/superset structure drive the metabolic
+    // (EPOC) stimulus. Enforced by doctrine D10.
+    {name:'Metabolic Foundation', intent:'High-rep circuit work with short rest to build work capacity. Reps stay high — progress by adding load, not by dropping reps (fat loss is metabolic, not maximal).', weeks:[1,3],  reps:'15·14·13', restComp:60,  restAcc:45,  incComp:2.5, incAcc:2.5, pctTop:10, pctInc:10},
+    {name:'Metabolic Build',      intent:'Add load at the same high-rep range, short rest held. Muscle is preserved under the deficit while metabolic demand stays high.',                                     weeks:[4,6],  reps:'15·13·12', restComp:60,  restAcc:45,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:10},
+    {name:'Metabolic Power',      intent:'Densest phase — high reps, minimal rest, circuit/superset structure drives EPOC. Load keeps climbing within the high-rep range.',                                   weeks:[7,9],  reps:'14·13·12', restComp:75,  restAcc:45,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:8},
+    {name:'Peak Conditioning',    intent:'Leanest, most conditioned phase — still high-rep. You are lifting more load at 12-15 reps than in week 1.',                                                        weeks:[10,12],reps:'15·13·12', restComp:75,  restAcc:45,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6}
   ],
   build_muscle: [
-    {name:'Hypertrophy Foundation',intent:'Establish movement patterns. High volume descending across 3 weeks — technique then load.',                                        weeks:[1,3],  reps:'12·10·8',  restComp:120, restAcc:75,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},
-    {name:'Strength Build',        intent:'Load increases, volume holds. Strength adaptations accelerate this phase.',                                                      weeks:[4,6],  reps:'10·8·6',   restComp:120, restAcc:90,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6},
-    {name:'Power Phase',           intent:'Heavier compounds. Short accessory rest. Highest hypertrophy signal of the program.',                                            weeks:[7,9],  reps:'8·6·5',    restComp:150, restAcc:90,  incComp:10,  incAcc:5,   pctTop:5,  pctInc:5},
-    {name:'Peak Strength',         intent:'Maximum load. Neural efficiency peaks. You are stronger than week 1 at every lift.',                                             weeks:[10,12],reps:'6·5·4',    restComp:180, restAcc:90,  incComp:5,   incAcc:5,   pctTop:4,  pctInc:3}
+    // Science audit 2026-07-22 (Finding 2, Kerwin-approved): Build Muscle stays in the HYPERTROPHY
+    // band (6-15) the whole program — it never drops to 1-5 rep max-strength work (that is the
+    // separate Strength goal, and reps 5-30 give equivalent hypertrophy when volume-equated to
+    // failure, so there is no size benefit to going lower). Periodization comes from the volume
+    // ramp + load progression, not from sliding into strength reps. Enforced by doctrine D10.
+    {name:'Hypertrophy Foundation',intent:'Establish movement patterns and work capacity. Volume descends within the block — technique then load. Reps stay in the hypertrophy range.',                        weeks:[1,3],  reps:'12·10·8',  restComp:120, restAcc:75,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},
+    {name:'Hypertrophy Build',     intent:'Add load, hold volume. Growth accelerates as the working weight climbs at 8-11 reps.',                                                                            weeks:[4,6],  reps:'11·9·8',   restComp:120, restAcc:75,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6},
+    {name:'Hypertrophy Intensify', intent:'Heavier compounds at the bottom of the hypertrophy range. Highest mechanical-tension stimulus of the program — still hypertrophy, not maximal strength.',          weeks:[7,9],  reps:'10·8·7',   restComp:135, restAcc:90,  incComp:10,  incAcc:5,   pctTop:5,  pctInc:5},
+    {name:'Peak Hypertrophy',      intent:'Peak load at the 6-8 rep floor of the hypertrophy range. Strongest you have been at every lift — without dropping into 1-5 rep max-strength work.',                weeks:[10,12],reps:'9·7·6',    restComp:150, restAcc:90,  incComp:5,   incAcc:5,   pctTop:4,  pctInc:3}
   ],
   transform: [
     {name:'Recomp Foundation',    intent:'Moderate deficit, high protein, progressive overload. Rep range descends across 3 weeks — establishes the work capacity base.',    weeks:[1,3],  reps:'12·10·8',  restComp:90,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},

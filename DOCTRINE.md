@@ -27,6 +27,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D7** | Per-length mesocycle layout (4–12 wk) matches the spec Part B table. | ⏳ Phase 5 | Spec Part B |
 | **D8** | Strength uses zero supersets on primary lifts; Maintenance caps at MAV. | ⏳ when added | 5-Goal Taxonomy |
 | **D9** | One-off "Build Me a Workout" is compound-first, tier-legal, dup-free — but EXEMPT by design from D1/D4/D7 (a single session is *allowed* to vary; that's its purpose). | ✅ ACTIVE | Home-Screen Program Builders |
+| **D10** | Rep schemes honor each goal's band: Fat Burn ≥10 (high-rep circuits), Build Muscle 6–15 (hypertrophy, never 1–5 strength), Transform 8–12 (mixed). | ✅ ACTIVE | 5-Goal Taxonomy; research §Rep Ranges |
 
 PENDING invariants are law already — they're documented in the gate and become blocking the moment the
 phase that makes them true ships. **Never weaken the gate to make a change pass. Never delete a PENDING.**
