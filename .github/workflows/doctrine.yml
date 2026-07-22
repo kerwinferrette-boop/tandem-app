@@ -1,0 +1,26 @@
+name: Doctrine & Ship Gate
+
+# Makes the Notion source-of-truth un-bypassable: every PR and every push to main
+# must pass the doctrine-conformance gate (scripts/doctrine.mjs, see /DOCTRINE.md)
+# plus the full behavioral ship gate and the persona matrix. Code that drifts from
+# the doctrine — re-rolling lifts weekly, dropping a required deload/superset,
+# inventing a non-canonical goal — fails here and cannot merge.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # No dependencies to install — the gates are pure Node built-ins.
+      - name: Ship gate + doctrine conformance
+        run: npm run verify
+      - name: Persona / SKU matrix (504 combos, Rules 6-9)
+        run: npm run validate:personas
