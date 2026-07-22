@@ -1680,6 +1680,39 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   }
 }
 
+// ═══════════════════════════════════════════════════════
+// DELOADS — Periodization spec Part B + doctrine D4
+// Every mesocycle ends in a deload (every 4-6 wk, block-final): volume cut ~50%,
+// load held. Recovery IS the stimulus that week. deloadWeeks() encodes the Part B
+// per-length table (4-12 wk); applyDeload() reduces sets + tags the day so the
+// render layer can show a deload banner. Applied to EVERY getProgram path.
+// ═══════════════════════════════════════════════════════
+const DELOAD_TABLE = { 4:[4], 5:[5], 6:[6], 7:[7], 8:[4,8], 9:[5,9], 10:[5,10], 11:[5,10], 12:[4,8,12] };
+function deloadWeeks(weeks) {
+  const T = Number(weeks) || 12;
+  if (DELOAD_TABLE[T]) return new Set(DELOAD_TABLE[T]);
+  if (T <= 7) return new Set([T]);                 // one block → deload the final week
+  const s = new Set();                              // general: block-final deloads ~every 4 wk + final
+  for (let w = 4; w < T; w += 4) s.add(w);
+  s.add(T);
+  return s;
+}
+function applyDeload(program, rotation, weeks) {
+  const wk = rotation && Number(rotation.week);
+  if (!Array.isArray(program) || !wk || !deloadWeeks(weeks).has(wk)) return program;
+  // Return NEW objects — never mutate the shared static bases.
+  return program.map(day => ({
+    ...day,
+    deload: true,
+    label: /deload/i.test(day.label || '') ? day.label : `${day.label} · Deload`,
+    rationale: `DELOAD WEEK — volume cut ~50%, load held. Recovery is the training stimulus this week; do not chase new PRs. ` + (day.rationale || ''),
+    blocks: (day.blocks || []).map(b => b.cardio ? b : ({
+      ...b,
+      exs: (b.exs || []).map(e => ({ ...e, sets: Math.max(2, Math.ceil((e.sets || 3) / 2)), deload: true })),
+    })),
+  }));
+}
+
 function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
@@ -2893,10 +2926,9 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   if (generated) {
     // Final injury prune — catches statically-injected exercises (build5's
     // shoulder block) that bypass the bank-level filter inside the generator.
-    if (days === 2) return pruneInjuries(build2(generated), injuries);
-    if (days === 3) return pruneInjuries(ppl(generated), injuries);
-    if (days === 5) return pruneInjuries(build5(generated), injuries);
-    return pruneInjuries(generated, injuries);
+    // Then apply the deload week (Part B / doctrine D4) on every path.
+    const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : generated;
+    return applyDeload(pruneInjuries(built, injuries), rotation, weeks);
   }
 
   // ── Silent emergency fallback ──────────────────────────────────────────────
@@ -2904,11 +2936,9 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // unknown goal), fall back to the curated static base so the user still gets a
   // workout. This path is NOT expected in production — warn so it's caught.
   console.warn('[getProgram] dynamic engine returned null — falling back to static base', { goal, days, tier });
-  if (!activePrograms[goal]) return activePrograms.build_muscle?.[4] || programs.build_muscle[4];
+  if (!activePrograms[goal]) return applyDeload(activePrograms.build_muscle?.[4] || programs.build_muscle[4], rotation, weeks);
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
-  if (days === 2) return build2(base);
-  if (days === 3) return ppl(base);
-  if (days === 5) return build5(base);
-  return base;
+  const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : base;
+  return applyDeload(built, rotation, weeks);
 }

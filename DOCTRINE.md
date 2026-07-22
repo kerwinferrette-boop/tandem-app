@@ -21,7 +21,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D1** | Exercise selection is stable **within a mesocycle block** and refreshes only at block boundaries — never re-rolled weekly. | ✅ ACTIVE | Spec Part A; variation research |
 | **D2** | Only the canonical goals exist; each live goal generates a legal, non-empty program. | ✅ ACTIVE | 5-Goal Taxonomy |
 | **D3** | Compound (multi-joint) work precedes isolation within every training day. | ✅ ACTIVE | ACSM progression models [8] |
-| **D4** | A deload appears every 4–6 weeks, as the block-final week, at reduced volume. | ⏳ Phase 2/5 | Spec Part B; v0.5 deload table |
+| **D4** | A deload appears every 4–6 weeks, as the block-final week, at reduced volume (~40–50% sets cut, load held). | ✅ ACTIVE | Spec Part B; v0.5 deload table |
 | **D5** | Transform is superset-driven; supersets appear where the taxonomy requires. | ⏳ Phase 3 | 5-Goal Taxonomy; v0.5 |
 | **D6** | Weekly working-set volume per muscle stays within the goal's MEV..MRV band. | ⏳ later | v0.5 volume table |
 | **D7** | Per-length mesocycle layout (4–12 wk) matches the spec Part B table. | ⏳ Phase 5 | Spec Part B |

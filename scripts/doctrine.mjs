@@ -29,8 +29,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -42,6 +42,10 @@ const SEXES = ['male', 'female'];
 const PHASES = [0, 1, 2, 3];      // the 4 mesocycle blocks scaledPhases spreads across the program
 const gen = (goal, days, sex, week, phase) =>
   getProgram(goal, days, 12, sex, 'full_gym', 'balanced', null, null, { week, phase });
+const genT = (goal, days, sex, week, T) =>
+  getProgram(goal, days, T, sex, 'full_gym', 'balanced', null, null, { week, phase: Math.floor((week - 1) / 3) });
+const totalSets = (p) => (p || []).reduce((n, d) => n + (d.blocks || []).reduce(
+  (m, b) => m + (b.exs || []).filter(e => !e.cardioOnly).reduce((k, e) => k + (e.sets || 0), 0), 0), 0);
 const dayNames = (day) => (day.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
 const progNames = (p) => (p || []).map(dayNames);
 const eqDeep = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -118,10 +122,33 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
   console.log('  (note: getSingleDay not yet exported — D9 skipped)');
 }
 
+// ── D4 (ACTIVE) — Deloads per the Part B length table ──────────────────────────
+// Every mesocycle ends in a deload (every 4-6 wk, block-final): reduced volume,
+// load held. Assert, for each length 4-12: no training run > 7 wk without a deload;
+// each deload week has REDUCED total sets vs a non-deload week and is tagged on
+// every day; a non-deload week is never tagged.
+let d4Checked = 0;
+for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+  const dw = [...deloadWeeks(T)].sort((a, b) => a - b);
+  if (dw.length === 0) { fail('D4', `${goal}/${days}d ${T}wk: no deload scheduled`); continue; }
+  let prev = 0, maxGap = 0;
+  for (const w of dw) { maxGap = Math.max(maxGap, w - prev); prev = w; }
+  maxGap = Math.max(maxGap, T - prev);
+  if (maxGap > 7) fail('D4', `${goal}/${days}d ${T}wk: ${maxGap}-week run with no deload (> 6-wk rule)`);
+  const refWk = [1, 2, 3].find(w => !dw.includes(w)) || 1;
+  const refSets = totalSets(genT(goal, days, 'male', refWk, T));
+  if (genT(goal, days, 'male', refWk, T).some(d => d.deload)) fail('D4', `${goal}/${days}d ${T}wk wk${refWk}: non-deload week wrongly tagged deload`);
+  for (const w of dw) {
+    const p = genT(goal, days, 'male', w, T);
+    d4Checked++;
+    if (!p.every(d => d.deload === true)) fail('D4', `${goal}/${days}d ${T}wk wk${w}: deload not tagged on all days`);
+    if (totalSets(p) >= refSets) fail('D4', `${goal}/${days}d ${T}wk wk${w}: deload did not reduce volume (${totalSets(p)} vs ${refSets})`);
+  }
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
-  ['D4', 'Deload week present per the Part B length table (every 4-6 wk, block-final, reduced volume)', 'Phase 2 / 5'],
   ['D5', 'Transform is superset-driven; supersets present where the 5-Goal Taxonomy requires them', 'Phase 3'],
   ['D6', 'Weekly working-set volume per muscle stays within the goal MEV..MRV band (v0.5 table)', 'later'],
   ['D7', 'Per-length mesocycle layout (4-12 wk) matches the spec Part B table exactly', 'Phase 5'],
@@ -134,6 +161,7 @@ console.log(`Active checks:`);
 console.log(`  D1  exercise stability within a block   — ${d1Checked} combos checked, ${d1BoundaryVaried} refresh at boundary`);
 console.log(`  D2  canonical goals generate legal programs`);
 console.log(`  D3  compound-first ordering`);
+console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
