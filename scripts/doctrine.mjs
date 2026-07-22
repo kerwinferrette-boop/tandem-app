@@ -185,10 +185,27 @@ for (const [goal, [lo, hi]] of Object.entries(REP_BANDS)) {
   }
 }
 
+// ── D6 (ACTIVE, v1) — Weekly volume scales by goal (v0.5 MEV/MRV order) ─────────
+// Was: identical volume for every goal (science-audit Finding 3). Sets-per-exercise
+// now scale by goal so weekly working volume follows the MEV/MRV ordering: Transform
+// (concurrent) ≥ Build Muscle (hypertrophy) ≥ Fat Burn (fat loss). v1 = goal
+// differentiation; per-muscle MEV balancing + the within-block MEV→MRV week ramp
+// remain flagged (Finding 3 remainder + Finding 4), tied to the per-length meso work.
+let d6Checked = 0;
+const weeklyVol = (g, days, sex) => (gen(g, days, sex, 1, 0) || []).reduce((n, d) =>
+  n + (d.blocks || []).reduce((m, b) => m + (b.exs || []).filter(e => !e.cardioOnly && !e.isCore)
+    .reduce((k, e) => k + (e.sets || 0), 0), 0), 0);
+for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+  const t = weeklyVol('transform', days, sex), b = weeklyVol('build_muscle', days, sex), f = weeklyVol('fat_burn', days, sex);
+  d6Checked++;
+  if (!(t >= b && b >= f)) fail('D6', `${days}d/${sex}: goal volume not in MEV order (transform ${t} ≥ build_muscle ${b} ≥ fat_burn ${f})`);
+  if (f <= 0) fail('D6', `${days}d/${sex}: fat_burn produced zero working volume`);
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
-  ['D6', 'Weekly working-set volume per muscle stays within the goal MEV..MRV band (v0.5 table)', 'later'],
+  ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
   ['D7', 'Per-length mesocycle layout (4-12 wk) matches the spec Part B table exactly', 'Phase 5'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
 ];
@@ -202,6 +219,7 @@ console.log(`  D3  compound-first ordering`);
 console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
 console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
+console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);

@@ -1695,6 +1695,29 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 }
 
 // ═══════════════════════════════════════════════════════
+// GOAL VOLUME — Science-audit Finding 3 + doctrine D6 (v0.5 MEV/MAV/MRV table)
+// The v0.5 volume landmarks differ BY GOAL; the engine used to apply identical
+// sets to every goal. Sets-per-exercise now scale by goal in the MEV/MRV order
+// (Transform/concurrent 12-18 > Build Muscle/hypertrophy 10-15 > Fat Burn/fat-loss
+// 8-12). Core/cardio keep their own sets. NOTE (flagged): this delivers goal-
+// differentiated volume; per-muscle MEV balancing + the within-block MEV→MRV week
+// ramp still ride on the per-length mesocycle work (Finding 3 remainder + Finding 4).
+// ═══════════════════════════════════════════════════════
+const GOAL_VOLUME = {
+  transform:    { compound: 4, isolation: 4 },
+  build_muscle: { compound: 4, isolation: 3 },
+  fat_burn:     { compound: 3, isolation: 3 },
+};
+function applyGoalVolume(program, goal) {
+  const cfg = GOAL_VOLUME[goal];
+  if (!cfg || !Array.isArray(program)) return program;
+  return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
+    ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e
+      : ({ ...e, sets: e.compound ? cfg.compound : cfg.isolation })),
+  })) }));
+}
+
+// ═══════════════════════════════════════════════════════
 // DELOADS — Periodization spec Part B + doctrine D4
 // Every mesocycle ends in a deload (every 4-6 wk, block-final): volume cut ~50%,
 // load held. Recovery IS the stimulus that week. deloadWeeks() encodes the Part B
@@ -2999,7 +3022,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // shoulder block) that bypass the bank-level filter inside the generator.
     // Then apply the deload week (Part B / doctrine D4) on every path.
     const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : days === 6 ? build6(generated) : generated;
-    return applyDeload(applySupersets(pruneInjuries(built, injuries), goal), rotation, weeks);
+    return applyDeload(applySupersets(applyGoalVolume(pruneInjuries(built, injuries), goal), goal), rotation, weeks);
   }
 
   // ── Silent emergency fallback ──────────────────────────────────────────────
@@ -3011,5 +3034,5 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
   const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : days === 6 ? build6(base) : base;
-  return applyDeload(applySupersets(built, goal), rotation, weeks);
+  return applyDeload(applySupersets(applyGoalVolume(built, goal), goal), rotation, weeks);
 }

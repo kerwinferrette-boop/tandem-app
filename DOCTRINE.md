@@ -23,7 +23,8 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D3** | Compound (multi-joint) work precedes isolation within every training day. | ✅ ACTIVE | ACSM progression models [8] |
 | **D4** | A deload appears every 4–6 weeks, as the block-final week, at reduced volume (~40–50% sets cut, load held). | ✅ ACTIVE | Spec Part B; v0.5 deload table |
 | **D5** | Transform (antagonist supersets) and Fat Burn (short-rest circuits) are superset-driven; supersets never touch the primary compound block. | ✅ ACTIVE | 5-Goal Taxonomy; v0.5 |
-| **D6** | Weekly working-set volume per muscle stays within the goal's MEV..MRV band. | ⏳ later | v0.5 volume table |
+| **D6** | Weekly working volume scales by goal in MEV order: Transform ≥ Build Muscle ≥ Fat Burn (v1 — goal differentiation). | ✅ ACTIVE | v0.5 volume table |
+| **D6b** | Per-muscle weekly volume within the goal's MEV..MRV band + within-block MEV→MRV ramp. | ⏳ per-length meso | v0.5 volume table; Findings 3-remainder, 4 |
 | **D7** | Per-length mesocycle layout (4–12 wk) matches the spec Part B table. | ⏳ Phase 5 | Spec Part B |
 | **D8** | Strength uses zero supersets on primary lifts; Maintenance caps at MAV. | ⏳ when added | 5-Goal Taxonomy |
 | **D9** | One-off "Build Me a Workout" is compound-first, tier-legal, dup-free — but EXEMPT by design from D1/D4/D7 (a single session is *allowed* to vary; that's its purpose). | ✅ ACTIVE | Home-Screen Program Builders |
