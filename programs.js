@@ -1697,6 +1697,33 @@ function deloadWeeks(weeks) {
   s.add(T);
   return s;
 }
+// ── SUPERSETS — Periodization spec Part C + doctrine D5 ────────────────────────
+// Transform is superset-driven by definition (5-Goal Taxonomy). Applied as a
+// uniform post-process so it covers EVERY day-count path (build2/ppl/build5/
+// dynamic) identically: each "Accessory Block" is split into "Superset A/B"
+// pairs, which the render layer's existing coach-tip recognizes ("perform both
+// back-to-back"). Odd leftover stays a plain accessory. Compound (primary) blocks
+// are NEVER supersetted. Returns NEW objects — no mutation of shared bases.
+function applySupersets(program, goal) {
+  if (goal !== 'transform' || !Array.isArray(program)) return program;
+  return program.map(day => {
+    const blocks = [];
+    for (const b of (day.blocks || [])) {
+      if (b.cardio || !/accessor/i.test(b.label || '') || (b.exs || []).length < 2) { blocks.push(b); continue; }
+      let g = 0;
+      for (let i = 0; i < b.exs.length; i += 2) {
+        const pair = b.exs.slice(i, i + 2);
+        if (pair.length === 2) {
+          const letter = String.fromCharCode(65 + g++);
+          blocks.push({ label: `Superset ${letter} · Rest 60 sec`, superset: true, exs: pair.map(e => ({ ...e, supersetGroup: letter })) });
+        } else {
+          blocks.push({ label: 'Accessory Block', exs: pair.map(e => ({ ...e })) });
+        }
+      }
+    }
+    return { ...day, blocks };
+  });
+}
 function applyDeload(program, rotation, weeks) {
   const wk = rotation && Number(rotation.week);
   if (!Array.isArray(program) || !wk || !deloadWeeks(weeks).has(wk)) return program;
@@ -2928,7 +2955,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // shoulder block) that bypass the bank-level filter inside the generator.
     // Then apply the deload week (Part B / doctrine D4) on every path.
     const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : generated;
-    return applyDeload(pruneInjuries(built, injuries), rotation, weeks);
+    return applyDeload(applySupersets(pruneInjuries(built, injuries), goal), rotation, weeks);
   }
 
   // ── Silent emergency fallback ──────────────────────────────────────────────
@@ -2940,5 +2967,5 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
   const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : base;
-  return applyDeload(built, rotation, weeks);
+  return applyDeload(applySupersets(built, goal), rotation, weeks);
 }

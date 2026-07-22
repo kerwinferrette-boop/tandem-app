@@ -146,10 +146,21 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
   }
 }
 
+// ── D5 (ACTIVE) — Transform is superset-driven (5-Goal Taxonomy) ───────────────
+// Transform is defined as antagonist/paired supersets. Assert every Transform
+// program contains superset blocks whose paired exercises carry a supersetGroup.
+let d5Checked = 0;
+for (const days of [2, 3, 4, 5]) for (const sex of ['male', 'female']) {
+  const p = gen('transform', days, sex, 1, 0);
+  d5Checked++;
+  const ss = (p || []).flatMap(d => (d.blocks || []).filter(b => b.superset || /superset/i.test(b.label || '')));
+  if (ss.length === 0) fail('D5', `transform/${days}d/${sex}: no supersets (Transform is superset-driven by definition)`);
+  else if (!ss.some(b => (b.exs || []).some(e => e.supersetGroup))) fail('D5', `transform/${days}d/${sex}: superset block has no supersetGroup-tagged exercise`);
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
-  ['D5', 'Transform is superset-driven; supersets present where the 5-Goal Taxonomy requires them', 'Phase 3'],
   ['D6', 'Weekly working-set volume per muscle stays within the goal MEV..MRV band (v0.5 table)', 'later'],
   ['D7', 'Per-length mesocycle layout (4-12 wk) matches the spec Part B table exactly', 'Phase 5'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
@@ -162,6 +173,7 @@ console.log(`  D1  exercise stability within a block   — ${d1Checked} combos c
 console.log(`  D2  canonical goals generate legal programs`);
 console.log(`  D3  compound-first ordering`);
 console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
+console.log(`  D5  Transform is superset-driven — ${d5Checked} transform programs checked`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
