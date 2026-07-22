@@ -33,7 +33,7 @@ const { getProgram, EXERCISE_BANK, makeInjuryBlocked } = vm.runInNewContext(
 
 // ── Test matrix ──────────────────────────────────────────
 const GOALS      = ['fat_burn', 'build_muscle', 'transform'];
-const DAY_COUNTS = [2, 3, 4, 5];
+const DAY_COUNTS = [2, 3, 4, 5, 6];
 const SEXES      = ['male', 'female'];
 const TIERS      = ['full_gym', 'hotel_gym', 'home'];
 const WEEKS      = 12; // fixed — see validate-programs.mjs R5 for week-length coverage

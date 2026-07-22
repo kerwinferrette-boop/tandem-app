@@ -2495,6 +2495,24 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     ]);
   };
 
+  // 6-day: PPL ×2 — each muscle group trained 2×/week (frequency research). The
+  // two rotations share exercise selection by design (block-stable per doctrine
+  // D1 — the same lifts twice a week is a feature, not churn); the two Legs days
+  // differ (hinge vs quad). dedupeConsecutiveDays guards adjacent-day collisions;
+  // the non-adjacent Push A/B (and Pull A/B) repeats are intended.
+  const build6 = (base4) => {
+    const [ua, la, ub, lb] = base4;
+    const relabel = (d, key, label) => ({ ...d, key, label, rationale: d.rationale });
+    return dedupeConsecutiveDays([
+      relabel(ua, 'day1', 'Day 1 · Push A'),
+      relabel(ub, 'day2', 'Day 2 · Pull A'),
+      relabel(la, 'day3', 'Day 3 · Legs A · Hinge'),
+      relabel(ua, 'day4', 'Day 4 · Push B'),
+      relabel(ub, 'day5', 'Day 5 · Pull B'),
+      relabel(lb, 'day6', 'Day 6 · Legs B · Quad'),
+    ]);
+  };
+
   // ─── Female programs ────────────────────────────────────────────────────────
   const femalePrograms = {
     fat_burn: {
@@ -2954,7 +2972,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // Final injury prune — catches statically-injected exercises (build5's
     // shoulder block) that bypass the bank-level filter inside the generator.
     // Then apply the deload week (Part B / doctrine D4) on every path.
-    const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : generated;
+    const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : days === 6 ? build6(generated) : generated;
     return applyDeload(applySupersets(pruneInjuries(built, injuries), goal), rotation, weeks);
   }
 
@@ -2966,6 +2984,6 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   if (!activePrograms[goal]) return applyDeload(activePrograms.build_muscle?.[4] || programs.build_muscle[4], rotation, weeks);
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
-  const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : base;
+  const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : days === 6 ? build6(base) : base;
   return applyDeload(applySupersets(built, goal), rotation, weeks);
 }

@@ -37,7 +37,7 @@ const TIER_BY_NAME = {};
 for (const e of Object.values(EXERCISE_BANK)) if (e && e.name) TIER_BY_NAME[e.name.trim().toLowerCase()] = e.tier;
 
 const CANONICAL_GOALS = ['build_muscle', 'fat_burn', 'transform']; // 5-Goal Taxonomy: 3 live (+strength, +maintenance pending)
-const DAYS = [2, 3, 4, 5];        // 6-day (ppl2) is Phase 4 — added to this list when it ships
+const DAYS = [2, 3, 4, 5, 6];     // includes 6-day PPL×2 (Phase 4, shipped)
 const SEXES = ['male', 'female'];
 const PHASES = [0, 1, 2, 3];      // the 4 mesocycle blocks scaledPhases spreads across the program
 const gen = (goal, days, sex, week, phase) =>
@@ -150,7 +150,7 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
 // Transform is defined as antagonist/paired supersets. Assert every Transform
 // program contains superset blocks whose paired exercises carry a supersetGroup.
 let d5Checked = 0;
-for (const days of [2, 3, 4, 5]) for (const sex of ['male', 'female']) {
+for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
   const p = gen('transform', days, sex, 1, 0);
   d5Checked++;
   const ss = (p || []).flatMap(d => (d.blocks || []).filter(b => b.superset || /superset/i.test(b.label || '')));

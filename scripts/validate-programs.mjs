@@ -21,7 +21,7 @@ const { getProgram, PHASES } = vm.runInNewContext(
 
 // ── Test matrix ──────────────────────────────────────────
 const GOALS       = ['fat_burn', 'build_muscle', 'transform'];
-const DAY_COUNTS  = [2, 3, 4, 5];
+const DAY_COUNTS  = [2, 3, 4, 5, 6];
 const SEXES       = ['male', 'female'];
 const WEEK_LENGTHS = [4, 6, 8, 12];   // used only for phase-coverage check
 const MAX_EX_FREQ = 2;
