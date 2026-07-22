@@ -2168,8 +2168,14 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // prescription is living — the stored PR itself is never touched by nudges.
   const prs = LS.get('tandem_prs') || {};
   const working = LS.get('tandem_working1rm') || {};
-  const oneRM = (exName && working[exName]?.rm)
-    ?? ((exName && prs[exName]) ?? prs[exId]); // C7: name-first, id fallback
+  // C7/BUG-45: name-only when the exercise is named. A recycled slot-id can hold
+  // another movement's 1RM, so prs[exId] must never stand in for a named lift
+  // (this is the same churn class already fixed for tandem_lastsets above). The
+  // id is consulted solely when there is no name at all — then it's the only
+  // identity available, not a cross-exercise leak.
+  const oneRM = exName
+    ? (working[exName]?.rm ?? prs[exName])
+    : prs[exId];
 
   // EPIC-9 Step E: canonical compound 1RM map (working-first) so accessories
   // without their own record derive from adjacent compounds — this was the
@@ -2868,8 +2874,9 @@ function buildDayHTML(day, phase) {
   const _dayWorking = LS.get('tandem_working1rm') || {};
   const dayCompound1RMs = {};
   day.blocks.forEach(b => (b.exs || []).forEach(e => {
-    // EPIC-9: working 1RM first (living number), then C7 name-first PR, id fallback
-    const _rm = e && (_dayWorking[e.name]?.rm ?? _dayPrs[e.name] ?? _dayPrs[e.id]);
+    // EPIC-9: working 1RM first (living number), then C7 name PR. C7/BUG-45:
+    // name-only when named — a recycled slot-id can hold another movement's 1RM.
+    const _rm = e && (e.name ? (_dayWorking[e.name]?.rm ?? _dayPrs[e.name]) : _dayPrs[e.id]);
     if (!_rm) return;
     dayCompound1RMs[e.name] = _rm;
     // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
@@ -2940,8 +2947,11 @@ function buildDayHTML(day, phase) {
             reason: ex.unit === 'sec' ? 'Timed hold — progress by holding longer' : 'Bodyweight — quality reps over load' }
         : getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex, ex.isCore ? ex.r : null);
       const _prStore = LS.get('tandem_prs') || {};
-      // EPIC-9: effective 1RM = working (living) number first, then all-time PR
-      const pr1rm = _dayWorking[ex.name]?.rm ?? _prStore[ex.name] ?? _prStore[ex.id]; // C7: name-first
+      // EPIC-9: effective 1RM = working (living) number first, then all-time PR.
+      // C7/BUG-45: name-only when named — the id fallback was serving another
+      // lift's 1RM here (the phantom "1RM ~105" shown on the bench card was
+      // actually the Z-Press number leaking through _prStore[ex.id]).
+      const pr1rm = ex.name ? (_dayWorking[ex.name]?.rm ?? _prStore[ex.name]) : _prStore[ex.id];
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
       // compute a starting weight from the user's calibrated 1RM instead of
@@ -2963,7 +2973,8 @@ function buildDayHTML(day, phase) {
           const bankEntry = Object.values(EXERCISE_BANK).find(e => e.name === ex.name);
           if (bankEntry?.oneRmFactor != null) {
             const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
-              (_dayWorking[_ex.name]?.rm ?? _prStore[_ex.name] ?? _prStore[_ex.id]) || null,
+              // C7/BUG-45: name-only when named — no cross-exercise id fallback.
+              (_ex.name ? (_dayWorking[_ex.name]?.rm ?? _prStore[_ex.name]) : _prStore[_ex.id]) || null,
               cfg.sex, dayCompound1RMs, cfg.weeks);
             const origW = origTgt.weight ?? _ex.w;
             if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
@@ -3183,10 +3194,14 @@ function logSet(id, i) {
     const prs = LS.get('tandem_prs') || {};
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
-    // as the Supabase set-insert path. Legacy id-keyed entries still readable.
+    // as the Supabase set-insert path.
     const prCardEl = document.getElementById('ec-' + id);
     const prExName = prCardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
-    const prev = prs[prExName] ?? prs[id] ?? 0;
+    // C7/BUG-45: name-only baseline. A recycled slot-id's 1RM (another movement's
+    // number) must not stand in as this exercise's prior PR — that could suppress
+    // a real PR or seed a phantom one. prExName falls back to id only when the
+    // card heading is unreadable, which is the same-identity case, not a leak.
+    const prev = prs[prExName] ?? 0;
 
     saveSetLS(id, w, r, prExName);
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
