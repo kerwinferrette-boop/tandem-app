@@ -1271,6 +1271,107 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 }
 
 // ═══════════════════════════════════════════════════════
+// ONE-OFF WORKOUT GENERATOR — Home-Screen "Build Me a Workout"
+// getSingleDay(focus, { tier, injuries, cardio })
+//   → a single cohesive session for a muscle focus (chest / back / legs /
+//     shoulders / arms / push / pull / hinge / full_body). Compound-first,
+//     tier- and injury-safe, no duplicate lifts.
+//
+// This is the DYNAMIC engine's PROPER home (see Notion "Home-Screen Program
+// Builders"): a one-off carries NO mesocycle progression, so variety here is a
+// FEATURE, not the "random program" defect. It is therefore intentionally exempt
+// from the block-stability / deload doctrine invariants (D1/D4/D7) — see
+// /DOCTRINE.md and the D9 one-off assertion in scripts/doctrine.mjs.
+//
+// Selection mirrors bank()'s contract exactly (tier gate, groupsMatch prefix
+// rule, oneRmFactor-desc-then-alpha deterministic sort, injury filter) so the
+// two engines can never diverge. Weights are left as light defaults and filled
+// by the render layer (buildDayHTML) from the user's PRs/calibration, same as any
+// generated day — so a one-off still prescribes at the lifter's real strength.
+// ═══════════════════════════════════════════════════════
+const FOCUS_SLOTS = {
+  chest:     [['pec_major','pec','compound'],['pec_major','pec','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
+  back:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['lat_dorsi','','isolation'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation']],
+  legs:      [['quad','','compound'],['hamstring','glute_max','compound'],['quad_rectus_femoris','quad_vastus','isolation'],['hamstring','','isolation'],['gastrocnemius','calf','isolation']],
+  shoulders: [['anterior_delt','lateral_delt','compound'],['lateral_delt','','isolation'],['posterior_delt','rhomboid','isolation'],['anterior_delt','','isolation'],['upper_trap','','isolation']],
+  arms:      [['bicep','','isolation'],['tricep','','isolation'],['bicep','','isolation'],['tricep','','isolation'],['brachialis','brachioradialis','isolation']],
+  push:      [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['lateral_delt','','isolation']],
+  pull:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation'],['bicep','','isolation']],
+  hinge:     [['hamstring','glute_max','compound'],['glute_max','','compound'],['hamstring','','isolation'],['glute_max','glute_medius','isolation'],['gastrocnemius','calf','isolation']],
+  full_body: [['pec_major','pec','compound'],['lat_dorsi','','compound'],['quad','','compound'],['hamstring','glute_max','compound'],['anterior_delt','lateral_delt','isolation']],
+};
+const ONEOFF_CORE_GROUPS = ['rectus_abdominis','transverse_abdominis','oblique','quadratus_lumborum','erector_spinae'];
+const ONEOFF_CARDIO_GROUPS = ['full_body','lower_body','glute_max'];
+
+function getSingleDay(focus, opts = {}) {
+  const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
+  const slots = FOCUS_SLOTS[key];
+  if (!slots) return null;
+  const tierOrder = ['home', 'hotel_gym', 'full_gym'];
+  const reqIdx = tierOrder.indexOf(opts.tier || 'full_gym');
+  const injuryBlocked = makeInjuryBlocked(opts.injuries);
+  const tierOk = (e) => tierOrder.indexOf(e.tier) <= (reqIdx < 0 ? 2 : reqIdx);
+  // groupsMatch — identical prefix rule to buildDynamicProgram's
+  const groupsMatch = (e, groups) => {
+    const all = [...(e.muscleGroups.primary || []), ...(e.muscleGroups.secondary || [])];
+    return groups.some(g => all.some(a => a === g || a.startsWith(g + '_') || a.startsWith(g)));
+  };
+  // deterministic candidate pool — identical sort to bank()
+  const select = (groups, cat, used) => Object.values(EXERCISE_BANK)
+    .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, groups) && !injuryBlocked(e.name) && !used.has(e.name))
+    .sort((a, b) => {
+      if (a.oneRmFactor != null || b.oneRmFactor != null) {
+        const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
+        if (diff !== 0) return diff;
+      }
+      return a.name.localeCompare(b.name);
+    })[0] || null;
+  // light weight default; render layer (buildDayHTML) overrides from PRs/calibration
+  const defW = (e) => e.equipment === 'barbell' ? 95 : e.equipment === 'machine' ? 70
+    : e.equipment === 'cable' ? 35 : e.equipment === 'dumbbell' ? 35 : 0;
+  const mk = (e, i, over = {}) => e && ({
+    id: `oneoff-${key}-${i}`, name: e.name,
+    badge: e.category === 'compound' ? 'compound' : 'isolation',
+    sets: e.category === 'compound' ? 4 : 3,
+    w: defW(e), r: e.unit === 'sec' ? (e.secs || 45) : 10,
+    rest: e.category === 'compound' ? 90 : 60,
+    compound: e.category === 'compound', isCore: e.category === 'core',
+    cardioOnly: e.category === 'cardio', unit: e.unit || 'reps',
+    equipment: e.equipment || null, why: e.why || '', cues: e.cues || [], ...over,
+  });
+
+  const used = new Set();
+  const comp = [], acc = [];
+  slots.forEach((s, i) => {
+    const groups = [s[0], s[1]].filter(Boolean);
+    const chosen = select(groups, s[2], used);
+    if (!chosen) return;
+    used.add(chosen.name);
+    (s[2] === 'compound' ? comp : acc).push(mk(chosen, i, s[2] === 'isolation' ? { sets: 3 } : {}));
+  });
+  // 2 core movements, then an optional Zone 2 finisher
+  const core = [];
+  for (let i = 0; i < 2; i++) {
+    const c = select(ONEOFF_CORE_GROUPS, 'core', used);
+    if (!c) break;
+    used.add(c.name);
+    core.push(mk(c, `k${i}`, { sets: 3, rest: 30 }));
+  }
+  const blocks = [];
+  if (comp.length) blocks.push({ label: 'Compound Block', exs: comp });
+  if (acc.length) blocks.push({ label: 'Accessory Block', exs: acc });
+  if (core.length) blocks.push({ label: 'Core Block · Rest 30 sec', exs: core });
+  if (opts.cardio) {
+    const cardio = select(ONEOFF_CARDIO_GROUPS, 'cardio', used) || Object.values(EXERCISE_BANK).find(e => e.category === 'cardio' && tierOk(e));
+    if (cardio) blocks.push({ label: 'Zone 2 · 20 min', cardio: true, exs: [mk(cardio, 'card', { sets: 1, duration: 20, cardioOnly: true, unit: 'sec', r: 1 })] });
+  }
+  const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return { key: 'oneoff', oneOff: true, focus: key, label: `${label} Day`, color: 'var(--accent)',
+    rationale: `One-off ${label} session — compound-first, ${opts.tier || 'full_gym'} tier. Not part of a periodized program.`, blocks };
+}
+const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
+
+// ═══════════════════════════════════════════════════════
 // DYNAMIC PROGRAM GENERATOR
 // buildDynamicProgram(goal, days, weeks, sex, tier, emphasis)
 //   → returns a 4-day base array (same shape as static programs)

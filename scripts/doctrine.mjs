@@ -29,8 +29,12 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES }; })()`, {});
+
+const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
+const TIER_BY_NAME = {};
+for (const e of Object.values(EXERCISE_BANK)) if (e && e.name) TIER_BY_NAME[e.name.trim().toLowerCase()] = e.tier;
 
 const CANONICAL_GOALS = ['build_muscle', 'fat_burn', 'transform']; // 5-Goal Taxonomy: 3 live (+strength, +maintenance pending)
 const DAYS = [2, 3, 4, 5];        // 6-day (ppl2) is Phase 4 — added to this list when it ships
@@ -85,6 +89,35 @@ for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of S
   });
 }
 
+// ── D9 (ACTIVE) — One-off "Build Me a Workout" conformance ─────────────────────
+// The one-off generator is the dynamic engine's proper home. A one-off is a single
+// session with NO mesocycle progression, so it is EXEMPT BY DESIGN from D1 (block
+// stability), D4 (deloads), and D7 (per-length layout) — variety is a feature here,
+// not the "random program" defect. But it must still obey the structural law:
+// compound-first, tier-legal, no duplicate lift, non-empty. (Notion: Home-Screen
+// Program Builders. Wire the Home-Screen entry point in the app as a follow-on.)
+let d9Checked = 0;
+if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
+  for (const focus of ONEOFF_FOCUSES) for (const tier of TIER_ORDER) {
+    const day = getSingleDay(focus, { tier });
+    d9Checked++;
+    if (!day || !Array.isArray(day.blocks) || day.blocks.length === 0) { fail('D9', `one-off ${focus}/${tier}: empty`); continue; }
+    const labels = day.blocks.map(b => String(b.label || ''));
+    const ci = labels.findIndex(l => /compound/i.test(l));
+    const ai = labels.findIndex(l => /accessor/i.test(l));
+    if (ci !== -1 && ai !== -1 && ci > ai) fail('D9', `one-off ${focus}/${tier}: accessory precedes compound`);
+    const exs = day.blocks.flatMap(b => (b.exs || []).map(e => e.name));
+    if (new Set(exs).size !== exs.length) fail('D9', `one-off ${focus}/${tier}: duplicate lift in one session`);
+    const reqIdx = TIER_ORDER.indexOf(tier);
+    for (const n of exs) {
+      const t = TIER_BY_NAME[String(n).trim().toLowerCase()];
+      if (t && TIER_ORDER.indexOf(t) > reqIdx) fail('D9', `one-off ${focus}/${tier}: "${n}" exceeds tier (needs ${t})`);
+    }
+  }
+} else {
+  console.log('  (note: getSingleDay not yet exported — D9 skipped)');
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -101,6 +134,7 @@ console.log(`Active checks:`);
 console.log(`  D1  exercise stability within a block   — ${d1Checked} combos checked, ${d1BoundaryVaried} refresh at boundary`);
 console.log(`  D2  canonical goals generate legal programs`);
 console.log(`  D3  compound-first ordering`);
+console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 
