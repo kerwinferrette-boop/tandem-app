@@ -1337,8 +1337,16 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (!cands.length) return null;
     let pool = cands;
     if (emphTag) { const b = cands.filter(e => e.emphasis && e.emphasis.includes(emphTag)); if (b.length) pool = b; }
-    const isPrimary = slot && (slot.role === 'primary' || slot.role === 'secondary');
-    const block = isPrimary ? rotPhase : rotWeek;
+    // Periodization spec Part A — selection is stable WITHIN a mesocycle (block)
+    // and refreshes only at block boundaries; it is NEVER re-rolled weekly.
+    // Accessories previously walked by rotWeek — a fresh pick every single week.
+    // That was the "random" churn (no cohesion) AND it broke progressive-overload
+    // tracking, since you can't add load to a lift that keeps changing (the same
+    // slot-id churn behind the BUG-45 phantom-1RM class). Both primary and
+    // accessory slots now index by rotPhase (the block): a block shows the same
+    // lifts every week, so LOAD is what progresses. Variety returns at the block
+    // boundary, which is where the research says it belongs.
+    const block = rotPhase;
     return pool[((block % pool.length) + pool.length) % pool.length];
   };
 
