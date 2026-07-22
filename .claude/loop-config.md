@@ -124,6 +124,17 @@ verification:
        Never delete a PENDING to make the gate green; never weaken the gate to pass. If doctrine
        itself must change, change Notion first, then /DOCTRINE.md and doctrine.mjs together."
 
+  source_first_rigor:   # Kerwin's directive, 2026-07-22 — the recurring errors all share one shape:
+                         # reasoning from plausibility instead of the source. This kills that.
+    - "For ANY exercise-science or program-logic change, INVOKE the exercise-science-research skill
+       FIRST (source-first, no shortcuts). It is mandatory, not advisory. See CLAUDE.md."
+    - "Never state a training fact or ship program logic from memory. Cite the source (DOCTRINE.md,
+       the Notion docs, research-report.pdf/docx/csv, or a reputable external source) or flag it
+       UNVERIFIED. 'Typically / standard / usually' means stop and go read."
+    - "Write the should/could/did audit (CLAUDE.md) into every program-logic commit + Notion entry.
+       Run it BEFORE shipping, not after Kerwin catches the error. When the source is silent, FLAG
+       the gap — never fabricate a number, coefficient, or rule."
+
 safety:
   max_items_per_cycle: 5
   max_fix_attempts_per_story: 2
