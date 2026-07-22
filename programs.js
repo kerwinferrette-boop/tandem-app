@@ -1359,7 +1359,12 @@ function getSingleDay(focus, opts = {}) {
   }
   const blocks = [];
   if (comp.length) blocks.push({ label: 'Compound Block', exs: comp });
-  if (acc.length) blocks.push({ label: 'Accessory Block', exs: acc });
+  if (acc.length) {
+    // Supersets are a great fit for a one-off (time-crunched, no progression to
+    // protect). Opt-in via opts.supersets — pairs accessories, never the compounds.
+    if (opts.supersets && acc.length >= 2) blocks.push(...pairIntoSupersets(acc, 45));
+    else blocks.push({ label: 'Accessory Block', exs: acc });
+  }
   if (core.length) blocks.push({ label: 'Core Block · Rest 30 sec', exs: core });
   if (opts.cardio) {
     const cardio = select(ONEOFF_CARDIO_GROUPS, 'cardio', used) || Object.values(EXERCISE_BANK).find(e => e.category === 'cardio' && tierOk(e));
@@ -1697,29 +1702,41 @@ function deloadWeeks(weeks) {
   s.add(T);
   return s;
 }
-// ── SUPERSETS — Periodization spec Part C + doctrine D5 ────────────────────────
-// Transform is superset-driven by definition (5-Goal Taxonomy). Applied as a
-// uniform post-process so it covers EVERY day-count path (build2/ppl/build5/
-// dynamic) identically: each "Accessory Block" is split into "Superset A/B"
-// pairs, which the render layer's existing coach-tip recognizes ("perform both
-// back-to-back"). Odd leftover stays a plain accessory. Compound (primary) blocks
-// are NEVER supersetted. Returns NEW objects — no mutation of shared bases.
+// ── SUPERSETS — Periodization spec Part C + 5-Goal Taxonomy + doctrine D5 ───────
+// Per goal, per the taxonomy + science: supersets pair NON-primary work for time
+// efficiency + metabolic demand, and NEVER touch the primary compound block.
+//   transform → antagonist supersets, 60s rest (recomp: strength + metabolic)
+//   fat_burn  → circuit-style supersets, 30s rest (high-rep, EPOC — its DEFINITION)
+//   build_muscle → none by default (optional on accessories; not required, and
+//                  changing it would reshuffle in-flight programs). strength (later)
+//                  forbids supersets on primary lifts specifically (future D8).
+// Applied as a uniform post-process so it covers EVERY day-count path identically.
+// Each "Accessory Block" splits into paired "Superset A/B" blocks that the render
+// layer's coach-tip recognizes ("perform both back-to-back"). Odd leftover stays a
+// plain accessory. Returns NEW objects — no mutation of shared bases.
+const SUPERSET_CFG = { transform: { rest: 60 }, fat_burn: { rest: 30 } };
+function pairIntoSupersets(exs, rest) {
+  const out = [];
+  let g = 0;
+  for (let i = 0; i < exs.length; i += 2) {
+    const pair = exs.slice(i, i + 2);
+    if (pair.length === 2) {
+      const letter = String.fromCharCode(65 + g++);
+      out.push({ label: `Superset ${letter} · Rest ${rest} sec`, superset: true, exs: pair.map(e => ({ ...e, supersetGroup: letter, rest })) });
+    } else {
+      out.push({ label: 'Accessory Block', exs: pair.map(e => ({ ...e })) });
+    }
+  }
+  return out;
+}
 function applySupersets(program, goal) {
-  if (goal !== 'transform' || !Array.isArray(program)) return program;
+  const cfg = SUPERSET_CFG[goal];
+  if (!cfg || !Array.isArray(program)) return program;
   return program.map(day => {
     const blocks = [];
     for (const b of (day.blocks || [])) {
       if (b.cardio || !/accessor/i.test(b.label || '') || (b.exs || []).length < 2) { blocks.push(b); continue; }
-      let g = 0;
-      for (let i = 0; i < b.exs.length; i += 2) {
-        const pair = b.exs.slice(i, i + 2);
-        if (pair.length === 2) {
-          const letter = String.fromCharCode(65 + g++);
-          blocks.push({ label: `Superset ${letter} · Rest 60 sec`, superset: true, exs: pair.map(e => ({ ...e, supersetGroup: letter })) });
-        } else {
-          blocks.push({ label: 'Accessory Block', exs: pair.map(e => ({ ...e })) });
-        }
-      }
+      blocks.push(...pairIntoSupersets(b.exs, cfg.rest));
     }
     return { ...day, blocks };
   });

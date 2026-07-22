@@ -118,6 +118,12 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
       if (t && TIER_ORDER.indexOf(t) > reqIdx) fail('D9', `one-off ${focus}/${tier}: "${n}" exceeds tier (needs ${t})`);
     }
   }
+  // supersets are available on the one-off (opt-in) — and never on its compound block
+  for (const focus of ['chest', 'legs', 'pull']) {
+    const day = getSingleDay(focus, { tier: 'full_gym', supersets: true });
+    if (!(day?.blocks || []).some(b => b.superset)) fail('D9', `one-off ${focus} with supersets:true produced no superset block`);
+    if ((day?.blocks || []).some(b => /compound/i.test(b.label || '') && b.superset)) fail('D9', `one-off ${focus}: compound block was supersetted`);
+  }
 } else {
   console.log('  (note: getSingleDay not yet exported — D9 skipped)');
 }
@@ -146,16 +152,20 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
   }
 }
 
-// ── D5 (ACTIVE) — Transform is superset-driven (5-Goal Taxonomy) ───────────────
-// Transform is defined as antagonist/paired supersets. Assert every Transform
-// program contains superset blocks whose paired exercises carry a supersetGroup.
+// ── D5 (ACTIVE) — Superset/circuit-driven goals (5-Goal Taxonomy) ───────────────
+// Transform = antagonist supersets; Fat Burn = high-rep circuits (short-rest
+// supersets). Both must contain superset blocks whose paired exercises carry a
+// supersetGroup. (Supersets never touch the primary compound block — the never-on-
+// primary rule; Strength's stricter version is future D8.)
 let d5Checked = 0;
-for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
-  const p = gen('transform', days, sex, 1, 0);
+for (const goal of ['transform', 'fat_burn']) for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+  const p = gen(goal, days, sex, 1, 0);
   d5Checked++;
   const ss = (p || []).flatMap(d => (d.blocks || []).filter(b => b.superset || /superset/i.test(b.label || '')));
-  if (ss.length === 0) fail('D5', `transform/${days}d/${sex}: no supersets (Transform is superset-driven by definition)`);
-  else if (!ss.some(b => (b.exs || []).some(e => e.supersetGroup))) fail('D5', `transform/${days}d/${sex}: superset block has no supersetGroup-tagged exercise`);
+  if (ss.length === 0) fail('D5', `${goal}/${days}d/${sex}: no supersets (goal is superset/circuit-driven by the 5-Goal Taxonomy)`);
+  else if (!ss.some(b => (b.exs || []).some(e => e.supersetGroup))) fail('D5', `${goal}/${days}d/${sex}: superset block has no supersetGroup-tagged exercise`);
+  // never-on-primary: the Compound Block must never be a superset
+  if ((p || []).some(d => (d.blocks || []).some(b => /compound/i.test(b.label || '') && b.superset))) fail('D5', `${goal}/${days}d/${sex}: a Compound Block was supersetted (primary lifts must never superset)`);
 }
 
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
@@ -173,7 +183,7 @@ console.log(`  D1  exercise stability within a block   — ${d1Checked} combos c
 console.log(`  D2  canonical goals generate legal programs`);
 console.log(`  D3  compound-first ordering`);
 console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
-console.log(`  D5  Transform is superset-driven — ${d5Checked} transform programs checked`);
+console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
