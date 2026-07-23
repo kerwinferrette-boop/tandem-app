@@ -48,6 +48,9 @@ const totalSets = (p) => (p || []).reduce((n, d) => n + (d.blocks || []).reduce(
   (m, b) => m + (b.exs || []).filter(e => !e.cardioOnly).reduce((k, e) => k + (e.sets || 0), 0), 0), 0);
 const dayNames = (day) => (day.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
 const progNames = (p) => (p || []).map(dayNames);
+const compoundDayNames = (day) => (day.blocks || []).filter(b => /compound/i.test(b.label || ''))
+  .flatMap(b => (b.exs || []).map(e => e.name));
+const compoundNames = (p) => (p || []).map(compoundDayNames);
 const eqDeep = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const failures = [];
@@ -70,6 +73,24 @@ for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of S
   const p0 = progNames(gen(goal, days, sex, 1, 0));
   const p1 = progNames(gen(goal, days, sex, 4, 1));
   if (!eqDeep(p0, p1)) d1BoundaryVaried++;
+}
+
+// ── D15 (ACTIVE) — Primary compounds fixed for the WHOLE program ───────────────
+// Periodization Spec Part A already concluded "Primary compounds: fixed for the
+// whole program (progression tracked end-to-end)" but pick() never implemented
+// it — compounds rotated at every block boundary same as accessories, same as
+// everything else D1 governs. research-report(9) (Valyu, 2026-07-23) gave the
+// number that confirms the original spec: compounds fixed 8-12wk minimum, which
+// for a <=12wk Tandem program IS the whole program. This is stronger than D1
+// (block-stable): the Compound Block's exercise names must be IDENTICAL across
+// every phase of the program, not just within one block — verified across the
+// program's full 4-phase span (phase 0 vs phase 3), unlike D1's block-adjacent check.
+let d15Checked = 0;
+for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of SEXES) {
+  d15Checked++;
+  const c0 = compoundNames(gen(goal, days, sex, 1, 0));
+  const c3 = compoundNames(gen(goal, days, sex, 10, 3));
+  if (!eqDeep(c0, c3)) fail('D15', `${goal}/${days}d/${sex}: Compound Block exercises changed between phase 0 (wk1) and phase 3 (wk10) — primary compounds must be fixed for the whole program`);
 }
 
 // ── D2 (ACTIVE) — Only canonical goals, each generates a legal program ─────────
@@ -435,6 +456,7 @@ console.log(`  D11 monotonic %1RM overload + earned-only 1RM (no fake ratchet) �
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
+console.log(`  D15 primary compounds fixed for the whole program — ${d15Checked} combos checked`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 

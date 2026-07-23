@@ -18,7 +18,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 
 | ID | Invariant | Status | Source |
 |----|-----------|--------|--------|
-| **D1** | Exercise selection is stable **within a mesocycle block** and refreshes only at block boundaries — never re-rolled weekly. | ✅ ACTIVE | Spec Part A; variation research |
+| **D1** | Exercise selection is stable **within a mesocycle block** and refreshes only at block boundaries — never re-rolled weekly. Rotation cadence is now tiered by role (see D15): this governs accessories; primary/secondary compounds are stricter (D15). | ✅ ACTIVE | Spec Part A; variation research |
 | **D2** | Only the canonical goals exist; each live goal generates a legal, non-empty program. | ✅ ACTIVE | 5-Goal Taxonomy |
 | **D3** | Compound (multi-joint) work precedes isolation within every training day. | ✅ ACTIVE | ACSM progression models [8] |
 | **D4** | A deload appears every 4–6 weeks, as the block-final week, at reduced volume (~40–50% sets cut, load held). | ✅ ACTIVE | Spec Part B; v0.5 deload table |
@@ -33,6 +33,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D12** | 1RM estimation selects formula by rep range — Epley ≤12 reps, Mayhew above — instead of one linear formula for every set; the estimate is monotonic non-decreasing in reps at a fixed weight (more reps never shows a lower max). | ✅ ACTIVE | research-report(9) (Valyu, 2026-07-23) §1RM formula selection; monotonicity is an engineering correctness constraint, not a science claim |
 | **D13** | Deload intensity is goal-specific: Build Muscle (Hypertrophy) deloads drop %1RM to the 60–70% band; Transform and Fat Burn deloads MAINTAIN intensity (volume-cut only). The stored/measured 1RM is never lowered by a deload regardless (D11). | ✅ ACTIVE | research-report(9) (Valyu, 2026-07-23) §Deload Intensity Management by Goal; Kerwin's explicit sign-off 2026-07-23 |
 | **D14** | A deload week that is also the program's final week (every length except 11wk) is a REALIZATION week, not a light week: same reduced volume, but HIGH intensity (~90% 1RM) and LOW reps (a top single/triple/five) for every goal — tagged `day.realization`, never `day.deload`. | ✅ ACTIVE | Spec Part B (already named this pattern for the 11wk program); Kerwin's question 2026-07-23, "why would week 12 ... be a deload, instead of an all out max week?" |
+| **D15** | Primary/secondary compound exercises are FIXED for the whole program (never rotate at block boundaries). Accessory rotation is tiered: the closest-pattern accessory per slot (acc1) rotates ~every 4-6 weeks; remaining isolation accessories rotate ~every 2-3 weeks (block boundary, D1's existing cadence). | ✅ ACTIVE | Spec Part A ("Primary compounds: fixed for the whole program" — already approved, never implemented); research-report(9) (Valyu, 2026-07-23) §Exercise Variation and Rotation Cadence |
 
 PENDING invariants are law already — they're documented in the gate and become blocking the moment the
 phase that makes them true ships. **Never weaken the gate to make a change pass. Never delete a PENDING.**

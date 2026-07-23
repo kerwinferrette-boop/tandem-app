@@ -1474,16 +1474,25 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (!cands.length) return null;
     let pool = cands;
     if (emphTag) { const b = cands.filter(e => e.emphasis && e.emphasis.includes(emphTag)); if (b.length) pool = b; }
-    // Periodization spec Part A — selection is stable WITHIN a mesocycle (block)
-    // and refreshes only at block boundaries; it is NEVER re-rolled weekly.
-    // Accessories previously walked by rotWeek — a fresh pick every single week.
-    // That was the "random" churn (no cohesion) AND it broke progressive-overload
-    // tracking, since you can't add load to a lift that keeps changing (the same
-    // slot-id churn behind the BUG-45 phantom-1RM class). Both primary and
-    // accessory slots now index by rotPhase (the block): a block shows the same
-    // lifts every week, so LOAD is what progresses. Variety returns at the block
-    // boundary, which is where the research says it belongs.
-    const block = rotPhase;
+    // D15 (tiered rotation cadence) — Periodization spec Part A concluded "Primary
+    // compounds: fixed for the whole program... Secondary compounds & accessories:
+    // fixed within each mesocycle, refreshed at each block boundary" but pick() never
+    // actually implemented that distinction — every slot rotated on the same rotPhase
+    // clock. research-report(9) (Valyu, 2026-07-23) then gave the exact numbers that
+    // confirm the original spec: compounds fixed 8-12wk minimum (for Tandem's typical
+    // program lengths, that IS the whole program); the first-listed/closest-pattern
+    // accessory per slot (acc1) rotates ~4-6wk; remaining accessories (acc2/acc3,
+    // true isolation) rotate ~2-3wk. Accessories previously walked by rotWeek (a
+    // fresh pick every single week) — that was the "random" churn (no cohesion) AND
+    // it broke progressive-overload tracking (the BUG-45 phantom-1RM class). Now:
+    //   primary/secondary (compound) → block 0, FIXED for the whole program
+    //   acc1 ("primary accessory")   → rotates ~every other phase (~4-6wk)
+    //   acc2/acc3 (isolation)        → rotates every phase (~2-3wk, unchanged)
+    const role = slot && slot.role;
+    let block;
+    if (role === 'primary' || role === 'secondary') block = 0;
+    else if (role === 'acc1') block = Math.floor(rotPhase / 2);
+    else block = rotPhase;
     return pool[((block % pool.length) + pool.length) % pool.length];
   };
 
