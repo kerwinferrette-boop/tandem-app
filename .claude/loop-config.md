@@ -224,6 +224,26 @@ The daily run is not just bug/QA triage — it is a **program-of-work manager.**
    (630 combos) + `ship_gate_command` (incl. doctrine) — framed as "does this work as intended for every
    persona," not just "does it compile."
 
+## Regression stop — already-fixed bugs must not silently come back (2026-07-23, Kerwin)
+
+Directive from Kerwin (2026-07-23): "put the stops in play to refer to Notion and prior bug logs and code
+logs because I'm tired of going backwards." A fix that regresses is worse than a bug that was never fixed.
+Standing practice:
+
+1. **Structural fixes get a permanent regression test in `ship_gate_command`.** When a Resolved bug fixed a
+   *structural* behavior (a rule that either holds across the matrix or doesn't — e.g. BUG-30's weekday
+   cadence, the C7 weight override, lastsets identity), a `scripts/*-smoke.mjs` guard is added to
+   `npm run verify` so a later revert/change fails the gate instead of shipping. Worked example added
+   2026-07-23: `scripts/cadence-smoke.mjs` locks BUG-30 (no consecutive-days regression, no phantom
+   Day 5/6/7) after git confirmed the algorithm was intact but nothing tested that it stays intact.
+2. **Each cycle, cross-check the Resolved Bug Log against reality.** Before calling a cycle done, spot-check
+   that recently-Resolved structural bugs still behave — via their smoke guard if one exists, or by
+   re-running their Steps-to-Reproduce. A Resolved bug that no longer behaves is re-opened, not re-filed as
+   new, and gets a permanent guard so it can't happen a third time.
+3. **`git log -S` before claiming a revert.** When something "used to work," check the code history
+   (`git log -S "<symbol>"`, blame) to distinguish an actual revert from a display/wiring gap that was
+   never built — report which it is, factually, rather than guessing.
+
 ## Two-tier doctrine (EPIC-031) — SAFETY hard, SCIENCE overridable-with-provenance
 
 Once EPIC-031 lands, `scripts/doctrine.mjs` invariants split into **SAFETY** (always enforced, every path —
