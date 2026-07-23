@@ -236,6 +236,46 @@ try {
   fail('D11', `could not verify monotonic overload: ${e.message}`);
 }
 
+// ── D12 (ACTIVE) — Multi-formula 1RM estimation, monotonic in reps ─────────────
+// A single linear formula (Epley) is accurate only to ~12 reps; the estimate must
+// switch to Mayhew above that, AND the estimate must never decrease for more reps
+// at the same weight (a real bug found by running the numbers: raw Mayhew(w,13) <
+// Epley(w,12) — doing an extra rep would show a LOWER max, the same "app says
+// weaker after more work" defect D11 exists to kill). Source: research-report(9)
+// (Valyu Deep Research, 2026-07-23) — the direct answer to the gap D11 flagged
+// ("research is silent on high-rep accuracy"). Desgorces (cited as marginally
+// better for 16-20 reps) is NOT implemented — the source names it but never gives
+// its equation, and per source-first rule we do not invent a logarithmic formula
+// to fill that gap. Flagged for a future Ralph pass.
+let d12Checked = 0;
+try {
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const m = tandemHtml.match(/function calcRM\(w, r\) \{[\s\S]*?\n\}/);
+  if (!m) fail('D12', 'could not locate calcRM in tandem.html');
+  else {
+    const calcRM = vm.runInNewContext(`(function(w, r) { ${m[0].replace(/^function calcRM\(w, r\) \{/, '').replace(/\}$/, '')} })`, {});
+    // formula selection: Epley at 10 reps, Mayhew above 12
+    d12Checked++;
+    const epley10 = 100 * (1 + 10 / 30);
+    if (Math.abs(calcRM(100, 10) - epley10) > 0.01) fail('D12', `calcRM(100,10) = ${calcRM(100, 10)}, expected Epley ${epley10.toFixed(2)}`);
+    d12Checked++;
+    const mayhew16 = 100 * 100 / (52.2 + 41.9 * Math.exp(-0.055 * 16));
+    if (Math.abs(calcRM(100, 16) - mayhew16) > 0.01) fail('D12', `calcRM(100,16) = ${calcRM(100, 16)}, expected Mayhew ${mayhew16.toFixed(2)}`);
+    // monotonicity: more reps at a fixed weight must never estimate a lower 1RM
+    for (const w of [95, 135, 185, 225, 315]) {
+      let prev = 0;
+      for (let r = 1; r <= 25; r++) {
+        d12Checked++;
+        const v = calcRM(w, r);
+        if (v < prev - 1e-9) fail('D12', `calcRM(${w}, ${r}) = ${v.toFixed(2)} is LESS than calcRM(${w}, ${r - 1}) = ${prev.toFixed(2)} — more reps at the same weight must never estimate a lower 1RM`);
+        prev = v;
+      }
+    }
+  }
+} catch (e) {
+  fail('D12', `could not verify multi-formula 1RM: ${e.message}`);
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -256,6 +296,7 @@ console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} foc
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM (no fake ratchet) — ${d11Checked} week-steps checked`);
+console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 

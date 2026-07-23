@@ -2058,11 +2058,11 @@ async function persistWeekTargets(names) {
 // the sawtooth %-table simultaneously told the user to lift LESS (the two numbers
 // desynced and contradicted each other). Now the loop is closed and honest —
 // out-lift the prescription → your 1RM rises → next week's target (= 1RM × %) rises.
-// Reps are capped at 12 in the Epley estimate: the research report is SILENT on
-// formula accuracy at high reps, so we reuse the app's own 12-rep PR boundary rather
-// than invent a coefficient — a 15-rep set still counts, but conservatively. The
-// stored all-time PR is a running max and is never lowered. Recomputes week_targets
-// for any exercise whose 1RM moved. Skips core/timed work and cardio.
+// The estimate itself uses calcRM's multi-formula selection (D12: Epley ≤12 reps,
+// Mayhew 13+) rather than a single formula, so high-rep sets are estimated properly
+// instead of clamped. The stored all-time PR is a running max and is never lowered.
+// Recomputes week_targets for any exercise whose 1RM moved. Skips core/timed work
+// and cardio.
 function reconcileWorking1RMs(sessionExs, program) {
   if (!sessionExs || !Object.keys(sessionExs).length) return;
   const day = (program || []).find(d => d.key === currentDay);
@@ -2077,13 +2077,13 @@ function reconcileWorking1RMs(sessionExs, program) {
       if (!ex || ex.isCore || ex.unit === 'sec') return;
       const sets = sessionExs[ex.id];
       if (!sets || !sets.length) return;
-      // Best EARNED 1RM from this session: max Epley over real sets, reps capped at 12.
+      // Best EARNED 1RM from this session: max calcRM (D12 multi-formula) over real sets.
       let best = 0;
       for (const s of sets) {
         const w = parseFloat(s.w) || 0;
         const r = parseInt(s.r) || 0;
         if (w <= 0 || r <= 0) continue;
-        best = Math.max(best, calcRM(w, Math.min(r, 12)));
+        best = Math.max(best, calcRM(w, r));  // D12: calcRM selects the formula by rep range
       }
       best = Math.round(best);
       if (!best) return;
@@ -2122,7 +2122,7 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   const best1RMs = {};
   for (const s of sessionSets) {
     if (!s.exercise_name || !s.weight_lbs || !s.reps) continue;
-    const est = Math.round(calcRM(s.weight_lbs, Math.min(s.reps, 12))); // D11: cap reps at 12
+    const est = Math.round(calcRM(s.weight_lbs, s.reps)); // D12: calcRM selects the formula by rep range
     if (!best1RMs[s.exercise_name] || est > best1RMs[s.exercise_name])
       best1RMs[s.exercise_name] = est;
   }
@@ -3183,7 +3183,7 @@ function onSetInput(id, i) {
   // bw with no typed weight → volume = reps; typed weight upgrades to w×r
   if (v) v.textContent = timed ? '—' : (unit === 'bw' && !w) ? (r || 0) : Math.round(w * r);
   if (!timed && w && r) {
-    const est = calcRM(w, Math.min(r, 12)); // D11: cap reps at 12 (match PR/1RM path)
+    const est = calcRM(w, r); // D12: calcRM selects the formula by rep range (match PR/1RM path)
     const liveEl = document.getElementById(`i1rm-${id}`);
     const pctsEl = document.getElementById(`ipcts-${id}`);
     if (liveEl) liveEl.textContent = Math.round(est) + ' lbs';
@@ -3205,11 +3205,9 @@ function logSet(id, i) {
   if (!already) {
     const w = parseFloat(wEl.value) || 0;
     const r = parseInt(rEl.value) || 0;
-    // D11: cap reps at 12 in the Epley estimate (research is silent on high-rep
-    // accuracy — reuse the app's own 12-rep boundary rather than invent one). A
-    // high-rep set still counts toward the PR, just conservatively — it is no
-    // longer discarded, so Fat Burn / early-hypertrophy strength gains stay visible.
-    const est1rm = Math.round(calcRM(w, Math.min(r, 12)));
+    // D12: calcRM selects Epley/Mayhew by rep range — a high-rep set counts toward
+    // the PR at proper accuracy, not clamped to a 12-rep estimate.
+    const est1rm = Math.round(calcRM(w, r));
     const prs = LS.get('tandem_prs') || {};
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
@@ -3226,7 +3224,7 @@ function logSet(id, i) {
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
     sessionSetsMap[id].push({ set: i+1, w, r, est1rm });
 
-    if (est1rm > prev && w > 0) {   // D11: reps already capped in est1rm above
+    if (est1rm > prev && w > 0) {   // D12: est1rm already uses the correct formula for these reps
       prs[prExName] = est1rm;                 // C7: write by canonical name
       if (prExName !== id) delete prs[id];    // C7: retire any legacy id-keyed entry
       LS.set('tandem_prs', prs);
@@ -3553,10 +3551,31 @@ function applySwap(id, newName) {
 // ═══════════════════════════════════════════════════════
 // 1RM CALCULATOR
 // ═══════════════════════════════════════════════════════
-// Single Epley estimate — formula tabs removed per QA decision 2026-06-12
+// D12 (multi-formula 1RM): a single linear formula (Epley) is accurate to ~12 reps,
+// then increasingly overestimates as a set shifts from a strength expression to a
+// metabolic-fatigue expression. Formula is selected by rep range instead of one
+// equation for every set. Source: research-report(9)/Valyu Deep Research 2026-07-23 —
+// this is the direct answer to the gap D11 flagged ("research is silent on high-rep
+// accuracy, reusing a 12-rep boundary"); that boundary is now confirmed correct AND
+// upgraded — reps above 12 get a proper formula instead of being clamped to 12.
+//   ≤12 reps:  Epley       — w × (1 + reps/30)                     [±2-3% error]
+//   13+ reps:  Mayhew      — 100w / (52.2 + 41.9 × e^(-0.055×reps)) [±3-4% error]
+// The source names Desgorces as marginally better for 16-20 reps but does not give
+// its equation (its own citation is a guide page, not the formula) — per source-first
+// rule we do not invent a logarithmic formula to fill that gap. Mayhew is used for the
+// entire 13+ range instead: it's the one formula the source validates continuously
+// across both the 10-15 and 15-20 rep bands, so it's a defensible single fallback
+// rather than a fabricated third curve. Flagged for Ralph: get the Desgorces equation.
 function calcRM(w, r) {
   if (r === 1) return w;
-  return w * (1 + r/30);
+  if (r <= 12) return w * (1 + r / 30);                                   // Epley
+  // Mayhew, floored at the r=12 Epley value: run raw, Mayhew(w,13) < Epley(w,12) —
+  // more reps at the same weight would estimate a LOWER max, which is a correctness
+  // bug independent of which formula the literature prefers (found by running the
+  // numbers, not by reading the formula). The floor guarantees calcRM is
+  // monotonic-non-decreasing in reps at a fixed weight — never invented science,
+  // just the engineering constraint this app's whole 1RM overhaul exists to enforce.
+  return Math.max(100 * w / (52.2 + 41.9 * Math.exp(-0.055 * r)), w * (1 + 12 / 30));
 }
 
 function calcORM() {
