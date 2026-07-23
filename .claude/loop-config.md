@@ -202,3 +202,42 @@ Remote-environment wiring (one-time): the repo `kerwinferrette-boop/tandem-app` 
 as the session **Source** via the Claude GitHub integration, and `.claude/settings.json` +
 `.claude/skills/` + this config must be **committed on `main`** so the fresh clone actually
 contains the loop's brain.
+
+## Program-of-work management — Epics too, consolidate, then persona-validate (2026-07-23, Kerwin)
+
+The daily run is not just bug/QA triage — it is a **program-of-work manager.** Directive from Kerwin
+(2026-07-23, on the EPIC-031 Living Program Library plan): the routine must, every cycle:
+
+1. **Scope Epics, not just Bugs.** Audit the Epics & Feature Roadmap DB
+   (`c0c5bdda-1b33-4923-8308-9078e2fd68c5`) alongside the Bug & QA Log — surface open/scoped Epics, their
+   dependency gates, and their status, the same way bugs are surfaced.
+2. **Consolidate overlapping work.** When multiple Epics/Bugs address the same underlying problem (the
+   worked example: EPIC-027 + EPIC-029 + EPIC-030 collapsed into **EPIC-031**), **merge them into one work
+   item, write a consolidation note on each subsumed Epic/Bug** (pointing at the consolidator, marking it
+   "Consolidated → EPIC-NNN"), and re-point dependency gates — instead of generating N near-duplicate
+   prompts. Never leave the subsumed items as parallel orphans.
+3. **Generate a solving prompt** for the consolidated item (Claude Code or Fable), **folding in every
+   already-called-out Epic/Bug that item touches** so those specific callouts are met by the build, not
+   left behind. A prompt that ignores a related open callout is incomplete.
+4. **Validate against the persona/user-story gate.** A generated prompt is not "ready" until it names its
+   acceptance as user stories against the personas, and the resulting code passes `persona_matrix_command`
+   (630 combos) + `ship_gate_command` (incl. doctrine) — framed as "does this work as intended for every
+   persona," not just "does it compile."
+
+## Two-tier doctrine (EPIC-031) — SAFETY hard, SCIENCE overridable-with-provenance
+
+Once EPIC-031 lands, `scripts/doctrine.mjs` invariants split into **SAFETY** (always enforced, every path —
+compound-first, injury filter, equipment tier, monotonic + earned-only 1RM, no-superset-on-primary) and
+**SCIENCE_DEFAULT** (enforced for GENERATED programs; an authored/library program may exceed a band via
+`science_overrides` ONLY if a matching `program_principles` row justifies it — invariant **D16**). This does
+NOT loosen `doctrine_is_law` above for generated programs; it adds a sovereign, cited path for authored
+expert programs. Sovereignty without a cited principle is a D16 failure, not a loophole.
+
+## Daily-run program ingestion — the "learns more each program" loop (EPIC-031)
+
+Once Fable ships the EPIC-031 schema (`workout_templates`/`template_blocks`/`template_days`/
+`template_exercises` + `program_principles`): each daily run, Claude finds **one** acclaimed program online
+(WebSearch/WebFetch — acclaimed lifters/coaches), extracts its **structure** into the library tables and its
+**reasoning** into `program_principles` (via Supabase MCP), rebuilt **own-brand with source provenance** —
+never verbatim/trademarked content. The corpus compounds so a future phase can have the generator consume
+it. Cadence: one program per run, quality over volume. This is gated on the schema existing first.
