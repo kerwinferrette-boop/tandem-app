@@ -2842,13 +2842,16 @@ function renderTracker() {
   document.getElementById('pbReps').textContent = `This week: ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · Phase range: ${phase.reps}`;
   document.getElementById('pbWeekNum').textContent = currentWeek;
   document.getElementById('pbTotalWeeks').textContent = cfg.weeks;
-  // BUG-030: getProgramDayNumber now returns 'dayN' | 'rest' | null (not a bare number)
-  const _progDayKey = getProgramDayNumber();
+  // Day label = the cycle slot OUT OF 7 (Kerwin 2026-07-23), not the workout number.
+  // A 4-day split's third workout lands on slot 4, so it reads "Day 4", not "Day 3".
+  const _sched = getWeekSchedule();
   const _wn = document.getElementById('wnLabel');
-  if (_progDayKey === 'rest') {
-    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks} \u00b7 Rest Day`;
-  } else if (_progDayKey) {
-    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${parseInt(_progDayKey.replace('day', ''))}`;
+  if (_sched) {
+    const _slotNum = _sched.todayIndex + 1; // 1-7
+    const _isRest = _sched.cadence[_sched.todayIndex] === 'rest';
+    _wn.textContent = _isRest
+      ? `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_slotNum} of 7 \u00b7 Rest Day`
+      : `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_slotNum} of 7`;
   } else {
     _wn.textContent = `Week ${currentWeek} of ${cfg.weeks}`;
   }
@@ -2874,6 +2877,21 @@ function renderTracker() {
     <strong style="color:var(--text)">Accessory rest:</strong> ${phase.restAcc} sec<br>
     <strong style="color:var(--text)">Weight increment (compounds):</strong> +${phase.incComp} lbs<br>
     <strong style="color:var(--text)">Weight increment (accessories):</strong> +${phase.incAcc} lbs
+    ${(() => {
+      // "Days out of 7" schedule (Kerwin 2026-07-23) — render the 7-day cycle so the
+      // user SEES which days are training vs rest (e.g. 4-day = Days 1,2,4,5 of 7).
+      const s = getWeekSchedule();
+      if (!s) return '';
+      const rows = s.cadence.map((key, i) => {
+        const isRest = key === 'rest';
+        const isToday = i === s.todayIndex;
+        const name = isRest ? 'Rest' : s.labelFor(key);
+        return `<div style="display:flex;gap:8px;${isToday ? 'font-weight:700;color:var(--accent);' : isRest ? 'color:var(--muted);' : 'color:var(--text);'}">`
+          + `<span style="width:52px;">Day ${i + 1}</span><span>${name}${isToday ? ' · today' : ''}</span></div>`;
+      }).join('');
+      return `<br><br><strong style="color:var(--text)">Your 7-day schedule:</strong>`
+        + `<div style="margin-top:6px;font-size:13px;line-height:1.7;">${rows}</div>`;
+    })()}
   `;
 
   // Build day tabs + workout views from the dynamic engine
@@ -4403,7 +4421,12 @@ function canPlaceDay(placed, groups, dayIdx, slotIdx, sameGroupMinGap, maxConsec
 function computeWeekCadence(numDays, goal, dayObjects) {
   const rec = RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle;
   const sameGroupMinGap = Math.ceil(rec.sameGroupHours / 24); // hours → day slots
-  const maxConsecutive  = rec.maxConsecutive;
+  // BUG-fix (Kerwin, 2026-07-23): a high-frequency plan (≥6 days) cannot fit into a
+  // 7-slot week under maxConsecutive=2 — the 6th day was silently DROPPED (5/6 scheduled).
+  // Kerwin's call: a 6-day split is "6 on, 1 off" — high-frequency by definition, where
+  // recovery comes from the split design (e.g. PPL×2 spaces each muscle ~72h) not from
+  // interspersed rest days. So relax the consecutive cap to fit all N days at ≥6 days.
+  const maxConsecutive  = numDays >= 6 ? numDays : rec.maxConsecutive;
   const groups = dayObjects.map(d => muscleGroupFromLabel(d.label));
   const slots  = Array(7).fill('rest');
   const placed = [];
@@ -4420,11 +4443,12 @@ function computeWeekCadence(numDays, goal, dayObjects) {
   return slots;
 }
 
-// ── getProgramDayNumber() — BUG-030 rewrite ──
-// Returns today's program day key ('day1'..'dayN'), 'rest', or null.
-// Science-based cadence via computeWeekCadence replaces bare (diffDays%7)+1 counter
-// which returned Day 5/6/7 on a 4-day plan and had no concept of rest days.
-function getProgramDayNumber() {
+// ── getWeekSchedule() — the 7-day cycle, single source of truth ──
+// Kerwin (2026-07-23): show days "out of 7" (the cycle slot), not the workout number —
+// so a 4-day split reads Day 1, Day 2, [Day 3 rest], Day 4, Day 5, [Day 6/7 rest].
+// Returns { cadence: 7 slots of 'dayN'|'rest', todayIndex: 0-6, program, labelFor } or null.
+// The cadence rolls from cfg.startDate (diffDays % 7) — start-date-anchored per Kerwin's call.
+function getWeekSchedule() {
   if (!cfg?.startDate || !cfg?.goal) return null;
   const start = new Date(cfg.startDate + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -4432,7 +4456,19 @@ function getProgramDayNumber() {
   if (diffDays < 0) return null;
   const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
   if (!program?.length) return null;
-  return computeWeekCadence(cfg.days, cfg.goal, program)[diffDays % 7]; // 'dayN' or 'rest'
+  const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
+  const labelFor = key => key === 'rest' ? 'Rest'
+    : (program.find(d => d.key === key)?.label || key).replace(/^Day\s*\d+\s*·\s*/, '');
+  return { cadence, todayIndex: ((diffDays % 7) + 7) % 7, program, labelFor };
+}
+
+// ── getProgramDayNumber() — BUG-030 rewrite; delegates to getWeekSchedule ──
+// Returns today's program day key ('day1'..'dayN'), 'rest', or null. Science-based
+// cadence (computeWeekCadence) replaced the bare (diffDays%7)+1 counter that returned
+// phantom Day 5/6/7 on a 4-day plan. Locked by scripts/cadence-smoke.mjs.
+function getProgramDayNumber() {
+  const s = getWeekSchedule();
+  return s ? s.cadence[s.todayIndex] : null;
 }
 
 // ── getOverdueDays() — BUG-030 rewrite ──

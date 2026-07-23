@@ -10,16 +10,13 @@
  * defect or the phantom "Day 5/6/7". This gate makes that impossible: it re-runs the
  * live cadence engine every ship and asserts the BUG-30 guarantees hold.
  *
- * HARD (fails the gate) for days 2-5, every goal:
- *   - all N training days are placed (no dropped day)
- *   - never more than the goal's maxConsecutive training days in a row
+ * HARD (fails the gate) for ALL day counts 2-6, every goal:
+ *   - all N training days are placed (no dropped day) — 6-day fixed 2026-07-23
+ *     (Kerwin: "6 on / 1 off"; high-frequency plans relax the consecutive cap)
+ *   - never more than the allowed consecutive training days (goal cap; = N for ≥6-day)
  *   - a 4-day plan is NOT 4 consecutive days (>=1 rest interspersed) — BUG-30 headline
- *   - every scheduled slot is a real program day (no phantom Day 5/6/7 — BUG-30 root)
- *
- * SOFT (flags, does NOT fail — needs Kerwin's confirmed spread per BUG-30's own
- * "propose a spread and SURFACE it for Kerwin, do not guess silently"):
- *   - 6-day build_muscle/transform currently under-schedule (5/6) because
- *     maxConsecutive=2 can't fit 6 days in 7 slots. Flagged here, filed as a bug.
+ *   - every plan has ≥1 rest slot; every scheduled slot is a real program day
+ *     (no phantom Day 5/6/7 — the BUG-30 root defect)
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -45,12 +42,13 @@ const { getProgram, computeWeekCadence, RECOVERY_PARAMS } = ctx;
 
 const GOALS = ['build_muscle', 'fat_burn', 'transform'];
 const failures = [];
-const flags = [];
 let checked = 0;
 
 for (const goal of GOALS) {
-  const cap = (RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle).maxConsecutive;
+  const baseCap = (RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle).maxConsecutive;
   for (const days of [2, 3, 4, 5, 6]) {
+    // mirror computeWeekCadence: ≥6-day plans are high-frequency (6 on / 1 off), cap relaxed
+    const cap = days >= 6 ? days : baseCap;
     const program = getProgram(goal, days, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 });
     if (!program?.length) { failures.push(`${goal}/${days}d: getProgram returned nothing`); continue; }
     const validKeys = new Set(program.map(d => d.key));
@@ -72,24 +70,18 @@ for (const goal of GOALS) {
 
     const training = cadence.filter(s => s !== 'rest').length;
 
-    if (days <= 5) {
-      // HARD: all N days placed, no drop
-      if (training !== days) failures.push(`${goal}/${days}d: scheduled ${training} training days, expected ${days} (a day was dropped)`);
-      // HARD: a 4-day plan is not 4 consecutive days — BUG-30 headline
-      if (days === 4 && !cadence.includes('rest')) failures.push(`${goal}/4d: no rest day interspersed (BUG-30: 4-day must not be 4 consecutive days)`);
-    } else {
-      // SOFT: 6-day under-scheduling is a known, flagged gap (needs Kerwin's confirmed spread)
-      if (training !== days) flags.push(`${goal}/${days}d schedules ${training}/${days} training days — maxConsecutive=${cap} can't fit ${days} days in 7 slots. Needs a confirmed 6-day spread (do not guess).`);
-    }
+    // HARD (all day counts 2-6): every training day is placed, none dropped.
+    // 6-day fixed 2026-07-23 (Kerwin: "6 on / 1 off") — no longer a soft flag.
+    if (training !== days) failures.push(`${goal}/${days}d: scheduled ${training} training days, expected ${days} (a day was dropped)`);
+    // HARD: a 4-day plan is not 4 consecutive days — BUG-30 headline
+    if (days === 4 && !cadence.includes('rest')) failures.push(`${goal}/4d: no rest day interspersed (BUG-30: 4-day must not be 4 consecutive days)`);
+    // HARD: every plan has at least one rest slot in the 7-day week
+    if (!cadence.includes('rest')) failures.push(`${goal}/${days}d: no rest day in the 7-day week`);
   }
 }
 
 console.log('CADENCE REGRESSION GUARD — BUG-30 weekday spread stays fixed\n');
-console.log(`  ${checked} goal×day-count cadences checked (2-5 day: hard; 6 day: flagged)`);
-if (flags.length) {
-  console.log(`\n  ⚠ FLAGGED (not a gate failure — needs Kerwin's confirmed spread):`);
-  for (const f of flags) console.log(`    - ${f}`);
-}
+console.log(`  ${checked} goal×day-count cadences checked (2-6 day, all hard — 6-day fixed 2026-07-23)`);
 if (failures.length) {
   console.log(`\n${failures.length} CADENCE REGRESSION(S) — BUG-30 has drifted back:`);
   for (const f of failures) console.log(`  ✗ ${f}`);
