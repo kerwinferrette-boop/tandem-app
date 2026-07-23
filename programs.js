@@ -170,6 +170,13 @@ const EXERCISE_BANK = {
   'db-bench-press':{
     name:'DB Bench Press', videoId:'VmB1G1K7v94',
     muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt','tricep']},
+    // oneRmFactor 0.88 confirmed 2026-07-23 via independent research (Kerwin's call,
+    // "do your own independent research, cite it, make a decision" — Ralph's own
+    // report9 claimed 55-70%, unsourced/calculator-site cited). Independent sources
+    // converge on 80-90%: a 2023 RCT (Smoak et al., "Randomized Trial Comparing
+    // Barbell and Dumbbell Bench Press on Maximal Strength and Power Output") and
+    // BarBend's coaching synthesis (~90% rule of thumb / ~1.2x barbell-to-DB factor
+    // ≈83%). 0.88 sits inside that band — kept as-is, report9's number rejected.
     emphasis:['chest','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:0.88,
     why:'Dumbbells demand more stabiliser recruitment than barbell — serratus anterior and rotator cuff activate heavily to control the free path. Each hand works independently, preventing dominant-side compensation.',
     cues:['Neutral wrist, soft elbow lockout','Lower until upper arms parallel to floor','Slight arch — ribs up, shoulders back','Squeeze at the top for one count']},
@@ -296,6 +303,21 @@ const EXERCISE_BANK = {
   'smith-machine-bench-press':{
     name:'Smith Machine Bench Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt','tricep']},
+    // oneRmFactor 0.92 reviewed 2026-07-23 (independent research, Kerwin's call — see
+    // DB Bench above). A peer-reviewed EMG study (Schwanbeck et al., J Strength Cond
+    // Res, via PMC/pubmed 19855308) found Smith machine SQUAT 1RM ~7.7% GREATER than
+    // free barbell squat in trained women — a guided bar path removes stabilization
+    // demand, which can mechanically allow MORE load, not less. That's squat-specific
+    // (bench's stabilization demand differs) so it doesn't directly transfer to a
+    // higher bench factor. More importantly: in THIS codebase oneRmFactor is also the
+    // exercise-SELECTION ranking key (bank()/pick() sort candidates oneRmFactor-desc)
+    // — raising it was tested and confirmed to displace 'Low Incline Barbell Press'
+    // from the generated program (same failure C7 caught before, reproduced live).
+    // DECISION: kept at 0.92. Correcting the load-math in isolation would corrupt
+    // selection priority, which correctly favors free-weight compounds as primary
+    // (more stabilizer/EMG engagement — the same literature this cites). The real fix
+    // is separating load-scaling from selection-priority into two fields; flagged as
+    // a future refactor, not done here.
     emphasis:['chest','push','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:0.92,
     why:'The fixed vertical bar path removes the balance demand, letting a lifter push chest close to failure safely and even without a spotter — ideal for overloading the sternal pec late in a session or for newer lifters still grooving the press pattern. Ranked below the free-weight barbell presses: a guided machine press is an assistance movement, not a primary prescription over free weights.',
     cues:['Set the bench so the bar lines up with the lower chest','Retract and depress the shoulder blades into the bench','Lower to a light touch on the chest; press to full lockout','Rotate the wrists to unrack/rerack the safety hooks between sets']},

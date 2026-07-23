@@ -1949,6 +1949,18 @@ const PROGRESSION = {
 // context, not pure muscle growth — a judgment call, flagged as such, not a cited fact.
 const DELOAD_INTENSITY_OVERRIDE = { build_muscle: 0.65 }; // midpoint of the 60-70% band
 
+// Reviewed 2026-07-23 (Kerwin's call: "do your own independent research, cite it,
+// make a decision" — Ralph's own report9 gave TWO INTERNALLY CONTRADICTORY tables
+// for these exact ratios: the docx said Leg Curl = 50-60% of RDL, the pptx in the
+// SAME delivery said 25-35% — nearly double; Barbell Curl's parent lift even
+// disagreed (Bench in docx vs. Row in pptx)). Independent web research (peer-
+// reviewed literature + reputable strength-standards sources) found NO authoritative
+// source for accessory-to-compound starting-load ratios at all — this appears to be
+// a coaching heuristic, not a studied metric. DECISION: kept the existing values —
+// they already sit inside the wide, contradictory range both of Ralph's own tables
+// span, and there is no better-sourced alternative to replace them with. Flagged as
+// a genuine open research gap (needs dedicated EMG/biomechanics literature), not
+// filled with an unsourced number from either conflicting table.
 const ACCESSORY_FACTORS = {
   'Leg Curl':              { from: 'Romanian Deadlift', factor: 0.45 },
   'Leg Extension':         { from: 'Squat',             factor: 0.50 },
