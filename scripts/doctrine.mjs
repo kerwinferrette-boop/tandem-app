@@ -276,6 +276,62 @@ try {
   fail('D12', `could not verify multi-formula 1RM: ${e.message}`);
 }
 
+// ── D13 (ACTIVE) — Goal-specific deload intensity ──────────────────────────────
+// research-report(9) (Valyu, 2026-07-23): Strength & Fat-Loss deloads MAINTAIN
+// intensity (volume-cut only); Hypertrophy deloads ALSO drop %1RM to 60-70% so
+// reps can climb at a lighter load. Kerwin's explicit call (2026-07-23): fine with
+// a lower prescribed weight on deload IF the measured 1RM still only trends up —
+// already guaranteed elsewhere (D11's reconcileWorking1RMs never lowers the stored
+// 1RM). This gate verifies TWO things on every REAL deload week (deloadWeeks(),
+// the same list applyDeload/D4 uses): a goal WITH an override actually hits that
+// exact intensity; a goal WITHOUT one never dips (maintains D11's monotonic climb
+// straight through the deload week) — so the hypertrophy-specific exception can
+// never silently leak into Transform or Fat-Loss.
+let d13Checked = 0;
+try {
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const progMatch = tandemHtml.match(/const PROGRESSION = (\{[\s\S]*?\n\});/);
+  const overrideMatch = tandemHtml.match(/const DELOAD_INTENSITY_OVERRIDE = (\{[^}]*\});/);
+  const wfMatch = tandemHtml.match(/function weekFactor\(goal, week, totalWeeks\) \{[\s\S]*?\n\}/);
+  if (!progMatch || !overrideMatch || !wfMatch) {
+    fail('D13', 'could not locate PROGRESSION / DELOAD_INTENSITY_OVERRIDE / weekFactor in tandem.html');
+  } else {
+    // IIFE-return pattern (matches D11/D12 above): const/function bindings declared
+    // via vm.runInContext do NOT attach as properties of the sandbox object, so pull
+    // them out via an explicit return instead of reading wfCtx.<name> directly.
+    const bundle = `(function(){
+      const PROGRESSION = ${progMatch[1]};
+      const DELOAD_INTENSITY_OVERRIDE = ${overrideMatch[1]};
+      ${wfMatch[0]}
+      return { weekFactor, PROGRESSION, DELOAD_INTENSITY_OVERRIDE };
+    })()`;
+    const { weekFactor, PROGRESSION, DELOAD_INTENSITY_OVERRIDE } = vm.runInNewContext(bundle, { deloadWeeks });
+    for (const goal of Object.keys(PROGRESSION)) {
+      for (const T of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+        for (const w of deloadWeeks(T)) {
+          d13Checked++;
+          const prevW = w - 1;
+          if (prevW < 2) continue;
+          const before = weekFactor(goal, prevW, T);
+          const at = weekFactor(goal, w, T);
+          const overrideVal = DELOAD_INTENSITY_OVERRIDE[goal];
+          if (overrideVal != null) {
+            if (Math.abs(at - overrideVal) > 1e-9) fail('D13', `${goal} ${T}wk wk${w}: deload override not applied (got ${at}, expected ${overrideVal})`);
+          } else if (at < before - 1e-9) {
+            fail('D13', `${goal} ${T}wk wk${w}: intensity dipped on a deload week with no D13 override (${at} < ${before}) — goals without an override must maintain intensity through deload (research-report(9))`);
+          }
+        }
+      }
+    }
+    for (const [goal, v] of Object.entries(DELOAD_INTENSITY_OVERRIDE)) {
+      d13Checked++;
+      if (v < 0.60 || v > 0.70) fail('D13', `DELOAD_INTENSITY_OVERRIDE.${goal} = ${v} outside the research-cited 60-70% hypertrophy-deload band`);
+    }
+  }
+} catch (e) {
+  fail('D13', `could not verify goal-specific deload intensity: ${e.message}`);
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -297,6 +353,7 @@ console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — $
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM (no fake ratchet) — ${d11Checked} week-steps checked`);
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
+console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 

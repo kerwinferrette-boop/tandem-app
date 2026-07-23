@@ -1915,19 +1915,39 @@ function getPhase(week, goal, totalWeeks) {
 // logs a set, getRecommendation's progressive-overload logic wins.
 // ═══════════════════════════════════════════════════════
 // D11 (monotonic overload): each goal's %1RM curve rises or holds week-to-week and
-// NEVER dips — "reps down, weight up." The old table had stale intensity dips (an
-// obsolete way of expressing deloads) that made the prescribed weight sawtooth and
-// even fall at the peak; deloads are now handled solely by volume cuts (applyDeload,
-// doctrine D4), so this curve carries pure progressive overload. Values sit inside
-// each goal's research %1RM band (research-report(8) §3): Hypertrophy 67-85% 1RM;
-// Fat Loss 60-75% 1RM @ RPE 5-7; Transform = deficit-conservative recomp. Anchor
-// points are weeks 2-8; weekFactor() interpolates them across the actual length, and
-// interpolating a monotonic sequence stays monotonic. Enforced by scripts/doctrine.mjs.
+// NEVER dips within an accumulation block — "reps down, weight up." Deload weeks are
+// the one sanctioned exception (see D13 below); everywhere else this curve carries
+// pure progressive overload. Anchor points are weeks 2-8; weekFactor() interpolates
+// them across the actual length, and interpolating a monotonic sequence stays
+// monotonic. Enforced by scripts/doctrine.mjs.
+// fat_burn revised 2026-07-23 (Kerwin's call, "shoot for the higher %"): research-
+// report(8) gave Fat Loss 60-75% 1RM; research-report(9) (Valyu, same date) gave
+// 65-80% 1RM. The two Ralph runs disagree; rather than average them, Kerwin chose
+// the higher band outright ("I wouldn't mind lifting more weight"). 65-80% is used
+// here in full — it's a strict superset-toward-higher-intensity of the old 60-68%
+// curve, and still fully inside fat_burn's own research-report(8) RPE 5-7 guidance.
 const PROGRESSION = {
-  fat_burn:     { 2: 0.60, 3: 0.61, 4: 0.63, 5: 0.64, 6: 0.66, 7: 0.67, 8: 0.68 },
+  fat_burn:     { 2: 0.65, 3: 0.67, 4: 0.69, 5: 0.71, 6: 0.73, 7: 0.76, 8: 0.80 },
   build_muscle: { 2: 0.67, 3: 0.69, 4: 0.71, 5: 0.73, 6: 0.75, 7: 0.77, 8: 0.80 },
   transform:    { 2: 0.66, 3: 0.68, 4: 0.70, 5: 0.72, 6: 0.74, 7: 0.76, 8: 0.78 }
 };
+
+// D13 (goal-specific deload intensity): research-report(9) (Valyu, 2026-07-23) found
+// deload-intensity management differs by goal — Strength & Fat-Loss DELOADS MAINTAIN
+// intensity (volume-cut only); Hypertrophy DELOADS ALSO reduce %1RM to 60-70%,
+// because dropping load specifically lets reps climb higher (12-15) to clear
+// muscular fatigue while a lighter stimulus is preserved. This is Kerwin's explicit
+// call (2026-07-23): "I don't mind dropping the weight... especially if I'm
+// increasing reps. However, the 1RM calculated from the decrease in weight and
+// increase in reps should ideally lead to an increase in my 1RM." That criterion is
+// already guaranteed elsewhere — reconcileWorking1RMs only ever raises the stored
+// 1RM from real logged performance, never lowers it — so this override only changes
+// what's PRESCRIBED on a deload day, never what's measured.
+// Transform has no dedicated research-report(9) guidance; it is treated as
+// deficit/recomp-context like Fat-Loss (maintain intensity) rather than pure
+// Hypertrophy, since Transform's defining trait is the caloric-deficit/recomp
+// context, not pure muscle growth — a judgment call, flagged as such, not a cited fact.
+const DELOAD_INTENSITY_OVERRIDE = { build_muscle: 0.65 }; // midpoint of the 60-70% band
 
 const ACCESSORY_FACTORS = {
   'Leg Curl':              { from: 'Romanian Deadlift', factor: 0.45 },
@@ -1992,6 +2012,13 @@ function weekFactor(goal, week, totalWeeks) {
   const table = PROGRESSION[g] || PROGRESSION.build_muscle;
   const N = Math.max(Number(totalWeeks) || 8, 3);
   const wk = Math.min(Math.max(week, 2), N);
+  // D13: on a REAL deload week (deloadWeeks() from programs.js — same list applyDeload
+  // uses to cut volume), a goal with an override drops intensity too, instead of
+  // following the monotonic accumulation curve for that one week.
+  const override = DELOAD_INTENSITY_OVERRIDE[g];
+  if (override != null && typeof deloadWeeks === 'function') {
+    try { if (deloadWeeks(N).has(wk)) return override; } catch (e) { /* fall through to curve */ }
+  }
   const pos = 2 + ((wk - 2) * 6) / (N - 2);          // map week 2..N onto 2..8
   const lo = Math.max(2, Math.min(8, Math.floor(pos)));
   const hi = Math.max(2, Math.min(8, Math.ceil(pos)));
