@@ -1756,6 +1756,25 @@ function deloadWeeks(weeks) {
   s.add(T);
   return s;
 }
+
+// A REALIZATION week is the special case of a deload that also happens to be the
+// program's very last week — there's no next block to recover into, so a light
+// recovery week wastes the one chance to let the lifter express/test the strength
+// the cycle actually built. Instead: same reduced volume as a deload, but HIGH
+// intensity + LOW reps (a genuine top single/triple/five), not a light week.
+// Kerwin, 2026-07-23: "Why would week 12 of a build muscle plan be a deload, instead
+// of an all out max week?" — the spec's Part B already named this exact pattern for
+// the 11wk program ("Wk11 peak/test week, top singles/triples") but never extended
+// it to the other 8 lengths, all of which currently end their ENTIRE program on a
+// deload (4,5,6,7,8,9,10,12 — everything except 11, which was never a deload week
+// at all and needs no change here). This generalizes that already-approved concept.
+function realizationWeek(weeks) {
+  const T = Number(weeks) || 12;
+  const dw = [...deloadWeeks(T)];
+  if (!dw.length) return null;
+  const last = Math.max(...dw);
+  return last === T ? T : null;
+}
 // ── SUPERSETS — Periodization spec Part C + 5-Goal Taxonomy + doctrine D5 ───────
 // Per goal, per the taxonomy + science: supersets pair NON-primary work for time
 // efficiency + metabolic demand, and NEVER touch the primary compound block.
@@ -1798,15 +1817,20 @@ function applySupersets(program, goal) {
 function applyDeload(program, rotation, weeks) {
   const wk = rotation && Number(rotation.week);
   if (!Array.isArray(program) || !wk || !deloadWeeks(weeks).has(wk)) return program;
+  const isRealization = wk === realizationWeek(weeks);
   // Return NEW objects — never mutate the shared static bases.
   return program.map(day => ({
     ...day,
-    deload: true,
-    label: /deload/i.test(day.label || '') ? day.label : `${day.label} · Deload`,
-    rationale: `DELOAD WEEK — volume cut ~50%, load held. Recovery is the training stimulus this week; do not chase new PRs. ` + (day.rationale || ''),
+    deload: !isRealization,
+    realization: isRealization,
+    label: /deload|realization/i.test(day.label || '') ? day.label : `${day.label} · ${isRealization ? 'Realization' : 'Deload'}`,
+    rationale: (isRealization
+      ? `REALIZATION WEEK — this is what the last block built. Fewer sets, but push for a real top single/triple/five near your max. `
+      : `DELOAD WEEK — volume cut ~50%, load held. Recovery is the training stimulus this week; do not chase new PRs. `
+    ) + (day.rationale || ''),
     blocks: (day.blocks || []).map(b => b.cardio ? b : ({
       ...b,
-      exs: (b.exs || []).map(e => ({ ...e, sets: Math.max(2, Math.ceil((e.sets || 3) / 2)), deload: true })),
+      exs: (b.exs || []).map(e => ({ ...e, sets: Math.max(2, Math.ceil((e.sets || 3) / 2)), deload: !isRealization, realization: isRealization })),
     })),
   }));
 }

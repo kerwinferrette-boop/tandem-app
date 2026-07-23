@@ -61,17 +61,21 @@ function check(label, actual, expected) {
 // ── 2. weekFactor sanity ──
 check('weekFactor build_muscle wk5 / 8wk == authored anchor', weekFactor('build_muscle', 5, 8), PROGRESSION.build_muscle[5]);
 check('weekFactor burn_fat wk2 normalizes to fat_burn anchor', weekFactor('burn_fat', 2, 8), PROGRESSION.fat_burn[2]);
-// D13: wk12 of a 12wk build_muscle program is a REAL deload week (deloadWeeks(12) =
-// {4,8,12}) — it now correctly returns the goal-specific deload-intensity override
-// (0.65) instead of climbing to the top-of-curve anchor. wk11 (non-deload) still
-// clamps toward the final anchor as before.
+// D13: wk8 of a 12wk build_muscle program is a MID-program deload week (deloadWeeks(12)
+// = {4,8,12}) — it correctly returns the goal-specific deload-intensity override (0.65)
+// instead of climbing to the top-of-curve anchor. wk11 (non-deload) still clamps
+// toward the final anchor as before.
 {
   const wk11 = weekFactor('build_muscle', 11, 12);
   const ok = wk11 > PROGRESSION.build_muscle[7] && wk11 <= PROGRESSION.build_muscle[8];
   console.log(`${ok ? 'PASS' : 'FAIL'}  weekFactor build_muscle wk11 / 12wk (non-deload) is between anchors 7 and 8  →  ${wk11}`);
   if (!ok) failures++;
 }
-check('weekFactor build_muscle wk12 / 12wk (real deload) applies D13 override', weekFactor('build_muscle', 12, 12), 0.65);
+check('weekFactor build_muscle wk8 / 12wk (mid-program deload) applies D13 override', weekFactor('build_muscle', 8, 12), 0.65);
+// D14: wk12 of a 12wk program is the FINAL week, which is ALSO in deloadWeeks(12) —
+// that makes it a REALIZATION week (D14), not a D13 hypertrophy deload. weekFactor
+// must return REALIZATION_INTENSITY (0.90) there, overriding D13 entirely.
+check('weekFactor build_muscle wk12 / 12wk (realization, final week) overrides D13', weekFactor('build_muscle', 12, 12), 0.90);
 
 // ── 3. Calibrated path ──
 const cal = getWeekTarget('Barbell Squat', 3, 'build_muscle', 200, 'male', {}, 8);

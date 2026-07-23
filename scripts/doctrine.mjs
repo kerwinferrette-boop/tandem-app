@@ -29,8 +29,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, PHASES: GOAL_PHASES } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, PHASES }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, PHASES: GOAL_PHASES } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, PHASES }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -132,7 +132,10 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
 // Every mesocycle ends in a deload (every 4-6 wk, block-final): reduced volume,
 // load held. Assert, for each length 4-12: no training run > 7 wk without a deload;
 // each deload week has REDUCED total sets vs a non-deload week and is tagged on
-// every day; a non-deload week is never tagged.
+// every day; a non-deload week is never tagged. A deload week that is ALSO the
+// program's final week is a REALIZATION week instead (D14) — tagged
+// day.realization, not day.deload — so "tagged" here means either flag, but never
+// both and never neither.
 let d4Checked = 0;
 for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
   const dw = [...deloadWeeks(T)].sort((a, b) => a - b);
@@ -143,12 +146,14 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
   if (maxGap > 7) fail('D4', `${goal}/${days}d ${T}wk: ${maxGap}-week run with no deload (> 6-wk rule)`);
   const refWk = [1, 2, 3].find(w => !dw.includes(w)) || 1;
   const refSets = totalSets(genT(goal, days, 'male', refWk, T));
-  if (genT(goal, days, 'male', refWk, T).some(d => d.deload)) fail('D4', `${goal}/${days}d ${T}wk wk${refWk}: non-deload week wrongly tagged deload`);
+  const refProg = genT(goal, days, 'male', refWk, T);
+  if (refProg.some(d => d.deload || d.realization)) fail('D4', `${goal}/${days}d ${T}wk wk${refWk}: non-deload week wrongly tagged deload/realization`);
   for (const w of dw) {
     const p = genT(goal, days, 'male', w, T);
     d4Checked++;
-    if (!p.every(d => d.deload === true)) fail('D4', `${goal}/${days}d ${T}wk wk${w}: deload not tagged on all days`);
-    if (totalSets(p) >= refSets) fail('D4', `${goal}/${days}d ${T}wk wk${w}: deload did not reduce volume (${totalSets(p)} vs ${refSets})`);
+    if (!p.every(d => d.deload === true || d.realization === true)) fail('D4', `${goal}/${days}d ${T}wk wk${w}: neither deload nor realization tagged on all days`);
+    if (p.some(d => d.deload === true && d.realization === true)) fail('D4', `${goal}/${days}d ${T}wk wk${w}: a day was tagged BOTH deload and realization`);
+    if (totalSets(p) >= refSets) fail('D4', `${goal}/${days}d ${T}wk wk${w}: deload/realization did not reduce volume (${totalSets(p)} vs ${refSets})`);
   }
 }
 
@@ -305,10 +310,11 @@ try {
       ${wfMatch[0]}
       return { weekFactor, PROGRESSION, DELOAD_INTENSITY_OVERRIDE };
     })()`;
-    const { weekFactor, PROGRESSION, DELOAD_INTENSITY_OVERRIDE } = vm.runInNewContext(bundle, { deloadWeeks });
+    const { weekFactor, PROGRESSION, DELOAD_INTENSITY_OVERRIDE } = vm.runInNewContext(bundle, { deloadWeeks, realizationWeek });
     for (const goal of Object.keys(PROGRESSION)) {
       for (const T of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
         for (const w of deloadWeeks(T)) {
+          if (w === realizationWeek(T)) continue; // D14 owns the realization week, not D13
           d13Checked++;
           const prevW = w - 1;
           if (prevW < 2) continue;
@@ -330,6 +336,80 @@ try {
   }
 } catch (e) {
   fail('D13', `could not verify goal-specific deload intensity: ${e.message}`);
+}
+
+// ── D14 (ACTIVE) — Realization weeks (final-week strength test, not a light week) ──
+// Kerwin, 2026-07-23: "Why would week 12 of a build muscle plan be a deload, instead
+// of an all out max week?" Every length except 11wk previously ended its ENTIRE
+// program on a light deload (D13's own hypertrophy dip made this concretely wrong:
+// week 12 was prescribing 6 reps at 65% 1RM, far too light for a real 6-rep set).
+// realizationWeek() (programs.js) identifies the program's final week whenever it
+// would otherwise be a light deload; weekFactor/effectiveReps (tandem.html) override
+// it to HIGH intensity + LOW reps for EVERY goal — a true top single/triple/five —
+// regardless of any D13 goal-specific deload behavior. Verifies: realizationWeek()
+// matches the expected week per length (T itself for 4-10,12; null for 11, which was
+// never a deload week and needs no realization treatment); weekFactor returns the
+// realization intensity on that week for every goal; effectiveReps returns the
+// realization rep target regardless of the phase's normal rep scheme; applyDeload
+// tags realization weeks with day.realization (not day.deload) and vice versa.
+let d14Checked = 0;
+try {
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const progMatch = tandemHtml.match(/const PROGRESSION = (\{[\s\S]*?\n\});/);
+  const overrideMatch = tandemHtml.match(/const DELOAD_INTENSITY_OVERRIDE = (\{[^}]*\});/);
+  const realIntensityMatch = tandemHtml.match(/const REALIZATION_INTENSITY = ([\d.]+);/);
+  const realRepsMatch = tandemHtml.match(/const REALIZATION_REPS = (\d+);/);
+  const wfMatch = tandemHtml.match(/function weekFactor\(goal, week, totalWeeks\) \{[\s\S]*?\n\}/);
+  const pwrMatch = tandemHtml.match(/function phaseWeekRep\(phase, week\) \{[\s\S]*?\n\}/);
+  const erMatch = tandemHtml.match(/function effectiveReps\(phase, week, totalWeeks\) \{[\s\S]*?\n\}/);
+  if (!progMatch || !overrideMatch || !realIntensityMatch || !realRepsMatch || !wfMatch || !pwrMatch || !erMatch) {
+    fail('D14', 'could not locate realization-week machinery in tandem.html');
+  } else {
+    const bundle = `(function(){
+      const PROGRESSION = ${progMatch[1]};
+      const DELOAD_INTENSITY_OVERRIDE = ${overrideMatch[1]};
+      const REALIZATION_INTENSITY = ${realIntensityMatch[1]};
+      const REALIZATION_REPS = ${realRepsMatch[1]};
+      ${pwrMatch[0]}
+      ${wfMatch[0]}
+      ${erMatch[0]}
+      return { weekFactor, effectiveReps, REALIZATION_INTENSITY, REALIZATION_REPS };
+    })()`;
+    const { weekFactor, effectiveReps, REALIZATION_INTENSITY, REALIZATION_REPS } = vm.runInNewContext(bundle, { deloadWeeks, realizationWeek });
+
+    if (REALIZATION_INTENSITY < 0.85 || REALIZATION_INTENSITY > 0.95) fail('D14', `REALIZATION_INTENSITY ${REALIZATION_INTENSITY} outside the research-cited 85-90% strength-test band`);
+    if (REALIZATION_REPS < 1 || REALIZATION_REPS > 5) fail('D14', `REALIZATION_REPS ${REALIZATION_REPS} outside top single-to-five territory`);
+
+    const EXPECTED = { 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: null, 12: 12 };
+    for (const [Tstr, expected] of Object.entries(EXPECTED)) {
+      const T = Number(Tstr);
+      d14Checked++;
+      const got = realizationWeek(T);
+      if (got !== expected) { fail('D14', `realizationWeek(${T}) = ${got}, expected ${expected}`); continue; }
+      if (expected == null) continue;
+      for (const goal of CANONICAL_GOALS) {
+        d14Checked++;
+        const f = weekFactor(goal, expected, T);
+        if (Math.abs(f - REALIZATION_INTENSITY) > 1e-9) fail('D14', `${goal} ${T}wk wk${expected} (realization): weekFactor = ${f}, expected ${REALIZATION_INTENSITY}`);
+      }
+      d14Checked++;
+      const dummyPhase = { reps: '99', weeks: [1, 99] }; // any phase — realization must win regardless of content
+      const reps = effectiveReps(dummyPhase, expected, T);
+      if (reps !== REALIZATION_REPS) fail('D14', `${T}wk wk${expected} (realization): effectiveReps = ${reps}, expected ${REALIZATION_REPS}`);
+    }
+  }
+} catch (e) {
+  fail('D14', `could not verify realization weeks: ${e.message}`);
+}
+
+// applyDeload tagging: realization weeks get day.realization (never day.deload) and
+// vice versa — checked directly against the live engine, not the regex-extracted copy.
+for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T of [4, 8, 12]) {
+  const rw = realizationWeek(T);
+  if (rw == null) continue;
+  d14Checked++;
+  const p = genT(goal, days, 'male', rw, T);
+  if (!p.every(d => d.realization === true && d.deload !== true)) fail('D14', `${goal}/${days}d ${T}wk wk${rw}: applyDeload did not tag realization correctly`);
 }
 
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
@@ -354,6 +434,7 @@ console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM (no fake ratchet) — ${d11Checked} week-steps checked`);
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
+console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 

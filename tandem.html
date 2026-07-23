@@ -1875,6 +1875,20 @@ function phaseWeekRep(phase, week) {
   return reps[Math.min(Math.max(offset, 0), reps.length - 1)] || 10;
 }
 
+// A REALIZATION week (realizationWeek() from programs.js — the program's final week,
+// when it coincides with what would otherwise be a light deload) overrides the
+// phase's normal accumulation-block reps with a true low-rep test target, instead of
+// whatever the phase's rep-scheme string says for that week position. Everywhere the
+// UI shows "this week's reps," it should go through this wrapper, not raw
+// phaseWeekRep, so the display always matches what applyDeload/weekFactor actually do.
+const REALIZATION_REPS = 3; // top single/triple/five territory — a real test, not a set
+function effectiveReps(phase, week, totalWeeks) {
+  if (typeof realizationWeek === 'function') {
+    try { if (week === realizationWeek(totalWeeks)) return REALIZATION_REPS; } catch (e) { /* fall through */ }
+  }
+  return phaseWeekRep(phase, week);
+}
+
 // Length-scaled periodisation: the 4 phases (Foundation/Build/Power/Peak) are
 // authored against a 12-week template but must span any program length. Split
 // totalWeeks into 4 contiguous segments and rewrite each phase's weeks range.
@@ -1948,6 +1962,12 @@ const PROGRESSION = {
 // Hypertrophy, since Transform's defining trait is the caloric-deficit/recomp
 // context, not pure muscle growth — a judgment call, flagged as such, not a cited fact.
 const DELOAD_INTENSITY_OVERRIDE = { build_muscle: 0.65 }; // midpoint of the 60-70% band
+
+// Realization week (see realizationWeek() in programs.js): a true strength test,
+// not a light week — applies to EVERY goal, overriding both the normal curve and
+// any D13 deload-intensity dip. Source: research-report(9) Strength block Week3
+// 85-90% 1RM; the earlier-approved periodization spec Part C, Strength 85%+ 1RM.
+const REALIZATION_INTENSITY = 0.90;
 
 // Reviewed 2026-07-23 (Kerwin's call: "do your own independent research, cite it,
 // make a decision" — Ralph's own report9 gave TWO INTERNALLY CONTRADICTORY tables
@@ -2024,6 +2044,12 @@ function weekFactor(goal, week, totalWeeks) {
   const table = PROGRESSION[g] || PROGRESSION.build_muscle;
   const N = Math.max(Number(totalWeeks) || 8, 3);
   const wk = Math.min(Math.max(week, 2), N);
+  // Realization week wins over EVERYTHING else — checked first. It's a true
+  // strength test regardless of goal, so it overrides both the normal curve and
+  // any D13 deload-intensity dip.
+  if (typeof realizationWeek === 'function') {
+    try { if (realizationWeek(N) === wk) return REALIZATION_INTENSITY; } catch (e) { /* fall through */ }
+  }
   // D13: on a REAL deload week (deloadWeeks() from programs.js — same list applyDeload
   // uses to cut volume), a goal with an override drops intensity too, instead of
   // following the monotonic accumulation curve for that one week.
@@ -2214,7 +2240,7 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // Weighted-core path (2026-07-13): callers may pass the exercise's own rep
   // target (ex.r) so core work progresses against ITS prescription, not the
   // lifting phase rep scheme.
-  const topRange = repTarget || phaseWeekRep(phase, currentWeek);
+  const topRange = repTarget || effectiveReps(phase, currentWeek, cfg.weeks);
   const inc = compound ? phase.incComp : phase.incAcc;
 
   // EPIC-9 Step C/D: %1RM path for calibrated users. The WORKING 1RM (nudged
@@ -2813,7 +2839,7 @@ function renderTracker() {
   document.getElementById('pbEyebrow').textContent = `Phase ${_phaseNum} · ${cfg.goal.replace('_',' ').toUpperCase()}`;
   document.getElementById('pbName').textContent = phase.name;
   document.getElementById('pbIntent').textContent = phase.intent;
-  document.getElementById('pbReps').textContent = `This week: ${phaseWeekRep(phase, currentWeek)} reps · Phase range: ${phase.reps}`;
+  document.getElementById('pbReps').textContent = `This week: ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · Phase range: ${phase.reps}`;
   document.getElementById('pbWeekNum').textContent = currentWeek;
   document.getElementById('pbTotalWeeks').textContent = cfg.weeks;
   // BUG-030: getProgramDayNumber now returns 'dayN' | 'rest' | null (not a bare number)
@@ -2843,7 +2869,7 @@ function renderTracker() {
     <strong style="color:var(--text)">Program length:</strong> ${cfg.weeks} weeks<br>
     <strong style="color:var(--text)">Current week:</strong> ${currentWeek}<br>
     <strong style="color:var(--text)">Current phase:</strong> ${phase.name}<br>
-    <strong style="color:var(--text)">This week's reps:</strong> ${phaseWeekRep(phase, currentWeek)} (Phase range: ${phase.reps})<br>
+    <strong style="color:var(--text)">This week's reps:</strong> ${effectiveReps(phase, currentWeek, cfg.weeks)} (Phase range: ${phase.reps})<br>
     <strong style="color:var(--text)">Compound rest:</strong> ${phase.restComp} sec<br>
     <strong style="color:var(--text)">Accessory rest:</strong> ${phase.restAcc} sec<br>
     <strong style="color:var(--text)">Weight increment (compounds):</strong> +${phase.incComp} lbs<br>
@@ -2948,7 +2974,7 @@ function buildDayHTML(day, phase) {
         <div class="dh-title">${day.label}</div>
         <div class="dh-chips">
           <div class="dh-chip hi">${day.blocks.find(b=>b.cardio) ? '90 min' : '60 min'}</div>
-          <div class="dh-chip">${phaseWeekRep(phase, currentWeek)} reps</div>
+          <div class="dh-chip">${effectiveReps(phase, currentWeek, cfg.weeks)} reps</div>
         </div>
       </div>
       <div class="dh-rationale">${day.rationale}</div>
@@ -3048,7 +3074,7 @@ function buildDayHTML(day, phase) {
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
-                : `${ex.sets} × ${phaseWeekRep(phase, currentWeek)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
+                : `${ex.sets} × ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
               </div>
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
@@ -3068,7 +3094,7 @@ function buildDayHTML(day, phase) {
               <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek), inputMode)}
+            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : effectiveReps(phase, currentWeek, cfg.weeks), inputMode)}
             <div class="set-actions">
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${inputMode}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
