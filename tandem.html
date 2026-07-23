@@ -1914,10 +1914,19 @@ function getPhase(week, goal, totalWeeks) {
 // fill the first-session gap (no logged history yet) — once a user
 // logs a set, getRecommendation's progressive-overload logic wins.
 // ═══════════════════════════════════════════════════════
+// D11 (monotonic overload): each goal's %1RM curve rises or holds week-to-week and
+// NEVER dips — "reps down, weight up." The old table had stale intensity dips (an
+// obsolete way of expressing deloads) that made the prescribed weight sawtooth and
+// even fall at the peak; deloads are now handled solely by volume cuts (applyDeload,
+// doctrine D4), so this curve carries pure progressive overload. Values sit inside
+// each goal's research %1RM band (research-report(8) §3): Hypertrophy 67-85% 1RM;
+// Fat Loss 60-75% 1RM @ RPE 5-7; Transform = deficit-conservative recomp. Anchor
+// points are weeks 2-8; weekFactor() interpolates them across the actual length, and
+// interpolating a monotonic sequence stays monotonic. Enforced by scripts/doctrine.mjs.
 const PROGRESSION = {
-  fat_burn:     { 2: 0.52, 3: 0.55, 4: 0.50, 5: 0.55, 6: 0.58, 7: 0.61, 8: 0.52 },
-  build_muscle: { 2: 0.65, 3: 0.68, 4: 0.60, 5: 0.68, 6: 0.72, 7: 0.75, 8: 0.62 },
-  transform:    { 2: 0.68, 3: 0.58, 4: 0.72, 5: 0.55, 6: 0.72, 7: 0.75, 8: 0.58 }
+  fat_burn:     { 2: 0.60, 3: 0.61, 4: 0.63, 5: 0.64, 6: 0.66, 7: 0.67, 8: 0.68 },
+  build_muscle: { 2: 0.67, 3: 0.69, 4: 0.71, 5: 0.73, 6: 0.75, 7: 0.77, 8: 0.80 },
+  transform:    { 2: 0.66, 3: 0.68, 4: 0.70, 5: 0.72, 6: 0.74, 7: 0.76, 8: 0.78 }
 };
 
 const ACCESSORY_FACTORS = {
@@ -2041,19 +2050,23 @@ async function persistWeekTargets(names) {
   } catch (e) { console.warn('week_targets persist skipped:', e); }
 }
 
-// EPIC-9 living feedback loop: nudge the WORKING 1RM (tandem_working1rm)
-// ±2.5% based on session performance. The stored all-time PR (tandem_prs /
-// personal_records) is never lowered by this — only the working number moves,
-// so next week's %1RM targets track how the lifter is actually performing.
-//   up:   every logged set hit the top of this week's rep range → ×1.025
-//   down: every logged set fell 3+ reps short of the top       → ×0.975
-// Skips core/timed work and cardio. Recomputes week_targets for changed names.
-function nudgeWorking1RMs(sessionExs, program) {
+// D11 (earned-only feedback loop): the WORKING 1RM is a MEASUREMENT, never a
+// schedule. It rises ONLY when the lifter's real performance earns it — the running
+// max of Epley estimates (calcRM) over the sets actually logged — never by a fixed
+// weekly step. This replaces the old ±2.5%/week ratchet, which fabricated ~30% of
+// "strength gain" over a mesocycle by assumption: it inflated the stored 1RM while
+// the sawtooth %-table simultaneously told the user to lift LESS (the two numbers
+// desynced and contradicted each other). Now the loop is closed and honest —
+// out-lift the prescription → your 1RM rises → next week's target (= 1RM × %) rises.
+// Reps are capped at 12 in the Epley estimate: the research report is SILENT on
+// formula accuracy at high reps, so we reuse the app's own 12-rep PR boundary rather
+// than invent a coefficient — a 15-rep set still counts, but conservatively. The
+// stored all-time PR is a running max and is never lowered. Recomputes week_targets
+// for any exercise whose 1RM moved. Skips core/timed work and cardio.
+function reconcileWorking1RMs(sessionExs, program) {
   if (!sessionExs || !Object.keys(sessionExs).length) return;
   const day = (program || []).find(d => d.key === currentDay);
   if (!day) return;
-  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
-  const topRange = phaseWeekRep(phase, currentWeek);
   const prs = LS.get('tandem_prs') || {};
   const working = LS.get('tandem_working1rm') || {};
   const changed = [];
@@ -2064,25 +2077,27 @@ function nudgeWorking1RMs(sessionExs, program) {
       if (!ex || ex.isCore || ex.unit === 'sec') return;
       const sets = sessionExs[ex.id];
       if (!sets || !sets.length) return;
-      const reps = sets.map(s => parseInt(s.r) || 0);
-      const minReps = Math.min(...reps);
-      const maxReps = Math.max(...reps);
-      const base = working[ex.name]?.rm ?? prs[ex.name] ?? prs[ex.id];
-      if (!base || typeof base !== 'number') return;
-
-      let dir = null;
-      if (minReps >= topRange) dir = 'up';
-      else if (maxReps <= topRange - 3) dir = 'down';
-      if (!dir) return;
-
-      const rm = Math.round(base * (dir === 'up' ? 1.025 : 0.975) * 10) / 10;
-      working[ex.name] = { rm, date: localDateStr(), dir };
+      // Best EARNED 1RM from this session: max Epley over real sets, reps capped at 12.
+      let best = 0;
+      for (const s of sets) {
+        const w = parseFloat(s.w) || 0;
+        const r = parseInt(s.r) || 0;
+        if (w <= 0 || r <= 0) continue;
+        best = Math.max(best, calcRM(w, Math.min(r, 12)));
+      }
+      best = Math.round(best);
+      if (!best) return;
+      const prior = working[ex.name]?.rm ?? prs[ex.name] ?? 0;
+      if (best <= prior) return;                 // earned-only: never lower, never fake
+      working[ex.name] = { rm: best, date: localDateStr(), dir: 'earned' };
+      if (best > (prs[ex.name] ?? 0)) prs[ex.name] = best; // all-time PR is a running max
       changed.push(ex.name);
     });
   });
 
   if (changed.length) {
     LS.set('tandem_working1rm', working);
+    LS.set('tandem_prs', prs);
     persistWeekTargets(changed); // async fire-and-forget; own try/catch
   }
 }
@@ -2107,7 +2122,7 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   const best1RMs = {};
   for (const s of sessionSets) {
     if (!s.exercise_name || !s.weight_lbs || !s.reps) continue;
-    const est = Math.round(calcRM(s.weight_lbs, s.reps));
+    const est = Math.round(calcRM(s.weight_lbs, Math.min(s.reps, 12))); // D11: cap reps at 12
     if (!best1RMs[s.exercise_name] || est > best1RMs[s.exercise_name])
       best1RMs[s.exercise_name] = est;
   }
@@ -3168,7 +3183,7 @@ function onSetInput(id, i) {
   // bw with no typed weight → volume = reps; typed weight upgrades to w×r
   if (v) v.textContent = timed ? '—' : (unit === 'bw' && !w) ? (r || 0) : Math.round(w * r);
   if (!timed && w && r) {
-    const est = calcRM(w, r);
+    const est = calcRM(w, Math.min(r, 12)); // D11: cap reps at 12 (match PR/1RM path)
     const liveEl = document.getElementById(`i1rm-${id}`);
     const pctsEl = document.getElementById(`ipcts-${id}`);
     if (liveEl) liveEl.textContent = Math.round(est) + ' lbs';
@@ -3190,7 +3205,11 @@ function logSet(id, i) {
   if (!already) {
     const w = parseFloat(wEl.value) || 0;
     const r = parseInt(rEl.value) || 0;
-    const est1rm = Math.round(calcRM(w, r));
+    // D11: cap reps at 12 in the Epley estimate (research is silent on high-rep
+    // accuracy — reuse the app's own 12-rep boundary rather than invent one). A
+    // high-rep set still counts toward the PR, just conservatively — it is no
+    // longer discarded, so Fat Burn / early-hypertrophy strength gains stay visible.
+    const est1rm = Math.round(calcRM(w, Math.min(r, 12)));
     const prs = LS.get('tandem_prs') || {};
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
@@ -3207,7 +3226,7 @@ function logSet(id, i) {
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
     sessionSetsMap[id].push({ set: i+1, w, r, est1rm });
 
-    if (est1rm > prev && r <= 12 && w > 0) {
+    if (est1rm > prev && w > 0) {   // D11: reps already capped in est1rm above
       prs[prExName] = est1rm;                 // C7: write by canonical name
       if (prExName !== id) delete prs[id];    // C7: retire any legacy id-keyed entry
       LS.set('tandem_prs', prs);
@@ -3689,11 +3708,12 @@ function finishSession() {
     .flatMap(sets => sets)
     .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
 
-  // EPIC-9: living feedback loop — nudge working 1RMs from this session's
-  // performance. currentDay still points at the finished day here (only the
-  // LS key advances below/above), so the day lookup matches what was logged.
-  try { nudgeWorking1RMs(snapshotExercises, program); }
-  catch (e) { console.warn('1RM nudge skipped:', e); }
+  // D11: earned-only feedback loop — reconcile working 1RMs to this session's REAL
+  // performance (running-max Epley, never a scheduled step). currentDay still points
+  // at the finished day here (only the LS key advances below/above), so the day
+  // lookup matches what was logged.
+  try { reconcileWorking1RMs(snapshotExercises, program); }
+  catch (e) { console.warn('1RM reconcile skipped:', e); }
 
   // Advance to next training day (reuse program already computed above)
   const dayIdx = program.findIndex(d => d.key === currentDay);

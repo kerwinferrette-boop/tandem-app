@@ -202,6 +202,40 @@ for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
   if (f <= 0) fail('D6', `${days}d/${sex}: fat_burn produced zero working volume`);
 }
 
+// ── D11 (ACTIVE) — Monotonic progressive overload + earned-only 1RM ─────────────
+// "Reps down, weight up." The prescribed %1RM curve (PROGRESSION in tandem.html) must
+// rise-or-hold every week and NEVER dip — deloads are volume cuts (D4), not intensity
+// dips. And the 1RM that drives the prescription is a MEASUREMENT of real performance,
+// never a scheduled ratchet: this gate trips if the old ±2.5%/week fake-gain returns.
+// (Source: research-report(8) §3 %1RM bands + progressive-overload principle; the
+// sawtooth table + fabricated 1RM ratchet were the "app says stronger while prescribing
+// less" defect. tandem.html is the home of both, so we read it directly here.)
+let d11Checked = 0;
+try {
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const m = tandemHtml.match(/const PROGRESSION = (\{[\s\S]*?\n\});/);
+  if (!m) fail('D11', 'could not locate the PROGRESSION table in tandem.html');
+  else {
+    const PROGRESSION = vm.runInNewContext('(' + m[1] + ')', {});
+    for (const [goal, row] of Object.entries(PROGRESSION)) {
+      const keys = Object.keys(row).map(Number).sort((a, b) => a - b);
+      for (let i = 1; i < keys.length; i++) {
+        d11Checked++;
+        if (row[keys[i]] < row[keys[i - 1]]) {
+          fail('D11', `PROGRESSION.${goal}: %1RM dips at week ${keys[i]} (${row[keys[i]]} < ${row[keys[i - 1]]}) — must be monotonic non-decreasing (reps down, weight up)`);
+        }
+      }
+    }
+  }
+  // Regression tripwire: the fabricated ±2.5%/week ratchet on the working 1RM must stay
+  // gone. The old code multiplied the working 1RM base by (dir === 'up' ? 1.025 : 0.975).
+  if (/\?\s*1\.025\s*:\s*0\.975/.test(tandemHtml)) {
+    fail('D11', 'the scheduled ±2.5%/week 1RM ratchet is back — the working 1RM must be earned (running-max Epley), never a fixed weekly step');
+  }
+} catch (e) {
+  fail('D11', `could not verify monotonic overload: ${e.message}`);
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -221,6 +255,7 @@ console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on prima
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
+console.log(`  D11 monotonic %1RM overload + earned-only 1RM (no fake ratchet) — ${d11Checked} week-steps checked`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 

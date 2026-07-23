@@ -59,9 +59,9 @@ function check(label, actual, expected) {
 }
 
 // ── 2. weekFactor sanity ──
-check('weekFactor build_muscle wk5 / 8wk == authored 0.68', weekFactor('build_muscle', 5, 8), PROGRESSION.build_muscle[5]);
-check('weekFactor burn_fat wk2 normalizes to fat_burn 0.52', weekFactor('burn_fat', 2, 8), PROGRESSION.fat_burn[2]);
-check('weekFactor build_muscle wk12 / 12wk clamps to final 0.62', weekFactor('build_muscle', 12, 12), PROGRESSION.build_muscle[8]);
+check('weekFactor build_muscle wk5 / 8wk == authored anchor', weekFactor('build_muscle', 5, 8), PROGRESSION.build_muscle[5]);
+check('weekFactor burn_fat wk2 normalizes to fat_burn anchor', weekFactor('burn_fat', 2, 8), PROGRESSION.fat_burn[2]);
+check('weekFactor build_muscle wk12 / 12wk clamps to final anchor', weekFactor('build_muscle', 12, 12), PROGRESSION.build_muscle[8]);
 
 // ── 3. Calibrated path ──
 const cal = getWeekTarget('Barbell Squat', 3, 'build_muscle', 200, 'male', {}, 8);
@@ -111,9 +111,9 @@ function resolveStartW(ex, recWeight, pr1rm, compound1RMs) {
   }
   return startW;
 }
-// (a) calibrated override WINS over bank seed
+// (a) calibrated override WINS over bank seed (weekFactor read live from PROGRESSION)
 check('startW: calibrated 1RM=200 overrides bank ex.w=95',
-  resolveStartW({ name: 'Barbell Squat', w: 95, isCore: false }, null, 200, {}), roundTo5(200 * 0.68));
+  resolveStartW({ name: 'Barbell Squat', w: 95, isCore: false }, null, 200, {}), roundTo5(200 * PROGRESSION.build_muscle[3]));
 // (b) derived override WINS over bank seed
 check('startW: derived (Bench 150) overrides bank ex.w=40',
   resolveStartW({ name: 'Tricep Rope Pushdown', w: 40, isCore: false }, null, null, dayCompound1RMs),

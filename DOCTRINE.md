@@ -29,6 +29,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D8** | Strength uses zero supersets on primary lifts; Maintenance caps at MAV. | ⏳ when added | 5-Goal Taxonomy |
 | **D9** | One-off "Build Me a Workout" is compound-first, tier-legal, dup-free — but EXEMPT by design from D1/D4/D7 (a single session is *allowed* to vary; that's its purpose). | ✅ ACTIVE | Home-Screen Program Builders |
 | **D10** | Rep schemes honor each goal's band: Fat Burn ≥10 (high-rep circuits), Build Muscle 6–15 (hypertrophy, never 1–5 strength), Transform 8–12 (mixed). | ✅ ACTIVE | 5-Goal Taxonomy; research §Rep Ranges |
+| **D11** | Monotonic progressive overload: the prescribed %1RM curve rises-or-holds every week and never dips ("reps down, weight up"); deloads are volume cuts (D4), not intensity dips. The 1RM driving the prescription is a **measurement** of real performance (running-max Epley, reps capped at 12), never a scheduled ±% ratchet. | ✅ ACTIVE | research-report(8) §3 %1RM bands; progressive-overload principle |
 
 PENDING invariants are law already — they're documented in the gate and become blocking the moment the
 phase that makes them true ships. **Never weaken the gate to make a change pass. Never delete a PENDING.**
