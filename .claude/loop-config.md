@@ -110,6 +110,43 @@ verification:
        record each fix in the Bug & QA Log's \"Code Fix\" column (added 2026-07-21) on its bug row —
        not just pass/fail counts."
 
+portfolio:                     # Added 2026-07-24 per Kerwin, in a live session: fold tandem-tpm's
+                                # consolidate/reprioritize/generate-prompts behavior into the
+                                # standing loop instead of it living only in a separate skill he
+                                # has to remember to invoke by name.
+  run_every_cycle: true         # Runs as part of CATALOG/RECORD, not just on manual "run the TPM".
+  steps:
+    - "RECONCILE: for every Epic touched this cycle (or spot-checked on a slower rotation across
+       the full Epics DB), grep tandem.html/programs.js for its known code markers and check
+       Supabase for real usage data. If code+data confirm a feature is live but Notion still says
+       In Progress/Planned, correct the Status (Shipped) and record the evidence in Agent Context
+       Notes — this is an unambiguous-completion write, not a guess, so it does not need a
+       per-item human confirm (still never silently mark Shipped without both code AND data
+       evidence). Cycle 32's portfolio pass (2026-07-24) found EPIC-9 and EPIC-006/EPIC-12 stale
+       in exactly this way and corrected both."
+    - "CONSOLIDATE: when two or more open Epics visibly overlap or a newer plan supersedes older
+       ones (e.g. EPIC-031 Living Program Library absorbing the stalled EPIC-026/027/029/030
+       4-Tier ladder), don't work them as separate silos — call it out explicitly, and if a
+       consolidating Epic doesn't have a Notion page yet but a build-ready plan already exists
+       (e.g. drafted inside a PR body), create the Epic page from that plan rather than leaving
+       it stranded in a PR description. Creating a NEW Epic page is a structural decision like
+       tracker-schema changes — fine to do in an attended/live session per Kerwin's direct ask,
+       but an unattended/scheduled cycle should still flag it as a recommendation rather than
+       create it silently, per the existing Notion Write-Back Rules."
+    - "REPRIORITIZE: re-run the tandem-tpm Step 4 ordering (open P0 bugs > P0 Critical epics >
+       unblocked P1 > unblocked P2 > blocked-with-reason) across the WHOLE backlog, not just this
+       cycle's 5-item batch, and surface it as the Active Queue table so the batch picker's narrow
+       cap-5 view doesn't hide the shape of everything else waiting."
+    - "GENERATE PROMPTS: for every Ready item in the reprioritized Active Queue, output (or
+       confirm still current) a full copy-paste Claude Code prompt in the Epic/Bug's own Claude
+       Code Prompt field, following the tandem-tpm Prompt Standards format (context, task,
+       constraints incl. correct table names, explicit scope, numbered steps, verify-with SQL/
+       command). Never leave a Ready item promptless."
+    - "Output the tandem-tpm Step 5 Next Steps Table (Live State Snapshot / P0 Issues / Active
+       Queue / Reconciliation Changes Made / Immediate Claude Code Prompts) as part of the
+       cycle's report so Kerwin gets the consolidated view even on an unattended run, not just
+       the narrow per-story batch summary."
+
 safety:
   max_items_per_cycle: 5
   max_fix_attempts_per_story: 2
