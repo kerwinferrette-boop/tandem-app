@@ -79,6 +79,30 @@ notion:
   # that same state as "Skipped". Treat Skipped == Won't-Fix when reading/writing status.
   # DB Status options: Uncatalogued, Untested, Passing, Failing, Fixing, Needs Human, Resolved, Skipped.
 
+  enums:                    # Added 2026-07-24 per LLM-council audit item (f) — these are the REAL,
+                            # authoritative select-option values fetched directly from each data
+                            # source's schema. Two Notion 400 "invalid select value" errors this
+                            # session came from guessing values outside these lists instead of
+                            # reading them first. Use these verbatim; if a value you need isn't
+                            # listed, that's a signal to re-fetch the schema (it may have changed),
+                            # not to guess a plausible-sounding string.
+    bug_log:                # collection://caaf2179-c4e4-4ce1-9a32-eb46ffdbd6a0
+      Status: ["New", "Investigating", "In Fix", "Resolved", "Wont Fix"]
+      Severity: ["P0 Blocks Workout", "P1 Wrong Data", "P2 Visual UX", "P3 Low"]
+      "View Where Found": ["Dashboard", "Tracker", "Onboarding", "Auth", "Settings"]
+      "Reported By": ["Kerwin", "Dani"]
+      # NOTE: "Bug ID" is auto_increment_id (read-only) — never pass it on create/update.
+      # "Date Reported" is created_time (read-only) — never pass it on create.
+    epics:                   # collection://c0c5bdda-1b33-4923-8308-9078e2fd68c5
+      Status: ["Blocked", "In Progress", "Shipped", "Planned", "Scoped"]
+      Priority: ["P0 Critical", "P1 High", "P2 Medium", "P3 Low"]
+      Effort: ["XS 1 prompt", "S 2-3 prompts", "M 4-6 prompts", "L 7 plus prompts", "XL Architecture"]
+      "App Layer": ["Frontend tandem.html", "Supabase Schema", "Edge Function", "iOS Pipeline", "Claude Coaching", "Netlify Deploy"]
+      Pillar: ["Couples Competition", "Gamification", "Health Data", "AI Coaching", "Infrastructure", "UX Onboarding"]  # multi-select
+      # NOTE: "Epic ID" is auto_increment_id (read-only) — never pass it on create/update.
+    user_story_coverage:      # collection://fcfd09db-695c-4e01-93a2-90bed2abacdc
+      Status: ["Uncatalogued", "Untested", "Passing", "Failing", "Fixing", "Needs Human", "Resolved", "Skipped"]
+
 verification:
   syntax_check_command: >
     awk '/<script>/{f=1;next}/<\/script>/{f=0}f' tandem.html > /tmp/extracted.js
@@ -146,6 +170,89 @@ portfolio:                     # Added 2026-07-24 per Kerwin, in a live session:
        Queue / Reconciliation Changes Made / Immediate Claude Code Prompts) as part of the
        cycle's report so Kerwin gets the consolidated view even on an unattended run, not just
        the narrow per-story batch summary."
+
+governance:                    # Added 2026-07-24 per LLM-council audit (5 advisors + peer review +
+                                # chairman synthesis, unanimous verdict: this loop had a trust/
+                                # completion problem, not an autonomy shortage — it kept correctly
+                                # recommending its own fixes and never executing them. Full
+                                # transcript: council-transcript-tandem-loop.md / council-report-
+                                # tandem-loop.html from the 2026-07-24 session.
+  pr_auto_subscribe: true       # (c) — the moment this loop opens a PR or finds an existing open
+                                # one relevant to its work, call subscribe_pr_activity on it in the
+                                # SAME step, not as a separate manual action later. No PR the loop
+                                # touches should ever sit un-subscribed.
+  stale_pr_escalation:          # (d) — cheap once pr_auto_subscribe exists: it's a timestamp check
+                                # on PRs already being watched, not new infra.
+    threshold_hours: 24
+    action: "If a PR the loop is subscribed to is green (mergeable_state=clean, checks passing)
+             AND has zero human review/comment activity past this threshold, flag it: (1) a note
+             in the Goal Record cycle log, (2) a PushNotification if one hasn't already gone out
+             for that PR. Do NOT just make the loop wait more patiently — per the council's
+             chairman verdict, the actual lever is reducing what's queued in front of Kerwin, not
+             tuning how long the loop tolerates the queue. Batch multiple stale PRs into ONE
+             digest notification rather than one push per PR."
+
+  pending_one_time_actions:      # (b), reframed per the council's Executor + chairman verdict: a
+                                # standing "we should audit this sometime" is exactly how the
+                                # verified-then-lost audit got recommended 3+ cycles running and
+                                # run zero times. Each entry here is a DATED, SELF-DELETING task —
+                                # not a policy. Do it, record the result in the Goal Record, then
+                                # DELETE the entry (don't leave it around to be re-recommended).
+                                # If an entry here survives past its target cycle un-actioned,
+                                # that is a governance failure: STOP adding new capability to this
+                                # loop (do not proceed to portfolio/reprioritize work that cycle)
+                                # and surface it to Kerwin directly instead of deferring again.
+    - target_cycle: 33
+      action: "Run the full ~40-item Needs-Human 'verified-then-lost' audit: for every story
+               currently Needs Human in feature_tracker_db, check whether its fix commit (per
+               Evidence/Resolved-In) actually landed on main (git log/git blame on the relevant
+               file + grep for the fix's known marker/function name) and whether its Notion
+               status still matches reality. Cycle 31 found this pattern 3-for-3 on a small
+               spot-check (EPIC-8a, BUG-46, BUG-48 — each verified Resolved, then lost to
+               container reclamation before this session's push-on-verify policy existed).
+               Record per-item results in the cycle log, correct any stale statuses found
+               (same unambiguous-completion rule as the portfolio RECONCILE step), then delete
+               this entry."
+
+  session_coordination:          # New — not one of the original 7, raised independently by 3 of 5
+                                # council advisors: two concurrent sessions have already edited
+                                # overlapping program-engine code with zero mutual visibility.
+                                # There's no shared session registry to build a real lock against,
+                                # so this is best-effort coordination via signals already available
+                                # (git + GitHub), not a hard mutex.
+    before_fix: "Before starting FIX on programs.js or tandem.html, check `git branch -r` and
+                 open PRs (list_pull_requests) for other claude/* branches with commits touching
+                 the same function/section in the last 24h. If found, do not silently proceed in
+                 parallel — note the overlap plainly in the cycle report, prefer building on top
+                 of (cherry-pick) the other branch's work over re-deriving it independently, and
+                 if the overlap is on the SAME story/bug, skip it this cycle rather than risk a
+                 duplicate/conflicting fix."
+
+  held_pending_evidence_or_signoff:   # Explicitly NOT adopted into the standing config yet — the
+                                       # council's chairman verdict on each, so a future cycle
+                                       # doesn't re-litigate these from scratch:
+    - item: "(e) 'Proposed' status for unattended Epic-drafting"
+      why_held: "Expands unsupervised write authority into the exact system (Notion Epics/enums)
+                 that already broke twice from guessed values, on top of a portfolio capability
+                 (see `portfolio:` above) that is itself brand new and unvalidated. Requires ALL
+                 of: notion.enums shipped (done, above), the pending_one_time_actions audit above
+                 actually completed once, AND Kerwin's explicit sign-off — not this loop's own
+                 judgment that it's ready. Do not add a 'Proposed' Status option to any Notion DB
+                 without that sign-off."
+    - item: "(a) rotate the Notion-vs-code drift check across the whole Epics DB"
+      why_held: "Real, but a tuning problem not an incident-causing one. Sequence after the items
+                 above land, not urgently."
+    - item: "(g) auto-back-off polling after N consecutive no-op cycles"
+      why_held: "Legitimately hard to tune (what's N, what's the backoff curve) and easy to
+                 mis-calibrate into missing real signals. Don't let it consume the same session as
+                 the higher-confidence items above."
+    - item: "Expansionist's proposal to give (e) 'real teeth' (promote/demote/merge/kill backlog
+             items unattended) and to treat concurrent-session collisions as validated
+             parallelism to lean into"
+      why_held: "Explicitly rejected by the council chairman. The evidence available (lost
+                 verified work, a stranded unreviewed PR, two Notion 400s, a silent session
+                 collision) is a loop that hasn't earned more unsupervised authority, not a
+                 foundation to build roadmap-management power on top of."
 
 safety:
   max_items_per_cycle: 5
