@@ -43,9 +43,11 @@ function syntaxCheckIndex() {
 const CHECKS = [
   { name: 'syntax: programs.js', run: () => execFileSync('node', ['--check', join(root, 'programs.js')], { stdio: 'inherit' }) },
   { name: 'syntax: tandem.html app block', run: syntaxCheckIndex },
-  { name: 'validate:programs (24 combos, Rules 1-5)', run: () => execFileSync('node', [join(scriptsDir, 'validate-programs.mjs')], { stdio: 'inherit' }) },
+  { name: 'validate:programs (Rules 1-5, all day-counts 2-6)', run: () => execFileSync('node', [join(scriptsDir, 'validate-programs.mjs')], { stdio: 'inherit' }) },
   { name: 'C7 smoke (calibrated/derived override, startW precedence)', run: () => execFileSync('node', [join(scriptsDir, 'c7-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'lastsets churn smoke (name-keyed identity, no slot-id inheritance)', run: () => execFileSync('node', [join(scriptsDir, 'lastsets-churn-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'cadence smoke (BUG-30 weekday spread — no consecutive/phantom days regression)', run: () => execFileSync('node', [join(scriptsDir, 'cadence-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'doctrine conformance (Notion law — see /DOCTRINE.md)', run: () => execFileSync('node', [join(scriptsDir, 'doctrine.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];

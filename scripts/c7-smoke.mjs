@@ -59,9 +59,23 @@ function check(label, actual, expected) {
 }
 
 // ── 2. weekFactor sanity ──
-check('weekFactor build_muscle wk5 / 8wk == authored 0.68', weekFactor('build_muscle', 5, 8), PROGRESSION.build_muscle[5]);
-check('weekFactor burn_fat wk2 normalizes to fat_burn 0.52', weekFactor('burn_fat', 2, 8), PROGRESSION.fat_burn[2]);
-check('weekFactor build_muscle wk12 / 12wk clamps to final 0.62', weekFactor('build_muscle', 12, 12), PROGRESSION.build_muscle[8]);
+check('weekFactor build_muscle wk5 / 8wk == authored anchor', weekFactor('build_muscle', 5, 8), PROGRESSION.build_muscle[5]);
+check('weekFactor burn_fat wk2 normalizes to fat_burn anchor', weekFactor('burn_fat', 2, 8), PROGRESSION.fat_burn[2]);
+// D13: wk8 of a 12wk build_muscle program is a MID-program deload week (deloadWeeks(12)
+// = {4,8,12}) — it correctly returns the goal-specific deload-intensity override (0.65)
+// instead of climbing to the top-of-curve anchor. wk11 (non-deload) still clamps
+// toward the final anchor as before.
+{
+  const wk11 = weekFactor('build_muscle', 11, 12);
+  const ok = wk11 > PROGRESSION.build_muscle[7] && wk11 <= PROGRESSION.build_muscle[8];
+  console.log(`${ok ? 'PASS' : 'FAIL'}  weekFactor build_muscle wk11 / 12wk (non-deload) is between anchors 7 and 8  →  ${wk11}`);
+  if (!ok) failures++;
+}
+check('weekFactor build_muscle wk8 / 12wk (mid-program deload) applies D13 override', weekFactor('build_muscle', 8, 12), 0.65);
+// D14: wk12 of a 12wk program is the FINAL week, which is ALSO in deloadWeeks(12) —
+// that makes it a REALIZATION week (D14), not a D13 hypertrophy deload. weekFactor
+// must return REALIZATION_INTENSITY (0.90) there, overriding D13 entirely.
+check('weekFactor build_muscle wk12 / 12wk (realization, final week) overrides D13', weekFactor('build_muscle', 12, 12), 0.90);
 
 // ── 3. Calibrated path ──
 const cal = getWeekTarget('Barbell Squat', 3, 'build_muscle', 200, 'male', {}, 8);
@@ -111,9 +125,9 @@ function resolveStartW(ex, recWeight, pr1rm, compound1RMs) {
   }
   return startW;
 }
-// (a) calibrated override WINS over bank seed
+// (a) calibrated override WINS over bank seed (weekFactor read live from PROGRESSION)
 check('startW: calibrated 1RM=200 overrides bank ex.w=95',
-  resolveStartW({ name: 'Barbell Squat', w: 95, isCore: false }, null, 200, {}), roundTo5(200 * 0.68));
+  resolveStartW({ name: 'Barbell Squat', w: 95, isCore: false }, null, 200, {}), roundTo5(200 * PROGRESSION.build_muscle[3]));
 // (b) derived override WINS over bank seed
 check('startW: derived (Bench 150) overrides bank ex.w=40',
   resolveStartW({ name: 'Tricep Rope Pushdown', w: 40, isCore: false }, null, null, dayCompound1RMs),

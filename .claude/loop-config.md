@@ -90,6 +90,7 @@ verification:
                                 # just when fixing a generator story. 504 combos, Rules 6-9.
   ship_gate_command: "npm run verify"   # full gate: syntax + validate:programs + C7 smoke
                                 # (calibrated/derived weight override) + lastsets churn smoke
+                                # + DOCTRINE conformance (Notion law — scripts/doctrine.mjs)
   test_command: "per-story SQL assertion (see each story's Test Assertion SQL field)"
   db_connector: "Supabase MCP — project zsvktcvqmppsshtpeljt"
 
@@ -109,6 +110,30 @@ verification:
        run as a page in run_log_db (Files Modified / What Was Accomplished / Linked Bugs), and
        record each fix in the Bug & QA Log's \"Code Fix\" column (added 2026-07-21) on its bug row —
        not just pass/fail counts."
+
+  doctrine_is_law:   # Kerwin's directive, 2026-07-22 — the Notion collection is LAW, not reference.
+                      # This is how the engine stays cohesive instead of drifting into random lifts.
+    - "Notion is the source of truth; /DOCTRINE.md mirrors it; scripts/doctrine.mjs enforces it inside
+       ship_gate_command. A change that violates an ACTIVE D-invariant CANNOT ship — it is wrong by
+       definition, not a judgment call."
+    - "EVERY program-touching bug fix / feature / QA story must name the governing Notion doc
+       (5-Goal Taxonomy / Programming Architecture Reference / Exercise Science Schema v0.5 /
+       Periodization Spec) and state how it conforms, in the Epic/Bug entry. No citation, no ship."
+    - "When you build a phase that makes a PENDING invariant true (D4 deloads, D5 supersets, D7
+       per-length layout, …), PROMOTE it to an ACTIVE assertion in doctrine.mjs in the SAME change.
+       Never delete a PENDING to make the gate green; never weaken the gate to pass. If doctrine
+       itself must change, change Notion first, then /DOCTRINE.md and doctrine.mjs together."
+
+  source_first_rigor:   # Kerwin's directive, 2026-07-22 — the recurring errors all share one shape:
+                         # reasoning from plausibility instead of the source. This kills that.
+    - "For ANY exercise-science or program-logic change, INVOKE the exercise-science-research skill
+       FIRST (source-first, no shortcuts). It is mandatory, not advisory. See CLAUDE.md."
+    - "Never state a training fact or ship program logic from memory. Cite the source (DOCTRINE.md,
+       the Notion docs, research-report.pdf/docx/csv, or a reputable external source) or flag it
+       UNVERIFIED. 'Typically / standard / usually' means stop and go read."
+    - "Write the should/could/did audit (CLAUDE.md) into every program-logic commit + Notion entry.
+       Run it BEFORE shipping, not after Kerwin catches the error. When the source is silent, FLAG
+       the gap — never fabricate a number, coefficient, or rule."
 
 safety:
   max_items_per_cycle: 5
@@ -177,3 +202,62 @@ Remote-environment wiring (one-time): the repo `kerwinferrette-boop/tandem-app` 
 as the session **Source** via the Claude GitHub integration, and `.claude/settings.json` +
 `.claude/skills/` + this config must be **committed on `main`** so the fresh clone actually
 contains the loop's brain.
+
+## Program-of-work management — Epics too, consolidate, then persona-validate (2026-07-23, Kerwin)
+
+The daily run is not just bug/QA triage — it is a **program-of-work manager.** Directive from Kerwin
+(2026-07-23, on the EPIC-031 Living Program Library plan): the routine must, every cycle:
+
+1. **Scope Epics, not just Bugs.** Audit the Epics & Feature Roadmap DB
+   (`c0c5bdda-1b33-4923-8308-9078e2fd68c5`) alongside the Bug & QA Log — surface open/scoped Epics, their
+   dependency gates, and their status, the same way bugs are surfaced.
+2. **Consolidate overlapping work.** When multiple Epics/Bugs address the same underlying problem (the
+   worked example: EPIC-027 + EPIC-029 + EPIC-030 collapsed into **EPIC-031**), **merge them into one work
+   item, write a consolidation note on each subsumed Epic/Bug** (pointing at the consolidator, marking it
+   "Consolidated → EPIC-NNN"), and re-point dependency gates — instead of generating N near-duplicate
+   prompts. Never leave the subsumed items as parallel orphans.
+3. **Generate a solving prompt** for the consolidated item (Claude Code or Fable), **folding in every
+   already-called-out Epic/Bug that item touches** so those specific callouts are met by the build, not
+   left behind. A prompt that ignores a related open callout is incomplete.
+4. **Validate against the persona/user-story gate.** A generated prompt is not "ready" until it names its
+   acceptance as user stories against the personas, and the resulting code passes `persona_matrix_command`
+   (630 combos) + `ship_gate_command` (incl. doctrine) — framed as "does this work as intended for every
+   persona," not just "does it compile."
+
+## Regression stop — already-fixed bugs must not silently come back (2026-07-23, Kerwin)
+
+Directive from Kerwin (2026-07-23): "put the stops in play to refer to Notion and prior bug logs and code
+logs because I'm tired of going backwards." A fix that regresses is worse than a bug that was never fixed.
+Standing practice:
+
+1. **Structural fixes get a permanent regression test in `ship_gate_command`.** When a Resolved bug fixed a
+   *structural* behavior (a rule that either holds across the matrix or doesn't — e.g. BUG-30's weekday
+   cadence, the C7 weight override, lastsets identity), a `scripts/*-smoke.mjs` guard is added to
+   `npm run verify` so a later revert/change fails the gate instead of shipping. Worked example added
+   2026-07-23: `scripts/cadence-smoke.mjs` locks BUG-30 (no consecutive-days regression, no phantom
+   Day 5/6/7) after git confirmed the algorithm was intact but nothing tested that it stays intact.
+2. **Each cycle, cross-check the Resolved Bug Log against reality.** Before calling a cycle done, spot-check
+   that recently-Resolved structural bugs still behave — via their smoke guard if one exists, or by
+   re-running their Steps-to-Reproduce. A Resolved bug that no longer behaves is re-opened, not re-filed as
+   new, and gets a permanent guard so it can't happen a third time.
+3. **`git log -S` before claiming a revert.** When something "used to work," check the code history
+   (`git log -S "<symbol>"`, blame) to distinguish an actual revert from a display/wiring gap that was
+   never built — report which it is, factually, rather than guessing.
+
+## Two-tier doctrine (EPIC-031) — SAFETY hard, SCIENCE overridable-with-provenance
+
+Once EPIC-031 lands, `scripts/doctrine.mjs` invariants split into **SAFETY** (always enforced, every path —
+compound-first, injury filter, equipment tier, monotonic + earned-only 1RM, no-superset-on-primary) and
+**SCIENCE_DEFAULT** (enforced for GENERATED programs; an authored/library program may exceed a band via
+`science_overrides` ONLY if a matching `program_principles` row justifies it — invariant **D16**). This does
+NOT loosen `doctrine_is_law` above for generated programs; it adds a sovereign, cited path for authored
+expert programs. Sovereignty without a cited principle is a D16 failure, not a loophole.
+
+## Daily-run program ingestion — the "learns more each program" loop (EPIC-031)
+
+Once Fable ships the EPIC-031 schema (`workout_templates`/`template_blocks`/`template_days`/
+`template_exercises` + `program_principles`): each daily run, Claude finds **one** acclaimed program online
+(WebSearch/WebFetch — acclaimed lifters/coaches), extracts its **structure** into the library tables and its
+**reasoning** into `program_principles` (via Supabase MCP), rebuilt **own-brand with source provenance** —
+never verbatim/trademarked content. The corpus compounds so a future phase can have the generator consume
+it. Cadence: one program per run, quality over volume. This is gated on the schema existing first.
