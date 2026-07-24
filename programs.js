@@ -1302,6 +1302,36 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 }
 
 // ═══════════════════════════════════════════════════════
+// EPIC-8a: experience-level branching (Cycle 30 fix, re-implemented).
+// REST_SECONDS — per-experience-tier rest window, keyed by exercise
+// category. 'intermediate' values match the pre-EPIC-8a hardcoded
+// constants byte-for-byte (90/60) — required for no-regression.
+// ═══════════════════════════════════════════════════════
+const REST_SECONDS = {
+  beginner:     { compound: 105, isolation: 75 },
+  intermediate: { compound: 90,  isolation: 60 },
+  advanced:     { compound: 75,  isolation: 45 }
+};
+function normalizeExperience(experience) {
+  return (experience === 'beginner' || experience === 'advanced') ? experience : 'intermediate';
+}
+// flagDropSet(day) — advanced-tier helper. Tags the day's LAST accessory/arm
+// exercise (Arms Block preferred, else Accessory Block) with a drop-set
+// intensity flag + coaching cue. STRING/flag annotation only — no RPE math,
+// no schema change.
+function flagDropSet(day) {
+  if (!day || !Array.isArray(day.blocks)) return day;
+  const target = [...day.blocks].reverse().find(b => !b.cardio && /accessory|arms/i.test(b.label || ''));
+  if (target && target.exs && target.exs.length) {
+    const last = target.exs[target.exs.length - 1];
+    if (last) {
+      last.intensity = 'drop-set';
+      last.cues = [...(last.cues || []), 'Advanced tier: drop set — reduce load ~30% and continue to failure after your last working set.'];
+    }
+  }
+  return day;
+}
+
 // ONE-OFF WORKOUT GENERATOR — Home-Screen "Build Me a Workout"
 // getSingleDay(focus, { tier, injuries, cardio })
 //   → a single cohesive session for a muscle focus (chest / back / legs /
@@ -1409,11 +1439,12 @@ const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 
 // ═══════════════════════════════════════════════════════
 // DYNAMIC PROGRAM GENERATOR
-// buildDynamicProgram(goal, days, weeks, sex, tier, emphasis)
+// buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience)
 //   → returns a 4-day base array (same shape as static programs)
 //     or null on failure (callers fall back to static)
 // ═══════════════════════════════════════════════════════
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation) {
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience) {
+  const exp = normalizeExperience(experience);
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
   // Rotation context drives variety over time: week rotates accessories; phase
@@ -1474,6 +1505,13 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (!cands.length) return null;
     let pool = cands;
     if (emphTag) { const b = cands.filter(e => e.emphasis && e.emphasis.includes(emphTag)); if (b.length) pool = b; }
+    const isPrimary = slot && (slot.role === 'primary' || slot.role === 'secondary');
+    // EPIC-8a: beginner tier biases compound-slot selection toward guided
+    // (machine/cable) equipment when available — lower technique barrier.
+    if (exp === 'beginner' && isPrimary) {
+      const machineFirst = pool.filter(e => e.equipment === 'machine' || e.equipment === 'cable');
+      if (machineFirst.length) pool = machineFirst;
+    }
     // D15 (tiered rotation cadence) — Periodization spec Part A concluded "Primary
     // compounds: fixed for the whole program... Secondary compounds & accessories:
     // fixed within each mesocycle, refreshed at each block boundary" but pick() never
@@ -1546,6 +1584,15 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
   const makeEx = (entry, idSuffix, overrides={}) => {
     if (!entry) return null;
+    // EPIC-8a: rest window now comes from the REST_SECONDS[exp] table instead
+    // of the hardcoded 90/60 — 'intermediate' values are identical to the old
+    // constants, so this is a no-op for the default tier.
+    const restTable = REST_SECONDS[exp];
+    // EPIC-8a: advanced tier appends a coaching-cue STRING to compound lifts
+    // only (no RPE calculation/storage — annotation only).
+    const cues = (exp === 'advanced' && entry.category === 'compound')
+      ? [...(entry.cues || []), 'Advanced tier: push to RPE 8-9 on working sets.']
+      : (entry.cues || []);
     return {
       id: idSuffix,
       name: entry.name,
@@ -1553,7 +1600,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       sets: overrides.sets ?? (entry.category==='compound'?4:3),
       w: baseW(entry),
       r: entry.unit==='sec' ? (entry.secs || 45) : 10,   // timed holds: per-entry secs (Plank 60 / Side Plank 45, Kerwin 2026-07-13), 45 default
-      rest: entry.category==='compound'?90:60,
+      rest: entry.category==='compound' ? restTable.compound : restTable.isolation,
       compound: entry.category==='compound',
       isCore: entry.category==='core',
       cardioOnly: entry.category==='cardio',
@@ -1562,7 +1609,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       unit: entry.unit || 'reps',
       equipment: entry.equipment || null,
       why: entry.why||'',
-      cues: entry.cues||[],
+      cues,
       ...overrides
     };
   };
@@ -1643,6 +1690,10 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     const result = TEMPLATES.map(tmpl => {
       const exs = {};
       tmpl.slots.forEach(s => {
+        // EPIC-8a: beginner tier drops the Accessory Block's 3rd exercise slot
+        // (2 accessories instead of 3) — skip selection entirely so acc3's
+        // exercise stays available (excl:[...used]) for other days.
+        if (exp === 'beginner' && s.role === 'acc3') return;
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
         const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
@@ -1680,6 +1731,12 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       if (cardioEx) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
         makeEx(cardioEx, tmpl.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
 
+      // EPIC-8a: drop-set flagging happens once, in getProgram(), AFTER the
+      // 2/3/5-day wrappers (build2/ppl/build5) have finished recombining
+      // blocks from these base days — several of those wrappers cherry-pick
+      // individual exercises into new blocks, so flagging here could tag an
+      // exercise that later gets left out of the final day, or (for day1/
+      // day3, which the wrappers pass through unchanged) get flagged twice.
       return {key:tmpl.key, label:tmpl.label, color:tmpl.color, rationale:tmpl.rationale, blocks};
     });
 
@@ -1715,6 +1772,8 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (saCardioEx) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
       makeEx(saCardioEx, sa.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
     if (saBlocks.length) {
+      // EPIC-8a: see note above — drop-set flagging is applied once, in
+      // getProgram(), after final day-count assembly.
       result.shouldersArmsDay = {key:sa.key, label:sa.label, color:sa.color, rationale:sa.rationale, blocks:saBlocks};
     }
 
@@ -1844,7 +1903,7 @@ function applyDeload(program, rotation, weeks) {
   }));
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
@@ -3071,13 +3130,22 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
   // helpers above are initialized — calling them from the top of getProgram hit
   // their temporal dead zone (TDZ).
-  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation);
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience);
   if (generated) {
+    // EPIC-8a: applied AFTER the 2/3/5-day wrappers + injury prune, on the
+    // final day array — the wrappers recombine exercises from multiple base
+    // days (e.g. ppl()'s Legs day) so flagging earlier could tag an exercise
+    // that ends up dropped, or double-flag a day the wrapper passes through
+    // unchanged.
+    const flagAdvanced = (program) => {
+      if (normalizeExperience(experience) === 'advanced' && program) program.forEach(flagDropSet);
+      return program;
+    };
     // Final injury prune — catches statically-injected exercises (build5's
     // shoulder block) that bypass the bank-level filter inside the generator.
     // Then apply the deload week (Part B / doctrine D4) on every path.
     const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : days === 6 ? build6(generated) : generated;
-    return applyDeload(applySupersets(applyGoalVolume(pruneInjuries(built, injuries), goal), goal), rotation, weeks);
+    return flagAdvanced(applyDeload(applySupersets(applyGoalVolume(pruneInjuries(built, injuries), goal), goal), rotation, weeks));
   }
 
   // ── Silent emergency fallback ──────────────────────────────────────────────

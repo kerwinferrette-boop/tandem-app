@@ -368,7 +368,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .set-btn.logged{background:var(--green-dim);border-color:rgba(63,224,140,.4);color:var(--green);}
 .set-btn.pr-set{background:var(--amber-dim);border-color:rgba(255,176,32,.4);color:var(--amber);}
-.set-actions{display:flex;gap:5px;margin:6px 0 8px;}
+.set-actions{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 8px;}
 .set-act{flex:1;padding:7px;background:transparent;border:1px dashed var(--border2);border-radius:7px;
   color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;
   cursor:pointer;transition:all .15s;text-align:center;}
@@ -1571,6 +1571,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <button class="tool-btn" style="flex:1;padding:9px;" onclick="showView('auth');closeModal('history')"><span data-icon="key"></span> Account</button>
     </div>
     <div id="historyList"></div>
+  </div>
+</div>
+
+<!-- PER-EXERCISE HISTORY (BUG-48) -->
+<div class="modal-overlay" id="modal-exhistory" onclick="if(event.target===this)closeModal('exhistory')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('exhistory')">✕</button>
+    <div class="modal-title" id="exhistoryTitle">Exercise History</div>
+    <div class="modal-sub">Matched by exercise name across all logged sessions — not by today's slot, since slot assignments can rotate week to week.</div>
+    <div id="exhistoryList"></div>
   </div>
 </div>
 
@@ -2930,7 +2941,7 @@ function renderTracker() {
 // Build day tabs + workout views from the engine. Self-contained so a live
 // equipment-tier change can regenerate the day without a full renderTracker().
 function renderProgramViews() {
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const tabsEl = document.getElementById('dayTabs');
   const viewsEl = document.getElementById('workoutViews');
@@ -3088,7 +3099,7 @@ function buildDayHTML(day, phase) {
           <div class="ex-header">
             <div class="ex-check"></div>
             <div class="ex-info">
-              <div class="ex-name"><span id="en-${ex.id}">${ex.name}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">1RM ~${pr1rm}</span>` : ''}</div>
+              <div class="ex-name"><span id="en-${ex.id}">${ex.name}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">est. 1RM ~${pr1rm}</span>` : ''}</div>
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
@@ -3119,6 +3130,7 @@ function buildDayHTML(day, phase) {
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
               <div class="set-act" onclick="event.stopPropagation();openSwapPicker('${ex.id}')">${svgIcon('swap')} Swap</div>
               <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>
+              <div class="set-act" onclick="event.stopPropagation();openExerciseHistory('${ex.id}','${(ex.name||'').replace(/'/g,"\\'")}')">${svgIcon('clock')} History</div>
             </div>
             <div class="swap-picker" id="swap-${ex.id}"></div>
           </div>
@@ -3305,7 +3317,12 @@ function logSet(id, i) {
 
     saveSetLS(id, w, r, prExName);
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
-    sessionSetsMap[id].push({ set: i+1, w, r, est1rm });
+    // BUG-48: stamp each set with the canonical exercise NAME (same resolution
+    // as the PR key above), not just the slot id. Bank slot ids get reused for
+    // different movements across rotations/weeks (see BUG-45), so a later
+    // per-exercise history lookup that only trusted the id key would silently
+    // mix in — or hide — sets logged under a since-rotated id.
+    sessionSetsMap[id].push({ set: i+1, w, r, est1rm, name: prExName });
 
     if (est1rm > prev && w > 0) {   // D12: est1rm already uses the correct formula for these reps
       prs[prExName] = est1rm;                 // C7: write by canonical name
@@ -3337,7 +3354,7 @@ function logSet(id, i) {
           const cardEl = document.getElementById('ec-' + id);
           const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
           // Exercise category from day label (upper / lower / full_body / day key)
-          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
           const dayObj = prog?.find(d => d.key === currentDay);
           const dl = dayObj?.label || '';
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
@@ -3512,7 +3529,7 @@ function startRest(id) {
   // Rest only fires after the final exercise of the superset block, so the
   // timer runs between rounds instead of between partner exercises.
   try {
-    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
     const dayObj = prog?.find(d => d.key === currentDay);
     const blk = dayObj?.blocks?.find(b =>
       !b.cardio && /superset/i.test(b.label || '') && b.exs?.some(e => e && e.id === id));
@@ -3778,6 +3795,66 @@ function clearHistory() {
 }
 
 // ═══════════════════════════════════════════════════════
+// PER-EXERCISE HISTORY (BUG-48)
+// ═══════════════════════════════════════════════════════
+// findExerciseHistorySessions(history, targetName)
+// Pure function (no DOM/localStorage access) — scans EVERY exercise slot in
+// EVERY past session and matches on the per-set canonical `name` field.
+//
+// Deliberately does NOT filter by slot id first. Bank slot ids (e.g. 'fb-curl')
+// are reused for different movements across rotations/weeks (BUG-45), so an
+// id-first filter — checking name only as secondary confirmation within the
+// id the exercise currently occupies — silently hides real history logged
+// under a since-rotated id. That was the exact regression Cycle 23's first
+// build shipped and caught on its own first verify pass.
+//
+// Sets logged before this fix shipped won't carry a `name` field yet; those
+// are simply not matchable (no false positives from a stale id guess) and
+// will start appearing once new sets are logged going forward.
+//
+// Returns an array of { date, week, goal, slotId, sets } in the same order
+// sessions appear in `history` (tandem_history is stored newest-first).
+function findExerciseHistorySessions(history, targetName) {
+  const out = [];
+  if (!targetName) return out;
+  (history || []).forEach(session => {
+    const exercises = session?.exercises || {};
+    Object.keys(exercises).forEach(slotId => {
+      const sets = exercises[slotId];
+      if (!Array.isArray(sets) || !sets.length) return;
+      const matchingSets = sets.filter(s => s && s.name === targetName);
+      if (matchingSets.length) {
+        out.push({ date: session.date, week: session.week, goal: session.goal, slotId, sets: matchingSets });
+      }
+    });
+  });
+  return out;
+}
+
+function openExerciseHistory(id, name) {
+  const displayName = name || id;
+  const titleEl = document.getElementById('exhistoryTitle');
+  if (titleEl) titleEl.textContent = displayName + ' — History';
+
+  const hist = LS.get('tandem_history') || [];
+  const matches = findExerciseHistorySessions(hist, name);
+  const list = document.getElementById('exhistoryList');
+
+  if (!matches.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px;">No history yet for this exercise.</div>';
+  } else {
+    const fmtSets = sets => sets.map(x => `${x.w}×${x.r}${x.est1rm ? ' (' + x.est1rm + 'e)' : ''}`).join('  ');
+    list.innerHTML = matches.map((m, idx) => `<div class="hist-session"${idx === 0 ? ' style="border-color:var(--accent);"' : ''}>
+      <div class="hist-date"><span>${idx === 0 ? 'Last logged — ' : ''}${m.date}</span><span class="hist-badge">Wk${m.week}${m.goal ? ' · ' + String(m.goal).replace('_',' ') : ''}</span></div>
+      <div class="hist-sets">${fmtSets(m.sets)}</div>
+    </div>`).join('');
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  document.getElementById('modal-exhistory').classList.add('open');
+}
+
+// ═══════════════════════════════════════════════════════
 // FINISH SESSION
 // ═══════════════════════════════════════════════════════
 function finishSession() {
@@ -3798,7 +3875,7 @@ function finishSession() {
   banner.classList.add('show');
   banner.scrollIntoView({behavior:'smooth'});
 
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
   updateProgress();
 
   // Cloud sync
@@ -4454,7 +4531,7 @@ function getWeekSchedule() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diffDays = Math.floor((today - start) / 86400000);
   if (diffDays < 0) return null;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
   if (!program?.length) return null;
   const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
   const labelFor = key => key === 'rest' ? 'Rest'
@@ -4476,7 +4553,7 @@ function getProgramDayNumber() {
 // instead of the static ceil(7/days) which was goal-blind and plan-length-blind.
 function getOverdueDays() {
   if (!cfg?.days || !cfg?.startDate) return 0;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
   if (!program?.length) return 0;
   const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
   const tSlots = cadence.reduce((a, s, i) => (s !== 'rest' ? [...a, i] : a), []);
@@ -4579,7 +4656,7 @@ async function syncFromCloud() {
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
-        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
         const idx = prog.findIndex(d => d.key === lastDone.day_type);
         if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
       }
@@ -5206,7 +5283,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext());
+            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }
