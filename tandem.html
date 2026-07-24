@@ -1886,6 +1886,20 @@ function phaseWeekRep(phase, week) {
   return reps[Math.min(Math.max(offset, 0), reps.length - 1)] || 10;
 }
 
+// A REALIZATION week (realizationWeek() from programs.js — the program's final week,
+// when it coincides with what would otherwise be a light deload) overrides the
+// phase's normal accumulation-block reps with a true low-rep test target, instead of
+// whatever the phase's rep-scheme string says for that week position. Everywhere the
+// UI shows "this week's reps," it should go through this wrapper, not raw
+// phaseWeekRep, so the display always matches what applyDeload/weekFactor actually do.
+const REALIZATION_REPS = 3; // top single/triple/five territory — a real test, not a set
+function effectiveReps(phase, week, totalWeeks) {
+  if (typeof realizationWeek === 'function') {
+    try { if (week === realizationWeek(totalWeeks)) return REALIZATION_REPS; } catch (e) { /* fall through */ }
+  }
+  return phaseWeekRep(phase, week);
+}
+
 // Length-scaled periodisation: the 4 phases (Foundation/Build/Power/Peak) are
 // authored against a 12-week template but must span any program length. Split
 // totalWeeks into 4 contiguous segments and rewrite each phase's weeks range.
@@ -1925,12 +1939,59 @@ function getPhase(week, goal, totalWeeks) {
 // fill the first-session gap (no logged history yet) — once a user
 // logs a set, getRecommendation's progressive-overload logic wins.
 // ═══════════════════════════════════════════════════════
+// D11 (monotonic overload): each goal's %1RM curve rises or holds week-to-week and
+// NEVER dips within an accumulation block — "reps down, weight up." Deload weeks are
+// the one sanctioned exception (see D13 below); everywhere else this curve carries
+// pure progressive overload. Anchor points are weeks 2-8; weekFactor() interpolates
+// them across the actual length, and interpolating a monotonic sequence stays
+// monotonic. Enforced by scripts/doctrine.mjs.
+// fat_burn revised 2026-07-23 (Kerwin's call, "shoot for the higher %"): research-
+// report(8) gave Fat Loss 60-75% 1RM; research-report(9) (Valyu, same date) gave
+// 65-80% 1RM. The two Ralph runs disagree; rather than average them, Kerwin chose
+// the higher band outright ("I wouldn't mind lifting more weight"). 65-80% is used
+// here in full — it's a strict superset-toward-higher-intensity of the old 60-68%
+// curve, and still fully inside fat_burn's own research-report(8) RPE 5-7 guidance.
 const PROGRESSION = {
-  fat_burn:     { 2: 0.52, 3: 0.55, 4: 0.50, 5: 0.55, 6: 0.58, 7: 0.61, 8: 0.52 },
-  build_muscle: { 2: 0.65, 3: 0.68, 4: 0.60, 5: 0.68, 6: 0.72, 7: 0.75, 8: 0.62 },
-  transform:    { 2: 0.68, 3: 0.58, 4: 0.72, 5: 0.55, 6: 0.72, 7: 0.75, 8: 0.58 }
+  fat_burn:     { 2: 0.65, 3: 0.67, 4: 0.69, 5: 0.71, 6: 0.73, 7: 0.76, 8: 0.80 },
+  build_muscle: { 2: 0.67, 3: 0.69, 4: 0.71, 5: 0.73, 6: 0.75, 7: 0.77, 8: 0.80 },
+  transform:    { 2: 0.66, 3: 0.68, 4: 0.70, 5: 0.72, 6: 0.74, 7: 0.76, 8: 0.78 }
 };
 
+// D13 (goal-specific deload intensity): research-report(9) (Valyu, 2026-07-23) found
+// deload-intensity management differs by goal — Strength & Fat-Loss DELOADS MAINTAIN
+// intensity (volume-cut only); Hypertrophy DELOADS ALSO reduce %1RM to 60-70%,
+// because dropping load specifically lets reps climb higher (12-15) to clear
+// muscular fatigue while a lighter stimulus is preserved. This is Kerwin's explicit
+// call (2026-07-23): "I don't mind dropping the weight... especially if I'm
+// increasing reps. However, the 1RM calculated from the decrease in weight and
+// increase in reps should ideally lead to an increase in my 1RM." That criterion is
+// already guaranteed elsewhere — reconcileWorking1RMs only ever raises the stored
+// 1RM from real logged performance, never lowers it — so this override only changes
+// what's PRESCRIBED on a deload day, never what's measured.
+// Transform has no dedicated research-report(9) guidance; it is treated as
+// deficit/recomp-context like Fat-Loss (maintain intensity) rather than pure
+// Hypertrophy, since Transform's defining trait is the caloric-deficit/recomp
+// context, not pure muscle growth — a judgment call, flagged as such, not a cited fact.
+const DELOAD_INTENSITY_OVERRIDE = { build_muscle: 0.65 }; // midpoint of the 60-70% band
+
+// Realization week (see realizationWeek() in programs.js): a true strength test,
+// not a light week — applies to EVERY goal, overriding both the normal curve and
+// any D13 deload-intensity dip. Source: research-report(9) Strength block Week3
+// 85-90% 1RM; the earlier-approved periodization spec Part C, Strength 85%+ 1RM.
+const REALIZATION_INTENSITY = 0.90;
+
+// Reviewed 2026-07-23 (Kerwin's call: "do your own independent research, cite it,
+// make a decision" — Ralph's own report9 gave TWO INTERNALLY CONTRADICTORY tables
+// for these exact ratios: the docx said Leg Curl = 50-60% of RDL, the pptx in the
+// SAME delivery said 25-35% — nearly double; Barbell Curl's parent lift even
+// disagreed (Bench in docx vs. Row in pptx)). Independent web research (peer-
+// reviewed literature + reputable strength-standards sources) found NO authoritative
+// source for accessory-to-compound starting-load ratios at all — this appears to be
+// a coaching heuristic, not a studied metric. DECISION: kept the existing values —
+// they already sit inside the wide, contradictory range both of Ralph's own tables
+// span, and there is no better-sourced alternative to replace them with. Flagged as
+// a genuine open research gap (needs dedicated EMG/biomechanics literature), not
+// filled with an unsourced number from either conflicting table.
 const ACCESSORY_FACTORS = {
   'Leg Curl':              { from: 'Romanian Deadlift', factor: 0.45 },
   'Leg Extension':         { from: 'Squat',             factor: 0.50 },
@@ -1994,6 +2055,19 @@ function weekFactor(goal, week, totalWeeks) {
   const table = PROGRESSION[g] || PROGRESSION.build_muscle;
   const N = Math.max(Number(totalWeeks) || 8, 3);
   const wk = Math.min(Math.max(week, 2), N);
+  // Realization week wins over EVERYTHING else — checked first. It's a true
+  // strength test regardless of goal, so it overrides both the normal curve and
+  // any D13 deload-intensity dip.
+  if (typeof realizationWeek === 'function') {
+    try { if (realizationWeek(N) === wk) return REALIZATION_INTENSITY; } catch (e) { /* fall through */ }
+  }
+  // D13: on a REAL deload week (deloadWeeks() from programs.js — same list applyDeload
+  // uses to cut volume), a goal with an override drops intensity too, instead of
+  // following the monotonic accumulation curve for that one week.
+  const override = DELOAD_INTENSITY_OVERRIDE[g];
+  if (override != null && typeof deloadWeeks === 'function') {
+    try { if (deloadWeeks(N).has(wk)) return override; } catch (e) { /* fall through to curve */ }
+  }
   const pos = 2 + ((wk - 2) * 6) / (N - 2);          // map week 2..N onto 2..8
   const lo = Math.max(2, Math.min(8, Math.floor(pos)));
   const hi = Math.max(2, Math.min(8, Math.ceil(pos)));
@@ -2052,19 +2126,23 @@ async function persistWeekTargets(names) {
   } catch (e) { console.warn('week_targets persist skipped:', e); }
 }
 
-// EPIC-9 living feedback loop: nudge the WORKING 1RM (tandem_working1rm)
-// ±2.5% based on session performance. The stored all-time PR (tandem_prs /
-// personal_records) is never lowered by this — only the working number moves,
-// so next week's %1RM targets track how the lifter is actually performing.
-//   up:   every logged set hit the top of this week's rep range → ×1.025
-//   down: every logged set fell 3+ reps short of the top       → ×0.975
-// Skips core/timed work and cardio. Recomputes week_targets for changed names.
-function nudgeWorking1RMs(sessionExs, program) {
+// D11 (earned-only feedback loop): the WORKING 1RM is a MEASUREMENT, never a
+// schedule. It rises ONLY when the lifter's real performance earns it — the running
+// max of Epley estimates (calcRM) over the sets actually logged — never by a fixed
+// weekly step. This replaces the old ±2.5%/week ratchet, which fabricated ~30% of
+// "strength gain" over a mesocycle by assumption: it inflated the stored 1RM while
+// the sawtooth %-table simultaneously told the user to lift LESS (the two numbers
+// desynced and contradicted each other). Now the loop is closed and honest —
+// out-lift the prescription → your 1RM rises → next week's target (= 1RM × %) rises.
+// The estimate itself uses calcRM's multi-formula selection (D12: Epley ≤12 reps,
+// Mayhew 13+) rather than a single formula, so high-rep sets are estimated properly
+// instead of clamped. The stored all-time PR is a running max and is never lowered.
+// Recomputes week_targets for any exercise whose 1RM moved. Skips core/timed work
+// and cardio.
+function reconcileWorking1RMs(sessionExs, program) {
   if (!sessionExs || !Object.keys(sessionExs).length) return;
   const day = (program || []).find(d => d.key === currentDay);
   if (!day) return;
-  const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
-  const topRange = phaseWeekRep(phase, currentWeek);
   const prs = LS.get('tandem_prs') || {};
   const working = LS.get('tandem_working1rm') || {};
   const changed = [];
@@ -2075,25 +2153,27 @@ function nudgeWorking1RMs(sessionExs, program) {
       if (!ex || ex.isCore || ex.unit === 'sec') return;
       const sets = sessionExs[ex.id];
       if (!sets || !sets.length) return;
-      const reps = sets.map(s => parseInt(s.r) || 0);
-      const minReps = Math.min(...reps);
-      const maxReps = Math.max(...reps);
-      const base = working[ex.name]?.rm ?? prs[ex.name] ?? prs[ex.id];
-      if (!base || typeof base !== 'number') return;
-
-      let dir = null;
-      if (minReps >= topRange) dir = 'up';
-      else if (maxReps <= topRange - 3) dir = 'down';
-      if (!dir) return;
-
-      const rm = Math.round(base * (dir === 'up' ? 1.025 : 0.975) * 10) / 10;
-      working[ex.name] = { rm, date: localDateStr(), dir };
+      // Best EARNED 1RM from this session: max calcRM (D12 multi-formula) over real sets.
+      let best = 0;
+      for (const s of sets) {
+        const w = parseFloat(s.w) || 0;
+        const r = parseInt(s.r) || 0;
+        if (w <= 0 || r <= 0) continue;
+        best = Math.max(best, calcRM(w, r));  // D12: calcRM selects the formula by rep range
+      }
+      best = Math.round(best);
+      if (!best) return;
+      const prior = working[ex.name]?.rm ?? prs[ex.name] ?? 0;
+      if (best <= prior) return;                 // earned-only: never lower, never fake
+      working[ex.name] = { rm: best, date: localDateStr(), dir: 'earned' };
+      if (best > (prs[ex.name] ?? 0)) prs[ex.name] = best; // all-time PR is a running max
       changed.push(ex.name);
     });
   });
 
   if (changed.length) {
     LS.set('tandem_working1rm', working);
+    LS.set('tandem_prs', prs);
     persistWeekTargets(changed); // async fire-and-forget; own try/catch
   }
 }
@@ -2118,7 +2198,7 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   const best1RMs = {};
   for (const s of sessionSets) {
     if (!s.exercise_name || !s.weight_lbs || !s.reps) continue;
-    const est = Math.round(calcRM(s.weight_lbs, s.reps));
+    const est = Math.round(calcRM(s.weight_lbs, s.reps)); // D12: calcRM selects the formula by rep range
     if (!best1RMs[s.exercise_name] || est > best1RMs[s.exercise_name])
       best1RMs[s.exercise_name] = est;
   }
@@ -2171,7 +2251,7 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // Weighted-core path (2026-07-13): callers may pass the exercise's own rep
   // target (ex.r) so core work progresses against ITS prescription, not the
   // lifting phase rep scheme.
-  const topRange = repTarget || phaseWeekRep(phase, currentWeek);
+  const topRange = repTarget || effectiveReps(phase, currentWeek, cfg.weeks);
   const inc = compound ? phase.incComp : phase.incAcc;
 
   // EPIC-9 Step C/D: %1RM path for calibrated users. The WORKING 1RM (nudged
@@ -2179,8 +2259,14 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // prescription is living — the stored PR itself is never touched by nudges.
   const prs = LS.get('tandem_prs') || {};
   const working = LS.get('tandem_working1rm') || {};
-  const oneRM = (exName && working[exName]?.rm)
-    ?? ((exName && prs[exName]) ?? prs[exId]); // C7: name-first, id fallback
+  // C7/BUG-45: name-only when the exercise is named. A recycled slot-id can hold
+  // another movement's 1RM, so prs[exId] must never stand in for a named lift
+  // (this is the same churn class already fixed for tandem_lastsets above). The
+  // id is consulted solely when there is no name at all — then it's the only
+  // identity available, not a cross-exercise leak.
+  const oneRM = exName
+    ? (working[exName]?.rm ?? prs[exName])
+    : prs[exId];
 
   // EPIC-9 Step E: canonical compound 1RM map (working-first) so accessories
   // without their own record derive from adjacent compounds — this was the
@@ -2764,16 +2850,19 @@ function renderTracker() {
   document.getElementById('pbEyebrow').textContent = `Phase ${_phaseNum} · ${cfg.goal.replace('_',' ').toUpperCase()}`;
   document.getElementById('pbName').textContent = phase.name;
   document.getElementById('pbIntent').textContent = phase.intent;
-  document.getElementById('pbReps').textContent = `This week: ${phaseWeekRep(phase, currentWeek)} reps · Phase range: ${phase.reps}`;
+  document.getElementById('pbReps').textContent = `This week: ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · Phase range: ${phase.reps}`;
   document.getElementById('pbWeekNum').textContent = currentWeek;
   document.getElementById('pbTotalWeeks').textContent = cfg.weeks;
-  // BUG-030: getProgramDayNumber now returns 'dayN' | 'rest' | null (not a bare number)
-  const _progDayKey = getProgramDayNumber();
+  // Day label = the cycle slot OUT OF 7 (Kerwin 2026-07-23), not the workout number.
+  // A 4-day split's third workout lands on slot 4, so it reads "Day 4", not "Day 3".
+  const _sched = getWeekSchedule();
   const _wn = document.getElementById('wnLabel');
-  if (_progDayKey === 'rest') {
-    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks} \u00b7 Rest Day`;
-  } else if (_progDayKey) {
-    _wn.textContent = `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${parseInt(_progDayKey.replace('day', ''))}`;
+  if (_sched) {
+    const _slotNum = _sched.todayIndex + 1; // 1-7
+    const _isRest = _sched.cadence[_sched.todayIndex] === 'rest';
+    _wn.textContent = _isRest
+      ? `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_slotNum} of 7 \u00b7 Rest Day`
+      : `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_slotNum} of 7`;
   } else {
     _wn.textContent = `Week ${currentWeek} of ${cfg.weeks}`;
   }
@@ -2794,11 +2883,26 @@ function renderTracker() {
     <strong style="color:var(--text)">Program length:</strong> ${cfg.weeks} weeks<br>
     <strong style="color:var(--text)">Current week:</strong> ${currentWeek}<br>
     <strong style="color:var(--text)">Current phase:</strong> ${phase.name}<br>
-    <strong style="color:var(--text)">This week's reps:</strong> ${phaseWeekRep(phase, currentWeek)} (Phase range: ${phase.reps})<br>
+    <strong style="color:var(--text)">This week's reps:</strong> ${effectiveReps(phase, currentWeek, cfg.weeks)} (Phase range: ${phase.reps})<br>
     <strong style="color:var(--text)">Compound rest:</strong> ${phase.restComp} sec<br>
     <strong style="color:var(--text)">Accessory rest:</strong> ${phase.restAcc} sec<br>
     <strong style="color:var(--text)">Weight increment (compounds):</strong> +${phase.incComp} lbs<br>
     <strong style="color:var(--text)">Weight increment (accessories):</strong> +${phase.incAcc} lbs
+    ${(() => {
+      // "Days out of 7" schedule (Kerwin 2026-07-23) — render the 7-day cycle so the
+      // user SEES which days are training vs rest (e.g. 4-day = Days 1,2,4,5 of 7).
+      const s = getWeekSchedule();
+      if (!s) return '';
+      const rows = s.cadence.map((key, i) => {
+        const isRest = key === 'rest';
+        const isToday = i === s.todayIndex;
+        const name = isRest ? 'Rest' : s.labelFor(key);
+        return `<div style="display:flex;gap:8px;${isToday ? 'font-weight:700;color:var(--accent);' : isRest ? 'color:var(--muted);' : 'color:var(--text);'}">`
+          + `<span style="width:52px;">Day ${i + 1}</span><span>${name}${isToday ? ' · today' : ''}</span></div>`;
+      }).join('');
+      return `<br><br><strong style="color:var(--text)">Your 7-day schedule:</strong>`
+        + `<div style="margin-top:6px;font-size:13px;line-height:1.7;">${rows}</div>`;
+    })()}
   `;
 
   // Build day tabs + workout views from the dynamic engine
@@ -2879,8 +2983,9 @@ function buildDayHTML(day, phase) {
   const _dayWorking = LS.get('tandem_working1rm') || {};
   const dayCompound1RMs = {};
   day.blocks.forEach(b => (b.exs || []).forEach(e => {
-    // EPIC-9: working 1RM first (living number), then C7 name-first PR, id fallback
-    const _rm = e && (_dayWorking[e.name]?.rm ?? _dayPrs[e.name] ?? _dayPrs[e.id]);
+    // EPIC-9: working 1RM first (living number), then C7 name PR. C7/BUG-45:
+    // name-only when named — a recycled slot-id can hold another movement's 1RM.
+    const _rm = e && (e.name ? (_dayWorking[e.name]?.rm ?? _dayPrs[e.name]) : _dayPrs[e.id]);
     if (!_rm) return;
     dayCompound1RMs[e.name] = _rm;
     // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
@@ -2898,7 +3003,7 @@ function buildDayHTML(day, phase) {
         <div class="dh-title">${day.label}</div>
         <div class="dh-chips">
           <div class="dh-chip hi">${day.blocks.find(b=>b.cardio) ? '90 min' : '60 min'}</div>
-          <div class="dh-chip">${phaseWeekRep(phase, currentWeek)} reps</div>
+          <div class="dh-chip">${effectiveReps(phase, currentWeek, cfg.weeks)} reps</div>
         </div>
       </div>
       <div class="dh-rationale">${day.rationale}</div>
@@ -2951,8 +3056,11 @@ function buildDayHTML(day, phase) {
             reason: ex.unit === 'sec' ? 'Timed hold — progress by holding longer' : 'Bodyweight — quality reps over load' }
         : getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex, ex.isCore ? ex.r : null);
       const _prStore = LS.get('tandem_prs') || {};
-      // EPIC-9: effective 1RM = working (living) number first, then all-time PR
-      const pr1rm = _dayWorking[ex.name]?.rm ?? _prStore[ex.name] ?? _prStore[ex.id]; // C7: name-first
+      // EPIC-9: effective 1RM = working (living) number first, then all-time PR.
+      // C7/BUG-45: name-only when named — the id fallback was serving another
+      // lift's 1RM here (the phantom "1RM ~105" shown on the bench card was
+      // actually the Z-Press number leaking through _prStore[ex.id]).
+      const pr1rm = ex.name ? (_dayWorking[ex.name]?.rm ?? _prStore[ex.name]) : _prStore[ex.id];
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
       // compute a starting weight from the user's calibrated 1RM instead of
@@ -2974,7 +3082,8 @@ function buildDayHTML(day, phase) {
           const bankEntry = Object.values(EXERCISE_BANK).find(e => e.name === ex.name);
           if (bankEntry?.oneRmFactor != null) {
             const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
-              (_dayWorking[_ex.name]?.rm ?? _prStore[_ex.name] ?? _prStore[_ex.id]) || null,
+              // C7/BUG-45: name-only when named — no cross-exercise id fallback.
+              (_ex.name ? (_dayWorking[_ex.name]?.rm ?? _prStore[_ex.name]) : _prStore[_ex.id]) || null,
               cfg.sex, dayCompound1RMs, cfg.weeks);
             const origW = origTgt.weight ?? _ex.w;
             if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
@@ -2994,7 +3103,7 @@ function buildDayHTML(day, phase) {
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
-                : `${ex.sets} × ${phaseWeekRep(phase, currentWeek)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
+                : `${ex.sets} × ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
               </div>
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
@@ -3014,7 +3123,7 @@ function buildDayHTML(day, phase) {
               <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : phaseWeekRep(phase, currentWeek), inputMode)}
+            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : effectiveReps(phase, currentWeek, cfg.weeks), inputMode)}
             <div class="set-actions">
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${inputMode}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
@@ -3169,7 +3278,7 @@ function onSetInput(id, i) {
   // bw with no typed weight → volume = reps; typed weight upgrades to w×r
   if (v) v.textContent = timed ? '—' : (unit === 'bw' && !w) ? (r || 0) : Math.round(w * r);
   if (!timed && w && r) {
-    const est = calcRM(w, r);
+    const est = calcRM(w, r); // D12: calcRM selects the formula by rep range (match PR/1RM path)
     const liveEl = document.getElementById(`i1rm-${id}`);
     const pctsEl = document.getElementById(`ipcts-${id}`);
     if (liveEl) liveEl.textContent = Math.round(est) + ' lbs';
@@ -3191,14 +3300,20 @@ function logSet(id, i) {
   if (!already) {
     const w = parseFloat(wEl.value) || 0;
     const r = parseInt(rEl.value) || 0;
+    // D12: calcRM selects Epley/Mayhew by rep range — a high-rep set counts toward
+    // the PR at proper accuracy, not clamped to a 12-rep estimate.
     const est1rm = Math.round(calcRM(w, r));
     const prs = LS.get('tandem_prs') || {};
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
-    // as the Supabase set-insert path. Legacy id-keyed entries still readable.
+    // as the Supabase set-insert path.
     const prCardEl = document.getElementById('ec-' + id);
     const prExName = prCardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
-    const prev = prs[prExName] ?? prs[id] ?? 0;
+    // C7/BUG-45: name-only baseline. A recycled slot-id's 1RM (another movement's
+    // number) must not stand in as this exercise's prior PR — that could suppress
+    // a real PR or seed a phantom one. prExName falls back to id only when the
+    // card heading is unreadable, which is the same-identity case, not a leak.
+    const prev = prs[prExName] ?? 0;
 
     saveSetLS(id, w, r, prExName);
     if (!sessionSetsMap[id]) sessionSetsMap[id] = [];
@@ -3209,7 +3324,7 @@ function logSet(id, i) {
     // mix in — or hide — sets logged under a since-rotated id.
     sessionSetsMap[id].push({ set: i+1, w, r, est1rm, name: prExName });
 
-    if (est1rm > prev && r <= 12 && w > 0) {
+    if (est1rm > prev && w > 0) {   // D12: est1rm already uses the correct formula for these reps
       prs[prExName] = est1rm;                 // C7: write by canonical name
       if (prExName !== id) delete prs[id];    // C7: retire any legacy id-keyed entry
       LS.set('tandem_prs', prs);
@@ -3536,10 +3651,31 @@ function applySwap(id, newName) {
 // ═══════════════════════════════════════════════════════
 // 1RM CALCULATOR
 // ═══════════════════════════════════════════════════════
-// Single Epley estimate — formula tabs removed per QA decision 2026-06-12
+// D12 (multi-formula 1RM): a single linear formula (Epley) is accurate to ~12 reps,
+// then increasingly overestimates as a set shifts from a strength expression to a
+// metabolic-fatigue expression. Formula is selected by rep range instead of one
+// equation for every set. Source: research-report(9)/Valyu Deep Research 2026-07-23 —
+// this is the direct answer to the gap D11 flagged ("research is silent on high-rep
+// accuracy, reusing a 12-rep boundary"); that boundary is now confirmed correct AND
+// upgraded — reps above 12 get a proper formula instead of being clamped to 12.
+//   ≤12 reps:  Epley       — w × (1 + reps/30)                     [±2-3% error]
+//   13+ reps:  Mayhew      — 100w / (52.2 + 41.9 × e^(-0.055×reps)) [±3-4% error]
+// The source names Desgorces as marginally better for 16-20 reps but does not give
+// its equation (its own citation is a guide page, not the formula) — per source-first
+// rule we do not invent a logarithmic formula to fill that gap. Mayhew is used for the
+// entire 13+ range instead: it's the one formula the source validates continuously
+// across both the 10-15 and 15-20 rep bands, so it's a defensible single fallback
+// rather than a fabricated third curve. Flagged for Ralph: get the Desgorces equation.
 function calcRM(w, r) {
   if (r === 1) return w;
-  return w * (1 + r/30);
+  if (r <= 12) return w * (1 + r / 30);                                   // Epley
+  // Mayhew, floored at the r=12 Epley value: run raw, Mayhew(w,13) < Epley(w,12) —
+  // more reps at the same weight would estimate a LOWER max, which is a correctness
+  // bug independent of which formula the literature prefers (found by running the
+  // numbers, not by reading the formula). The floor guarantees calcRM is
+  // monotonic-non-decreasing in reps at a fixed weight — never invented science,
+  // just the engineering constraint this app's whole 1RM overhaul exists to enforce.
+  return Math.max(100 * w / (52.2 + 41.9 * Math.exp(-0.055 * r)), w * (1 + 12 / 30));
 }
 
 function calcORM() {
@@ -3751,11 +3887,12 @@ function finishSession() {
     .flatMap(sets => sets)
     .reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
 
-  // EPIC-9: living feedback loop — nudge working 1RMs from this session's
-  // performance. currentDay still points at the finished day here (only the
-  // LS key advances below/above), so the day lookup matches what was logged.
-  try { nudgeWorking1RMs(snapshotExercises, program); }
-  catch (e) { console.warn('1RM nudge skipped:', e); }
+  // D11: earned-only feedback loop — reconcile working 1RMs to this session's REAL
+  // performance (running-max Epley, never a scheduled step). currentDay still points
+  // at the finished day here (only the LS key advances below/above), so the day
+  // lookup matches what was logged.
+  try { reconcileWorking1RMs(snapshotExercises, program); }
+  catch (e) { console.warn('1RM reconcile skipped:', e); }
 
   // Advance to next training day (reuse program already computed above)
   const dayIdx = program.findIndex(d => d.key === currentDay);
@@ -4361,7 +4498,12 @@ function canPlaceDay(placed, groups, dayIdx, slotIdx, sameGroupMinGap, maxConsec
 function computeWeekCadence(numDays, goal, dayObjects) {
   const rec = RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle;
   const sameGroupMinGap = Math.ceil(rec.sameGroupHours / 24); // hours → day slots
-  const maxConsecutive  = rec.maxConsecutive;
+  // BUG-fix (Kerwin, 2026-07-23): a high-frequency plan (≥6 days) cannot fit into a
+  // 7-slot week under maxConsecutive=2 — the 6th day was silently DROPPED (5/6 scheduled).
+  // Kerwin's call: a 6-day split is "6 on, 1 off" — high-frequency by definition, where
+  // recovery comes from the split design (e.g. PPL×2 spaces each muscle ~72h) not from
+  // interspersed rest days. So relax the consecutive cap to fit all N days at ≥6 days.
+  const maxConsecutive  = numDays >= 6 ? numDays : rec.maxConsecutive;
   const groups = dayObjects.map(d => muscleGroupFromLabel(d.label));
   const slots  = Array(7).fill('rest');
   const placed = [];
@@ -4378,11 +4520,12 @@ function computeWeekCadence(numDays, goal, dayObjects) {
   return slots;
 }
 
-// ── getProgramDayNumber() — BUG-030 rewrite ──
-// Returns today's program day key ('day1'..'dayN'), 'rest', or null.
-// Science-based cadence via computeWeekCadence replaces bare (diffDays%7)+1 counter
-// which returned Day 5/6/7 on a 4-day plan and had no concept of rest days.
-function getProgramDayNumber() {
+// ── getWeekSchedule() — the 7-day cycle, single source of truth ──
+// Kerwin (2026-07-23): show days "out of 7" (the cycle slot), not the workout number —
+// so a 4-day split reads Day 1, Day 2, [Day 3 rest], Day 4, Day 5, [Day 6/7 rest].
+// Returns { cadence: 7 slots of 'dayN'|'rest', todayIndex: 0-6, program, labelFor } or null.
+// The cadence rolls from cfg.startDate (diffDays % 7) — start-date-anchored per Kerwin's call.
+function getWeekSchedule() {
   if (!cfg?.startDate || !cfg?.goal) return null;
   const start = new Date(cfg.startDate + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -4390,7 +4533,19 @@ function getProgramDayNumber() {
   if (diffDays < 0) return null;
   const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
   if (!program?.length) return null;
-  return computeWeekCadence(cfg.days, cfg.goal, program)[diffDays % 7]; // 'dayN' or 'rest'
+  const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
+  const labelFor = key => key === 'rest' ? 'Rest'
+    : (program.find(d => d.key === key)?.label || key).replace(/^Day\s*\d+\s*·\s*/, '');
+  return { cadence, todayIndex: ((diffDays % 7) + 7) % 7, program, labelFor };
+}
+
+// ── getProgramDayNumber() — BUG-030 rewrite; delegates to getWeekSchedule ──
+// Returns today's program day key ('day1'..'dayN'), 'rest', or null. Science-based
+// cadence (computeWeekCadence) replaced the bare (diffDays%7)+1 counter that returned
+// phantom Day 5/6/7 on a 4-day plan. Locked by scripts/cadence-smoke.mjs.
+function getProgramDayNumber() {
+  const s = getWeekSchedule();
+  return s ? s.cadence[s.todayIndex] : null;
 }
 
 // ── getOverdueDays() — BUG-030 rewrite ──
