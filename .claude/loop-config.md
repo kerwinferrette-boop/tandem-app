@@ -244,6 +244,43 @@ Standing rules, derived from that failure:
    THE LIVE DB FIRST (`list_tables`) — re-applying an applied migration or re-seeding seeded rows
    duplicates published data.
 
+## commit vs push — the distinction that cost us EPIC-031 (2026-07-28, Kerwin)
+
+Kerwin, 2026-07-28: *"I think I just didn't know what the difference was between git commit & git push when
+I wrote those rules."* That is the honest root cause of the whole EPIC-031 loss, and it is worth stating
+plainly so nobody writes those rules that way again.
+
+- **`git commit`** saves a snapshot **inside this container only.** Nothing leaves the machine. If the
+  container is reclaimed — which happens routinely, between sessions — the commit is gone. A commit is a
+  private note to yourself.
+- **`git push`** copies commits to **GitHub**, which is a different computer that persists. This is the
+  only step that makes work exist for anyone else, or for tomorrow.
+
+**A permission policy that allows `commit` but denies `push` therefore produces work that looks saved and
+is not.** The agent commits, reports success truthfully, and the work evaporates on container teardown.
+That is exactly what happened: the 2026-07-24 EPIC-031 build committed `ffa99c0`, was refused on push by
+this repo's own deny list, recorded "sandbox cannot git push" in Notion as a limitation rather than an
+emergency, and died with the container. The database survived only because Supabase writes have no local
+stage to get stranded in.
+
+Consequences, now standing policy:
+
+1. **The agent must be able to both commit AND push.** Denying push while allowing commit is not a safety
+   measure — it is a data-loss generator. The deny patterns that blocked push to `main`
+   (`Bash(git push origin main*)`, `Bash(git push * main*)`, `Bash(git push *:main*)`,
+   `Bash(git push * HEAD:main*)`) were removed on 2026-07-28. Push to `main` is allowed when the gates are
+   green; see the ship-gate section above.
+2. **What stays denied is genuinely destructive, not merely publishing:** force-push (in all its forms),
+   `netlify deploy`, and `apply_migration`. Those can destroy or overwrite; a normal push cannot — it is
+   rejected rather than allowed to clobber.
+3. **Sync before you start, and re-check after any rebase.** A tracked file like `.claude/settings.json`
+   travels with the branch, so a stale checkout silently restores stale permission rules. This bit us the
+   same day: three pushes succeeded, then began failing, because the local branch had drifted back to a
+   commit predating the deny-list fix. `git fetch origin main` and rebase before working. **Deny beats
+   allow**, so an untracked `settings.local.json` cannot rescue a stale tracked deny.
+4. **Read the remote, not the local branch, to answer "did this ship?"** `git log origin/main`, not
+   `git log`. The local branch is a working copy and can revert.
+
 ## Schema and git must agree — migrations are files first, effects second (2026-07-28, Kerwin)
 
 Kerwin's question, and it exposes the real asymmetry: *"Why is it being pushed to Supabase, but not git?"*
