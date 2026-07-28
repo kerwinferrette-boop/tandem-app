@@ -23,6 +23,15 @@ external and persistent. So the database is ahead of the code.
 - **Do NOT assume any EPIC-031 symbol exists.** `materializeTemplate`, `getActiveProgram`,
   `fetchTemplateBundle`, `adoptTemplate`, `openProgramLibrary`, `program_source`, `TECHNIQUE_TIPS` are all
   absent from `main`. `scripts/doctrine.mjs` has D1–D15 and **no D16**.
+- **Do NOT try to push commit `ffa99c0`, or any branch named `epic-031-program-library`.** Neither exists.
+  Verified 2026-07-28 across all 17 remote branches: `git cat-file -t ffa99c0` → *not a valid object*, and
+  zero occurrences of `materializeTemplate`/`getActiveProgram`/`adoptTemplate`/`fetchTemplateBundle` or
+  `D16` on any ref. The Notion record still says "Kerwin pushes the rebased branch" — that instruction is
+  stale and unfollowable. The commit died with its container. Rebuilding is the only path.
+- Precision on what's missing: `migrations/` **does** exist on `main` and always did, holding the unrelated
+  `calibration_v05.sql` and `weekly_stakes.sql`. What never reached git are the EPIC-031 migrations
+  specifically — `epic031_program_library.sql`, `epic031_exercises_seed.sql`, `epic031_seed_programs.sql`.
+  `migrations/0001_baseline_live_schema.sql` now reconstructs their effect from the live database.
 
 ### Verified live state — start from this, confirm it with `list_tables` before writing code
 

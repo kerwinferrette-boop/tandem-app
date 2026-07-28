@@ -10,7 +10,14 @@ an interactive session, or paste manually.
 - ABSENT from both: `materializeTemplate`, `getActiveProgram`, `fetchTemplateBundle`, `adoptTemplate`,
   `openProgramLibrary`, `program_source`, `TECHNIQUE_TIPS`
 - ABSENT: `scripts/author-seeds.mjs`, `scripts/sync-seed-programs.mjs`, `scripts/db-materialize-smoke.mjs`,
-  any `migrations/` directory
+  and the EPIC-031 migrations specifically (`epic031_program_library.sql`, `epic031_exercises_seed.sql`,
+  `epic031_seed_programs.sql`). **Correction:** an earlier draft of this file said "any `migrations/`
+  directory" — that was an overstatement. `migrations/` exists on `main` and always did, holding the
+  unrelated `calibration_v05.sql` and `weekly_stakes.sql`.
+- ABSENT: commit `ffa99c0` and any branch named `epic-031-program-library`. Re-verified 2026-07-28 across
+  all 17 remote branches — `git cat-file -t ffa99c0` returns *not a valid object*, and zero refs contain
+  `materializeTemplate`, `getActiveProgram`, `adoptTemplate`, `fetchTemplateBundle` or `D16`. The Dependency
+  Gate's "Kerwin pushes the rebased branch" is unfollowable and is actively misdirecting downstream agents.
 - `scripts/doctrine.mjs` = D1–D15, **no D16**
 - SURVIVED: `getSingleDay` is present in `programs.js` on `origin/main`
 - Live Supabase `zsvktcvqmppsshtpeljt`: `workout_templates` 2 (both published), `template_blocks` 6,
