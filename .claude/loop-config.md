@@ -244,6 +244,40 @@ Standing rules, derived from that failure:
    THE LIVE DB FIRST (`list_tables`) — re-applying an applied migration or re-seeding seeded rows
    duplicates published data.
 
+## Schema and git must agree — migrations are files first, effects second (2026-07-28, Kerwin)
+
+Kerwin's question, and it exposes the real asymmetry: *"Why is it being pushed to Supabase, but not git?"*
+
+Because the two have different failure modes. **A Supabase write has no local stage** —
+`apply_migration` goes straight to the live project, so intent and durability are the same step.
+**A git write is local by default** — `git commit` lands in an ephemeral container and `git push` is a
+separate step that was, until 2026-07-28, blocked by this repo's own deny list. One system had no gate
+and nowhere to get stuck; the other had both. That is the entire reason EPIC-031's schema survived and
+its code did not.
+
+The residue: as of the 2026-07-28 audit the live schema existed in **no file anywhere**. Supabase was the
+source of truth and git was derived — exactly backwards. `migrations/0001_baseline_live_schema.sql`
+(reverse-engineered from `information_schema`/`pg_constraint`/`pg_policies`) closes that gap and is the
+restore point.
+
+Standing rules:
+
+1. **A migration is a committed file before it is an applied effect.** Any schema change gets a numbered
+   `migrations/NNNN_*.sql` file committed in the SAME change that applies it. `apply_migration` stays
+   human-only (see the forbidden-ops list), so the agent's deliverable is the file plus the proposal —
+   never an applied change with no file behind it.
+2. **Never let the DB lead the repo.** If you discover live schema that no file describes, that is a
+   finding to report, and the fix is to capture it as a baseline migration — not to shrug and build on it.
+3. **Read the live schema before writing code against it.** The 2026-07-28 Phase B build proved why: a
+   plausible-sounding briefing had `block_index`/`template_day_id`/`order_index`/`target_sets`/
+   `target_rpe`/`superset_group`/`theme_tags`, and the live schema has `block_order`/`day_id`/`ex_order`/
+   `sets`/`rest` and none of the rest. Verify against `information_schema`, not against a description —
+   including a description written by Claude in an earlier turn.
+4. **Capture defects at baseline rather than silently fixing them.** `0001` records four
+   (globally-unique `principle_key`, unreachable `principles_write` on null `created_by`, BUG-60's
+   `intensity_tier`, 0/171 deep tags) as comments. A baseline that quietly "improves" the schema stops
+   being a restore point.
+
 ## Program-of-work management — Epics too, consolidate, then persona-validate (2026-07-23, Kerwin)
 
 The daily run is not just bug/QA triage — it is a **program-of-work manager.** Directive from Kerwin
