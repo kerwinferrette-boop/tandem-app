@@ -38,6 +38,49 @@ external and persistent. So the database is ahead of the code.
 
 **What survived in code:** `getSingleDay` IS present in `programs.js` on `main`. Do not rebuild it.
 
+### VERIFIED COLUMN NAMES — use these, not the ones in the 2026-07-24 prompt
+
+Read from `information_schema` on 2026-07-28. The old prompt and several derived briefings carried
+**wrong column names**; do not trust any schema description you have been given, including the prose
+elsewhere in this file. These are the live names:
+
+```
+workout_templates    id, name, slug, author_id(NOT NULL, FK auth.users), is_published,
+                     author_attribution, parent_goal(NOT NULL), code_goal_mapping(NOT NULL),
+                     duration_weeks(NOT NULL, CHECK 4-12), days_per_week(NOT NULL, CHECK 2-6),
+                     split_type, intensity_tier, difficulty(NOT NULL), tagline, description,
+                     coaching_notes, science_overrides(jsonb NOT NULL),
+                     source_provenance(jsonb), cloned_from(uuid), created_at, updated_at
+
+template_blocks      id, template_id, block_order  ← NOT block_index
+                     week_start, week_end, name,
+                     rep_scheme_by_week(jsonb NOT NULL), technique_by_week(jsonb NOT NULL)
+
+template_days        id, template_id, block_id(NOT NULL), day_order, label(NOT NULL),
+                     muscle_targets(text[] NOT NULL)  ← ARRAY, not jsonb
+                     ✗ there is NO theme_tags column
+
+template_exercises   id, day_id  ← NOT template_day_id
+                     exercise_id, ex_order  ← NOT order_index
+                     sets(int), reps(text e.g. "8-12")  ← NOT target_sets/target_reps
+                     rest(int seconds, NOT NULL)  ← required, easy to miss
+                     role(NOT NULL), technique, constant_across_program(bool NOT NULL)
+                     ✗ NO target_rpe, ✗ NO superset_group
+
+program_principles   id, principle_key(NOT NULL), claim(NOT NULL), rationale(NOT NULL),
+                     source_citation(NOT NULL), created_by, template_id, created_at
+                     ✗ NO category, ✗ NO confidence, ✗ NO provenance_url
+```
+
+**D16 linkage convention — verified against a live row, not invented.** The Brick by Brick template
+carries `science_overrides.rep_floor`, and its justification is a `program_principles` row whose
+`principle_key` is exactly `rep_floor` on the same `template_id`. So D16 is an **exact key match**
+between a `science_overrides` key and a `principle_key`, scoped to the template. Implement it that way;
+do not invent a category taxonomy, because no category column exists.
+
+A working reference implementation of the schema guard, D16 precondition check and validation rules
+already exists on `main` at `scripts/ingest-program.mjs` — read it before writing your own.
+
 ---
 
 ## YOUR SCOPE — the application layer, nothing else

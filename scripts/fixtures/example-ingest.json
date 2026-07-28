@@ -1,0 +1,174 @@
+{
+  "slug": "iron-tempo-hypertrophy",
+  "name": "Iron Tempo Hypertrophy",
+  "author_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+  "is_published": false,
+  "author_attribution": "Tandem Program Library — own-brand rebuild",
+  "parent_goal": "build_muscle",
+  "code_goal_mapping": "build_muscle",
+  "duration_weeks": 8,
+  "days_per_week": 4,
+  "split_type": "upper_lower",
+  "intensity_tier": "intermediate",
+  "difficulty": "intermediate",
+  "tagline": "Tempo-driven hypertrophy, own-brand rebuilt from public periodization principles.",
+  "description": "An 8-week upper/lower hypertrophy block emphasizing controlled eccentrics and a final-block rep-floor exception, structured and reasoned about own-brand for Tandem's library — not a verbatim import of any named commercial program.",
+  "coaching_notes": "Compound-first every day; block 2 drops to a 3-5 rep floor intentionally (see science_overrides + the matching principle below) before the final deload.",
+  "science_overrides": {
+    "rep_floor": 3
+  },
+  "source_provenance": {
+    "rebuild": "own-brand, Tandem-authored",
+    "authored": "2026-07-28",
+    "inspiration": "general tempo-training and periodization literature synthesized for this scaffold's example payload — replace with real citations at actual ingest time"
+  },
+  "blocks": [
+    {
+      "block_order": 1,
+      "name": "Block 1: Tempo Foundation",
+      "week_start": 1,
+      "week_end": 4,
+      "rep_scheme_by_week": { "1": "8-10", "2": "8-10", "3": "6-8", "4": "6-8 (deload)" },
+      "technique_by_week": { "4": "drop_set" },
+      "days": [
+        {
+          "day_order": 1,
+          "label": "Upper A",
+          "muscle_targets": ["chest", "back", "shoulders", "triceps", "biceps"],
+          "exercises": [
+            {
+              "exercise_slug": "incline-db-press",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "8-10",
+              "rest": 120,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "exercise_slug": "barbell-row",
+              "ex_order": 2,
+              "sets": 4,
+              "reps": "8-10",
+              "rest": 120,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "exercise_slug": "tricep-rope-pushdown",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "10-12",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 2,
+          "label": "Lower A",
+          "muscle_targets": ["quads", "hamstrings", "glutes"],
+          "exercises": [
+            {
+              "exercise_slug": "barbell-back-squat",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "8-10",
+              "rest": 150,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "exercise_slug": "romanian-deadlift",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "8-10",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "exercise_slug": "plank",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "45-60s",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "block_order": 2,
+      "name": "Block 2: Rep-Floor Exception",
+      "week_start": 5,
+      "week_end": 8,
+      "rep_scheme_by_week": { "5": "3-5", "6": "3-5", "7": "3-5", "8": "3-5 (deload)" },
+      "technique_by_week": { "8": "drop_set" },
+      "days": [
+        {
+          "day_order": 1,
+          "label": "Upper B",
+          "muscle_targets": ["chest", "back", "shoulders"],
+          "exercises": [
+            {
+              "exercise_slug": "incline-db-press",
+              "ex_order": 1,
+              "sets": 5,
+              "reps": "3-5",
+              "rest": 180,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "exercise_slug": "lat-pulldown",
+              "ex_order": 2,
+              "sets": 4,
+              "reps": "3-5",
+              "rest": 150,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 2,
+          "label": "Lower B",
+          "muscle_targets": ["quads", "hamstrings"],
+          "exercises": [
+            {
+              "exercise_slug": "leg-press",
+              "ex_order": 1,
+              "sets": 5,
+              "reps": "3-5",
+              "rest": 180,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "principles": [
+    {
+      "principle_key": "rep_floor",
+      "claim": "A final-block 3-5 rep floor is legal inside a build_muscle (hypertrophy) program, deviating from the D10 taxonomy band floor of 6.",
+      "rationale": "Example scaffold payload — at real ingest time this must cite the actual research/doctrine source used to justify the deviation, exactly like the live 'Brick by Brick' template's rep_floor principle.",
+      "source_citation": "SCAFFOLD EXAMPLE ONLY — replace with a real citation (Notion doctrine page, research-report, or reputable external source) before using this as a real ingest payload.",
+      "created_by": null
+    }
+  ]
+}
