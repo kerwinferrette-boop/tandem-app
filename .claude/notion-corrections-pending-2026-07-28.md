@@ -1,4 +1,30 @@
-# PENDING NOTION CORRECTIONS — 2026-07-28
+# NOTION CORRECTIONS — 2026-07-28 (MOSTLY APPLIED)
+
+> **STATUS UPDATE — applied later on 2026-07-28 after Kerwin granted write approval.**
+> Verified by reading the records back:
+>
+> | record | state |
+> | --- | --- |
+> | EPIC-026 `Agent Context Notes` | ✅ APPLIED |
+> | EPIC-027 `Agent Context Notes` | ✅ APPLIED |
+> | EPIC-029 `Agent Context Notes` | ✅ APPLIED |
+> | EPIC-030 `Agent Context Notes` | ✅ APPLIED |
+> | EPIC-35 `Dependency Gate` | ✅ APPLIED — rewritten, now authoritative |
+> | EPIC-35 `Agent Context Notes` | ❌ **STILL STALE** — still opens with the 2026-07-25 "VERIFICATION + REBASE PASS" note claiming BUILD COMPLETE |
+> | EPIC-35 page body | ❌ not written |
+>
+> **Residual risk:** an agent reading only EPIC-35's `Agent Context Notes` still sees a completion claim.
+> The rewritten `Dependency Gate` on the same page contradicts it and says so explicitly, so the record is
+> self-correcting for anyone who reads both — but the notes property should still be fixed.
+>
+> **Why it stopped:** the Notion connector rotates server IDs mid-session. Writes through the
+> `mcp__Notion__*` instance succeeded; the `mcp__c881d872-*` instance returns
+> `MCP error -32003: MCP tool call requires approval`, which a non-interactive session cannot satisfy.
+> Retry when the working instance is connected. The remaining text is in section 5 below.
+
+---
+
+# ORIGINAL PENDING CORRECTIONS — 2026-07-28
 
 **Why this file exists:** five Notion records assert that EPIC-031 code was "DELIVERED" when it exists
 nowhere. Notion writes are blocked this session (`MCP error -32003: MCP tool call requires approval` — the
