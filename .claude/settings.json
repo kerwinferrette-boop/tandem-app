@@ -34,19 +34,19 @@
       "mcp__supabase__execute_sql"
     ],
     "deny": [
-      "Bash(git push origin main*)",
-      "Bash(git push * main*)",
-      "Bash(git push *:main*)",
-      "Bash(git push * HEAD:main*)",
       "Bash(git push --force*)",
       "Bash(git push -f*)",
       "Bash(git push --mirror*)",
-      "Bash(gh pr merge*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
       "Bash(netlify deploy:*)",
       "Bash(npx netlify-cli *)",
       "Bash(npx --yes netlify deploy:*)",
-      "mcp__07df308e-e02b-407b-b8de-465aa658ceab__netlify-deploy-services-updater",
-      "mcp__supabase__apply_migration"
+      "mcp__*__apply_migration",
+      "mcp__*__deploy_edge_function",
+      "mcp__*__netlify-deploy-services-updater",
+      "mcp__*__delete_branch",
+      "mcp__*__pause_project"
     ]
   }
 }
