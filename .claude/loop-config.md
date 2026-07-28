@@ -191,9 +191,16 @@ Mechanics:
   Evidence fields before starting a new fix), don't silently duplicate that work — either build
   on top of it (cherry-pick) or flag it plainly in the cycle report so it doesn't pile up
   unnoticed the way `claude/determined-volta-z16gpt` briefly did.
-- Still **absolutely denied, no exception**: merging the PR, pushing straight to `main`,
-  force-push, `netlify deploy`, and `supabase apply_migration`. Those stay human-only —
-  Kerwin reviews + merges the PR, then deploys + device-verifies. tandem-tpm reconciles status.
+- Still **absolutely denied, no exception**: force-push, `netlify deploy`, and
+  `supabase apply_migration`. Those stay human-only — Kerwin deploys + device-verifies.
+  tandem-tpm reconciles status.
+- **Pushing to `main` is authorized when the gates are green** (Kerwin, 2026-07-28, after the
+  EPIC-031 loss below): *"just use your git connector to push to main. If you verify that it
+  works through the various tests we've come up with, then it's fine with me."* The gate is
+  `ship_gate_command` (`npm run verify`, 7/7) **and** `persona_matrix_command`
+  (`npm run validate:personas`, 630) both green, **run and shown**, not asserted. Green gates,
+  push. Not green, do not push — open the PR and say why. A branch + PR is still fine when a
+  human decision is genuinely pending (see BUG-59); it is not a way to defer durability.
 - This does not loosen anything else in this config: scope-lock, `max_fix_attempts_per_story`,
   the forbidden-ops list, and "independent verification required before Resolved" all still
   apply exactly as written above.
@@ -202,6 +209,40 @@ Remote-environment wiring (one-time): the repo `kerwinferrette-boop/tandem-app` 
 as the session **Source** via the Claude GitHub integration, and `.claude/settings.json` +
 `.claude/skills/` + this config must be **committed on `main`** so the fresh clone actually
 contains the loop's brain.
+
+## Durability — "verified" is not "shipped" until it is on a remote ref (2026-07-28, Kerwin)
+
+**The EPIC-031 loss is the worked example, and it must not repeat.** On 2026-07-24 a session built
+the entire Living Program Library in a git worktree (`.worktrees/epic-031`), committed it locally as
+`ffa99c0`, and recorded "BUILD COMPLETE … verify 7/7 … 2,622 checks PASS" in Notion. On 2026-07-25 a
+second session re-verified it, rebased it, and re-recorded success. **Neither session ever pushed it**
+— the dependency gate literally read *"Kerwin pushes the rebased branch — sandbox cannot git push."*
+Nobody did, the container was reclaimed, and every line of that code ceased to exist. What survived
+was only the Supabase migrations, because those were written to an **external, persistent** system.
+The code had no external destination, so it had no existence.
+
+Standing rules, derived from that failure:
+
+1. **Work is not done until `git push` succeeds.** Not when the tests pass, not when the notes are
+   written, not when a report says COMPLETE. The unit of "done" is a **remote ref**, verified by
+   reading it back (`git ls-remote --heads origin <branch>` or `git log origin/<branch>`). Never
+   write "shipped/complete/delivered" into Notion for code that is not on a remote.
+2. **Never leave a session with verified work unpushed.** If the gates are green, push before
+   reporting. If a push is blocked, that is a **P0 report to Kerwin in the same turn**, not a
+   deferred to-do — say plainly "this work exists only in this container and will be lost."
+3. **Do not build in a worktree that has no tracked remote branch.** A worktree is fine for
+   isolation; it is not a destination. Create the branch, push it early and often, and treat an
+   unpushed worktree at end-of-turn as an incident.
+4. **Never record a Notion completion claim that git cannot corroborate.** Before writing DELIVERED /
+   COMPLETE / SHIPPED on an Epic or a consolidation note, confirm the symbols actually exist on a
+   remote ref (`git grep -l "<symbol>" origin/main`). The 2026-07-24 consolidation notes on
+   EPIC-026/027/029/030 all claimed delivery "inside EPIC-031" and were false the moment the
+   container died — which is worse than no note, because the next session reads "delivered" and
+   skips the work.
+5. **Schema and code drift apart when only one is durable.** EPIC-031's migrations are live in
+   `zsvktcvqmppsshtpeljt` while its code is gone. Before rebuilding anything that migrates, CHECK
+   THE LIVE DB FIRST (`list_tables`) — re-applying an applied migration or re-seeding seeded rows
+   duplicates published data.
 
 ## Program-of-work management — Epics too, consolidate, then persona-validate (2026-07-23, Kerwin)
 
