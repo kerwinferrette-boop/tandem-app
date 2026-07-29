@@ -2390,6 +2390,33 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     {id:'sub-bpa',   name:'Band Pull-Apart',        badge:'isolation', tier:'home', sets:3, w:0, r:20, rest:30, compound:false,
      why:'Zero-equipment (or light-band) rear-delt/upper-back filler — safe volume add when the pull-day pool is already exhausted.',
      cues:['Arms straight, band or towel at chest height.','Pull apart squeezing shoulder blades together; control the return.']},
+    // BUG-58: home tier only had 2 backfill candidates above, so 3/5/6-day
+    // rotations (which cycle the small home pool faster than 2/4-day) ran out
+    // of non-colliding subs and left days permanently short. The 6 entries
+    // below are not new exercises — each is copied verbatim (name/why/cues)
+    // from its already-tagged, already-cited 'home'-tier EXERCISE_BANK entry
+    // (see 'table-inverted-row', 'diamond-push-up', 'bodyweight-squat',
+    // 'bodyweight-single-leg-rdl', 'glute-bridge', 'prone-t-raise' above),
+    // so no new muscle-group tag or oneRmFactor is being invented — spanning
+    // push/pull/legs/glutes so a 2-short day has enough non-colliding options.
+    {id:'sub-tir',   name:'Table Inverted Row',     badge:'compound',  tier:'home', sets:3, w:0, r:12, rest:60, compound:true,
+     why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
+     cues:['Lie under a sturdy table, hands gripping the edge, body straight.','Pull chest toward the table edge, squeezing shoulder blades together.']},
+    {id:'sub-dpu',   name:'Diamond Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
+     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Zero-equipment triceps mass work.',
+     cues:['Hands together under the chest forming a diamond.','Lower until the chest nearly touches the hands, elbows tucked; press to lockout.']},
+    {id:'sub-bwsq',  name:'Bodyweight Squat',       badge:'compound',  tier:'home', sets:3, w:0, r:15, rest:60, compound:true,
+     why:'The zero-equipment squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available.',
+     cues:['Feet shoulder-width, sit hips back and down — knees track over toes.','Drive through the whole foot to stand; chest tall throughout.']},
+    {id:'sub-slrdl', name:'Single-Leg Romanian Deadlift', badge:'compound', tier:'home', sets:3, w:0, r:12, rest:60, compound:true,
+     why:'The zero-equipment hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
+     cues:['Stand tall, hinge forward while the free leg extends straight back.','Keep hips square; squeeze the glute and hamstring to return to standing.']},
+    {id:'sub-glb',   name:'Glute Bridge',           badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
+     why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available.',
+     cues:['Supine on floor, feet flat and close to hips.','Drive through heels; lift hips until body is a plank; squeeze glutes hard at top.']},
+    {id:'sub-ptr',   name:'Prone T-Raise',          badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
+     why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting — upper-back health filler distinct from the pull-day compounds.',
+     cues:['Lie face down; arms straight out to the sides (T position), thumbs up.','Lift arms by squeezing shoulder blades; lower slowly with full range of motion.']},
   ];
 
   // ── BUG-31: remove consecutive-day exercise name collisions ──────────────
