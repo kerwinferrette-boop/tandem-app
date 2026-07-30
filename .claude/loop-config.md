@@ -53,6 +53,54 @@ catalog:
              dynamic generator (100% of combos), filed as a new P0 Bug & QA Log row. See that
              row for detail; this is the reason the source exists at all — a single-profile or
              tracker-only loop had no way to surface it."
+    - name: "onboarding_lifecycle_walkthrough"
+      what: "npm run walkthrough:onboarding (scripts/onboarding-lifecycle-walkthrough.mjs) —
+             a Playwright-driven, live-browser walkthrough of the onboarding wizard (all
+             gated steps, in both a natural top-to-bottom fill order AND a reversed
+             last-field-touched-first order) through 'Build My Program', then into the
+             dashboard → tracker → expand an exercise card → log a set → Finish. Captures:
+             any step where the Next/Build button never enables despite all required fields
+             being valid (the BUG-61 class of order-dependent gating bug — a field with no
+             re-check handler leaves the button stuck if it's the LAST one touched), any JS
+             exception/console error during the run, and any dead-end where a required
+             control doesn't render. It does NOT drive real Supabase — the CDN script is
+             stubbed with a self-mocking Proxy so this runs with zero network egress and
+             zero risk to real user data; program-generation correctness itself stays
+             covered by validate:programs / validate:personas, this source is purely about
+             whether a user can physically GET THROUGH the flow that produces a cfg in the
+             first place.
+             Origin (Kerwin, 2026-07-30, in-app bug report that became BUG-61): 'Go through
+             a plan from plan creation to the end of the program, note each error, instead
+             of fixing it then and there, note it, finish the program, then go back & at a
+             macro level see why the error is happening.' This script is the DISCOVERY half
+             of that ask — it notes findings, it never fixes anything itself and never
+             writes to Notion directly (findings get filed as new Bug & QA Log rows +
+             linked Untested stories via discovery_handling below, same as persona_matrix).
+             The 'go back at a macro level' RCA half is a job for whichever cycle reviews
+             the findings, not something the script does automatically.
+             KNOWN GAP (be honest about scope, don't overclaim): Phase 1 only reaches Build
+             Program + one set-log + Finish on Week 1. It does NOT yet fast-forward through
+             multiple weeks to a program's real final/realization week, and it does not
+             exercise auth/sync/RLS (those stay forbidden-scope for this unattended loop
+             regardless — see safety.forbidden below). Extending it to a real multi-week
+             fast-forward (e.g. by writing tandem_week/tandem_current_day into localStorage
+             directly rather than literally waiting out a program) is a candidate for a
+             future cycle to pick up as its own item, not something to silently claim done."
+      when: "Run once per cycle, even when the tracker shows 0 Untested + 0 Failing — same
+             standing-source rule as persona_matrix. Any NEW finding (one not already
+             covered by an open Bug Log row) gets filed via discovery_handling below, exactly
+             like a bug the loop trips over while fixing something else."
+      first_run_finding: "2026-07-30 — built in response to BUG-61 (onboarding Next button
+             stuck if Weeks was filled after Training Days — filed from Kerwin's in-app bug
+             report, fixed same session, commit 0f31a8e on main). Verified the harness has
+             teeth before relying on it: ran clean (0 findings) against the fixed code, then
+             deliberately reverted the fix in the working tree and re-ran — the script
+             correctly caught the exact regression ('Next button did not enable... reverse
+             order... BUG-61 class'), then the working tree was restored to the real fix.
+             This is the reason the source exists at all — no existing standing check
+             (persona_matrix, validate:programs, verify) ever drives the onboarding UI, so
+             this entire class of bug had zero chance of being caught before a human hit it."
+
     - name: "code_contradiction_audit"
       what: "A periodic read-only sweep for two-code-paths-disagree issues (the kind of thing
              '38fca37f935b8142808af5e9c16c9894' — Code Contradictions & Stale-Code Audit —
@@ -88,6 +136,15 @@ verification:
   persona_matrix_command: "npm run validate:personas"  # scripts/persona-matrix.mjs — see
                                 # catalog.self_generated_sources above; run every cycle, not
                                 # just when fixing a generator story. 504 combos, Rules 6-9.
+  onboarding_walkthrough_command: "npm run walkthrough:onboarding"  # scripts/onboarding-
+                                # lifecycle-walkthrough.mjs — see catalog.self_generated_sources
+                                # above (onboarding_lifecycle_walkthrough); run every cycle.
+                                # Exit code 0 = no findings; non-zero = findings printed to
+                                # stdout, file each via discovery_handling before fixing.
+                                # Requires `npm install` once (playwright devDependency,
+                                # pinned to match this environment's pre-fetched browser —
+                                # see package.json; a different environment may need
+                                # `npx playwright install chromium` if the pin mismatches).
   ship_gate_command: "npm run verify"   # full gate: syntax + validate:programs + C7 smoke
                                 # (calibrated/derived weight override) + lastsets churn smoke
                                 # + DOCTRINE conformance (Notion law — scripts/doctrine.mjs)

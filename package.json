@@ -5,6 +5,10 @@
   "scripts": {
     "validate:programs": "node scripts/validate-programs.mjs",
     "verify": "node scripts/verify.mjs",
-    "validate:personas": "node scripts/persona-matrix.mjs"
+    "validate:personas": "node scripts/persona-matrix.mjs",
+    "walkthrough:onboarding": "node scripts/onboarding-lifecycle-walkthrough.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
   }
 }
