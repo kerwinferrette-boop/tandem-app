@@ -996,7 +996,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
           <span class="ob-label">Program Length</span>
           <div class="ob-field">
             <div class="ob-field-label">Weeks</div>
-            <input class="ob-input" type="number" inputmode="numeric" id="ob-weeks" placeholder="12" min="4" max="24" style="text-align:left;padding-left:18px;">
+            <input class="ob-input" type="number" inputmode="numeric" id="ob-weeks" placeholder="12" min="4" max="24" style="text-align:left;padding-left:18px;" oninput="obUpdateNextState()">
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">12 weeks is the sweet spot for meaningful transformation. 4 minimum, 24 maximum.</div>
         </div>
