@@ -178,6 +178,29 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
   }
 }
 
+// ── D7 (ACTIVE — promoted 2026-07-30) — Per-length mesocycle layout matches spec Part B ──
+// Researched before promoting (source-first, not assumed): the recovered spec (Notion
+// "Periodization & Structured Program Engine Spec — Parts A-C, residue transcription")
+// Part B IS, verbatim, programs.js's DELOAD_TABLE — Parts D-H are explicitly flagged
+// unrecoverable in that page, with no further scope claimed. D4 above already asserts
+// deloadWeeks(T)'s STRUCTURAL properties (max gap, correct tagging, reduced volume) but
+// never pinned the literal per-length values — a table typo (e.g. 8wk -> [3,7] instead of
+// the spec's [4,8]) could still ship with D4 fully green. This is the one concrete gap D4
+// didn't already close, so it's what D7 promotion actually adds — not new scope, a literal
+// verbatim-match check. Per CLAUDE.md: the phase that makes a PENDING invariant true
+// promotes it to ACTIVE in the same change; this table has been true in code since D4/D14
+// shipped, it was just never independently pinned.
+const SPEC_PART_B_DELOAD_TABLE = { 4: [4], 5: [5], 6: [6], 7: [7], 8: [4, 8], 9: [5, 9], 10: [5, 10], 11: [5, 10], 12: [4, 8, 12] };
+let d7Checked = 0;
+for (const T of Object.keys(SPEC_PART_B_DELOAD_TABLE).map(Number)) {
+  d7Checked++;
+  const actual = [...deloadWeeks(T)].sort((a, b) => a - b);
+  const expected = SPEC_PART_B_DELOAD_TABLE[T];
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    fail('D7', `${T}wk: deloadWeeks() returned [${actual}] but spec Part B requires [${expected}] verbatim`);
+  }
+}
+
 // ── D5 (ACTIVE) — Superset/circuit-driven goals (5-Goal Taxonomy) ───────────────
 // Transform = antagonist supersets; Fat Burn = high-rep circuits (short-rest
 // supersets). Both must contain superset blocks whose paired exercises carry a
@@ -228,27 +251,75 @@ for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
   if (f <= 0) fail('D6', `${days}d/${sex}: fat_burn produced zero working volume`);
 }
 
-// ── D11 (ACTIVE) — Monotonic progressive overload + earned-only 1RM ─────────────
-// "Reps down, weight up." The prescribed %1RM curve (PROGRESSION in tandem.html) must
-// rise-or-hold every week and NEVER dip — deloads are volume cuts (D4), not intensity
-// dips. And the 1RM that drives the prescription is a MEASUREMENT of real performance,
-// never a scheduled ratchet: this gate trips if the old ±2.5%/week fake-gain returns.
-// (Source: research-report(8) §3 %1RM bands + progressive-overload principle; the
-// sawtooth table + fabricated 1RM ratchet were the "app says stronger while prescribing
-// less" defect. tandem.html is the home of both, so we read it directly here.)
+// ── D11 (ACTIVE — strengthened 2026-07-30) — Monotonic progressive overload + earned-only 1RM ──
+// "Reps down, weight up." The prescribed %1RM curve must rise-or-hold every week and NEVER
+// dip outside a sanctioned D13 deload/D14 realization week — deloads are volume cuts (D4),
+// not intensity dips (except Build Muscle's D13-cited 60-70% exception, which itself must
+// hit its exact documented value, not just "not decreasing"). The 1RM driving the
+// prescription is a MEASUREMENT of real performance, never a scheduled ratchet.
+// (Source: research-report(8) §3 %1RM bands + progressive-overload principle; the sawtooth
+// table + fabricated 1RM ratchet were the "app says stronger while prescribing less" defect.)
+//
+// PRIOR VERSION of this check only validated that the static 7-key PROGRESSION table
+// (weeks 2-8) was internally monotonic — it never called the actual weekFactor() function
+// tandem.html uses at render time, so it never proved the INTERPOLATION math (which
+// stretches that 7-point table across the real 4-24wk onboarding range), the D13
+// deload-override precedence, or the D14 realization-override precedence were correct for
+// any real program length. Kerwin asked (2026-07-30) whether the generator might be wrong
+// given how often bugs surface; independently re-deriving and running weekFactor() itself
+// (not trusting the old table-only check) across every goal x every length 4-24 found ZERO
+// monotonicity/range/deload-intensity/realization-intensity violations — but the fact the
+// OLD check couldn't have caught a real interpolation bug if one existed is itself the
+// finding. This replaces it with the real function, exercised across the real range.
 let d11Checked = 0;
 try {
   const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
-  const m = tandemHtml.match(/const PROGRESSION = (\{[\s\S]*?\n\});/);
-  if (!m) fail('D11', 'could not locate the PROGRESSION table in tandem.html');
-  else {
-    const PROGRESSION = vm.runInNewContext('(' + m[1] + ')', {});
-    for (const [goal, row] of Object.entries(PROGRESSION)) {
-      const keys = Object.keys(row).map(Number).sort((a, b) => a - b);
-      for (let i = 1; i < keys.length; i++) {
+  const progressionMatch = tandemHtml.match(/const PROGRESSION = (\{[\s\S]*?\n\});/);
+  const overrideMatch = tandemHtml.match(/const DELOAD_INTENSITY_OVERRIDE = (\{[\s\S]*?\});/);
+  const realizationMatch = tandemHtml.match(/const REALIZATION_INTENSITY = ([\d.]+);/);
+  const weekFactorMatch = tandemHtml.match(/function weekFactor\(goal, week, totalWeeks\) \{[\s\S]*?\n\}\n/);
+  if (!progressionMatch || !overrideMatch || !realizationMatch || !weekFactorMatch) {
+    fail('D11', 'could not locate PROGRESSION / DELOAD_INTENSITY_OVERRIDE / REALIZATION_INTENSITY / weekFactor() in tandem.html');
+  } else {
+    const wf = vm.runInNewContext(`
+      (function() {
+        ${code}
+        const PROGRESSION = ${progressionMatch[1]};
+        const DELOAD_INTENSITY_OVERRIDE = ${overrideMatch[1]};
+        const REALIZATION_INTENSITY = ${realizationMatch[1]};
+        ${weekFactorMatch[0]}
+        return { weekFactor, deloadWeeks, realizationWeek, DELOAD_INTENSITY_OVERRIDE, REALIZATION_INTENSITY };
+      })()
+    `, {});
+    for (const goal of CANONICAL_GOALS) for (let T = 4; T <= 24; T++) {
+      const dw = wf.deloadWeeks(T), rw = wf.realizationWeek(T);
+      const curve = [];
+      for (let wkNum = 1; wkNum <= T; wkNum++) {
+        curve.push({ wkNum, f: wf.weekFactor(goal, wkNum, T), isDeload: dw.has(wkNum) && wkNum !== rw, isRealization: wkNum === rw });
+      }
+      for (const p of curve) {
         d11Checked++;
-        if (row[keys[i]] < row[keys[i - 1]]) {
-          fail('D11', `PROGRESSION.${goal}: %1RM dips at week ${keys[i]} (${row[keys[i]]} < ${row[keys[i - 1]]}) — must be monotonic non-decreasing (reps down, weight up)`);
+        if (!Number.isFinite(p.f) || p.f <= 0 || p.f > 1.2) fail('D11', `${goal}/${T}wk wk${p.wkNum}: weekFactor returned ${p.f} — not a sane %1RM fraction`);
+      }
+      let lastNormal = null;
+      for (const p of curve) {
+        if (p.isDeload || p.isRealization) continue;
+        if (lastNormal && p.f < lastNormal.f - 1e-9) fail('D11', `${goal}/${T}wk: wk${p.wkNum} (${p.f.toFixed(4)}) dips below wk${lastNormal.wkNum} (${lastNormal.f.toFixed(4)}) with no sanctioned deload/realization between them`);
+        lastNormal = p;
+      }
+      for (let i = 1; i < curve.length; i++) {
+        const prev = curve[i - 1], cur = curve[i];
+        if (prev.isDeload && !cur.isDeload && !cur.isRealization) {
+          let j = i - 1; while (j >= 0 && curve[j].isDeload) j--;
+          if (j >= 0 && cur.f < curve[j].f - 1e-9) fail('D11', `${goal}/${T}wk: wk${cur.wkNum} (${cur.f.toFixed(4)}) after the deload at wk${prev.wkNum} does not exceed the pre-deload wk${curve[j].wkNum} (${curve[j].f.toFixed(4)}) — overload did not survive the deload`);
+        }
+      }
+      for (const p of curve) {
+        if (p.isDeload && goal === 'build_muscle' && Math.abs(p.f - wf.DELOAD_INTENSITY_OVERRIDE.build_muscle) > 1e-9) {
+          fail('D11', `${goal}/${T}wk wk${p.wkNum}: deload week returned ${p.f.toFixed(4)}, not the documented D13 override ${wf.DELOAD_INTENSITY_OVERRIDE.build_muscle}`);
+        }
+        if (p.isRealization && Math.abs(p.f - wf.REALIZATION_INTENSITY) > 1e-9) {
+          fail('D11', `${goal}/${T}wk wk${p.wkNum}: realization week returned ${p.f.toFixed(4)}, not ${wf.REALIZATION_INTENSITY}`);
         }
       }
     }
@@ -437,7 +508,6 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
   ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
-  ['D7', 'Per-length mesocycle layout (4-12 wk) matches the spec Part B table exactly', 'Phase 5'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
 ];
 
@@ -448,11 +518,12 @@ console.log(`  D1  exercise stability within a block   — ${d1Checked} combos c
 console.log(`  D2  canonical goals generate legal programs`);
 console.log(`  D3  compound-first ordering`);
 console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
+console.log(`  D7  per-length mesocycle layout matches spec Part B verbatim — ${d7Checked} lengths pinned`);
 console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
-console.log(`  D11 monotonic %1RM overload + earned-only 1RM (no fake ratchet) — ${d11Checked} week-steps checked`);
+console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() across the full 4-24wk range — ${d11Checked} week-steps checked`);
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);

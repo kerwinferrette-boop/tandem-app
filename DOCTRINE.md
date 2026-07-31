@@ -25,7 +25,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D5** | Transform (antagonist supersets) and Fat Burn (short-rest circuits) are superset-driven; supersets never touch the primary compound block. | ✅ ACTIVE | 5-Goal Taxonomy; v0.5 |
 | **D6** | Weekly working volume scales by goal in MEV order: Transform ≥ Build Muscle ≥ Fat Burn (v1 — goal differentiation). | ✅ ACTIVE | v0.5 volume table |
 | **D6b** | Per-muscle weekly volume within the goal's MEV..MRV band + within-block MEV→MRV ramp. | ⏳ per-length meso | v0.5 volume table; Findings 3-remainder, 4 |
-| **D7** | Per-length mesocycle layout (4–12 wk) matches the spec Part B table. | ⏳ Phase 5 | Spec Part B |
+| **D7** | Per-length mesocycle layout (4–12 wk) matches the spec Part B table verbatim (deload-week placement). | ✅ ACTIVE | Spec Part B |
 | **D8** | Strength uses zero supersets on primary lifts; Maintenance caps at MAV. | ⏳ when added | 5-Goal Taxonomy |
 | **D9** | One-off "Build Me a Workout" is compound-first, tier-legal, dup-free — but EXEMPT by design from D1/D4/D7 (a single session is *allowed* to vary; that's its purpose). | ✅ ACTIVE | Home-Screen Program Builders |
 | **D10** | Rep schemes honor each goal's band: Fat Burn ≥10 (high-rep circuits), Build Muscle 6–15 (hypertrophy, never 1–5 strength), Transform 8–12 (mixed). | ✅ ACTIVE | 5-Goal Taxonomy; research §Rep Ranges |
@@ -34,6 +34,14 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D13** | Deload intensity is goal-specific: Build Muscle (Hypertrophy) deloads drop %1RM to the 60–70% band; Transform and Fat Burn deloads MAINTAIN intensity (volume-cut only). The stored/measured 1RM is never lowered by a deload regardless (D11). | ✅ ACTIVE | research-report(9) (Valyu, 2026-07-23) §Deload Intensity Management by Goal; Kerwin's explicit sign-off 2026-07-23 |
 | **D14** | A deload week that is also the program's final week (every length except 11wk) is a REALIZATION week, not a light week: same reduced volume, but HIGH intensity (~90% 1RM) and LOW reps (a top single/triple/five) for every goal — tagged `day.realization`, never `day.deload`. | ✅ ACTIVE | Spec Part B (already named this pattern for the 11wk program); Kerwin's question 2026-07-23, "why would week 12 ... be a deload, instead of an all out max week?" |
 | **D15** | Primary/secondary compound exercises are FIXED for the whole program (never rotate at block boundaries). Accessory rotation is tiered: the closest-pattern accessory per slot (acc1) rotates ~every 4-6 weeks; remaining isolation accessories rotate ~every 2-3 weeks (block boundary, D1's existing cadence). | ✅ ACTIVE | Spec Part A ("Primary compounds: fixed for the whole program" — already approved, never implemented); research-report(9) (Valyu, 2026-07-23) §Exercise Variation and Rotation Cadence |
+
+**D7 promotion note (2026-07-30):** researched before promoting, not assumed. The only recoverable
+Part B content (Notion "Periodization & Structured Program Engine Spec — Parts A–C, residue
+transcription") is the deload-week table itself, already implemented as D4/D14; Parts D–H are
+explicitly flagged unrecoverable there, with no further scope claimed. D4 already checked
+`deloadWeeks(T)`'s structural properties but never pinned the literal per-length values — D7 closes
+exactly that one gap (`scripts/doctrine.mjs`), nothing more. If a future session recovers more of
+the original spec, D7 may need to widen again.
 
 PENDING invariants are law already — they're documented in the gate and become blocking the moment the
 phase that makes them true ships. **Never weaken the gate to make a change pass. Never delete a PENDING.**
