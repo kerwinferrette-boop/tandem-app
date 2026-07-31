@@ -12,7 +12,8 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 - **Programming Architecture Reference** — skill-level exercise library, men-vs-women structure · `37aca37f935b811b90c7c880631c66a8`
 - **Exercise Science Schema v0.5** — MEV/MAV/MRV, deload cadence, splits, superset schema, formula · `37bca37f935b81cb9478e4906ada58c9`
 - **Competitive Strategy** — the brand/moat this all serves · `37aca37f935b814da680d8af798d51a0`
-- **Periodization & Structured Program Engine spec** — this session's approved spec (Parts A–H)
+- **Periodization & Structured Program Engine spec — Parts A–C (residue transcription)** · `3a7ca37f935b81c3b6e0d6f7a9d9618f` — the original Parts A–H prose doc is confirmed nonexistent; Parts A–C were transcribed 2026-07-24 from executable residue (DELOAD_TABLE, doctrine gate comments, superset layer). Parts D–H are unrecoverable: NEVER cite them.
+- **D16 · Two-tier doctrine + science_overrides sovereignty (EPIC-031)** · `3a7ca37f935b81ce8e88dff8a505fb12`
 
 ## The binding invariants (mirrored into `scripts/doctrine.mjs`)
 
@@ -34,6 +35,7 @@ longer happen: a change that violates the ACTIVE invariants below cannot ship.
 | **D13** | Deload intensity is goal-specific: Build Muscle (Hypertrophy) deloads drop %1RM to the 60–70% band; Transform and Fat Burn deloads MAINTAIN intensity (volume-cut only). The stored/measured 1RM is never lowered by a deload regardless (D11). | ✅ ACTIVE | research-report(9) (Valyu, 2026-07-23) §Deload Intensity Management by Goal; Kerwin's explicit sign-off 2026-07-23 |
 | **D14** | A deload week that is also the program's final week (every length except 11wk) is a REALIZATION week, not a light week: same reduced volume, but HIGH intensity (~90% 1RM) and LOW reps (a top single/triple/five) for every goal — tagged `day.realization`, never `day.deload`. | ✅ ACTIVE | Spec Part B (already named this pattern for the 11wk program); Kerwin's question 2026-07-23, "why would week 12 ... be a deload, instead of an all out max week?" |
 | **D15** | Primary/secondary compound exercises are FIXED for the whole program (never rotate at block boundaries). Accessory rotation is tiered: the closest-pattern accessory per slot (acc1) rotates ~every 4-6 weeks; remaining isolation accessories rotate ~every 2-3 weeks (block boundary, D1's existing cadence). | ✅ ACTIVE | Spec Part A ("Primary compounds: fixed for the whole program" — already approved, never implemented); research-report(9) (Valyu, 2026-07-23) §Exercise Variation and Rotation Cadence |
+| **D16** | Doctrine is two-tier. **SAFETY** invariants (D3 compound-first, injury filter, equipment tier, D11/D12 earned-only 1RM, never-superset-the-primary-block) bind EVERY program path — generated, authored, adopted; no override exists. **SCIENCE_DEFAULT** invariants (D1/D15 rotation, D4/D13/D14 deload shape, D6 volume order, D10 rep bands, superset-required clause of D5) bind the generated path; an authored program may deviate ONLY via a `science_overrides` key that matches an existing `program_principles` row (claim + rationale + citation). Override without principle row = hard fail in the doctrine gate AND at the DB trigger. Sovereignty without a cited principle is a D16 failure, not a loophole. | ✅ ACTIVE | D16 Notion page `3a7ca37f935b81ce8e88dff8a505fb12`; EPIC-031 plan §3; loop-config §Two-tier doctrine |
 
 PENDING invariants are law already — they're documented in the gate and become blocking the moment the
 phase that makes them true ships. **Never weaken the gate to make a change pass. Never delete a PENDING.**

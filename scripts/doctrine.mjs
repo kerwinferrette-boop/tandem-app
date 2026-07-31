@@ -20,8 +20,18 @@
  * enforced the moment the phase that makes them true ships). The full law lives
  * here from day one; each phase flips a PENDING to ACTIVE. Never delete a PENDING
  * to make the gate pass — promote it when its phase lands.
+ *
+ * TWO-TIER DOCTRINE (D16, EPIC-031 — Notion page 3a7ca37f935b81ce8e88dff8a505fb12):
+ * Invariants are tagged SAFETY (bind EVERY program path — generated, authored,
+ * library-adopted; no override exists) or SCIENCE_DEFAULT (bind the generated
+ * path; an AUTHORED program may deviate ONLY via a science_overrides key that
+ * matches a program_principles row — claim + rationale + citation). The D1-D15
+ * assertions below run against the GENERATED engine exactly as before — nothing
+ * is weakened. The D16 section additionally validates authored seed programs
+ * (seeds/*.json) against SAFETY rules + override-with-citation.
+ * Sovereignty without a cited principle is a D16 failure, not a loophole.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
@@ -37,6 +47,39 @@ const TIER_BY_NAME = {};
 for (const e of Object.values(EXERCISE_BANK)) if (e && e.name) TIER_BY_NAME[e.name.trim().toLowerCase()] = e.tier;
 
 const CANONICAL_GOALS = ['build_muscle', 'fat_burn', 'transform']; // 5-Goal Taxonomy: 3 live (+strength, +maintenance pending)
+
+// ── D16 tier map — every invariant's tier (Notion D16 page 3a7ca37f935b81ce8e88dff8a505fb12)
+// SAFETY = binds every path (generated, authored, adopted); no override exists.
+// SCIENCE_DEFAULT = binds the generated path; authored programs may deviate ONLY
+// via a science_overrides key backed by a program_principles row (D16).
+// D5 is split: its never-superset-the-primary-block clause is SAFETY; its
+// supersets-required-for-Transform/FatBurn clause is SCIENCE_DEFAULT.
+// D8 is split for the same reason: its zero-supersets-on-strength-primaries clause
+// IS the never-superset-the-primary-block rule, which the Notion D16 page places in
+// SAFETY with no override; its Maintenance-caps-at-MAV clause is SCIENCE_DEFAULT.
+// (Corrected 2026-07-30 landing D16 on main — the EPIC-031 branch tagged D8
+// wholesale SCIENCE_DEFAULT, which would read as licence to superset a strength
+// primary via a cited principle. Notion forbids that outright. Enforcement was
+// already correct — the seed validator rejects supersets on primary_compound
+// unconditionally — so this corrects the label, not the behaviour.)
+const TIERS = {
+  D1: 'SCIENCE_DEFAULT',  // block-stable selection / rotation cadence
+  D2: 'SAFETY',           // canonical goals only, legal non-empty programs
+  D3: 'SAFETY',           // compound before isolation — every path, no override
+  D4: 'SCIENCE_DEFAULT',  // deload every 4-6wk, block-final, volume cut
+  D5: 'SPLIT',            // never-on-primary = SAFETY; superset-required = SCIENCE_DEFAULT
+  D6: 'SCIENCE_DEFAULT',  // goal volume MEV order
+  D6b: 'SCIENCE_DEFAULT', D7: 'SCIENCE_DEFAULT',
+  D8: 'SPLIT',            // zero-supersets-on-strength-primaries = SAFETY; Maintenance MAV cap = SCIENCE_DEFAULT
+  D9: 'SAFETY',           // one-off structural law (compound-first, tier-legal, dup-free)
+  D10: 'SCIENCE_DEFAULT', // rep bands (overridable via cited principle, e.g. rep_floor)
+  D11: 'SAFETY',          // earned-only 1RM, monotonic overload — no override ever
+  D12: 'SAFETY',          // 1RM formula correctness — engineering, not preference
+  D13: 'SCIENCE_DEFAULT', // deload intensity shape
+  D14: 'SCIENCE_DEFAULT', // realization week shape
+  D15: 'SCIENCE_DEFAULT', // fixed primary compounds
+  D16: 'SAFETY',          // the override protocol itself is not overridable
+};
 const DAYS = [2, 3, 4, 5, 6];     // includes 6-day PPL×2 (Phase 4, shipped)
 const SEXES = ['male', 'female'];
 const PHASES = [0, 1, 2, 3];      // the 4 mesocycle blocks scaledPhases spreads across the program
@@ -433,6 +476,119 @@ for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T o
   if (!p.every(d => d.realization === true && d.deload !== true)) fail('D14', `${goal}/${days}d ${T}wk wk${rw}: applyDeload did not tag realization correctly`);
 }
 
+// ── D16 (ACTIVE) — Authored-program validation: SAFETY always, overrides cited ──
+// EPIC-031. Authored seed programs (seeds/*.json → template/blocks/days/exercises)
+// are the library path. SAFETY invariants bind them with no escape hatch;
+// SCIENCE_DEFAULT deviations are legal ONLY when a science_overrides key names a
+// program_principles row shipped in the same seed (claim + rationale + citation).
+// The same rule is enforced at the DB by validate_science_overrides() — this is
+// the file-side twin so a bad seed never reaches SQL. Checks per seed:
+//   1. every science_overrides key has a matching principles[].principle_key
+//   2. every exercise slug exists in EXERCISE_BANK (canonical library integrity)
+//   3. SAFETY/D3: within each day, compound roles precede accessory/core/cardio
+//   4. SAFETY/D5-clause: superset-type techniques (cardioacceleration, staggered)
+//      never appear on a primary_compound exercise
+//   5. Clean block-final weeks (Kerwin 2026-07-24): technique_by_week never lands
+//      on a deload or realization week (global week = block.week_start + k - 1)
+//   6. D10 override protocol: a rep floor below the goal band requires
+//      science_overrides.rep_floor <= that floor, backed by a principle row
+//   7. blocks are contiguous and cover weeks 1..duration_weeks exactly
+let d16Checked = 0, d16Seeds = 0;
+const SUPERSET_TECHNIQUES = new Set(['cardioacceleration', 'staggered']);
+const COMPOUND_ROLES = new Set(['primary_compound', 'secondary_compound']);
+const seedsDir = join(root, 'seeds');
+if (existsSync(seedsDir)) {
+  for (const fname of readdirSync(seedsDir).filter(f => f.endsWith('.json')).sort()) {
+    d16Seeds++;
+    let seed;
+    try { seed = JSON.parse(readFileSync(join(seedsDir, fname), 'utf8')); }
+    catch (e) { fail('D16', `${fname}: unparseable JSON (${e.message})`); continue; }
+    const t = seed.template || {};
+    const overrides = t.science_overrides || {};
+    const principleKeys = new Set((seed.principles || []).map(p => p.principle_key));
+
+    // 1 — every override key must be a cited principle (the D16 invariant itself)
+    for (const key of Object.keys(overrides)) {
+      d16Checked++;
+      if (!principleKeys.has(key)) fail('D16', `${fname}: science_overrides key "${key}" has no program_principles row — sovereignty without a cited principle`);
+    }
+    // principles must be complete rows, not stubs
+    for (const p of (seed.principles || [])) {
+      d16Checked++;
+      if (!p.principle_key || !p.claim || !p.rationale || !p.source_citation) fail('D16', `${fname}: principle "${p.principle_key || '?'}" missing claim/rationale/source_citation — a principle row must carry its evidence`);
+    }
+
+    // 7 — block layout: contiguous, covering 1..duration_weeks
+    const blocks = (seed.blocks || []).slice().sort((a, b) => (a.block_order || 0) - (b.block_order || 0));
+    d16Checked++;
+    if (blocks.length === 0) fail('D16', `${fname}: no blocks`);
+    let expectStart = 1;
+    for (const b of blocks) {
+      d16Checked++;
+      if (b.week_start !== expectStart) fail('D16', `${fname}: block ${b.block_order} starts week ${b.week_start}, expected ${expectStart} (blocks must be contiguous)`);
+      if (b.week_end < b.week_start) fail('D16', `${fname}: block ${b.block_order} week_end < week_start`);
+      expectStart = (b.week_end || 0) + 1;
+    }
+    d16Checked++;
+    if (blocks.length && expectStart - 1 !== t.duration_weeks) fail('D16', `${fname}: blocks cover weeks 1..${expectStart - 1} but duration_weeks is ${t.duration_weeks}`);
+
+    // 5 — clean block-final weeks: no technique on deload/realization weeks
+    const T = t.duration_weeks;
+    const dload = new Set(typeof deloadWeeks === 'function' ? deloadWeeks(T) : []);
+    const realW = typeof realizationWeek === 'function' ? realizationWeek(T) : null;
+    if (realW != null) dload.add(realW);
+    for (const b of blocks) {
+      for (const [wk, tech] of Object.entries(b.technique_by_week || {})) {
+        d16Checked++;
+        if (tech == null || tech === 'none') continue;
+        const globalWk = b.week_start + Number(wk) - 1;
+        if (dload.has(globalWk)) fail('D16', `${fname}: block ${b.block_order} schedules technique "${tech}" on global week ${globalWk} — block-final deload/realization weeks run CLEAN (Kerwin 2026-07-24)`);
+      }
+    }
+
+    // per-day checks
+    const goal = t.code_goal_mapping;
+    const band = REP_BANDS[goal];
+    let minRepSeen = Infinity;
+    for (const b of blocks) {
+      // rep floor across the block's week schemes
+      for (const scheme of Object.values(b.rep_scheme_by_week || {})) {
+        const nums = String(scheme).match(/\d+/g);
+        if (nums) minRepSeen = Math.min(minRepSeen, ...nums.map(Number));
+      }
+      for (const day of (b.days || [])) {
+        const exs = (day.exercises || []).slice().sort((a, z) => (a.ex_order || 0) - (z.ex_order || 0));
+        d16Checked++;
+        if (exs.length === 0) { fail('D16', `${fname}: block ${b.block_order} day ${day.day_order} has zero exercises`); continue; }
+        let seenNonCompound = false;
+        for (const ex of exs) {
+          d16Checked++;
+          // 2 — slug integrity against the canonical bank
+          if (!EXERCISE_BANK[ex.slug]) fail('D16', `${fname}: slug "${ex.slug}" not in EXERCISE_BANK (day ${day.day_order}, block ${b.block_order})`);
+          // 3 — SAFETY/D3 compound-first (role ordering)
+          if (COMPOUND_ROLES.has(ex.role)) {
+            if (seenNonCompound) fail('D16', `${fname}: block ${b.block_order} day ${day.day_order}: compound "${ex.slug}" appears after accessory/core/cardio — D3 (SAFETY) compound-first, no override exists`);
+          } else seenNonCompound = true;
+          // 4 — SAFETY/D5 clause: superset techniques never on the primary compound
+          if (ex.role === 'primary_compound' && SUPERSET_TECHNIQUES.has(ex.technique)) {
+            fail('D16', `${fname}: block ${b.block_order} day ${day.day_order}: primary compound "${ex.slug}" carries superset technique "${ex.technique}" — never superset the primary block (SAFETY)`);
+          }
+          // exercise-level rep floors count too
+          const nums = String(ex.reps || '').match(/\d+/g);
+          if (nums) minRepSeen = Math.min(minRepSeen, ...nums.map(Number));
+        }
+      }
+    }
+    // 6 — D10 band deviation requires the rep_floor override + principle (checked in 1)
+    if (band && Number.isFinite(minRepSeen) && minRepSeen < band[0]) {
+      d16Checked++;
+      const floor = overrides.rep_floor;
+      if (floor == null) fail('D16', `${fname}: min prescribed reps ${minRepSeen} below ${goal} band floor ${band[0]} with NO science_overrides.rep_floor — D10 deviation must be declared and cited`);
+      else if (minRepSeen < floor) fail('D16', `${fname}: min prescribed reps ${minRepSeen} below the declared rep_floor override ${floor}`);
+    }
+  }
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -457,6 +613,15 @@ console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
 console.log(`  D15 primary compounds fixed for the whole program — ${d15Checked} combos checked`);
+if (d16Seeds > 0) {
+  console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
+} else {
+  console.log(`  D16 authored-seed gate ARMED (no seeds/ dir yet — 0 seeds validated)`);
+}
+console.log(`\nTiers (D16 two-tier doctrine): SAFETY = every path, no override; SCIENCE_DEFAULT = generated`);
+console.log(`path default, authored programs may deviate only via cited science_overrides.`);
+console.log(`  SAFETY: ${Object.entries(TIERS).filter(([, v]) => v === 'SAFETY').map(([k]) => k).join(' ')} (+D5 never-on-primary clause, +D8 no-supersets-on-strength-primaries clause)`);
+console.log(`  SCIENCE_DEFAULT: ${Object.entries(TIERS).filter(([, v]) => v === 'SCIENCE_DEFAULT').map(([k]) => k).join(' ')} (+D5 superset-required clause, +D8 Maintenance MAV-cap clause)`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 
