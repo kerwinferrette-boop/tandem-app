@@ -1,0 +1,1039 @@
+{
+  "template": {
+    "name": "Brick by Brick",
+    "slug": "brick-by-brick",
+    "author_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+    "is_published": true,
+    "author_attribution": "Tandem",
+    "parent_goal": "build_muscle",
+    "code_goal_mapping": "build_muscle",
+    "duration_weeks": 12,
+    "days_per_week": 4,
+    "split_type": "body_part",
+    "intensity_tier": "full_gym",
+    "difficulty": "intermediate",
+    "tagline": "Twelve weeks. Four days. Zero guesswork.",
+    "description": "A 12-week body-part split built the old way and programmed the new way: the same first lift for every muscle all twelve weeks, three 4-week phases that walk reps from 12-15 down to a heavy 3-5 finish, and every fourth week pulled back on purpose.",
+    "coaching_notes": "Primaries never change — that is the point. Log the same lift for twelve weeks and watch the bar load climb. Rest-pause and drop sets appear only on weeks 1-3 of the first two phases; deload and test weeks run clean.",
+    "science_overrides": {
+      "rep_floor": 3
+    },
+    "source_provenance": {
+      "inspiration": "classic body-part split era",
+      "rebuild": "own-brand, Tandem-authored",
+      "authored": "2026-07-24"
+    }
+  },
+  "principles": [
+    {
+      "principle_key": "rep_floor",
+      "claim": "A final-phase 3-5 rep strength block is legal inside a build_muscle (hypertrophy) program, deviating from the D10 band floor of 6.",
+      "rationale": "Phase potentiation: after eight weeks of 12-15 and 9-11 hypertrophy work, a short heavy block converts accumulated volume into expressible strength and feeds the week-12 realization test. Scoped to primary lifts in phase 3 only; accessories stay at 6-8.",
+      "source_citation": "EPIC-031 plan §5 + D16 Notion page 3a7ca37f935b81ce8e88dff8a505fb12 (worked example); approved by Kerwin 2026-07-24. UNVERIFIED against repo research reports — no repo source names a 3-5 block inside hypertrophy programs; research-citation upgrade flagged, not fabricated."
+    }
+  ],
+  "blocks": [
+    {
+      "block_order": 1,
+      "week_start": 1,
+      "week_end": 4,
+      "name": "Phase 1 — Base",
+      "rep_scheme_by_week": {
+        "1": "12-15 primaries",
+        "2": "12-15 primaries",
+        "3": "12-15 primaries",
+        "4": "deload — volume cut"
+      },
+      "technique_by_week": {
+        "1": "rest_pause",
+        "2": "rest_pause",
+        "3": "rest_pause",
+        "4": "none"
+      },
+      "days": [
+        {
+          "day_order": 1,
+          "label": "Chest + Triceps",
+          "muscle_targets": [
+            "chest",
+            "triceps"
+          ],
+          "exercises": [
+            {
+              "slug": "flat-barbell-press",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "incline-db-press",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "close-grip-barbell-press",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "pec-deck",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": "rest_pause",
+              "constant_across_program": false
+            },
+            {
+              "slug": "skull-crusher",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "tricep-rope-pushdown",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": "rest_pause",
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 2,
+          "label": "Back + Biceps + Abs",
+          "muscle_targets": [
+            "back",
+            "biceps",
+            "abs"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-row",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "lat-pulldown",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "seated-cable-row",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "barbell-curl",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": "rest_pause",
+              "constant_across_program": false
+            },
+            {
+              "slug": "incline-db-curl",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "cable-crunch",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "hanging-leg-raise",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 3,
+          "label": "Shoulders + Traps + Calves",
+          "muscle_targets": [
+            "shoulders",
+            "traps",
+            "calves"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-ohp",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "seated-db-shoulder-press",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "db-lateral-raise",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": "rest_pause",
+              "constant_across_program": false
+            },
+            {
+              "slug": "reverse-pec-deck",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "shrug-barbell",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "standing-calf-raise",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": "rest_pause",
+              "constant_across_program": false
+            },
+            {
+              "slug": "seated-calf-raise",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 4,
+          "label": "Legs + Abs",
+          "muscle_targets": [
+            "quads",
+            "hamstrings",
+            "glutes",
+            "abs"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-back-squat",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "romanian-deadlift",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "leg-press",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 90,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "leg-extension",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": "rest_pause",
+              "constant_across_program": false
+            },
+            {
+              "slug": "lying-leg-curl",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 60,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "weighted-decline-sit-up",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "ab-wheel-rollout",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "12-15",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "block_order": 2,
+      "week_start": 5,
+      "week_end": 8,
+      "name": "Phase 2 — Build",
+      "rep_scheme_by_week": {
+        "1": "9-11 primaries",
+        "2": "9-11 primaries",
+        "3": "9-11 primaries",
+        "4": "deload — volume cut"
+      },
+      "technique_by_week": {
+        "1": "drop_set",
+        "2": "drop_set",
+        "3": "drop_set",
+        "4": "none"
+      },
+      "days": [
+        {
+          "day_order": 1,
+          "label": "Chest + Triceps",
+          "muscle_targets": [
+            "chest",
+            "triceps"
+          ],
+          "exercises": [
+            {
+              "slug": "flat-barbell-press",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "9-11",
+              "rest": 120,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "incline-db-press",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "close-grip-barbell-press",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "pec-deck",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": "drop_set",
+              "constant_across_program": false
+            },
+            {
+              "slug": "skull-crusher",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "tricep-rope-pushdown",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": "drop_set",
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 2,
+          "label": "Back + Biceps + Abs",
+          "muscle_targets": [
+            "back",
+            "biceps",
+            "abs"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-row",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "9-11",
+              "rest": 120,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "lat-pulldown",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "seated-cable-row",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "barbell-curl",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": "drop_set",
+              "constant_across_program": false
+            },
+            {
+              "slug": "incline-db-curl",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "cable-crunch",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "10-12",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "hanging-leg-raise",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "10-12",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 3,
+          "label": "Shoulders + Traps + Calves",
+          "muscle_targets": [
+            "shoulders",
+            "traps",
+            "calves"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-ohp",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "9-11",
+              "rest": 120,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "seated-db-shoulder-press",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "db-lateral-raise",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": "drop_set",
+              "constant_across_program": false
+            },
+            {
+              "slug": "reverse-pec-deck",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "shrug-barbell",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "standing-calf-raise",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": "drop_set",
+              "constant_across_program": false
+            },
+            {
+              "slug": "seated-calf-raise",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 4,
+          "label": "Legs + Abs",
+          "muscle_targets": [
+            "quads",
+            "hamstrings",
+            "glutes",
+            "abs"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-back-squat",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "9-11",
+              "rest": 120,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "romanian-deadlift",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "leg-press",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 105,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "leg-extension",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": "drop_set",
+              "constant_across_program": false
+            },
+            {
+              "slug": "lying-leg-curl",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "9-11",
+              "rest": 75,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "weighted-decline-sit-up",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "10-12",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "ab-wheel-rollout",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "10-12",
+              "rest": 45,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "block_order": 3,
+      "week_start": 9,
+      "week_end": 12,
+      "name": "Phase 3 — Peak",
+      "rep_scheme_by_week": {
+        "1": "3-5 primaries",
+        "2": "3-5 primaries",
+        "3": "3-5 primaries",
+        "4": "realization — top set"
+      },
+      "technique_by_week": {
+        "1": "none",
+        "2": "none",
+        "3": "none",
+        "4": "none"
+      },
+      "days": [
+        {
+          "day_order": 1,
+          "label": "Chest + Triceps",
+          "muscle_targets": [
+            "chest",
+            "triceps"
+          ],
+          "exercises": [
+            {
+              "slug": "flat-barbell-press",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "3-5",
+              "rest": 180,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "incline-db-press",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "close-grip-barbell-press",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "pec-deck",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "skull-crusher",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "tricep-rope-pushdown",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 2,
+          "label": "Back + Biceps + Abs",
+          "muscle_targets": [
+            "back",
+            "biceps",
+            "abs"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-row",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "3-5",
+              "rest": 180,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "lat-pulldown",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "seated-cable-row",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "barbell-curl",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "incline-db-curl",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "cable-crunch",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "8-10",
+              "rest": 60,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "hanging-leg-raise",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "8-10",
+              "rest": 60,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 3,
+          "label": "Shoulders + Traps + Calves",
+          "muscle_targets": [
+            "shoulders",
+            "traps",
+            "calves"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-ohp",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "3-5",
+              "rest": 180,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "seated-db-shoulder-press",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "db-lateral-raise",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "reverse-pec-deck",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "shrug-barbell",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "standing-calf-raise",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "seated-calf-raise",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        },
+        {
+          "day_order": 4,
+          "label": "Legs + Abs",
+          "muscle_targets": [
+            "quads",
+            "hamstrings",
+            "glutes",
+            "abs"
+          ],
+          "exercises": [
+            {
+              "slug": "barbell-back-squat",
+              "ex_order": 1,
+              "sets": 4,
+              "reps": "3-5",
+              "rest": 180,
+              "role": "primary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "romanian-deadlift",
+              "ex_order": 2,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": true
+            },
+            {
+              "slug": "leg-press",
+              "ex_order": 3,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 120,
+              "role": "secondary_compound",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "leg-extension",
+              "ex_order": 4,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "lying-leg-curl",
+              "ex_order": 5,
+              "sets": 3,
+              "reps": "6-8",
+              "rest": 90,
+              "role": "accessory",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "weighted-decline-sit-up",
+              "ex_order": 6,
+              "sets": 3,
+              "reps": "8-10",
+              "rest": 60,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            },
+            {
+              "slug": "ab-wheel-rollout",
+              "ex_order": 7,
+              "sets": 3,
+              "reps": "8-10",
+              "rest": 60,
+              "role": "core",
+              "technique": null,
+              "constant_across_program": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
