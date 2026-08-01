@@ -1593,7 +1593,21 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="modal-title">Your Program</div>
     <div id="goalSummary" style="font-size:13px;color:var(--muted2);line-height:1.8;"></div>
     <button class="clear-btn" style="color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);margin-top:14px;" onclick="resetProgram()">← Rebuild Program</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openProgramLibrary()">📚 Browse Program Library</button>
     <div id="goalSyncInfo" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
+  </div>
+</div>
+
+
+<!-- PROGRAM LIBRARY (EPIC-031) -->
+<div class="modal-overlay" id="modal-library" onclick="if(event.target===this)closeModal('library')">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('library')">✕</button>
+    <div class="modal-title">Program Library</div>
+    <div class="modal-sub">Authored, periodized programs. Adopting one replaces your generated plan — you can switch back anytime.</div>
+    <div id="libraryList" style="display:flex;flex-direction:column;gap:10px;"><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Loading…</span></div>
+    <div id="libraryCurrent" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
   </div>
 </div>
 
@@ -2369,6 +2383,178 @@ function rotationContext() {
   } catch (e) { /* defaults fine pre-onboarding */ }
   return { week: currentWeek, phase: phaseIdx };
 }
+// ═══ EPIC-031 — TECHNIQUE COACHING TIPS ═══
+// Rendered on authored-program exercise cards whose block technique is live
+// this week (materializeTemplate sets ex.technique only on technique weeks).
+// Copy is grounded in the seed programs' coaching_notes (seeds/*.json).
+const TECHNIQUE_TIPS = {
+  rest_pause: { name: 'Rest-pause', tip: 'On your final set: go to near-failure, rack it, breathe 15–20 sec, then squeeze out 2–4 more reps. One round only.' },
+  drop_set: { name: 'Drop set', tip: 'After your final set: immediately cut the weight ~30% and rep to near-failure. No rest between the drop.' },
+  cardioacceleration: { name: 'Cardioacceleration', tip: 'Between sets: 30–60 sec of jumping jacks, high knees, or bike instead of sitting. Keep the heart rate up — never rush the first lift.' },
+};
+// ═══ EPIC-031 — PROGRAM RESOLVER ═══
+// Single seam for every render path (all former getProgram call sites route
+// here). If the user adopted a library program (users.program_source =
+// 'template' + cached clone in LS), materialize THAT for the current week;
+// otherwise fall through to the generated engine unchanged. A missing/corrupt
+// cache falls back loudly — the user always gets a workout (mirrors
+// getProgram's own emergency-fallback philosophy).
+function getActiveProgram() {
+  if (cfg.programSource === 'template') {
+    try {
+      const tpl = LS.get('tandem_adopted_program');
+      if (tpl && typeof materializeTemplate === 'function') {
+        const p = materializeTemplate(tpl, currentWeek);
+        if (Array.isArray(p) && p.length) return p;
+      }
+      console.warn('[getActiveProgram] program_source=template but no usable adopted-program cache — using generated engine');
+    } catch (e) {
+      console.warn('[getActiveProgram] adopted-template materialization failed — using generated engine', e);
+    }
+  }
+  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+}
+
+// ═══ EPIC-031 — PROGRAM LIBRARY (browse / adopt / revert) ═══
+// Adopt-as-clone (Kerwin decision 2026-07-24): adopting copies the published
+// template into the SAME tables owner-scoped (author_id = adopter,
+// is_published = false, cloned_from = original id) — RLS write policies permit
+// exactly this shape. The clone bundle is cached in LS 'tandem_adopted_program'
+// so materializeTemplate never needs a network round-trip at render time.
+async function openProgramLibrary() {
+  openModal('library');
+  const list = document.getElementById('libraryList');
+  const cur = document.getElementById('libraryCurrent');
+  cur.innerHTML = cfg.programSource === 'template'
+    ? `Currently running: <strong style="color:var(--accent)">${(LS.get('tandem_adopted_program')?.template?.name) || 'adopted program'}</strong> · <a href="#" onclick="revertToGenerated();return false;" style="color:var(--muted2)">switch back to generated</a>`
+    : 'Currently running your generated program.';
+  if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online.</span>'; return; }
+  try {
+    const { data, error } = await sb.from('workout_templates')
+      .select('id, name, slug, tagline, description, parent_goal, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
+      .eq('is_published', true).is('cloned_from', null).order('name');
+    if (error) throw error;
+    if (!data || !data.length) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">No published programs yet.</span>'; return; }
+    const GOAL_LABEL = { build_muscle: 'Build Muscle', fat_burn: 'Fat Burn', transform: 'Transform', strength: 'Strength', maintenance: 'Maintenance' };
+    list.innerHTML = data.map(t => `
+      <div style="border:1px solid var(--line);border-radius:12px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+          <div style="font-weight:700;font-size:15px;">${t.name}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${GOAL_LABEL[t.parent_goal] || t.parent_goal}</div>
+        </div>
+        ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
+        ${t.description ? `<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-top:8px;">${t.description}</div>` : ''}
+        <button class="tool-btn" style="width:100%;margin-top:10px;padding:9px;" onclick="adoptTemplate('${t.id}', this)">Adopt this program</button>
+      </div>`).join('');
+  } catch (e) {
+    console.warn('[library] load failed', e);
+    list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Couldn\'t load the library — see console.</span>';
+  }
+}
+
+// Assemble the seed-shaped bundle {template, blocks:[{...days:[{...exercises}]}]}
+// from the DB rows. template_exercises stores exercise_id; the materializer
+// keys off EXERCISE_BANK slug, so join exercises(slug) here.
+async function fetchTemplateBundle(templateId) {
+  const { data: template, error: te } = await sb.from('workout_templates').select('*').eq('id', templateId).single();
+  if (te) throw te;
+  const { data: blocks, error: be } = await sb.from('template_blocks').select('*').eq('template_id', templateId).order('block_order');
+  if (be) throw be;
+  const { data: days, error: de } = await sb.from('template_days').select('*').eq('template_id', templateId).order('day_order');
+  if (de) throw de;
+  const dayIds = days.map(d => d.id);
+  const { data: exs, error: ee } = dayIds.length
+    ? await sb.from('template_exercises').select('*, exercises(slug)').in('day_id', dayIds).order('ex_order')
+    : { data: [], error: null };
+  if (ee) throw ee;
+  return {
+    template,
+    blocks: blocks.map(b => ({
+      ...b,
+      days: days.filter(d => d.block_id === b.id).map(d => ({
+        ...d,
+        exercises: exs.filter(x => x.day_id === d.id).map(x => ({
+          slug: x.exercises?.slug, ex_order: x.ex_order, sets: x.sets, reps: x.reps,
+          rest: x.rest, role: x.role, technique: x.technique,
+          constant_across_program: x.constant_across_program,
+          exercise_id: x.exercise_id,
+        })),
+      })),
+    })),
+  };
+}
+
+async function adoptTemplate(templateId, btn) {
+  if (!currentUser) { showToast('Sign in to adopt a program'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Adopting…'; }
+  try {
+    const bundle = await fetchTemplateBundle(templateId);
+    const uid = currentUser.id;
+    const src = bundle.template;
+    // 1. Clone the template row, owner-scoped (RLS: author_id must = auth.uid()).
+    const cloneSlug = `${src.slug}-${uid.slice(0, 8)}`;
+    const { data: clone, error: ce } = await sb.from('workout_templates').upsert({
+      name: src.name, slug: cloneSlug, author_id: uid, is_published: false,
+      author_attribution: src.author_attribution, parent_goal: src.parent_goal,
+      code_goal_mapping: src.code_goal_mapping, duration_weeks: src.duration_weeks,
+      days_per_week: src.days_per_week, split_type: src.split_type,
+      intensity_tier: src.intensity_tier, difficulty: src.difficulty,
+      tagline: src.tagline, description: src.description, coaching_notes: src.coaching_notes,
+      science_overrides: src.science_overrides, source_provenance: src.source_provenance,
+      cloned_from: src.id,
+    }, { onConflict: 'slug' }).select('id').single();
+    if (ce) throw ce;
+    // Re-adopt safety: wipe any prior clone children before re-inserting.
+    await sb.from('template_blocks').delete().eq('template_id', clone.id);
+    // 2. Clone blocks → days → exercises (id remapping via returned ids).
+    for (const b of bundle.blocks) {
+      const { data: nb, error: nbe } = await sb.from('template_blocks').insert({
+        template_id: clone.id, block_order: b.block_order, week_start: b.week_start,
+        week_end: b.week_end, name: b.name, rep_scheme_by_week: b.rep_scheme_by_week,
+        technique_by_week: b.technique_by_week,
+      }).select('id').single();
+      if (nbe) throw nbe;
+      for (const d of b.days) {
+        const { data: nd, error: nde } = await sb.from('template_days').insert({
+          template_id: clone.id, block_id: nb.id, day_order: d.day_order,
+          label: d.label, muscle_targets: d.muscle_targets,
+        }).select('id').single();
+        if (nde) throw nde;
+        const rows = d.exercises.map(x => ({
+          day_id: nd.id, exercise_id: x.exercise_id, ex_order: x.ex_order,
+          sets: x.sets, reps: x.reps, rest: x.rest, role: x.role,
+          technique: x.technique, constant_across_program: x.constant_across_program,
+        }));
+        if (rows.length) { const { error: nxe } = await sb.from('template_exercises').insert(rows); if (nxe) throw nxe; }
+      }
+    }
+    // 3. Cache the bundle locally (clone identity, original content) + flip source.
+    bundle.template = { ...src, id: clone.id, slug: cloneSlug, author_id: uid, is_published: false, cloned_from: src.id };
+    LS.set('tandem_adopted_program', bundle);
+    cfg.programSource = 'template';
+    LS.set('tandem_cfg', cfg);
+    currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
+    await syncToCloud();
+    closeModal('library');
+    renderTracker();
+    showToast(`${src.name} adopted — starting at Week 1`);
+  } catch (e) {
+    console.warn('[library] adopt failed', e);
+    showToast('Adopt failed — see console');
+    if (btn) { btn.disabled = false; btn.textContent = 'Adopt this program'; }
+  }
+}
+
+function revertToGenerated() {
+  cfg.programSource = 'generated';
+  LS.set('tandem_cfg', cfg);
+  syncToCloud();
+  closeModal('library');
+  renderTracker();
+  showToast('Back on your generated program');
+}
+
 function toggleSetup() {
   document.getElementById('setupCard').classList.toggle('open');
 }
@@ -2941,7 +3127,7 @@ function renderTracker() {
 // Build day tabs + workout views from the engine. Self-contained so a live
 // equipment-tier change can regenerate the day without a full renderTracker().
 function renderProgramViews() {
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+  const program = getActiveProgram();
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const tabsEl = document.getElementById('dayTabs');
   const viewsEl = document.getElementById('workoutViews');
@@ -3054,7 +3240,10 @@ function buildDayHTML(day, phase) {
       const rec = (ex.isCore && inputMode !== 'reps')
         ? { weight: null, arrow: 'same', label: 'Hold steady',
             reason: ex.unit === 'sec' ? 'Timed hold — progress by holding longer' : 'Bodyweight — quality reps over load' }
-        : getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex, ex.isCore ? ex.r : null);
+        // EPIC-031: authored (template) exercises carry their own rep target
+        // (ex.repRange low bound in ex.r) — progression measures against THAT,
+        // not the generated phase rep. Generated path (no repRange) unchanged.
+        : getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null);
       const _prStore = LS.get('tandem_prs') || {};
       // EPIC-9: effective 1RM = working (living) number first, then all-time PR.
       // C7/BUG-45: name-only when named — the id fallback was serving another
@@ -3095,18 +3284,19 @@ function buildDayHTML(day, phase) {
       const videoId = VIDEO_IDS[ex.name];
 
       html += `
-        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" onclick="toggleExCard(this)">
+        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
           <div class="ex-header">
             <div class="ex-check"></div>
             <div class="ex-info">
               <div class="ex-name"><span id="en-${ex.id}">${ex.name}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">est. 1RM ~${pr1rm}</span>` : ''}</div>
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
-                ? `${ex.sets} × ${ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${phase.restAcc}s rest`
-                : `${ex.sets} × ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · ${ex.compound ? phase.restComp : phase.restAcc}s rest`}
+                ? `${ex.sets} × ${ex.repRange || ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${ex.authoredRest ?? phase.restAcc}s rest`
+                : `${ex.sets} × ${ex.repRange || effectiveReps(phase, currentWeek, cfg.weeks)} reps · ${ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc)}s rest`}
               </div>
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
+              ${ex.technique && TECHNIQUE_TIPS[ex.technique] ? `<div class="po-reason" style="color:var(--accent2);margin-top:3px;"><strong>${TECHNIQUE_TIPS[ex.technique].name}:</strong> ${TECHNIQUE_TIPS[ex.technique].tip}</div>` : ''}
             </div>
             <div class="ex-expand">▾</div>
           </div>
@@ -3123,7 +3313,7 @@ function buildDayHTML(day, phase) {
               <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, ex.isCore ? ex.r : effectiveReps(phase, currentWeek, cfg.weeks), inputMode)}
+            ${buildSetRows(ex.id, ex.sets, startW, (ex.isCore || ex.repRange) ? ex.r : effectiveReps(phase, currentWeek, cfg.weeks), inputMode)}
             <div class="set-actions">
               <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${inputMode}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
@@ -3136,7 +3326,7 @@ function buildDayHTML(day, phase) {
           </div>
           <div class="rest-timer" id="rt-${ex.id}">
             <div class="rest-lbl">Rest</div>
-            <div class="rest-count" id="rc-${ex.id}">${fmtTime(ex.compound ? phase.restComp : phase.restAcc)}</div>
+            <div class="rest-count" id="rc-${ex.id}">${fmtTime(ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc))}</div>
             <div class="rest-bar-track"><div class="rest-bar-fill" id="rb-${ex.id}" style="width:100%"></div></div>
             <button class="rest-skip" onclick="skipRest('${ex.id}')">Skip</button>
           </div>
@@ -3354,7 +3544,7 @@ function logSet(id, i) {
           const cardEl = document.getElementById('ec-' + id);
           const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
           // Exercise category from day label (upper / lower / full_body / day key)
-          const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+          const prog = getActiveProgram();
           const dayObj = prog?.find(d => d.key === currentDay);
           const dl = dayObj?.label || '';
           const exCat = /lower/i.test(dl) ? 'lower' : /upper/i.test(dl) ? 'upper' : /full/i.test(dl) ? 'full_body' : (currentDay || null);
@@ -3529,7 +3719,7 @@ function startRest(id) {
   // Rest only fires after the final exercise of the superset block, so the
   // timer runs between rounds instead of between partner exercises.
   try {
-    const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+    const prog = getActiveProgram();
     const dayObj = prog?.find(d => d.key === currentDay);
     const blk = dayObj?.blocks?.find(b =>
       !b.cardio && /superset/i.test(b.label || '') && b.exs?.some(e => e && e.id === id));
@@ -3543,7 +3733,10 @@ function startRest(id) {
   // detect compound vs accessory from card class
   const card = document.getElementById('ec-' + id);
   const isCompound = card?.querySelector('.badge-compound') !== null;
-  const total = isCompound ? phase.restComp : phase.restAcc;
+  // EPIC-031: authored (template) exercises stamp their prescribed rest on the
+  // card (data-rest) — that wins over the generated phase rests.
+  const authoredRest = parseInt(card?.dataset.rest, 10);
+  const total = (Number.isFinite(authoredRest) && authoredRest > 0) ? authoredRest : (isCompound ? phase.restComp : phase.restAcc);
   let remaining = total;
   const display = document.getElementById('rc-' + id);
   const bar     = document.getElementById('rb-' + id);
@@ -3875,7 +4068,7 @@ function finishSession() {
   banner.classList.add('show');
   banner.scrollIntoView({behavior:'smooth'});
 
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+  const program = getActiveProgram();
   updateProgress();
 
   // Cloud sync
@@ -4339,7 +4532,9 @@ async function syncToCloud() {
         age: cfg.age || null,
         current_week: currentWeek,
         program_start_date: cfg.startDate || null,
-        theme_color: cfg.themeColor || '#1B5E38'
+        theme_color: cfg.themeColor || '#1B5E38',
+        // EPIC-031: which engine drives the program (generated | template)
+        program_source: cfg.programSource || 'generated'
       }, { onConflict: 'id' });
       if (error) throw error;
     }
@@ -4426,7 +4621,8 @@ async function restoreFromCloud() {
         weight: configData.current_weight_lbs,
         goalWeight: configData.goal_weight_lbs,
         height: configData.height_inches,
-        age: configData.age
+        age: configData.age,
+        programSource: configData.program_source || 'generated'
       });
       LS.set('tandem_week', configData.current_week);
     }
@@ -4531,7 +4727,7 @@ function getWeekSchedule() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diffDays = Math.floor((today - start) / 86400000);
   if (diffDays < 0) return null;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+  const program = getActiveProgram();
   if (!program?.length) return null;
   const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
   const labelFor = key => key === 'rest' ? 'Rest'
@@ -4553,7 +4749,7 @@ function getProgramDayNumber() {
 // instead of the static ceil(7/days) which was goal-blind and plan-length-blind.
 function getOverdueDays() {
   if (!cfg?.days || !cfg?.startDate) return 0;
-  const program = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+  const program = getActiveProgram();
   if (!program?.length) return 0;
   const cadence = computeWeekCadence(cfg.days, cfg.goal, program);
   const tSlots = cadence.reduce((a, s, i) => (s !== 'rest' ? [...a, i] : a), []);
@@ -4607,7 +4803,10 @@ async function syncFromCloud() {
       startDate: userData.program_start_date || null,
       themeColor: userData.theme_color || '#1B5E38',
       // EPIC-9 Step A: restore onboarding estimates on device re-login
-      onboardingEstimates: userData.onboarding_estimates || {}
+      onboardingEstimates: userData.onboarding_estimates || {},
+      // EPIC-031: adopted-library flag (materializer needs the LS bundle too —
+      // getActiveProgram falls back to generated if the cache is absent)
+      programSource: userData.program_source || 'generated'
     };
     selectedGoal = cfg.goal;
     selectedDays = cfg.days || 4;
@@ -4656,7 +4855,7 @@ async function syncFromCloud() {
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
-        const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+        const prog = getActiveProgram();
         const idx = prog.findIndex(d => d.key === lastDone.day_type);
         if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
       }
@@ -5283,7 +5482,7 @@ function refreshAvatarPreview(){
         if (lastSession) {
           const today = new Date().toISOString().split('T')[0];
           if (lastSession.session_date <= today) {
-            const prog = getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+            const prog = getActiveProgram();
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }

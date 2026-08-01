@@ -1903,6 +1903,82 @@ function applyDeload(program, rotation, weeks) {
   }));
 }
 
+// ═══════════════════════════════════════════════════════
+// EPIC-031 — AUTHORED PROGRAM MATERIALIZER
+// materializeTemplate(tpl, week) → same day-array shape getProgram() emits, so
+// the entire render layer (buildDayHTML, tabs, logging, PRs) works unchanged.
+// `tpl` is the seed/DB shape: { template:{...}, blocks:[{week_start..week_end,
+// rep_scheme_by_week, technique_by_week, days:[{day_order,label,exercises:[...]}]}] }.
+// Doctrine: SAFETY invariants are guaranteed upstream by the D16 gate + DB
+// trigger (compound-first ordering, slug integrity, technique placement).
+// SCIENCE_DEFAULT deload/realization shape (D4/D14) still applies here via
+// applyDeload — authored programs share the global deload calendar unless a
+// future science_overrides key says otherwise (none of the seeds override it).
+// Techniques (rest_pause / drop_set / cardioacceleration) surface as ex.technique
+// ONLY on weeks the block schedules them — the render layer shows them as
+// coached instructions. Weights are light defaults; the render layer overrides
+// from PRs/calibration exactly as it does for generated days.
+//
+// EXPERIENCE TIER (integration decision, 2026-07-31, porting EPIC-031 onto a
+// main that had since gained EPIC-8a): authored programs deliberately do NOT
+// receive the advanced-tier flagDropSet() injection. flagAdvanced() is applied
+// inside getProgram()'s generated return path only; this function returns
+// straight through applyDeload and never reaches it. That is intended, not an
+// oversight. flagDropSet targets blocks matching /accessory|arms/i and authored
+// blocks are phase-named ("Phase 2 — Build"), so it would no-op regardless; more
+// importantly, the seeds already schedule their own techniques per week and run
+// clean on deload weeks. Injecting an extra drop set would overwrite the
+// author's deliberate D4/D14 deload shape that this materializer exists to
+// preserve. Experience level still governs the generated engine unchanged.
+// ═══════════════════════════════════════════════════════
+const TEMPLATE_DAY_COLORS = ['var(--red)', 'var(--blue)', 'var(--amber)', 'var(--teal,#38d9c0)', 'var(--purple,#a78bfa)', 'var(--orange)'];
+function materializeTemplate(tpl, week) {
+  if (!tpl || !tpl.template || !Array.isArray(tpl.blocks) || !tpl.blocks.length) return null;
+  const T = Number(tpl.template.duration_weeks) || 12;
+  const wk = Math.min(Math.max(Number(week) || 1, 1), T);
+  const block = tpl.blocks.find(b => wk >= b.week_start && wk <= b.week_end) || tpl.blocks[tpl.blocks.length - 1];
+  const weekInBlock = wk - block.week_start + 1;
+  const twRaw = (block.technique_by_week || {})[weekInBlock];
+  const blockTech = twRaw && twRaw !== 'none' ? twRaw : null;
+  const defW = (eq) => eq === 'barbell' ? 95 : eq === 'machine' ? 70 : eq === 'cable' ? 35 : eq === 'dumbbell' ? 35 : 0;
+
+  const days = (block.days || []).slice().sort((a, b) => a.day_order - b.day_order).map((d, di) => {
+    const exs = (d.exercises || []).slice().sort((a, b) => a.ex_order - b.ex_order).map(ex => {
+      const bank = EXERCISE_BANK[ex.slug] || {};
+      const compound = ex.role === 'primary_compound' || ex.role === 'secondary_compound';
+      // Prefill target = bottom of the authored range (guaranteed-rep floor);
+      // the full range renders via ex.repRange.
+      const low = parseInt(String(ex.reps || '').match(/\d+/)?.[0] || '10', 10);
+      return {
+        id: `tpl-d${d.day_order}-e${ex.ex_order}`,
+        name: bank.name || ex.slug,
+        badge: compound ? 'compound' : 'isolation',
+        sets: ex.sets, r: low, repRange: String(ex.reps || low),
+        w: defW(bank.equipment),
+        rest: ex.rest, authoredRest: ex.rest,
+        compound, isCore: ex.role === 'core', role: ex.role,
+        unit: bank.unit || 'reps', equipment: bank.equipment || null,
+        why: bank.why || '', cues: bank.cues || [],
+        // Technique lands only if BOTH the exercise carries it AND this week of
+        // the block schedules it (weeks 4/8/12 run clean by authoring rule).
+        technique: blockTech && ex.technique ? ex.technique : null,
+        constant: ex.constant_across_program === true,
+      };
+    });
+    return {
+      key: `day${d.day_order}`,
+      label: `Day ${d.day_order} · ${d.label}`,
+      color: TEMPLATE_DAY_COLORS[di % TEMPLATE_DAY_COLORS.length],
+      rationale: `${tpl.template.name} — ${block.name} (wks ${block.week_start}–${block.week_end}). `
+        + ((block.rep_scheme_by_week || {})[weekInBlock] || ''),
+      authored: true, templateSlug: tpl.template.slug,
+      blocks: [{ label: block.name, exs }],
+    };
+  });
+  // D4/D14: global deload/realization calendar applies to authored programs too.
+  return applyDeload(days, { week: wk }, T);
+}
+
 function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
