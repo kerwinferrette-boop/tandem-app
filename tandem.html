@@ -2431,7 +2431,7 @@ async function openProgramLibrary() {
   if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online.</span>'; return; }
   try {
     const { data, error } = await sb.from('workout_templates')
-      .select('id, name, slug, tagline, description, parent_goal, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
+      .select('id, name, slug, tagline, description, parent_goal, code_goal_mapping, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
       .eq('is_published', true).is('cloned_from', null).order('name');
     if (error) throw error;
     if (!data || !data.length) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">No published programs yet.</span>'; return; }
@@ -2440,7 +2440,7 @@ async function openProgramLibrary() {
       <div style="border:1px solid var(--line);border-radius:12px;padding:14px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
           <div style="font-weight:700;font-size:15px;">${t.name}</div>
-          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${GOAL_LABEL[t.parent_goal] || t.parent_goal}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${GOAL_LABEL[t.code_goal_mapping] || t.code_goal_mapping}</div>
         </div>
         ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
