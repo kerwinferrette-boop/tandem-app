@@ -196,21 +196,56 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
 // Every mesocycle ends in a deload (every 4-6 wk, block-final): reduced volume,
 // load held. Assert, for each length onboarding actually offers (4-24 — tandem.html
 // ob-weeks min=4 max=24, validated at the step gate; D11 already iterates this same
-// full range, so it is the precedent): no training run > 7 wk without a deload;
-// each deload week has REDUCED total sets vs a non-deload week and is tagged on
-// every day; a non-deload week is never tagged. A deload week that is ALSO the
-// program's final week is a REALIZATION week instead (D14) — tagged
-// day.realization, not day.deload — so "tagged" here means either flag, but never
-// both and never neither.
+// full range, so it is the precedent): the cadence is bounded on BOTH sides —
+// consecutive deloads never closer than 4 wk nor further apart than 6; each deload
+// week has REDUCED total sets vs a non-deload week and is tagged on every day; a
+// non-deload week is never tagged. A deload week that is ALSO the program's final
+// week is a REALIZATION week instead (D14) — tagged day.realization, not day.deload
+// — so "tagged" here means either flag, but never both and never neither.
+//
+// EPIC-033 F3 / BUG-66. The guard used to be `maxGap > 7` while its own failure
+// string claimed to enforce "> 6-wk" and DOCTRINE.md D4 said 4-6 — four layers,
+// four numbers. Resolving it surfaced why the bound was loose: `gap` is the
+// MESOCYCLE LENGTH, not the run of consecutive loading weeks (deloadWeeks(12) =
+// [4,8,12] → gaps 4,4,4 = three 4-week blocks, each loading 3 wk then deloading 1).
+// Read that way, D7 (which pins the spec Part B table verbatim, and that table
+// contains 7:[7], a 7-week block) and D4 (cap 6) CONTRADICT each other at exactly
+// one length. The loose `> 7` was hiding a real doctrine conflict, not a typo.
+// Ruling (D4 amendment page 3b3ca37f935b81e98b06e5f9516dd29c, per DOCTRINE.md:50
+// Notion-first): keep the spec table and state the exemption explicitly as a NAMED
+// condition — a program of <=7 weeks is a single mesocycle with no internal deload.
+// Justified externally, not from memory: RP "Progressing for Hypertrophy" (the
+// accumulation phase "lasts as long as it takes to hit systemic MRV" — up to 12 wk
+// for beginners, 3-4 wk for very advanced, so 4-6 is a midpoint not a ceiling) and
+// Coleman et al. 2024 (PMC10809978: a mid-program deload in a 9-week program showed
+// "no appreciable differences" vs continuous training). Outside T<=7 the gate now
+// TIGHTENS from >7 to >6, so this amendment is net stricter than what it replaces.
+const SINGLE_BLOCK_EXEMPT_MAX_WEEKS = 7;   // D4 named exemption — see above
+const DELOAD_CADENCE_MIN_WEEKS = 4;        // D4 lower bound (this is what catches F2)
+const DELOAD_CADENCE_MAX_WEEKS = 6;        // D4 upper bound
 let d4Checked = 0;
 const ONBOARDING_WEEK_RANGE = Array.from({ length: 21 }, (_, i) => i + 4); // 4..24
 for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T of ONBOARDING_WEEK_RANGE) {
   const dw = [...deloadWeeks(T)].sort((a, b) => a - b);
   if (dw.length === 0) { fail('D4', `${goal}/${days}d ${T}wk: no deload scheduled`); continue; }
-  let prev = 0, maxGap = 0;
-  for (const w of dw) { maxGap = Math.max(maxGap, w - prev); prev = w; }
-  maxGap = Math.max(maxGap, T - prev);
-  if (maxGap > 7) fail('D4', `${goal}/${days}d ${T}wk: ${maxGap}-week run with no deload (> 6-wk rule)`);
+  // Spacing gaps = mesocycle lengths (week 0 -> 1st deload, then deload -> deload).
+  // The TRAILING tail (last deload -> T) is deliberately excluded from the LOWER
+  // bound: the 11wk program legitimately ends 1 week after its last deload because
+  // wk11 is its peak/test week (spec Part B, D14). It still counts toward the upper
+  // bound — a long un-deloaded tail is a real violation.
+  let prev = 0; const spacing = [];
+  for (const w of dw) { spacing.push(w - prev); prev = w; }
+  const tail = T - prev;
+  const maxGap = Math.max(...spacing, tail);
+  const minGap = Math.min(...spacing);
+  if (T <= SINGLE_BLOCK_EXEMPT_MAX_WEEKS) {
+    // D4 named exemption: a <=7wk program is ONE mesocycle. Assert it really is one
+    // block rather than silently letting any layout through.
+    if (dw.length !== 1 || dw[0] !== T) fail('D4', `${goal}/${days}d ${T}wk: <=${SINGLE_BLOCK_EXEMPT_MAX_WEEKS}wk programs are a single block ending in the block-final week, got [${dw}]`);
+  } else {
+    if (maxGap > DELOAD_CADENCE_MAX_WEEKS) fail('D4', `${goal}/${days}d ${T}wk: ${maxGap}-week mesocycle with no deload (D4 upper bound is ${DELOAD_CADENCE_MAX_WEEKS} wk)`);
+    if (minGap < DELOAD_CADENCE_MIN_WEEKS) fail('D4', `${goal}/${days}d ${T}wk: deloads only ${minGap} week(s) apart in [${dw}] (D4 lower bound is ${DELOAD_CADENCE_MIN_WEEKS} wk — back-to-back deloads are not a cadence)`);
+  }
   const refWk = [1, 2, 3].find(w => !dw.includes(w)) || 1;
   const refSets = totalSets(genT(goal, days, 'male', refWk, T));
   const refProg = genT(goal, days, 'male', refWk, T);
@@ -666,6 +701,7 @@ if (existsSync(seedsDir)) {
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
+  ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
   ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
 ];
