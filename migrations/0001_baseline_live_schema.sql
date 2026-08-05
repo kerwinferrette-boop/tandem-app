@@ -2,6 +2,18 @@
 -- 0001_baseline_live_schema.sql — EPIC-031 program library, RECONSTRUCTED FROM LIVE
 -- =====================================================================================
 --
+-- ⚠️ 2026-08-04 — SUPERSEDED AS THE PRIMARY RECORD. The ORIGINAL migrations turned out to
+-- exist after all: `epic031_program_library.sql`, `epic031_exercises_seed.sql` and
+-- `epic031_seed_programs.sql` are now in this directory, landed by Cowork from files that
+-- had been sitting untracked on a local disk. Those are the authoritative, hand-authored
+-- source; this file is a reverse-engineered snapshot taken while they were believed lost.
+--
+-- Prefer the epic031_* files when reconciling schema intent. This one is retained because
+-- it is still independently useful: it was read from `information_schema`/`pg_constraint`/
+-- `pg_policies` on the LIVE database, so it documents what is actually deployed rather than
+-- what was authored, and it captures four defects (see the bottom of this file) that the
+-- original migrations do not mention. If the two ever disagree, this file describes reality.
+--
 -- WHAT THIS IS, AND WHY IT READS BACKWARDS
 --
 -- This file was reverse-engineered from the LIVE Supabase project (zsvktcvqmppsshtpeljt)

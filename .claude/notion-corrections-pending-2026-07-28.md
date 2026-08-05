@@ -1,4 +1,30 @@
-# NOTION CORRECTIONS — 2026-07-28 ✅ COMPLETE
+> # ⛔ 2026-08-04 — THESE CORRECTIONS ARE THEMSELVES NOW WRONG
+>
+> Everything below was applied to Notion on 2026-07-28 and was accurate **as of that day's evidence**.
+> It is no longer accurate. Cowork landed the EPIC-031 application layer on `main` (`a6cb6c0`,
+> `d655d70`, `d8d2516`) from **untracked files on a local disk** — which is why scanning this
+> container and all 17 remote branches found nothing, and why my inference from that absence was wrong.
+>
+> Every "absent everywhere" claim written into EPIC-026/027/029/030 and EPIC-35 needs a second-round
+> correction saying the code landed. Concretely, now TRUE on `origin/main`:
+> `materializeTemplate`, `getActiveProgram`, `fetchTemplateBundle`, `adoptTemplate`,
+> `openProgramLibrary`, `TECHNIQUE_TIPS`, D16 ACTIVE in `scripts/doctrine.mjs` (2 seeds, 223 checks),
+> `migrations/epic031_*.sql`, `seeds/brick-by-brick.json`, `seeds/redline-recomp.json`,
+> `scripts/author-seeds.mjs`, `scripts/sync-seed-programs.mjs`. Gates green: verify 7/7, personas 630.
+>
+> Still true and still open, verified in the landed code: **BUG-59** — `materializeTemplate(tpl, week)`
+> takes no `cfg`, so the authored/adopted path applies no equipment-tier or injury filtering.
+> Persona-matrix passes R8/R9 only because it exercises the generated path. **BUG-60** unchanged. The
+> **globally-unique `principle_key`** defect is unchanged and still caps the corpus at one principle
+> per key for the whole library.
+>
+> Lesson for the durability rules: absence from every remote is **not** proof of non-existence when a
+> collaborator works locally. "Not in git" and "does not exist" are different claims, and I collapsed
+> them.
+
+---
+
+# NOTION CORRECTIONS — 2026-07-28 (applied; superseded 2026-08-04)
 
 > **All corrections applied after Kerwin granted write approval.** Each verified by reading the record
 > back, not by trusting the write response:
