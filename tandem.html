@@ -2430,17 +2430,34 @@ async function openProgramLibrary() {
     : 'Currently running your generated program.';
   if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online.</span>'; return; }
   try {
+    // EPIC-033 F5 / BUG-68. Two columns describe a template's goal and they are NOT
+    // interchangeable: `parent_goal` is the authored 5-Goal-Taxonomy intent (all five,
+    // including strength/maintenance, so an authored program may precede code support),
+    // while `code_goal_mapping` names the live PROGRESSION/superset chassis the engine
+    // will actually run (three values only). The card used to print parent_goal — so a
+    // template authored as Strength but mapped onto the build_muscle chassis advertised
+    // a program the engine cannot deliver. Kerwin ruled BOTH remedies:
+    //   (a) FILTER — until D8 (Strength/Maintenance) ships, only list templates whose
+    //       parent_goal is one the engine can deliver (D2: only canonical goals generate);
+    //   (b) SURFACE — label the card with the engine goal, and when the two differ, say so
+    //       out loud rather than silently substituting.
+    const LIVE_GOALS = ['build_muscle', 'fat_burn', 'transform']; // == doctrine.mjs CANONICAL_GOALS
     const { data, error } = await sb.from('workout_templates')
-      .select('id, name, slug, tagline, description, parent_goal, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
-      .eq('is_published', true).is('cloned_from', null).order('name');
+      .select('id, name, slug, tagline, description, parent_goal, code_goal_mapping, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
+      .eq('is_published', true).is('cloned_from', null).in('parent_goal', LIVE_GOALS).order('name');
     if (error) throw error;
     if (!data || !data.length) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">No published programs yet.</span>'; return; }
     const GOAL_LABEL = { build_muscle: 'Build Muscle', fat_burn: 'Fat Burn', transform: 'Transform', strength: 'Strength', maintenance: 'Maintenance' };
+    const goalChip = t => {
+      const engine = GOAL_LABEL[t.code_goal_mapping] || t.code_goal_mapping;
+      if (!t.parent_goal || t.parent_goal === t.code_goal_mapping) return engine;
+      return `${GOAL_LABEL[t.parent_goal] || t.parent_goal} · runs as ${engine}`;
+    };
     list.innerHTML = data.map(t => `
       <div style="border:1px solid var(--line);border-radius:12px;padding:14px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
           <div style="font-weight:700;font-size:15px;">${t.name}</div>
-          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${GOAL_LABEL[t.parent_goal] || t.parent_goal}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${goalChip(t)}</div>
         </div>
         ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
