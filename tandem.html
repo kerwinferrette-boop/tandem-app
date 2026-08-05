@@ -1881,7 +1881,8 @@ sb.auth.onAuthStateChange((event, session) => {
 // ── LS helpers ──
 const LS = {
   get: k => { try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
-  set: (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn(e);} }
+  set: (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn(e);} },
+  del: k => { try{localStorage.removeItem(k);}catch(e){console.warn(e);} }
 };
 
 // ── App state ──
@@ -2400,11 +2401,22 @@ const TECHNIQUE_TIPS = {
 // cache falls back loudly — the user always gets a workout (mirrors
 // getProgram's own emergency-fallback philosophy).
 function getActiveProgram() {
-  if (cfg.programSource === 'template') {
+  // 'library' is a legal users.program_source value per the DB check constraint
+  // (migrations/epic031_program_library.sql), and was silently falling through
+  // to the generated engine because only 'template' was matched here.
+  if (cfg.programSource === 'template' || cfg.programSource === 'library') {
     try {
       const tpl = LS.get('tandem_adopted_program');
       if (tpl && typeof materializeTemplate === 'function') {
-        const p = materializeTemplate(tpl, currentWeek);
+        // BUG-59: tier + injuries are SAFETY invariants binding EVERY path.
+        // The generated branch below has always passed them; this one did not,
+        // so an adopted program could hand the user a lift their injury profile
+        // excludes or their gym doesn't have. Guarded by
+        // scripts/authored-safety-smoke.mjs in `npm run verify`.
+        const p = materializeTemplate(tpl, currentWeek, {
+          tier: resolveEquipmentTier(),
+          injuries: cfg.injuries,
+        });
         if (Array.isArray(p) && p.length) return p;
       }
       console.warn('[getActiveProgram] program_source=template but no usable adopted-program cache — using generated engine');
@@ -2548,6 +2560,10 @@ async function adoptTemplate(templateId, btn) {
 
 function revertToGenerated() {
   cfg.programSource = 'generated';
+  // Drop the adopted bundle too. Leaving it behind meant a later re-adopt (or a
+  // stale programSource restored from cloud) could resurrect a program the user
+  // had explicitly abandoned.
+  LS.del('tandem_adopted_program');
   LS.set('tandem_cfg', cfg);
   syncToCloud();
   closeModal('library');
@@ -3297,6 +3313,7 @@ function buildDayHTML(day, phase) {
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
               ${ex.technique && TECHNIQUE_TIPS[ex.technique] ? `<div class="po-reason" style="color:var(--accent2);margin-top:3px;"><strong>${TECHNIQUE_TIPS[ex.technique].name}:</strong> ${TECHNIQUE_TIPS[ex.technique].tip}</div>` : ''}
+              ${ex.substitutedFrom ? `<div class="po-reason" style="color:var(--amber);margin-top:3px;"><strong>Swapped:</strong> the program calls for ${ex.substitutedFrom}, which your equipment or injury profile rules out. This trains the same muscle.</div>` : ''}
             </div>
             <div class="ex-expand">▾</div>
           </div>

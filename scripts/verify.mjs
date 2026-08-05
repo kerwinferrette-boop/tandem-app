@@ -47,6 +47,7 @@ const CHECKS = [
   { name: 'C7 smoke (calibrated/derived override, startW precedence)', run: () => execFileSync('node', [join(scriptsDir, 'c7-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'lastsets churn smoke (name-keyed identity, no slot-id inheritance)', run: () => execFileSync('node', [join(scriptsDir, 'lastsets-churn-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'cadence smoke (BUG-30 weekday spread — no consecutive/phantom days regression)', run: () => execFileSync('node', [join(scriptsDir, 'cadence-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'authored-path safety (BUG-59 — injury + equipment tier bind adopted templates)', run: () => execFileSync('node', [join(scriptsDir, 'authored-safety-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'doctrine conformance (Notion law — see /DOCTRINE.md)', run: () => execFileSync('node', [join(scriptsDir, 'doctrine.mjs')], { stdio: 'inherit' }) },
 ];
 
