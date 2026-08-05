@@ -37,12 +37,40 @@ const cwc = grab('computeWeekCadence', /function computeWeekCadence\([\s\S]*?\n\
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(programsSrc, ctx);
-vm.runInContext(`${recov}\n${mgfl}\n${cpd}\n${cwc}\nthis.computeWeekCadence = computeWeekCadence; this.RECOVERY_PARAMS = RECOVERY_PARAMS;`, ctx);
-const { getProgram, computeWeekCadence, RECOVERY_PARAMS } = ctx;
+vm.runInContext(`${recov}\n${mgfl}\n${cpd}\n${cwc}\nthis.computeWeekCadence = computeWeekCadence; this.RECOVERY_PARAMS = RECOVERY_PARAMS; this.muscleGroupFromLabel = muscleGroupFromLabel;`, ctx);
+const { getProgram, computeWeekCadence, RECOVERY_PARAMS, muscleGroupFromLabel } = ctx;
 
 const GOALS = ['build_muscle', 'fat_burn', 'transform'];
 const failures = [];
 let checked = 0;
+
+// BUG-73 regression guard: non-canonical lower-body labels ("Quad Focus", "Glutes +
+// Hamstrings") must classify as 'lower', not fall through to the gap-exempt 'full' default —
+// otherwise canPlaceDay() lets same-emphasis lower-body days stack with zero recovery gap.
+{
+  const nonCanonicalLowerLabels = ['Quad Focus', 'Glutes + Hamstrings', 'Hip Thrust Day'];
+  for (const label of nonCanonicalLowerLabels) {
+    if (muscleGroupFromLabel(label) !== 'lower') {
+      failures.push(`muscleGroupFromLabel("${label}") returned "${muscleGroupFromLabel(label)}", expected "lower" (BUG-73 regression)`);
+    }
+  }
+  // Feed a 3-day build_muscle cadence entirely through non-canonical lower-body labels —
+  // it must respect the same sameGroupHours/maxConsecutive gap as canonical "Lower"/"Legs" labels.
+  const rec = RECOVERY_PARAMS.build_muscle;
+  const sameGroupMinGap = Math.ceil(rec.sameGroupHours / 24);
+  const program = [
+    { key: 'day1', label: 'Quad Focus' },
+    { key: 'day2', label: 'Glutes + Hamstrings' },
+    { key: 'day3', label: 'Quad Focus' },
+  ];
+  const cadence = computeWeekCadence(3, 'build_muscle', program);
+  let maxRun = 0, run = 0;
+  for (const s of cadence) { if (s !== 'rest') { run++; maxRun = Math.max(maxRun, run); } else run = 0; }
+  if (maxRun > rec.maxConsecutive) {
+    failures.push(`BUG-73: non-canonical lower-body labels scheduled ${maxRun} consecutive days > cap ${rec.maxConsecutive} — recovery gap not enforced`);
+  }
+  checked++;
+}
 
 for (const goal of GOALS) {
   const baseCap = (RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle).maxConsecutive;

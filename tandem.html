@@ -4658,10 +4658,14 @@ const RECOVERY_PARAMS = {
 
 // Classify a day label into a muscle group for conflict detection.
 // Push and Pull are kept separate so they can be placed adjacent (different muscles).
+// BUG-73 fix: "lower" is Tandem's only lower-body recovery unit (RECOVERY_PARAMS/BUG-030
+// never splits it further, and research-report(8) treats "Upper/Lower" as one split unit,
+// same as quad- vs. hinge-dominant days) — so any quad/glute/hamstring/hip-emphasis label,
+// however phrased, must land in 'lower', not fall through to the gap-exempt 'full' default.
 function muscleGroupFromLabel(label) {
   const l = (label || '').toLowerCase();
   if (/full.body|full body/.test(l)) return 'full';
-  if (/lower|legs/.test(l)) return 'lower';
+  if (/lower|legs|quad|glute|hamstring|hip/.test(l)) return 'lower';
   if (/pull/.test(l) && !/push/.test(l)) return 'pull';
   if (/push/.test(l) && !/pull/.test(l)) return 'push';
   if (/upper|shoulder|arm/.test(l)) return 'upper';
