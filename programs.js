@@ -1815,13 +1815,26 @@ function applyGoalVolume(program, goal) {
 // render layer can show a deload banner. Applied to EVERY getProgram path.
 // ═══════════════════════════════════════════════════════
 const DELOAD_TABLE = { 4:[4], 5:[5], 6:[6], 7:[7], 8:[4,8], 9:[5,9], 10:[5,10], 11:[5,10], 12:[4,8,12] };
+// Lengths 13-24 (onboarding accepts 4-24; tandem.html ob-weeks min=4 max=24) are NOT in the
+// spec Part B table — Parts D-H are unrecoverable and NEVER cited. So the fallback is derived
+// from D4's cadence principle instead: split T into k = floor(T/4) blocks of 4-6 weeks and
+// deload each block's final week, remainder front-loaded (longer blocks first).
+// This is not invented: it REPRODUCES the Part B table verbatim for T = 4,5,6,7,8,9,10,12
+// (including the non-obvious 9→[5,9] and 10→[5,10]), diverging only at T=11 — the one length
+// D14 already documents as the exception. So DELOAD_TABLE stays authoritative and is consulted
+// first; the derivation only governs the range the spec never covered.
+// The old fallback (`for w=4; w<T; w+=4` then add T) produced back-to-back deloads at
+// T=13 [4,8,12,13], T=17 [4,8,12,16,17], T=21 [4,8,12,16,20,21] — a 1-week gap, violating D4's
+// "every 4-6 weeks" lower bound. (EPIC-033 F2.)
 function deloadWeeks(weeks) {
   const T = Number(weeks) || 12;
   if (DELOAD_TABLE[T]) return new Set(DELOAD_TABLE[T]);
-  if (T <= 7) return new Set([T]);                 // one block → deload the final week
-  const s = new Set();                              // general: block-final deloads ~every 4 wk + final
-  for (let w = 4; w < T; w += 4) s.add(w);
-  s.add(T);
+  const k = Math.floor(T / 4);
+  if (k < 1) return new Set([T]);                  // sub-4wk: one block → deload the final week
+  const base = Math.floor(T / k), rem = T % k;     // block lengths ∈ [4,6], remainder front-loaded
+  const s = new Set();
+  let w = 0;
+  for (let i = 0; i < k; i++) { w += base + (i < rem ? 1 : 0); s.add(w); }
   return s;
 }
 

@@ -194,14 +194,17 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
 
 // ── D4 (ACTIVE) — Deloads per the Part B length table ──────────────────────────
 // Every mesocycle ends in a deload (every 4-6 wk, block-final): reduced volume,
-// load held. Assert, for each length 4-12: no training run > 7 wk without a deload;
+// load held. Assert, for each length onboarding actually offers (4-24 — tandem.html
+// ob-weeks min=4 max=24, validated at the step gate; D11 already iterates this same
+// full range, so it is the precedent): no training run > 7 wk without a deload;
 // each deload week has REDUCED total sets vs a non-deload week and is tagged on
 // every day; a non-deload week is never tagged. A deload week that is ALSO the
 // program's final week is a REALIZATION week instead (D14) — tagged
 // day.realization, not day.deload — so "tagged" here means either flag, but never
 // both and never neither.
 let d4Checked = 0;
-for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+const ONBOARDING_WEEK_RANGE = Array.from({ length: 21 }, (_, i) => i + 4); // 4..24
+for (const goal of CANONICAL_GOALS) for (const days of [3, 4, 5]) for (const T of ONBOARDING_WEEK_RANGE) {
   const dw = [...deloadWeeks(T)].sort((a, b) => a - b);
   if (dw.length === 0) { fail('D4', `${goal}/${days}d ${T}wk: no deload scheduled`); continue; }
   let prev = 0, maxGap = 0;
