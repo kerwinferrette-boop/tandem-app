@@ -1523,12 +1523,17 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // true isolation) rotate ~2-3wk. Accessories previously walked by rotWeek (a
     // fresh pick every single week) — that was the "random" churn (no cohesion) AND
     // it broke progressive-overload tracking (the BUG-45 phantom-1RM class). Now:
-    //   primary/secondary (compound) → block 0, FIXED for the whole program
+    //   primary/secondary (compound) → the PRIMARY BLOCK index (D15 as amended
+    //       2026-08-05, EPIC-033 Step 4b — see primaryBlockStarts above). Keyed on
+    //       the WEEK, not the phase, because the 8-12wk cadence is a wall-clock
+    //       cadence while `phase` is always 4 scaled themes regardless of T. Returns
+    //       0 for every week of any program <= 15 weeks, so behaviour at every length
+    //       that shipped before EPIC-033 is bit-identical to the old `block = 0`.
     //   acc1 ("primary accessory")   → rotates ~every other phase (~4-6wk)
     //   acc2/acc3 (isolation)        → rotates every phase (~2-3wk, unchanged)
     const role = slot && slot.role;
     let block;
-    if (role === 'primary' || role === 'secondary') block = 0;
+    if (role === 'primary' || role === 'secondary') block = primaryBlockIndex(rotWeek, weeks);
     else if (role === 'acc1') block = Math.floor(rotPhase / 2);
     else block = rotPhase;
     return pool[((block % pool.length) + pool.length) % pool.length];
@@ -1836,6 +1841,60 @@ function deloadWeeks(weeks) {
   let w = 0;
   for (let i = 0; i < k; i++) { w += base + (i < rem ? 1 : 0); s.add(w); }
   return s;
+}
+
+// ═══════════════════════════════════════════════════════
+// PRIMARY-COMPOUND BLOCKS — doctrine D15 (amended 2026-08-05, EPIC-033 Step 4b)
+// Notion: D15 amendment page 3b3ca37f935b8100bba6c1ebb2c9ddf8
+// ═══════════════════════════════════════════════════════
+// D15 used to read "primary compounds are FIXED for the whole program", and pick()
+// implemented that literally (block = 0, forever). That sentence was written when
+// onboarding capped at 12 weeks, and its own citation is narrower than the sentence:
+// Spec Part A records "compounds fixed 8-12wk MINIMUM, which for a <=12wk Tandem
+// program IS the whole program." Onboarding now accepts 4-24 (EPIC-033 F1), so at
+// T > 12 "whole program" stopped being a restatement of the 8-12wk figure and became
+// an extrapolation past it — a 24-week program ran ONE squat variation for 24 weeks.
+// Kerwin's ruling 2026-08-05: "Primaries refresh every 8-12wk."
+//
+// FLAGGED, not laundered: 8-12wk is a FLOOR in every source that states it (RP's own
+// guidance is performance-triggered — "if you are still hitting PRs on the exercise
+// ... don't change it" — not calendar-triggered). No source supplies a CEILING. The
+// ceiling is Kerwin's product ruling. Where floor and ceiling conflict, floor wins.
+//
+// The partition is therefore derived from two rules already in force, with no free
+// parameters: (1) D1 — selection refreshes only at a MESOCYCLE boundary, so a primary
+// block is a whole number of mesocycles and starts the week after a deload week;
+// (2) the D15 floor — a primary block is never shorter than MIN_PRIMARY_BLOCK weeks.
+// Greedy: close the block at the first mesocycle boundary where the block is already
+// >=8wk AND >=8wk would still remain; absorb a short tail rather than ship it.
+//
+// Consequences (verified by running, see the doctrine gate):
+//   T <= 15 -> exactly ONE block. No partition into two >=8wk blocks exists at 13/14/15
+//              (9+4, 10+4, 10+5), so "fixed for the whole program" is now DERIVED for
+//              every length that shipped before EPIC-033. Nothing changes at T <= 12.
+//   T 16-24 -> two or three blocks, each 8-12wk, EXCEPT T=23 -> 10+13: its mesocycles
+//              are 5,5,5,4,4 and no cut yields two blocks both in [8,12]; cutting again
+//              would ship a 4-week primary block, below the cited floor. Documented
+//              overshoot, and the gate asserts it is the ONLY one in 4-24.
+const MIN_PRIMARY_BLOCK = 8;
+function primaryBlockStarts(weeks) {
+  const T = Math.max(1, Number(weeks) || 12);
+  const boundaries = [...deloadWeeks(T)].sort((a, b) => a - b).filter(w => w < T).map(w => w + 1);
+  const starts = [1];
+  let blockStart = 1;
+  for (const s of boundaries) {
+    const done = s - blockStart;   // weeks already spent in the open block
+    const left = T - s + 1;        // weeks that would remain if we cut here
+    if (done >= MIN_PRIMARY_BLOCK && left >= MIN_PRIMARY_BLOCK) { starts.push(s); blockStart = s; }
+  }
+  return starts;
+}
+function primaryBlockIndex(week, weeks) {
+  const w = Math.max(1, Number(week) || 1);
+  const starts = primaryBlockStarts(weeks);
+  let i = 0;
+  while (i + 1 < starts.length && starts[i + 1] <= w) i++;
+  return i;
 }
 
 // A REALIZATION week is the special case of a deload that also happens to be the

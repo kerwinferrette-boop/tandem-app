@@ -39,8 +39,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, PHASES: GOAL_PHASES } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, PHASES }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -175,22 +175,79 @@ for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of S
   if (!eqDeep(p0, p1)) d1BoundaryVaried++;
 }
 
-// ── D15 (ACTIVE) — Primary compounds fixed for the WHOLE program ───────────────
-// Periodization Spec Part A already concluded "Primary compounds: fixed for the
-// whole program (progression tracked end-to-end)" but pick() never implemented
-// it — compounds rotated at every block boundary same as accessories, same as
-// everything else D1 governs. research-report(9) (Valyu, 2026-07-23) gave the
-// number that confirms the original spec: compounds fixed 8-12wk minimum, which
-// for a <=12wk Tandem program IS the whole program. This is stronger than D1
-// (block-stable): the Compound Block's exercise names must be IDENTICAL across
-// every phase of the program, not just within one block — verified across the
-// program's full 4-phase span (phase 0 vs phase 3), unlike D1's block-adjacent check.
+// ── D15 (ACTIVE) — Primary compounds held for a whole PRIMARY BLOCK ────────────
+// AMENDED 2026-08-05 (EPIC-033 Step 4b, Notion 3b3ca37f935b8100bba6c1ebb2c9ddf8).
+// D15 used to assert "fixed for the WHOLE program", checked at exactly one length
+// (T=12, phase 0 vs phase 3). That sentence was written when onboarding capped at
+// 12wk; its own citation is narrower — Spec Part A records "compounds fixed 8-12wk
+// MINIMUM, which for a <=12wk Tandem program IS the whole program." Onboarding now
+// accepts 4-24 (F1), so at T>12 the old assertion extrapolated past its source and
+// let a 24-week program run one squat variation for 24 straight weeks.
+// Kerwin's ruling: "Primaries refresh every 8-12wk."
+//
+// FLAGGED: 8-12wk is a FLOOR in every located source; no source gives a CEILING (RP
+// is performance-triggered: "if you are still hitting PRs ... don't change it"). The
+// ceiling is a product ruling. Where the two conflict the CITED FLOOR WINS — which is
+// why T=23 legitimately runs a 13-week second block (see check 3).
+//
+// The partition is derived, not invented: a primary block is a whole number of
+// mesocycles (D1 — a refresh may only land at a block boundary) that is never shorter
+// than 8 weeks (the cited floor), with a sub-8 tail absorbed. That rule returns ONE
+// block for every T <= 15, so every length that shipped before EPIC-033 is unchanged.
+const MIN_PRIMARY_BLOCK = 8, MAX_PRIMARY_BLOCK = 12;
+const blockLens = (T) => {
+  const s = primaryBlockStarts(T);
+  return s.map((v, i) => (i + 1 < s.length ? s[i + 1] : T + 1) - v);
+};
 let d15Checked = 0;
-for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of SEXES) {
+const d15Overshoot = [];
+for (let T = 4; T <= 24; T++) {
+  const starts = primaryBlockStarts(T);
+  const lens = blockLens(T);
+  const dl = deloadWeeks(T);
+  // 1. every boundary is one week after a deload week — a refresh never lands
+  //    mid-mesocycle (D1). starts[0] === 1 is the program's own start, not a refresh.
   d15Checked++;
-  const c0 = compoundNames(gen(goal, days, sex, 1, 0));
-  const c3 = compoundNames(gen(goal, days, sex, 10, 3));
-  if (!eqDeep(c0, c3)) fail('D15', `${goal}/${days}d/${sex}: Compound Block exercises changed between phase 0 (wk1) and phase 3 (wk10) — primary compounds must be fixed for the whole program`);
+  if (starts[0] !== 1) fail('D15', `${T}wk: primary blocks start at [${starts}] — the first block must start at week 1`);
+  for (const s of starts.slice(1)) {
+    if (!dl.has(s - 1)) fail('D15', `${T}wk: a primary block starts at wk${s}, but wk${s - 1} is not a deload week — a primary refresh must land on a mesocycle boundary (D1)`);
+  }
+  // 2. the cited FLOOR. A program shorter than the floor is trivially one block.
+  for (const [i, L] of lens.entries()) {
+    d15Checked++;
+    if (L < MIN_PRIMARY_BLOCK && lens.length > 1) fail('D15', `${T}wk: primary block ${i + 1} is ${L}wk, below the cited ${MIN_PRIMARY_BLOCK}wk floor (Spec Part A: "compounds fixed 8-12wk minimum")`);
+  }
+  // 3. the RULED ceiling. Overshoot is legal ONLY where the mesocycle grid leaves no
+  //    legal cut (tail absorption). Today that is T=23 alone; the gate pins the list
+  //    so a future change that quietly introduces a second overshoot fails here.
+  if (lens.some(L => L > MAX_PRIMARY_BLOCK) && lens.length > 1) d15Overshoot.push(`${T}wk[${lens}]`);
+}
+if (d15Overshoot.join(',') !== '23wk[10,13]') {
+  fail('D15', `primary blocks exceed the ${MAX_PRIMARY_BLOCK}wk ceiling at [${d15Overshoot.join(', ') || 'nothing'}]; the only length whose mesocycle grid forces tail absorption is 23wk[10,13] (D15 amendment page §4b)`);
+}
+// 4/5. behavioural: names are stable inside a block and actually refresh across one.
+for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of SEXES) {
+  for (const T of [12, 16, 20, 24]) {   // one pre-EPIC-033 length + the multi-block lengths
+    const starts = primaryBlockStarts(T);
+    let prevFirst = null;
+    for (const [i, s] of starts.entries()) {
+      const end = (i + 1 < starts.length ? starts[i + 1] : T + 1) - 1;
+      d15Checked++;
+      const first = compoundNames(genT(goal, days, sex, s, T));
+      const last = compoundNames(genT(goal, days, sex, end, T));
+      if (!eqDeep(first, last)) fail('D15', `${goal}/${days}d/${sex} ${T}wk: Compound Block changed between wk${s} and wk${end} — primaries are fixed WITHIN a primary block`);
+      if (prevFirst && eqDeep(prevFirst, first)) fail('D15', `${goal}/${days}d/${sex} ${T}wk: Compound Block is identical across the wk${s} primary-block boundary — the 8-12wk refresh never fired`);
+      prevFirst = first;
+    }
+  }
+  // 6. regression guard, verbatim: <=15wk is ONE block, wk1 == wkT, exactly as the
+  //    pre-amendment invariant asserted. This is the clause that must never weaken.
+  for (const T of [4, 8, 11, 12, 15]) {
+    d15Checked++;
+    if (primaryBlockStarts(T).length !== 1) fail('D15', `${T}wk must be a single primary block (no partition into two >=8wk blocks exists)`);
+    if (!eqDeep(compoundNames(genT(goal, days, sex, 1, T)), compoundNames(genT(goal, days, sex, T, T))))
+      fail('D15', `${goal}/${days}d/${sex} ${T}wk: Compound Block changed between wk1 and wk${T} — a <=15wk program is one primary block, fixed end-to-end`);
+  }
 }
 
 // ── D2 (ACTIVE) — Only canonical goals, each generates a legal program ─────────
@@ -820,7 +877,7 @@ console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() 
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
-console.log(`  D15 primary compounds fixed for the whole program — ${d15Checked} combos checked`);
+console.log(`  D15 primary compounds held for a whole primary block (>=8wk, mesocycle-aligned; <=15wk = one block) — ${d15Checked} assertions over T=4..24`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {
