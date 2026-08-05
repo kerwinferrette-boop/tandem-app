@@ -67,6 +67,7 @@ const TIERS = {
   D2: 'SAFETY',           // canonical goals only, legal non-empty programs
   D3: 'SAFETY',           // compound before isolation — every path, no override
   D4: 'SCIENCE_DEFAULT',  // deload every 4-6wk, block-final, volume cut
+  D4b: 'SCIENCE_DEFAULT', // training-age cadence scaling (PENDING)
   D5: 'SPLIT',            // never-on-primary = SAFETY; superset-required = SCIENCE_DEFAULT
   D6: 'SCIENCE_DEFAULT',  // goal volume MEV order
   D6b: 'SCIENCE_DEFAULT', D7: 'SCIENCE_DEFAULT',
@@ -79,6 +80,62 @@ const TIERS = {
   D14: 'SCIENCE_DEFAULT', // realization week shape
   D15: 'SCIENCE_DEFAULT', // fixed primary compounds
   D16: 'SAFETY',          // the override protocol itself is not overridable
+};
+
+// A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
+// the only two split invariants (see the comment block above for why).
+const CLAUSE_TIERS = {
+  'D5.never_on_primary':       'SAFETY',           // never superset the primary compound block
+  'D5.superset_required':      'SCIENCE_DEFAULT',  // transform/fat_burn must superset
+  'D8.no_supersets_on_primaries': 'SAFETY',        // identical rule to D5.never_on_primary
+  'D8.maintenance_mav_cap':    'SCIENCE_DEFAULT',  // Maintenance caps at MAV
+};
+
+// EPIC-033 F7 / BUG-70. TIERS used to be decorative — nothing read it but the report
+// footer, while each authored-program check hardcoded its own SAFETY-vs-overridable
+// verdict. It was documentation shaped like code. Everything below now routes its
+// verdict through tierOf()/tierGuard(), so a tier edit MUST change gate behaviour;
+// that is the acceptance test (flip an entry, the verdict changes).
+const tierOf = (clauseId) => {
+  if (CLAUSE_TIERS[clauseId]) return CLAUSE_TIERS[clauseId];
+  const t = TIERS[clauseId];
+  if (!t) throw new Error(`doctrine gate wiring bug: no tier registered for "${clauseId}"`);
+  if (t === 'SPLIT') throw new Error(`doctrine gate wiring bug: "${clauseId}" is SPLIT — name the clause (e.g. ${clauseId}.<clause>)`);
+  return t;
+};
+
+// Override-key registry (D16 page §Override-key registry — Notion-first: a key is
+// registered THERE before it appears here). A SCIENCE_DEFAULT clause is overridable
+// only if a key speaks for it; a clause with no key has no escape hatch, deliberately.
+const OVERRIDE_KEYS = {
+  D10: 'rep_floor',                 // live — Brick by Brick's 3-5 rep realization phase
+  D14: 'block_final_technique',     // registered, unused by any current seed
+};
+
+// The single verdict function for the authored/library path. SAFETY => always fail.
+// SCIENCE_DEFAULT => fail unless the deviation is BOTH declared in science_overrides
+// under the registered key AND that key carries a program_principles row. The
+// principle-row check is the same D16 rule enforced at the DB by
+// validate_science_overrides(); this is its file-side twin.
+const tierGuard = (clauseId, { fname, overrides, principleKeys, msg }) => {
+  const tier = tierOf(clauseId);
+  const id = clauseId.split('.')[0];
+  if (tier === 'SAFETY') {
+    fail('D16', `${fname}: ${msg} — ${clauseId} is SAFETY: binds every path, no override exists`);
+    return;
+  }
+  const key = OVERRIDE_KEYS[id];
+  if (!key) {
+    fail('D16', `${fname}: ${msg} — ${clauseId} is SCIENCE_DEFAULT but has no override key registered on the D16 page, so no deviation is authorized yet`);
+    return;
+  }
+  if (overrides[key] === undefined) {
+    fail('D16', `${fname}: ${msg} — ${clauseId} is SCIENCE_DEFAULT: legal only when declared as science_overrides.${key}`);
+    return;
+  }
+  if (!principleKeys.has(key)) {
+    fail('D16', `${fname}: ${msg} — declared science_overrides.${key} has no program_principles row; sovereignty without a cited principle is a D16 failure`);
+  }
 };
 const DAYS = [2, 3, 4, 5, 6];     // includes 6-day PPL×2 (Phase 4, shipped)
 const SEXES = ['male', 'female'];
@@ -616,30 +673,34 @@ if (existsSync(seedsDir)) {
     const overrides = t.science_overrides || {};
     const principleKeys = new Set((seed.principles || []).map(p => p.principle_key));
 
-    // 1 — every override key must be a cited principle (the D16 invariant itself)
+    const guard = (clauseId, msg) => tierGuard(clauseId, { fname, overrides, principleKeys, msg });
+
+    // 1 — every override key must be a cited principle (the D16 invariant itself,
+    //     tier SAFETY: the override protocol is not itself overridable)
     for (const key of Object.keys(overrides)) {
       d16Checked++;
-      if (!principleKeys.has(key)) fail('D16', `${fname}: science_overrides key "${key}" has no program_principles row — sovereignty without a cited principle`);
+      if (!principleKeys.has(key)) guard('D16', `science_overrides key "${key}" has no program_principles row`);
     }
     // principles must be complete rows, not stubs
     for (const p of (seed.principles || [])) {
       d16Checked++;
-      if (!p.principle_key || !p.claim || !p.rationale || !p.source_citation) fail('D16', `${fname}: principle "${p.principle_key || '?'}" missing claim/rationale/source_citation — a principle row must carry its evidence`);
+      if (!p.principle_key || !p.claim || !p.rationale || !p.source_citation) guard('D16', `principle "${p.principle_key || '?'}" missing claim/rationale/source_citation — a principle row must carry its evidence`);
     }
 
-    // 7 — block layout: contiguous, covering 1..duration_weeks
+    // 7 — block layout: contiguous, covering 1..duration_weeks. A program whose blocks
+    //     do not tile its own duration is not a legal non-empty program (D2, SAFETY).
     const blocks = (seed.blocks || []).slice().sort((a, b) => (a.block_order || 0) - (b.block_order || 0));
     d16Checked++;
-    if (blocks.length === 0) fail('D16', `${fname}: no blocks`);
+    if (blocks.length === 0) guard('D2', 'no blocks');
     let expectStart = 1;
     for (const b of blocks) {
       d16Checked++;
-      if (b.week_start !== expectStart) fail('D16', `${fname}: block ${b.block_order} starts week ${b.week_start}, expected ${expectStart} (blocks must be contiguous)`);
-      if (b.week_end < b.week_start) fail('D16', `${fname}: block ${b.block_order} week_end < week_start`);
+      if (b.week_start !== expectStart) guard('D2', `block ${b.block_order} starts week ${b.week_start}, expected ${expectStart} (blocks must be contiguous)`);
+      if (b.week_end < b.week_start) guard('D2', `block ${b.block_order} week_end < week_start`);
       expectStart = (b.week_end || 0) + 1;
     }
     d16Checked++;
-    if (blocks.length && expectStart - 1 !== t.duration_weeks) fail('D16', `${fname}: blocks cover weeks 1..${expectStart - 1} but duration_weeks is ${t.duration_weeks}`);
+    if (blocks.length && expectStart - 1 !== t.duration_weeks) guard('D2', `blocks cover weeks 1..${expectStart - 1} but duration_weeks is ${t.duration_weeks}`);
 
     // 5 — clean block-final weeks: no technique on deload/realization weeks
     const T = t.duration_weeks;
@@ -651,7 +712,7 @@ if (existsSync(seedsDir)) {
         d16Checked++;
         if (tech == null || tech === 'none') continue;
         const globalWk = b.week_start + Number(wk) - 1;
-        if (dload.has(globalWk)) fail('D16', `${fname}: block ${b.block_order} schedules technique "${tech}" on global week ${globalWk} — block-final deload/realization weeks run CLEAN (Kerwin 2026-07-24)`);
+        if (dload.has(globalWk)) guard('D14', `block ${b.block_order} schedules technique "${tech}" on global week ${globalWk} — block-final deload/realization weeks run CLEAN (Kerwin 2026-07-24)`);
       }
     }
 
@@ -668,19 +729,20 @@ if (existsSync(seedsDir)) {
       for (const day of (b.days || [])) {
         const exs = (day.exercises || []).slice().sort((a, z) => (a.ex_order || 0) - (z.ex_order || 0));
         d16Checked++;
-        if (exs.length === 0) { fail('D16', `${fname}: block ${b.block_order} day ${day.day_order} has zero exercises`); continue; }
+        if (exs.length === 0) { guard('D2', `block ${b.block_order} day ${day.day_order} has zero exercises`); continue; }
         let seenNonCompound = false;
         for (const ex of exs) {
           d16Checked++;
-          // 2 — slug integrity against the canonical bank
-          if (!EXERCISE_BANK[ex.slug]) fail('D16', `${fname}: slug "${ex.slug}" not in EXERCISE_BANK (day ${day.day_order}, block ${b.block_order})`);
-          // 3 — SAFETY/D3 compound-first (role ordering)
+          // 2 — slug integrity against the canonical bank. An exercise the engine cannot
+          //     resolve cannot be filtered for injury or equipment tier either (SAFETY).
+          if (!EXERCISE_BANK[ex.slug]) guard('D2', `slug "${ex.slug}" not in EXERCISE_BANK (day ${day.day_order}, block ${b.block_order})`);
+          // 3 — D3 compound-first (role ordering)
           if (COMPOUND_ROLES.has(ex.role)) {
-            if (seenNonCompound) fail('D16', `${fname}: block ${b.block_order} day ${day.day_order}: compound "${ex.slug}" appears after accessory/core/cardio — D3 (SAFETY) compound-first, no override exists`);
+            if (seenNonCompound) guard('D3', `block ${b.block_order} day ${day.day_order}: compound "${ex.slug}" appears after accessory/core/cardio`);
           } else seenNonCompound = true;
-          // 4 — SAFETY/D5 clause: superset techniques never on the primary compound
+          // 4 — the never-superset-the-primary-block clause (D5 and D8 name the same rule)
           if (ex.role === 'primary_compound' && SUPERSET_TECHNIQUES.has(ex.technique)) {
-            fail('D16', `${fname}: block ${b.block_order} day ${day.day_order}: primary compound "${ex.slug}" carries superset technique "${ex.technique}" — never superset the primary block (SAFETY)`);
+            guard('D5.never_on_primary', `block ${b.block_order} day ${day.day_order}: primary compound "${ex.slug}" carries superset technique "${ex.technique}"`);
           }
           // exercise-level rep floors count too
           const nums = String(ex.reps || '').match(/\d+/g);
@@ -688,14 +750,50 @@ if (existsSync(seedsDir)) {
         }
       }
     }
-    // 6 — D10 band deviation requires the rep_floor override + principle (checked in 1)
+    // 6 — D10 band deviation: SCIENCE_DEFAULT, so it needs the registered rep_floor
+    //     override AND its principle row — tierGuard checks both. The extra check
+    //     below is the value test the tier map cannot express: a declared floor of 3
+    //     does not license prescribing 2.
     if (band && Number.isFinite(minRepSeen) && minRepSeen < band[0]) {
       d16Checked++;
+      guard('D10', `min prescribed reps ${minRepSeen} below the ${goal} band floor ${band[0]}`);
       const floor = overrides.rep_floor;
-      if (floor == null) fail('D16', `${fname}: min prescribed reps ${minRepSeen} below ${goal} band floor ${band[0]} with NO science_overrides.rep_floor — D10 deviation must be declared and cited`);
-      else if (minRepSeen < floor) fail('D16', `${fname}: min prescribed reps ${minRepSeen} below the declared rep_floor override ${floor}`);
+      if (floor != null && minRepSeen < floor) fail('D16', `${fname}: min prescribed reps ${minRepSeen} below the declared rep_floor override ${floor}`);
     }
   }
+}
+
+// ── D16 completeness — the tier map covers every invariant, both directions ────
+// EPIC-033 F8 / BUG-71. The DOCTRINE.md D16 row and the TIERS map drifted apart:
+// D2, D6b, D7, D9 and D16 itself had no stated tier anywhere in the prose, so six of
+// eighteen invariants were untiered while the gate silently assumed one. Pin it in
+// both directions so the mirror cannot drift again: every invariant declared in the
+// DOCTRINE.md table must have a TIERS entry, and every TIERS entry must be a real
+// invariant. This is what makes the F8 fix permanent rather than a one-time edit.
+try {
+  const doctrineMd = readFileSync(join(root, 'DOCTRINE.md'), 'utf8');
+  const declared = [...doctrineMd.matchAll(/^\|\s*\*\*(D\d+b?)\*\*\s*\|/gm)].map(m => m[1]);
+  if (declared.length === 0) fail('D16', 'could not parse the invariant table out of DOCTRINE.md');
+  for (const id of declared) {
+    d16Checked++;
+    if (!TIERS[id]) fail('D16', `${id} is declared in DOCTRINE.md but has no tier in the TIERS map — every invariant sits in exactly one tier (D16 page §Completeness rule)`);
+  }
+  for (const id of Object.keys(TIERS)) {
+    d16Checked++;
+    if (!declared.includes(id)) fail('D16', `TIERS declares a tier for ${id}, which is not an invariant in DOCTRINE.md`);
+  }
+  // SPLIT invariants must have BOTH clauses registered, or the SPLIT tag is a stub.
+  for (const [id, tier] of Object.entries(TIERS)) {
+    if (tier !== 'SPLIT') continue;
+    d16Checked++;
+    const clauses = Object.keys(CLAUSE_TIERS).filter(k => k.startsWith(`${id}.`));
+    const tiers = new Set(clauses.map(k => CLAUSE_TIERS[k]));
+    if (!(tiers.has('SAFETY') && tiers.has('SCIENCE_DEFAULT'))) {
+      fail('D16', `${id} is tagged SPLIT but its clauses do not cover both tiers (found: ${clauses.join(', ') || 'none'})`);
+    }
+  }
+} catch (e) {
+  if (!/DOCTRINE/.test(String(e.message))) fail('D16', `tier-map completeness check failed: ${e.message}`);
 }
 
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
@@ -730,8 +828,13 @@ if (d16Seeds > 0) {
 }
 console.log(`\nTiers (D16 two-tier doctrine): SAFETY = every path, no override; SCIENCE_DEFAULT = generated`);
 console.log(`path default, authored programs may deviate only via cited science_overrides.`);
-console.log(`  SAFETY: ${Object.entries(TIERS).filter(([, v]) => v === 'SAFETY').map(([k]) => k).join(' ')} (+D5 never-on-primary clause, +D8 no-supersets-on-strength-primaries clause)`);
-console.log(`  SCIENCE_DEFAULT: ${Object.entries(TIERS).filter(([, v]) => v === 'SCIENCE_DEFAULT').map(([k]) => k).join(' ')} (+D5 superset-required clause, +D8 Maintenance MAV-cap clause)`);
+const tierList = (t) => [
+  ...Object.entries(TIERS).filter(([, v]) => v === t).map(([k]) => k),
+  ...Object.entries(CLAUSE_TIERS).filter(([, v]) => v === t).map(([k]) => `+${k}`),
+].join(' ');
+console.log(`  SAFETY: ${tierList('SAFETY')}`);
+console.log(`  SCIENCE_DEFAULT: ${tierList('SCIENCE_DEFAULT')}`);
+console.log(`  overridable via cited principle: ${Object.entries(OVERRIDE_KEYS).map(([id, k]) => `${id}→${k}`).join(', ')} (registry: D16 Notion page)`);
 console.log(`\nPending (documented law, enforced when its phase ships):`);
 for (const [id, desc, phase] of PENDING) console.log(`  ⏳ ${id}  ${desc}  [${phase}]`);
 
