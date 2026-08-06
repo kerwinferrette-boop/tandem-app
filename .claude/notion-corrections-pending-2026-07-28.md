@@ -1,4 +1,38 @@
-> # ⛔ 2026-08-04 — THESE CORRECTIONS ARE THEMSELVES NOW WRONG
+> # ROUND 2 PENDING — 2026-08-04, blocked on the Notion write gate
+>
+> **Good news first: EPIC-35's Dependency Gate was already corrected on 2026-08-01 by a Needs-Human
+> backlog pass, and that pass was right.** It recorded the push (`a6cb6c0`, Kerwin, 2026-07-31), named
+> the real cause ("never actually lost, just uncommitted"), and escalated that **BUG-59 was live in
+> production** with 2 published templates reachable by real users and 0 adopters at that point. It did
+> the escalation I had not. Do not overwrite it — prepend to it.
+>
+> **Still stale after today's fix (`c0d8655`):**
+>
+> | Record | Needed change |
+> | --- | --- |
+> | **BUG-59** (`3a8ca37f-935b-8119-94b0-c39c83fd5638`) | `New` → **`Resolved`**, `Resolved In` = `c0d8655`, `Date Resolved` = 2026-08-04. It is fixed and guarded but the log still says New, so the next cycle will re-investigate a closed bug. |
+> | **BUG-60** (`3a8ca37f-935b-81a0-9921-dbc1c95d8d7b`) | Stays `New`. Add: `migrations/0003_rename_intensity_tier.sql` authored + committed, **NOT applied**. Correct its own claim that the rename "hands the sibling bug the field it needs" — it does not. BUG-59's filter compares the USER's resolved tier against `EXERCISE_BANK[slug].tier` and never reads the template column. |
+> | **NEW bug row** | `principle_key` globally unique. Currently only EPIC-35 gate item (d), so the bug-driven daily loop cannot see it. Blocks the second program from ever being ingested. `migrations/0002_principle_key_per_template.sql` authored, not applied. |
+> | **EPIC-35 gate** | Prepend 2026-08-04: item (b) BUG-59 **now fixed and live**, guarded by `scripts/authored-safety-smoke.mjs` (verify check #8); item (d) has authored SQL awaiting a human. Leave (c) and (e) — both still accurate. |
+> | **EPIC-026/027/029/030 notes** | One prepended 2026-08-04 line each: code landed on `main` in `a6cb6c0`; the 2026-07-28 "absent everywhere" correction below was wrong about durability, not about the evidence. EPIC-029 needs least — its note was the good-news case and was accurate. |
+>
+> **BUG-59 resolution text to paste** (measured, not asserted):
+> Fix = substitute-first, drop as fallback via `authoredSlotFor()`. `materializeTemplate(tpl, week, opts)`
+> takes `{tier, injuries}`; `getActiveProgram` passes `resolveEquipmentTier()` and `cfg.injuries`.
+> Across 504 combos (2 seeds × 12 weeks × 3 tiers × 7 injury profiles): **before — R8 360 injury leaks,
+> R9 336 tier violations, exit 1; after — R8 0, R9 0, R10 0, R11 0, exit 0.** The second fallback (same
+> muscle, any category) was measured not assumed: at `home` tier the bank has no compound sharing Barbell
+> Overhead Press's delt primaries, so Brick by Brick's day-3 D15 anchor was being dropped in 192 combos.
+> **R12** asserts at source level that every call site passes both inputs — without it the harness would
+> pass while the real caller forgot to thread config, which is exactly how BUG-59 existed.
+>
+> **Why blocked:** the Notion connector rotates server IDs mid-session. The `mcp__c881d872-*` instance
+> returns `-32003: MCP tool call requires approval`; the `mcp__Notion__*` instance accepts writes but is
+> currently disconnected. Reads work on both. Retry when the write-capable instance is up.
+
+---
+
+> # ⛔ 2026-08-04 — THE ROUND-1 CORRECTIONS BELOW ARE THEMSELVES WRONG
 >
 > Everything below was applied to Notion on 2026-07-28 and was accurate **as of that day's evidence**.
 > It is no longer accurate. Cowork landed the EPIC-031 application layer on `main` (`a6cb6c0`,
