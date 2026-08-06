@@ -2394,20 +2394,30 @@ const TECHNIQUE_TIPS = {
 };
 // ═══ EPIC-031 — PROGRAM RESOLVER ═══
 // Single seam for every render path (all former getProgram call sites route
-// here). If the user adopted a library program (users.program_source =
-// 'template' + cached clone in LS), materialize THAT for the current week;
-// otherwise fall through to the generated engine unchanged. A missing/corrupt
-// cache falls back loudly — the user always gets a workout (mirrors
-// getProgram's own emergency-fallback philosophy).
+// here). If the user runs an AUTHORED program (users.program_source =
+// 'library' or 'template', + cached bundle in LS), materialize THAT for the
+// current week; otherwise fall through to the generated engine unchanged. A
+// missing/corrupt cache falls back loudly — the user always gets a workout
+// (mirrors getProgram's own emergency-fallback philosophy).
+//
+// EPIC-033 F6 / BUG-69 — the two authored values are NOT synonyms:
+//   'library'  = adopted from the published library as an owner-scoped clone
+//                (adoptTemplate). This is the only authored producer today.
+//   'template' = a template assigned directly, without going through the
+//                library. Defined by the rebuild prompt, reserved, no producer
+//                yet — so it is honored here rather than repurposed.
+// Both resolve through the same bundle cache, which is why one branch serves
+// both. `generated` is everything else.
+const AUTHORED_SOURCES = ['library', 'template'];
 function getActiveProgram() {
-  if (cfg.programSource === 'template') {
+  if (AUTHORED_SOURCES.includes(cfg.programSource)) {
     try {
       const tpl = LS.get('tandem_adopted_program');
       if (tpl && typeof materializeTemplate === 'function') {
         const p = materializeTemplate(tpl, currentWeek);
         if (Array.isArray(p) && p.length) return p;
       }
-      console.warn('[getActiveProgram] program_source=template but no usable adopted-program cache — using generated engine');
+      console.warn(`[getActiveProgram] program_source=${cfg.programSource} but no usable adopted-program cache — using generated engine`);
     } catch (e) {
       console.warn('[getActiveProgram] adopted-template materialization failed — using generated engine', e);
     }
@@ -2425,7 +2435,7 @@ async function openProgramLibrary() {
   openModal('library');
   const list = document.getElementById('libraryList');
   const cur = document.getElementById('libraryCurrent');
-  cur.innerHTML = cfg.programSource === 'template'
+  cur.innerHTML = AUTHORED_SOURCES.includes(cfg.programSource)
     ? `Currently running: <strong style="color:var(--accent)">${(LS.get('tandem_adopted_program')?.template?.name) || 'adopted program'}</strong> · <a href="#" onclick="revertToGenerated();return false;" style="color:var(--muted2)">switch back to generated</a>`
     : 'Currently running your generated program.';
   if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online.</span>'; return; }
@@ -2549,7 +2559,13 @@ async function adoptTemplate(templateId, btn) {
     // 3. Cache the bundle locally (clone identity, original content) + flip source.
     bundle.template = { ...src, id: clone.id, slug: cloneSlug, author_id: uid, is_published: false, cloned_from: src.id };
     LS.set('tandem_adopted_program', bundle);
-    cfg.programSource = 'template';
+    // EPIC-033 F6 / BUG-69. This is the LIBRARY adoption path, so it writes
+    // 'library' — not 'template'. The rebuild prompt defines three distinct
+    // states (.claude/EPIC-031-rebuild-prompt.md:108) and names this one
+    // explicitly (:122-123, "adoptTemplate — owner-scoped clone ... with
+    // program_source='library'"). It used to write 'template', which collapsed
+    // the two and left a CHECK-legal value that no code path could ever produce.
+    cfg.programSource = 'library';
     LS.set('tandem_cfg', cfg);
     currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
     await syncToCloud();
