@@ -1,3 +1,31 @@
+> # ⛔ OBSOLETE — DO NOT EXECUTE THIS PROMPT
+>
+> **2026-08-04: the premise of this document was wrong and the work it describes is already done.**
+> Cowork landed the EPIC-031 application layer on `main` (`a6cb6c0`, plus `d655d70` for D16 and
+> `d8d2516`). Verified on `origin/main`: `materializeTemplate`, `getActiveProgram`,
+> `fetchTemplateBundle`, `adoptTemplate`, `openProgramLibrary` and `TECHNIQUE_TIPS` are all present;
+> `scripts/doctrine.mjs` carries D16 as ACTIVE (2 seeds, 223 checks); `migrations/epic031_*.sql`,
+> `seeds/*.json`, `scripts/author-seeds.mjs` and `scripts/sync-seed-programs.mjs` all exist.
+> `npm run verify` 7/7 and `npm run validate:personas` 630 both pass on it.
+>
+> **Why this document was wrong.** I concluded the code was unrecoverable because it was absent from
+> this container and from all 17 remote branches. That was true and it was the wrong inference. The
+> giveaway is in Cowork's own commit message: *"Track the nine EPIC-031 files main already had on disk
+> but not in git."* The work was never a lost commit needing a push — it was **untracked files sitting
+> in a local working directory**, which no amount of remote scanning can see. Kerwin said as much
+> ("I think Cowork works locally, not in the git") and was right. `ffa99c0` still does not exist and
+> never will; recovery came from the files, not the commit.
+>
+> **What survives from this document as still-useful:** the verified column names below (they were
+> checked against `information_schema` and remain correct), and the defect list — **BUG-59 is still
+> open in the landed code**: `materializeTemplate(tpl, week)` takes no `cfg`, so the authored path
+> still applies no equipment-tier or injury filtering. Persona-matrix cannot catch it because it
+> exercises the generated path.
+>
+> Kept for the audit trail. Do not act on the "rebuild" instruction.
+
+---
+
 # EPIC-031 REBUILD PROMPT (supersedes the 2026-07-24 build prompt)
 
 > Status: the 2026-07-24 build was lost (ephemeral worktree, never pushed). The Supabase schema

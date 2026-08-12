@@ -1983,6 +1983,14 @@ function applyDeload(program, rotation, weeks) {
 // rep_scheme_by_week, technique_by_week, days:[{day_order,label,exercises:[...]}]}] }.
 // Doctrine: SAFETY invariants are guaranteed upstream by the D16 gate + DB
 // trigger (compound-first ordering, slug integrity, technique placement).
+// The remaining two SAFETY invariants — injury filter and equipment tier —
+// CANNOT be guaranteed upstream, because they depend on the user, not the
+// template. They are enforced here, by applySafetyFilter() below. Before
+// 2026-08-04 they were enforced nowhere on this path (BUG-59): an adopted
+// program handed the user whatever the author wrote, regardless of their
+// injuries or the equipment they actually have. 360 of 504 seed×week×tier×
+// injury combos leaked a contraindicated lift. scripts/authored-safety-smoke.mjs
+// is the permanent guard; it is a `npm run verify` check and it fails hard.
 // SCIENCE_DEFAULT deload/realization shape (D4/D14) still applies here via
 // applyDeload — authored programs share the global deload calendar unless a
 // future science_overrides key says otherwise (none of the seeds override it).
@@ -2004,7 +2012,58 @@ function applyDeload(program, rotation, weeks) {
 // preserve. Experience level still governs the generated engine unchanged.
 // ═══════════════════════════════════════════════════════
 const TEMPLATE_DAY_COLORS = ['var(--red)', 'var(--blue)', 'var(--amber)', 'var(--teal,#38d9c0)', 'var(--purple,#a78bfa)', 'var(--orange)'];
-function materializeTemplate(tpl, week) {
+
+// authoredSlotFor(bank, tier, injuryBlocked, injuries) → { entry, substitutedFrom } | null
+//   SAFETY resolution for ONE authored exercise slot (BUG-59). Returns the bank
+//   entry to actually use, which may not be the one the author wrote.
+//
+//   SUBSTITUTE-FIRST, DROP AS FALLBACK (Kerwin's call, 2026-08-04). An authored
+//   program is an expert's expression, not a bag of lifts: D15 marks some lifts
+//   `constant_across_program` precisely because they anchor progression for all
+//   12 weeks. Dropping one of those breaks the spine the program is built on, so
+//   we try to keep the SLOT filled with a legal equivalent first, and only drop
+//   when the bank offers nothing legal. Dropping is the generated path's
+//   behaviour (pruneInjuries), so it remains the floor, never the first move.
+//
+//   An unknown slug (not in EXERCISE_BANK) is passed through untouched — slug
+//   integrity is D16's job and failing it here would mask that gate.
+function authoredSlotFor(bank, tier, injuries, injuryBlocked) {
+  if (!bank || !bank.name) return { entry: bank, substitutedFrom: null }; // unknown slug — D16's problem
+  const tierOrder = ['home', 'hotel_gym', 'full_gym'];
+  const reqIdx = tierOrder.indexOf(tier || 'full_gym');
+  const legal = (e) =>
+    e && e.name &&
+    !injuryBlocked(e.name) &&
+    tierOrder.indexOf(e.tier) <= reqIdx;
+
+  if (legal(bank)) return { entry: bank, substitutedFrom: null };
+
+  // 1st choice: getExerciseSubstitutes — screens on category, shared primary
+  // muscle group, tier AND injuries. Reuse, don't reimplement.
+  const subs = getExerciseSubstitutes(bank.name, tier, injuries, 5) || [];
+  const sameCategory = subs.find(legal);
+  if (sameCategory) return { entry: sameCategory, substitutedFrom: bank.name };
+
+  // 2nd choice: same muscle, ANY category. Measured, not assumed — at `home`
+  // tier the bank has no compound sharing Barbell Overhead Press's delt
+  // primaries, so a same-category search returns nothing and the program's
+  // D15 anchor for that day would be dropped entirely. Band Lateral Raise
+  // still trains the muscle the author was targeting and keeps the slot (and
+  // the day's shape) intact. Relaxing category beats losing the anchor.
+  const primary = (bank.muscleGroups && bank.muscleGroups.primary) || [];
+  if (primary.length) {
+    const wider = Object.values(EXERCISE_BANK).filter(e =>
+      e.name !== bank.name && legal(e) &&
+      ((e.muscleGroups && e.muscleGroups.primary) || []).some(g => primary.includes(g)));
+    if (wider.length) return { entry: wider[0], substitutedFrom: bank.name };
+  }
+
+  // Nothing legal trains this muscle at this tier — drop, as the generated
+  // path's pruneInjuries would.
+  return null;
+}
+
+function materializeTemplate(tpl, week, opts) {
   if (!tpl || !tpl.template || !Array.isArray(tpl.blocks) || !tpl.blocks.length) return null;
   const T = Number(tpl.template.duration_weeks) || 12;
   const wk = Math.min(Math.max(Number(week) || 1, 1), T);
@@ -2014,10 +2073,27 @@ function materializeTemplate(tpl, week) {
   const blockTech = twRaw && twRaw !== 'none' ? twRaw : null;
   const defW = (eq) => eq === 'barbell' ? 95 : eq === 'machine' ? 70 : eq === 'cable' ? 35 : eq === 'dumbbell' ? 35 : 0;
 
+  // SAFETY (BUG-59). Defaults are deliberately unrestricted: a caller with no
+  // user config gets the author's program verbatim, which is what the offline
+  // seed round-trip tooling wants. The real call site (getActiveProgram) MUST
+  // pass both, and authored-safety-smoke.mjs is what enforces that it does.
+  const tier = (opts && opts.tier) || 'full_gym';
+  const injuries = (opts && opts.injuries) || '';
+  const injuryBlocked = makeInjuryBlocked(injuries);
+
   const days = (block.days || []).slice().sort((a, b) => a.day_order - b.day_order).map((d, di) => {
     const exs = (d.exercises || []).slice().sort((a, b) => a.ex_order - b.ex_order).map(ex => {
-      const bank = EXERCISE_BANK[ex.slug] || {};
-      const compound = ex.role === 'primary_compound' || ex.role === 'secondary_compound';
+      const authored = EXERCISE_BANK[ex.slug] || {};
+      const slot = authoredSlotFor(authored, tier, injuries, injuryBlocked);
+      if (!slot) return null;               // nothing legal exists — drop the slot
+      const bank = slot.entry || {};
+      // Authored role decides this normally. But a cross-category substitute
+      // (compound → isolation, when no legal compound exists at the user's
+      // tier) must not keep wearing a "compound" badge — the card would be
+      // telling the user something untrue about the lift in front of them.
+      const compound = slot.substitutedFrom && bank.category
+        ? bank.category === 'compound'
+        : (ex.role === 'primary_compound' || ex.role === 'secondary_compound');
       // Prefill target = bottom of the authored range (guaranteed-rep floor);
       // the full range renders via ex.repRange.
       const low = parseInt(String(ex.reps || '').match(/\d+/)?.[0] || '10', 10);
@@ -2035,8 +2111,11 @@ function materializeTemplate(tpl, week) {
         // the block schedules it (weeks 4/8/12 run clean by authoring rule).
         technique: blockTech && ex.technique ? ex.technique : null,
         constant: ex.constant_across_program === true,
+        // Never swap an expert's lift silently — the render layer surfaces this
+        // as a coach note so the user knows what changed and why.
+        substitutedFrom: slot.substitutedFrom,
       };
-    });
+    }).filter(Boolean);
     return {
       key: `day${d.day_order}`,
       label: `Day ${d.day_order} · ${d.label}`,
