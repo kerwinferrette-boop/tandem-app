@@ -3722,15 +3722,25 @@ async function saveExerciseToCloud(id) {
     currentCloudSessionId = sessionData.id;
 
     const setRows = sets
-      .map(s => ({
-        session_id: currentCloudSessionId,
-        user_id: currentUser.id,
-        exercise_name: id,
-        set_number: s.set || 1,
-        weight_lbs: parseFloat(s.w) || 0,
-        reps: parseInt(s.r) || 0,
-        estimated_1rm_lbs: s.est1rm || null
-      }))
+      .map(s => {
+        const w = parseFloat(s.w) || 0, r = parseInt(s.r) || 0;
+        return {
+          session_id: currentCloudSessionId,
+          user_id: currentUser.id,
+          exercise_name: id,
+          set_number: s.set || 1,
+          weight_lbs: w,
+          reps: r,
+          // BUG-75: recompute from (w, r) instead of trusting s.est1rm off the
+          // cached snapshot. A NULL here is not cosmetic — on `sets` the PR
+          // trigger fires BEFORE the 1RM trigger (Postgres orders same-timing
+          // triggers by NAME, and check_pr_on_set_insert < set_1rm_before_insert),
+          // so a NULL either aborts the whole INSERT (NOT NULL on
+          // personal_records.best_estimated_1rm_lbs) or silently drops a real PR
+          // (`NULL > existing` is NULL, never TRUE). Both proven on prod.
+          estimated_1rm_lbs: w > 0 && r > 0 ? Math.round(calcRM(w, r)) : null
+        };
+      })
       .filter(s => s.weight_lbs > 0 && s.reps > 0);
     if (!setRows.length) return;
     const { error: setsError } = await sb.from('sets').insert(setRows);
@@ -4238,15 +4248,23 @@ function finishSession() {
           console.error('[C11] 0 cloud sets despite local sets logged — re-syncing', {
             sessionId: resolvedId, localExercises: Object.keys(snapshotExercises).length });
           const rescueRows = Object.entries(snapshotExercises)
-            .flatMap(([exId, sets]) => (sets || []).map(s => ({
-              session_id: resolvedId,
-              user_id: currentUser.id,
-              exercise_name: exId,
-              set_number: s.set || 1,
-              weight_lbs: parseFloat(s.w) || 0,
-              reps: parseInt(s.r) || 0,
-              estimated_1rm_lbs: s.est1rm || null
-            })))
+            .flatMap(([exId, sets]) => (sets || []).map(s => {
+              const w = parseFloat(s.w) || 0, r = parseInt(s.r) || 0;
+              return {
+                session_id: resolvedId,
+                user_id: currentUser.id,
+                exercise_name: exId,
+                set_number: s.set || 1,
+                weight_lbs: w,
+                reps: r,
+                // BUG-75: recompute — see saveExerciseToCloud. This path is the
+                // sharper one: a snapshot written by a build that predates est1rm
+                // carries no est1rm at all, so `s.est1rm || null` sent NULL, the
+                // rescue INSERT aborted, and the session completed with 0 sets —
+                // which is exactly the failure this rescue path exists to prevent.
+                estimated_1rm_lbs: w > 0 && r > 0 ? Math.round(calcRM(w, r)) : null
+              };
+            }))
             .filter(s => s.weight_lbs > 0 && s.reps > 0);
           if (rescueRows.length) {
             const { error: rescueErr } = await sb.from('sets').insert(rescueRows);

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Council — BUG-75: where should the 1RM formula live?</title>
+<style>
+  :root{
+    --ink:#16181d; --mute:#5f6672; --line:#e3e6ea; --bg:#fbfcfd; --card:#fff;
+    --red:#b4232a; --amber:#a3690b; --green:#1f6b46; --blue:#1f4f8b; --violet:#5b3fa0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 96px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:22px;margin-bottom:36px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:700}
+  h1{font-size:30px;line-height:1.25;margin:10px 0 12px;letter-spacing:-.02em}
+  .sub{color:var(--mute);font-size:15px}
+  h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);
+     margin:44px 0 14px;font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-bottom:16px}
+  .card h3{margin:0 0 10px;font-size:18px;letter-spacing:-.01em}
+  .verdict{border:2px solid var(--ink);border-radius:12px;padding:8px 28px 26px;background:var(--card)}
+  .verdict h3{margin-top:26px;font-size:17px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .headline{background:#fff5f5;border:1px solid #f0c9c9;border-left:5px solid var(--red);
+    border-radius:8px;padding:18px 22px;margin:26px 0}
+  .headline .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);font-weight:800}
+  .first{background:#f4f8ff;border:1px solid #c9dbf3;border-left:5px solid var(--blue);
+    border-radius:8px;padding:18px 22px;margin-top:24px}
+  .first .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:800}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 4px}
+  th{text-align:left;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);
+     border-bottom:1px solid var(--line);padding:8px 10px 8px 0;font-weight:700}
+  td{padding:8px 10px 8px 0;border-bottom:1px solid #f0f2f4;vertical-align:top}
+  td.num{font-variant-numeric:tabular-nums;text-align:right;padding-right:22px}
+  .neg{color:var(--red);font-weight:700}
+  code{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:#f1f3f5;border-radius:4px;padding:1px 5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+  .pos{border:1px solid var(--line);border-radius:9px;padding:16px 18px;background:var(--card)}
+  .pos .who{font-weight:700;font-size:14px;margin-bottom:2px}
+  .pos .stance{font-size:12px;color:var(--mute);margin-bottom:9px}
+  .pos p{margin:0;font-size:13.5px;line-height:1.55}
+  .bar{display:flex;height:9px;border-radius:5px;overflow:hidden;margin:14px 0 6px;border:1px solid var(--line)}
+  .bar span{display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--mute);margin-bottom:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  details{border:1px solid var(--line);border-radius:9px;background:var(--card);margin-bottom:9px}
+  summary{cursor:pointer;padding:14px 18px;font-weight:600;font-size:14.5px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸";color:var(--mute);margin-right:10px;display:inline-block;transition:transform .15s}
+  details[open] summary::before{transform:rotate(90deg)}
+  details .body{padding:0 18px 18px;font-size:14.5px;border-top:1px solid #f0f2f4;margin-top:2px;padding-top:14px}
+  details .body p:first-child{margin-top:0}
+  ol.steps{padding-left:20px} ol.steps li{margin-bottom:9px}
+  ul.tight{padding-left:20px;margin:8px 0} ul.tight li{margin-bottom:6px}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--mute);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">LLM Council · Tandem · BUG-75</div>
+  <h1>Where should the 1RM formula live — the database or the client?</h1>
+  <div class="sub">2026-08-14 · convened because the fix touches D11/D12, which are SAFETY-tier doctrine</div>
+</header>
+
+<div class="headline">
+  <div class="lbl">The finding that reordered the debate</div>
+  <p style="margin:8px 0 12px"><strong>Six personal records are already wrong.</strong> Recomputing
+  every PR from the 374 stored sets under D12 and diffing against the table shows six exercises
+  recorded <em>below</em> what was actually earned. Every drift is negative — the signature of the
+  bug, not of rounding.</p>
+  <table>
+    <tr><th>Exercise</th><th class="num">Earned</th><th class="num">Recorded</th><th class="num">Drift</th></tr>
+    <tr><td>Tricep Rope Pushdown</td><td class="num">112.0</td><td class="num">103</td><td class="num neg">−9.0</td></tr>
+    <tr><td>Tricep Overhead Extension</td><td class="num">91.0</td><td class="num">83</td><td class="num neg">−8.0</td></tr>
+    <tr><td>Cable Crunch</td><td class="num">70.0</td><td class="num">64</td><td class="num neg">−6.0</td></tr>
+    <tr><td>Cable Low-to-High Fly</td><td class="num">56.0</td><td class="num">51</td><td class="num neg">−5.0</td></tr>
+    <tr><td>Arnold Press</td><td class="num">56.0</td><td class="num">51</td><td class="num neg">−5.0</td></tr>
+    <tr><td>Cable Lateral Raise</td><td class="num">35.0</td><td class="num">32</td><td class="num neg">−3.0</td></tr>
+  </table>
+  <p style="margin:12px 0 0;font-size:13.5px;color:var(--mute)">~18 further rows differ by ≤0.3 —
+  <code>Math.round</code> vs <code>round(x,1)</code> noise. Left alone deliberately.</p>
+</div>
+
+<h2>The mechanism</h2>
+<div class="card">
+  <p style="margin-top:0"><code>public.sets</code> carries two <code>BEFORE INSERT</code> row
+  triggers. Postgres fires same-timing triggers in alphabetical <strong>name</strong> order.</p>
+  <table>
+    <tr><th>Trigger</th><th>Function</th><th>Role</th></tr>
+    <tr><td><code>check_pr_on_set_insert</code></td><td><code>update_personal_record()</code></td><td><strong>reads</strong> <code>NEW.estimated_1rm_lbs</code></td></tr>
+    <tr><td><code>set_1rm_before_insert</code></td><td><code>calculate_1rm()</code></td><td><strong>writes</strong> <code>NEW.estimated_1rm_lbs</code></td></tr>
+  </table>
+  <p><code>'c' &lt; 's'</code>, so the reader runs before the writer. Three failure modes, each
+  reproduced on live prod inside rolled-back transactions:</p>
+  <ul class="tight">
+    <li><strong>A — hard abort.</strong> NULL reaches a NOT NULL column →
+      <code>ERROR 23502</code> and the <em>whole set INSERT fails</em>. The database cannot accept a
+      set on its own.</li>
+    <li><strong>B — silent PR loss.</strong> <code>NULL &gt; existing_pr</code> is NULL, not TRUE, so
+      the branch is skipped without error. Measured: 135 lbs × 5 reps against a prior PR of 63 →
+      <code>is_pr = false</code>, record unchanged.</li>
+    <li><strong>C — split-brain.</strong> A 20-rep set lands in <code>personal_records</code> as the
+      client's D12-correct 151.2, then gets overwritten in <code>sets</code> with pure Epley 166.7.
+      <strong>+10.3% on one physical set</strong>, and the stored value violates D12.</li>
+  </ul>
+  <p style="margin-bottom:0">The build plan called this <em>“latent — masked by the client.”</em>
+  That is wrong: two live paths send the value off a <strong>cached snapshot</strong> rather than
+  recomputing it, so NULL is reachable today.</p>
+</div>
+
+<h2>Where the advisors landed</h2>
+<div class="legend">
+  <span><i style="background:var(--red)"></i>restructure now</span>
+  <span><i style="background:var(--amber)"></i>ship small, fast</span>
+  <span><i style="background:var(--violet)"></i>expand the gate</span>
+  <span><i style="background:var(--green)"></i>check the damage first</span>
+</div>
+<div class="bar">
+  <span style="background:var(--red);flex:2"></span>
+  <span style="background:var(--violet);flex:1"></span>
+  <span style="background:var(--green);flex:1"></span>
+  <span style="background:var(--amber);flex:1"></span>
+</div>
+<p style="font-size:13px;color:var(--mute);margin:0 0 14px">
+  Peer-review “strongest response” votes: Contrarian ×2 · First Principles ×2 · Executor ×1.
+  Nobody defended the status quo. Nobody defended the cheap rename as an <em>endpoint</em>.</p>
+
+<div class="grid">
+  <div class="pos" style="border-left:4px solid var(--red)">
+    <div class="who">The Contrarian</div>
+    <div class="stance">Both options are wrong</div>
+    <p>“The real defect isn’t ordering — it’s that ordering is controlled by names.” A rename is
+    defeated by the next migration that adds an alphabetically-earlier trigger, with no diff to
+    review. One trigger, explicit sequence.</p>
+  </div>
+  <div class="pos" style="border-left:4px solid var(--red)">
+    <div class="who">First Principles</div>
+    <div class="stance">Wrong question entirely</div>
+    <p>“Why is a derived value being stored, and written by anyone at all?” <code>personal_records</code>
+    is <code>max()</code> over 374 rows, materialized and then allowed to drift. “There is no formula
+    emergency. There is only a write-path emergency.”</p>
+  </div>
+  <div class="pos" style="border-left:4px solid var(--violet)">
+    <div class="who">The Expansionist</div>
+    <div class="stance">Option A + extend the gate</div>
+    <p>Codegen both artifacts from one spec. The same capability closes the open D16 hole. Take it
+    now — backfill cost is zero at 374 rows and max reps 12, and that window shuts on the first
+    13-rep set.</p>
+  </div>
+  <div class="pos" style="border-left:4px solid var(--green)">
+    <div class="who">The Outsider</div>
+    <div class="stance">Check the damage before arguing</div>
+    <p>“The product is two people celebrating each other’s lifts.” Mode B is the app failing at the
+    only thing it exists for. <strong>Recompute the PRs and diff them.</strong> That demand was the
+    only checkable claim in the room — and it was true.</p>
+  </div>
+  <div class="pos" style="border-left:4px solid var(--amber)">
+    <div class="who">The Executor</div>
+    <div class="stance">Four changes, Monday</div>
+    <p>NULL guard → rename → fill-only-when-NULL → client recompute. The rename is behaviour-identical
+    on 100% of current traffic. “The ‘how does the gate see Postgres’ question is a real meeting. It
+    is not Monday’s meeting.”</p>
+  </div>
+</div>
+
+<h2>Council verdict</h2>
+<div class="verdict">
+
+  <h3>Where the council agrees</h3>
+  <p><strong>The alphabetical ordering is the mechanism, not the defect.</strong> Four of five said
+  some version of this.</p>
+  <p><strong>The client already holds de-facto formula authority, by accident.</strong> Option B is
+  not a proposal — it is a description of production. When the client declines to decide, the
+  database’s answer is the pure-Epley, <em>non-D12</em> one. The choice is whether to make that
+  authority explicit and correct, or reverse it. Not whether to create it.</p>
+  <p><strong>The NULL guard is unconditionally right.</strong> Every advisor’s architecture wants it,
+  in every branch. Losing the log is strictly worse than losing the estimate.</p>
+
+  <h3>Where the council clashes</h3>
+  <p><strong>Scope.</strong> The Executor wants four small changes now. The Contrarian and First
+  Principles Thinker argue that shipping the small fix is exactly how this bug survived its first
+  review. Both are right about different risks — and the peer reviewers found the reconciliation:
+  <em>split the work by who can authorize it</em>, not by how big it is.</p>
+  <p><strong>Whether the gate can reach Postgres.</strong> Review demolished every concrete mechanism
+  proposed. Each verifies a repo artifact that this repo’s own documented gotcha says may not match
+  prod. The honest position: currently <strong>unsolved</strong>.</p>
+  <p><strong>Whether to stop storing derived values at all.</strong> The most satisfying answer,
+  killed on a mechanical fact — see below.</p>
+
+  <h3>Blind spots the council caught</h3>
+  <ul class="tight">
+    <li><strong>Generated columns break both live insert paths.</strong> Postgres cannot
+      <code>ALTER</code> a column into <code>GENERATED … STORED</code>, and once generated, any
+      INSERT that <em>sends</em> the column errors. VIRTUAL doesn’t exist before PG18.</li>
+    <li><strong>Every proposed DB gate is a repo-vs-prod tautology.</strong> Files in
+      <code>/migrations</code> are not necessarily applied; <code>execute_sql</code> DDL isn’t in the
+      ledger.</li>
+    <li><strong>Retroactive correction rewrites a live competition</strong> between two people. Not
+      an engineering decision.</li>
+    <li><strong>The 12→13 boundary needs explicit verification</strong>, or the first 13-rep set reads
+      to a user as one more silently dropped PR.</li>
+    <li><strong>Server-authority doesn’t buy trust</strong> — <code>weight_lbs</code> and
+      <code>reps</code> come through the same anon key.</li>
+  </ul>
+  <p>The largest blind spot was collective: <strong>four of five advisors debated architecture while
+  the data was already corrupt.</strong> One asked whether the harm had landed. It had — on six
+  exercises, by up to nine pounds.</p>
+
+  <h3>The recommendation</h3>
+  <p><em>The Executor’s sequencing, aimed at the Contrarian’s target.</em></p>
+  <ol class="steps">
+    <li><strong>Ship the client fix now</strong> — recompute from <code>(weight, reps)</code> in both
+      write paths instead of trusting a cached snapshot. Safe under every candidate architecture, and
+      it must land <em>first</em> because migrations here are human-applied and can lag a push by
+      days. <span style="color:var(--green);font-weight:700">✓ done</span></li>
+    <li><strong>One trigger, not a rename</strong> (<code>migrations/0006</code>, written, not
+      applied). Same migration cost, immune to the next alphabetically-earlier arrival. Fill the 1RM
+      <em>only when NULL</em>, using D12 so the two copies cannot disagree, then do PR maintenance
+      behind a NULL guard.</li>
+    <li><strong>Reject generated columns</strong> — recorded with the reason, so it isn’t
+      re-proposed in six months.</li>
+    <li><strong>State the gate’s limit in the migration</strong> rather than papering over it. The
+      DB’s copy of D12 is structurally ungated. Say so; ship a runnable probe; treat CI-database
+      access as its own decision.</li>
+    <li><strong>Reconcile the six drifted rows</strong> (<code>migrations/0007</code>, written, not
+      applied) — one-directional, <em>upward only</em>. A recorded PR higher than anything in
+      <code>sets</code> is not this bug and must never be silently lowered.</li>
+  </ol>
+  <p style="margin-bottom:0">The Contrarian’s <code>AFTER INSERT</code> point is correct and is
+  <strong>not</strong> taken in 0006: <code>is_pr</code> is a column on the row being written, so PR
+  detection must stay <code>BEFORE</code>. Splitting them is a real improvement and a real doctrine
+  conversation. Logged, not smuggled in.</p>
+
+  <div class="first">
+    <div class="lbl">The one thing to do first</div>
+    <p style="margin:8px 0 0"><strong>Tell Dani that six of Kerwin’s records were understated by up
+    to nine pounds — before correcting them.</strong> Not the NULL guard; that ships in the same hour
+    and needs no permission. The Outsider had the sharpest read in the room: the product is two
+    people celebrating each other’s lifts, and this bug quietly took six of those moments away.
+    Fixing the number without saying so makes the app a second thing that decided not to mention
+    it.</p>
+  </div>
+</div>
+
+<h2>Full advisor responses</h2>
+
+<details>
+  <summary>The Contrarian — “both options are wrong”</summary>
+  <div class="body">
+    <p>Both options are wrong, because both accept the framing. Option B makes the competition moat
+    client-authored — the anon key is shipped in <code>tandem.html</code>, so “the client computes
+    it” means “anyone computes it”. Option A re-runs the drift experiment that produced failure mode
+    C in the first place: two copies of one formula, one of them gated.</p>
+    <p><strong>The real defect isn’t ordering — it’s that ordering is controlled by names.</strong> A
+    rename to <code>a_set_1rm_before_insert</code> works today and is defeated the first time someone
+    adds <code>audit_sets_before_insert</code>. There would be no diff to review, no test that fails.
+    Fix it once: ONE trigger calling both routines in explicit sequence, and move PR maintenance to
+    <code>AFTER INSERT</code> where it belongs — it is a side effect on another table, not a mutation
+    of the row being written.</p>
+    <p>Also: “the gate has no DB connection” is a choice, not physics. Stand up a throwaway Postgres
+    in CI and apply the migrations to it.</p>
+    <p>Three things this investigation still owes: query prod logs for actual <code>23502</code>
+    occurrences rather than inferring them from session health; state plainly that the Mayhew branch
+    has <strong>never executed in production</strong>, so D12 is unverified end-to-end; and audit
+    every other table for the same alphabetical landmine, because nothing suggests <code>sets</code>
+    is special.</p>
+  </div>
+</details>
+
+<details>
+  <summary>The First Principles Thinker — “there is no formula emergency”</summary>
+  <div class="body">
+    <p>Wrong question. <strong>Why is a derived value being stored, and written by anyone at
+    all?</strong></p>
+    <p><code>estimated_1rm_lbs</code> is not a fact about the world. It is an opinion about
+    <code>(weight, reps)</code> under a chosen formula. <code>personal_records</code> is not a record
+    either — it is <code>max()</code> over 374 rows, materialized and then allowed to drift from the
+    rows it summarizes. The bug report describes three symptoms; all three are downstream of one
+    decision: making a derived value writable.</p>
+    <p>Make it non-writable — generated column or view — delete <code>update_personal_record()</code>
+    entirely, and compute PRs by query. Then failure mode A cannot occur (nothing to insert NULL
+    into), B cannot occur (nothing to compare), C cannot occur (one expression, one place). You do
+    not need a trigger order if you do not have triggers.</p>
+    <p>The gate question dissolves too: a checked-in <code>pg_dump</code> <em>is</em> a repo file. The
+    gate reads repo files. There was never an impedance mismatch — there was a habit of not checking
+    the schema in.</p>
+    <p><strong>There is no formula emergency. There is only a write-path emergency.</strong></p>
+  </div>
+</details>
+
+<details>
+  <summary>The Expansionist — “the gate’s blindness is the opportunity”</summary>
+  <div class="body">
+    <p>Take Option A, and treat the gate’s blindness as the actual opportunity. A read-only Postgres
+    role in CI, <code>pg_get_functiondef()</code> diffed against a checked-in golden <code>.sql</code>,
+    or — better — codegen the PL/pgSQL from the same spec that produces the JS. One formula, two
+    emitted artifacts, both gated.</p>
+    <p>The same capability closes the known D16 hole where <code>validate_science_overrides()</code>
+    matches <code>principle_key</code> with no template scope. That is two open bugs closed by one
+    investment.</p>
+    <p>And take it <strong>now</strong>: backfill cost is zero. 374 rows, max reps 12, so the correct
+    answer and the current answer coincide on every row already stored. That window closes on the
+    first 13-rep set anyone logs. Add <code>rm_formula_version</code> to <code>sets</code> while you
+    are in there, so the next formula change is a data question instead of an archaeology
+    question.</p>
+  </div>
+</details>
+
+<details>
+  <summary>The Outsider — “the word doing the damage is <em>silently</em>”</summary>
+  <div class="body">
+    <p>I do not know what D12 is. Here is what I see: <strong>the product is two people celebrating
+    each other’s lifts.</strong> Failure mode B is the app failing at the only thing it exists for.
+    Someone hit a real PR, the app said nothing, and the person they are competing with never saw
+    it.</p>
+    <p>The word doing the damage in all three modes is <strong>silently</strong>. A hard error gets
+    fixed in a day. A silent wrong number gets trusted for months. Whatever you build, make
+    disagreement visible.</p>
+    <p>And before any of this: <strong>check whether <code>personal_records</code> is already
+    wrong.</strong> Recompute every PR from the sets you already have and diff it against the table.
+    If they match, this is a near-miss and you can take your time on architecture. If they do not, you
+    have a live data-integrity incident and the architecture debate is a distraction.</p>
+    <p>I would vote Option B — put the number where the person is — but that vote is worthless until
+    someone runs the reconciliation.</p>
+  </div>
+</details>
+
+<details>
+  <summary>The Executor — “that is a real meeting. It is not Monday’s meeting.”</summary>
+  <div class="body">
+    <p>Monday, in order:</p>
+    <ol class="steps">
+      <li><strong>NULL-safety in <code>update_personal_record()</code>.</strong> ~4 lines. Pure defect
+        fix. No Notion round-trip, no doctrine change, no meeting. A set with an unusable 1RM must
+        still be storable.</li>
+      <li><strong>Rename <code>set_1rm_before_insert</code> → <code>a_set_1rm_before_insert</code>.</strong>
+        Behaviour-identical on 100% of current traffic, because max reps is 12 and D12 specifies Epley
+        at ≤12 anyway. That zero-delta window is real and it closes on the first 15-rep set.</li>
+      <li><strong><code>calculate_1rm()</code> fills only when NULL.</strong></li>
+      <li><strong>Client-side: delete <code>s.est1rm || null</code> in both paths and recompute.</strong></li>
+    </ol>
+    <p>Then instrument failed set INSERTs so you find out about this class of bug from a log, not from
+    a forensic session six weeks later.</p>
+    <p>The “how does the gate see Postgres” question is a real meeting. It is not Monday’s meeting.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Peer review round — 8 blind spots, 3 of which changed what ships</summary>
+  <div class="body">
+    <p style="color:var(--mute);font-size:13px">Anonymisation during review: A = Executor,
+    B = Contrarian, C = Outsider, D = Expansionist, E = First Principles. Reviewers saw only letters.
+    Strongest-response votes: Contrarian ×2, First Principles ×2, Executor ×1.</p>
+    <ol class="steps">
+      <li><strong>Generated columns will not work as proposed.</strong> Postgres cannot
+        <code>ALTER</code> an existing column into <code>GENERATED … STORED</code> — drop and re-add
+        only. Worse: once generated, <em>any INSERT that sends the column errors</em>, and both live
+        client paths send it. VIRTUAL generated columns do not exist before PG18. That proposal ships
+        a breaking change dressed as a cleanup.</li>
+      <li><strong>Every proposed DB gate relocates the blind spot rather than closing it.</strong>
+        Per this repo’s own standing gotcha, files in <code>/migrations</code> are not necessarily
+        applied to prod, and DDL run through <code>execute_sql</code> is not recorded in the migration
+        ledger. A golden-SQL diff proves the repo agrees with itself. Also
+        <code>pg_get_functiondef()</code> false-positives on PG version reformatting.</li>
+      <li><strong>Retroactive formula versioning rewrites competition history.</strong> Recomputation
+        silently restates past PRs and the points they awarded between two competing humans.
+        Historical PRs may need freezing at the formula version in force. Product decision, not a
+        migration.</li>
+      <li><strong>The 12→13 boundary must be verified explicitly</strong>, or the first 13-rep set
+        computes lower than a stored 12-rep PR — which reads to a user as one more silently dropped
+        PR.</li>
+      <li><strong>Server-authority does not buy trust.</strong> <code>weight_lbs</code> and
+        <code>reps</code> are client-supplied through the same anon key. Moving the arithmetic
+        server-side guarantees the arithmetic, nothing more.</li>
+      <li><strong>The client’s direct <code>personal_records</code> upsert races the trigger</strong>
+        on the same unique key.</li>
+      <li><strong>Nobody separated the work by who can authorize it.</strong> The NULL guard and the
+        client fix are pure defect repairs. Generated columns, <code>AFTER INSERT</code>, and
+        extending gate scope all change enforced-invariant surface and require
+        <em>Notion → DOCTRINE.md → doctrine.mjs first</em>.</li>
+      <li><strong>Nobody ran the mandated should/could/did audit</strong>, which CLAUDE.md requires
+        for a D12-touching change.</li>
+    </ol>
+  </div>
+</details>
+
+<h2>What shipped from this</h2>
+<div class="card">
+  <ul class="tight" style="margin-top:0">
+    <li><code>tandem.html</code> — both write paths recompute <code>estimated_1rm_lbs</code> from
+      <code>(weight, reps)</code>. <strong>Applied.</strong></li>
+    <li><code>migrations/0006_bug75_sets_trigger_consolidation.sql</code> — one trigger, explicit
+      sequence, D12 in the DB, NULL guard. <strong>Written, not applied</strong> (migrations here are
+      human-applied).</li>
+    <li><code>migrations/0007_bug75_reconcile_personal_records.sql</code> — upward-only repair of the
+      six drifted rows. <strong>Written, not applied</strong>; blocked on the correct-forward vs
+      full-restatement decision.</li>
+  </ul>
+</div>
+
+<footer>
+  Generated 2026-08-14 · 5 advisors → anonymised peer review → chairman synthesis ·
+  full transcript: <code>council-transcript-2026-08-14-bug75.md</code>
+</footer>
+
+</div>
+</body>
+</html>
