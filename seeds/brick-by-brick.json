@@ -10,7 +10,7 @@
     "duration_weeks": 12,
     "days_per_week": 4,
     "split_type": "body_part",
-    "intensity_tier": "full_gym",
+    "equipment_tier": "full_gym",
     "difficulty": "intermediate",
     "tagline": "Twelve weeks. Four days. Zero guesswork.",
     "description": "A 12-week body-part split built the old way and programmed the new way: the same first lift for every muscle all twelve weeks, three 4-week phases that walk reps from 12-15 down to a heavy 3-5 finish, and every fourth week pulled back on purpose.",

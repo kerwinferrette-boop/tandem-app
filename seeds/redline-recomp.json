@@ -10,7 +10,7 @@
     "duration_weeks": 12,
     "days_per_week": 4,
     "split_type": "body_part",
-    "intensity_tier": "full_gym",
+    "equipment_tier": "full_gym",
     "difficulty": "intermediate",
     "tagline": "Same iron. No sitting down.",
     "description": "Brick by Brick’s chassis run at recomp pace: the same fixed primaries and 4-day split, but short rests and cardioacceleration bursts between accessory sets keep the heart rate up while the bar still goes up.",

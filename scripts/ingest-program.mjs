@@ -89,7 +89,7 @@ const root = dirname(scriptsDir);
 const REQUIRED_SCHEMA = {
   workout_templates: ['id', 'slug', 'name', 'author_id', 'is_published', 'author_attribution',
     'parent_goal', 'code_goal_mapping', 'duration_weeks', 'days_per_week', 'split_type',
-    'intensity_tier', 'difficulty', 'tagline', 'description', 'coaching_notes',
+    'equipment_tier', 'difficulty', 'tagline', 'description', 'coaching_notes',
     'science_overrides', 'source_provenance'],
   template_blocks: ['id', 'template_id', 'block_order', 'week_start', 'week_end', 'name',
     'rep_scheme_by_week', 'technique_by_week'],
@@ -160,7 +160,9 @@ DOCUMENTED JSON SHAPE (see scripts/fixtures/example-ingest.json for a full worke
     "duration_weeks": "int, 4-12 (live DB CHECK constraint)",
     "days_per_week": "int, 2-6 (live DB CHECK constraint; NOT in the original brief)",
     "split_type": "one of ${SPLIT_TYPES.join('|')} (app-level rule; no live DB constraint)",
-    "intensity_tier": "string, optional",
+    "equipment_tier": "one of home|hotel_gym|full_gym, optional (live DB CHECK constraint).
+                       What equipment the program ASSUMES — not how hard it is. Renamed from
+                       intensity_tier by migrations/0003 (BUG-60).",
     "difficulty": "one of ${DIFFICULTIES.join('|')}",
     "tagline": "string, optional",
     "description": "string, optional",
@@ -566,7 +568,7 @@ async function writeProgram(db, program, { existing, update }, slugToId) {
     duration_weeks: program.duration_weeks,
     days_per_week: program.days_per_week,
     split_type: program.split_type ?? null,
-    intensity_tier: program.intensity_tier ?? null,
+    equipment_tier: program.equipment_tier ?? null,
     difficulty: program.difficulty,
     tagline: program.tagline ?? null,
     description: program.description ?? null,
