@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>LLM Council — EPIC-5 disposition</title>
+<style>
+  :root{--ink:#1a1a1a;--mute:#6b6b6b;--line:#e4e4e4;--bg:#fff;
+        --con:#c0392b;--fp:#8e44ad;--exp:#1e8449;--out:#b7791f;--exe:#1f5fa8;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#f7f7f5;color:var(--ink);
+       font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:820px;margin:0 auto;padding:56px 28px 96px}
+  h1{font-size:27px;line-height:1.25;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--mute);font-size:14px;margin:0 0 34px}
+  .q{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--ink);
+     border-radius:3px;padding:20px 22px;margin:0 0 34px}
+  .q h2{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--mute);margin:0 0 10px}
+  .verdict{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:4px 26px 26px;margin:0 0 34px}
+  h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);
+     margin:28px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+  h3:first-of-type{border-top:0;padding-top:0}
+  .lede{font-size:18px;line-height:1.5;font-weight:600;margin:0 0 4px}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--mute);border-bottom:1px solid var(--line);padding:8px 10px 8px 0;font-weight:600}
+  td{border-bottom:1px solid #f0f0f0;padding:10px 10px 10px 0;vertical-align:top}
+  td:first-child{white-space:nowrap;font-weight:600}
+  .bar{display:flex;gap:5px;margin:16px 0 22px}
+  .bar div{flex:1;text-align:center;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+           color:#fff;padding:9px 4px;border-radius:2px;font-weight:600}
+  code{background:#f2f2f0;padding:1.5px 5px;border-radius:2px;font-size:13.5px;
+       font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:#1c1c1c;color:#e8e8e8;padding:15px 17px;border-radius:3px;overflow-x:auto;
+      font-size:13px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  details{background:var(--bg);border:1px solid var(--line);border-radius:3px;
+          padding:13px 20px;margin-bottom:9px}
+  summary{cursor:pointer;font-weight:600;font-size:14.5px;outline:none}
+  details[open] summary{margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--line)}
+  .tag{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:9px;vertical-align:1px}
+  .flag{background:#fff8e6;border:1px solid #f0dca8;border-left:3px solid #d9a300;
+        border-radius:3px;padding:16px 20px;margin:18px 0}
+  .flag strong{display:block;margin-bottom:5px}
+  footer{color:var(--mute);font-size:12.5px;margin-top:44px;padding-top:18px;border-top:1px solid var(--line)}
+  ol,ul{padding-left:22px}
+  li{margin:7px 0}
+</style>
+<div class="wrap">
+
+<h1>LLM Council — should EPIC-5 (anon key rotation) still be built?</h1>
+<p class="sub">2026-08-13 · Tandem · 5 advisors, convened during Wave 1.2 · verdict: unanimous</p>
+
+<div class="q">
+  <h2>The question put to the council</h2>
+  <p style="margin:0">EPIC-5 is a <strong>P0 Critical</strong> epic, written by Kerwin, titled <em>"anon key rotation — security hardening before public URL share."</em> It hard-gates EPIC-30. But <code>tandem.html:1850</code> ships an <code>sb_publishable_…</code> key, which Supabase's own docs rate risk <strong>"Low"</strong> and describe as <em>"safe to expose online: web page, mobile or desktop app, GitHub actions, CLIs, source code."</em> The premise appears obsolete. Overriding it is a call against the author's written intent — so: build it, close it, or replace it?</p>
+</div>
+
+<div class="verdict">
+  <h3>Where the council agrees</h3>
+  <p class="lede">Rotation is not the fix. The gate is.</p>
+  <p>All five advisors independently reached the same shape: <strong>close the rotation scope as premised on an obsolete key model, but do not delete EPIC-30's dependency gate — replace it with the hardening that actually applies.</strong> Deleting the gate outright was rejected by every advisor, including the two most eager to close the epic.</p>
+  <p>Rotation buys nothing for confidentiality (the new key is republished in the same file on the next deploy), nothing for rate limiting (Supabase quotas are per-project, not per-key), and it actively <em>destroys</em> the audit trail you would want if someone had scraped the data.</p>
+
+  <h3>Where the council clashed</h3>
+  <table>
+    <tr><th>Tension</th><th>Positions</th></tr>
+    <tr><td>Severity of the residual</td><td>The Contrarian argued the exposure window makes this an <em>incident</em> demanding disclosure; the Executor argued it is a dormant two-person app and the cost of over-reacting is real. Unresolved — it is Kerwin's call, not a technical one.</td></tr>
+    <tr><td>Rotate anyway?</td><td>Split. Rotation is cheap and non-harmful as hygiene. It is <em>not</em> a control and must not be a gate. The chair sided with "optional, never blocking."</td></tr>
+  </table>
+
+  <h3>Blind spots the council caught</h3>
+  <p>Three things surfaced that the original framing missed entirely.</p>
+
+  <div class="flag">
+    <strong>1 · The write side was never audited — and the BUG-74 verification proved nothing about it.</strong>
+    The <code>*_write_own</code> policies are declared <code>FOR ALL</code>, covering INSERT/UPDATE/DELETE, and were authored by the same hand, same day, same file as the <code>*_read_all</code> policies BUG-74 had to tear out. BUG-74's post-fix check returned <code>[]</code> on <em>reads</em>. That says nothing about whether anon can still <code>DELETE FROM sets</code>.
+  </div>
+
+  <p><strong>Acted on immediately. Result:</strong></p>
+<pre>as anon, no JWT — rolled-back transactions against prod
+
+  UPDATE public.sets              ->  0 rows   denied   ✓
+  UPDATE public.users             ->  0 rows   denied   ✓
+  DELETE public.streaks           ->  0 rows   denied   ✓
+  DELETE public.medals            ->  0 rows   denied   ✓
+
+  UPDATE public.user_bug_reports  -> 30 rows   PERMITTED  ✗
+  INSERT public.agent_log         ->  1 row    PERMITTED  ✗
+
+as authenticated, JWT sub = a legitimate non-Kerwin user
+
+  SELECT public.user_bug_reports  ->  0 rows   cannot read them
+  UPDATE public.user_bug_reports  -> 30 rows   ...but can overwrite all 30  ✗
+  INSERT agent_log AS another uid ->  1 row    forged attribution accepted  ✗</pre>
+
+  <p>The core fear was wrong — training data is safe. But two policies <em>named</em> <code>"Service role updates bug reports"</code> and <code>"Service role inserts agent_log"</code> are in fact <code>TO public USING (true)</code>. <code>service_role</code> has <code>rolbypassrls = true</code>, so they do nothing for service_role; the only thing they do is grant the capability to anon and every signed-in user. <strong>Filed as BUG-78</strong>, migration <code>0005</code> written.</p>
+
+  <div class="flag">
+    <strong>2 · There is no future "public share" moment. The URL is already public.</strong>
+    The epic title says <em>"before public URL share."</em> <code>tandem-fitness-tracker.netlify.app</code> has been on the open internet the whole time. So BUG-74 did not harden ahead of exposure — it closed an exposure that <em>already happened</em>, for an unknown window, with real email addresses among the world-readable rows. Breach notification and a log review are both currently unscheduled.
+  </div>
+
+  <div class="flag">
+    <strong>3 · Under EPIC-30, the adversary stops being <code>anon</code>.</strong>
+    A community library means open signup. The threat model becomes a signed-up <code>authenticated</code> user — free to become. Every policy written so far assumes <code>authenticated</code> is trustworthy. BUG-78's second probe is the proof: as a legitimate signed-in user, all 30 bug reports were writable.
+  </div>
+
+  <h3>The recommendation</h3>
+  <ol>
+    <li><strong>Rewrite EPIC-5 rather than close it.</strong> Keep the slot and the EPIC-30 gate; swap the contents. Demote P0 Critical → P1 High.</li>
+    <li>New scope, in order: <strong>(1)</strong> write-side RLS audit · <strong>(2)</strong> <code>auth_leaked_password_protection</code> toggle · <strong>(3)</strong> signup-posture ruling · <strong>(4)</strong> <code>pg_net</code> out of <code>public</code>.</li>
+    <li><strong>Rotation is optional hygiene.</strong> Never a gate.</li>
+    <li><strong>Escalate the disclosure question to Kerwin.</strong> Not a technical decision.</li>
+  </ol>
+
+  <p><em>Highest-leverage suggestion, from the Expansionist:</em> productise the probe that found both bugs as <code>scripts/rls-probe.mjs</code> in <code>npm run verify</code> — every table × every role × read <em>and</em> write. Neither BUG-74 nor BUG-78 was caught by <code>get_advisors</code>, because RLS was on and policies existed; they were merely permissive. A data-access invariant gate, mirroring what <code>scripts/doctrine.mjs</code> does for exercise science.</p>
+
+  <h3>The one thing to do first</h3>
+  <p class="lede">Audit the write policies.</p>
+  <p style="margin-top:2px">Everything else on this page is scheduling. That one was a live, unverified hole. <strong>Done — and it found two.</strong></p>
+</div>
+
+<h3 style="border-top:0;padding-top:0">Advisor alignment</h3>
+<div class="bar">
+  <div style="background:var(--con)">Contrarian</div>
+  <div style="background:var(--fp)">First Principles</div>
+  <div style="background:var(--exp)">Expansionist</div>
+  <div style="background:var(--out)">Outsider</div>
+  <div style="background:var(--exe)">Executor</div>
+</div>
+
+<details>
+  <summary><span class="tag" style="background:var(--con)"></span>The Contrarian</summary>
+  <p>Attacked the framing, not the epic. Rotation is security theatre here; the real question is what else was assumed and never checked. Raised the <code>FOR ALL</code> write-policy gap and the "there is no future share moment — this was an incident" reframe. Pushed hardest on disclosure.</p>
+</details>
+<details>
+  <summary><span class="tag" style="background:var(--fp)"></span>The First Principles Thinker</summary>
+  <p>Asked what the key is actually <em>for</em>. Answer: routing a request to a project, not authenticating a principal. Confidentiality was never its job, so rotating it cannot restore a property it never had. Concluded the epic is asking the wrong question and should be re-scoped, not answered.</p>
+</details>
+<details>
+  <summary><span class="tag" style="background:var(--exp)"></span>The Expansionist</summary>
+  <p>Least interested in EPIC-5, most interested in what the investigation produced. Proposed <code>scripts/rls-probe.mjs</code> as a permanent verify-gate — turning two one-off manual audits into a standing invariant, in the same spirit as the doctrine gate.</p>
+</details>
+<details>
+  <summary><span class="tag" style="background:var(--out)"></span>The Outsider</summary>
+  <p>Read the epic title cold and stopped at <em>"before public URL share."</em> Pointed out that the URL is already live and reachable, so the entire epic is written in a future tense that does not apply. The single most load-bearing observation on the page.</p>
+</details>
+<details>
+  <summary><span class="tag" style="background:var(--exe)"></span>The Executor</summary>
+  <p>Only cared what happens Monday. Rotation is a dashboard click plus a redeploy and changes nothing measurable. The leaked-password toggle is also one click and changes something real. Sequenced the replacement checklist by cost-to-value and flagged that the signup ruling is the only item that genuinely blocks EPIC-30.</p>
+</details>
+
+<footer>
+  Convened 2026-08-13 during Wave 1.2 of the Tandem Master Build Sequence.<br>
+  Acted on: EPIC-5 re-scoped and demoted to P1 · EPIC-30 dependency gate replaced · BUG-78 filed (P1, In Fix) · <code>migrations/0005_bug78_scope_write_policies.sql</code> written, not applied · commit <code>39f4880</code>.
+</footer>
+
+</div>
