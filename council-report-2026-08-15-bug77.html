@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Council — BUG-77 part 2 · the D16 scope ruling</title>
+<style>
+  :root{
+    --ink:#16181d; --muted:#5f6672; --line:#e3e6ec; --bg:#fff; --soft:#f7f8fa;
+    --accent:#2f5fd0; --warn:#b0552b; --good:#1f7a4d; --bad:#b03030;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:56px 28px 80px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 34px;font-size:15px}
+  h2{font-size:20px;margin:38px 0 12px;letter-spacing:-.01em}
+  h3{font-size:15px;margin:24px 0 8px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  p{margin:0 0 14px}
+  code{background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:13.5px;
+       font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow:auto;
+      font-size:13px;line-height:1.5;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre code{background:none;border:none;padding:0}
+  blockquote{margin:0 0 16px;padding:2px 0 2px 16px;border-left:3px solid var(--line);color:var(--muted)}
+
+  .q{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 8px}
+  .q p{margin:0}
+  .q strong{font-weight:650}
+
+  .verdict{border:2px solid var(--ink);border-radius:12px;padding:26px 26px 10px;margin:26px 0 8px}
+  .verdict .tag{display:inline-block;background:var(--ink);color:#fff;font-size:11px;letter-spacing:.14em;
+                text-transform:uppercase;padding:4px 10px;border-radius:4px;margin-bottom:14px}
+  .ruling{font-size:18px;line-height:1.5;font-weight:600;margin:0 0 16px}
+
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:0 0 18px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .own{color:var(--good);font-weight:600}
+  .split{color:var(--warn);font-weight:600}
+
+  .spectrum{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 22px}
+  .spectrum .row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+  .spectrum .row:last-child{border-bottom:none}
+  .spectrum .lbl{flex:0 0 210px;background:var(--soft);padding:11px 14px;font-size:13.5px;font-weight:600;
+                 border-right:1px solid var(--line)}
+  .spectrum .val{padding:11px 14px;font-size:13.5px;color:var(--muted)}
+
+  details{border:1px solid var(--line);border-radius:9px;margin:0 0 10px;background:var(--bg)}
+  details[open]{background:var(--soft)}
+  summary{cursor:pointer;padding:13px 16px;font-weight:600;font-size:15px;list-style:none;display:flex;
+          justify-content:space-between;align-items:center;gap:12px}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";color:var(--muted);font-weight:400;font-size:19px;line-height:1}
+  details[open] summary::after{content:"–"}
+  summary .who{color:var(--muted);font-weight:400;font-size:13px}
+  .body{padding:2px 18px 16px;font-size:15px}
+  .body p:last-child{margin-bottom:0}
+
+  ol.steps{padding-left:20px;margin:0 0 16px}
+  ol.steps li{margin:0 0 10px}
+  .first{border:2px solid var(--accent);border-radius:12px;padding:22px 24px;margin:22px 0 0}
+  .first .tag{display:inline-block;background:var(--accent);color:#fff;font-size:11px;letter-spacing:.14em;
+              text-transform:uppercase;padding:4px 10px;border-radius:4px;margin-bottom:12px}
+  .first p:last-child{margin-bottom:0}
+
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">LLM Council · 5 advisors · anonymized peer review · chairman synthesis</p>
+  <h1>BUG-77 part 2 — the D16 scope ruling</h1>
+  <p class="sub">Tandem · Wave 3.3 of the Master Build Sequence · 2026-08-15</p>
+
+  <div class="q">
+    <p><strong>The question.</strong> Does doctrine invariant D16 mean <em>“a principle exists somewhere in
+    the corpus”</em> or <em>“THIS template cites ITS OWN principle”</em>? And what should happen to the
+    NULL-<code>template_id</code> “scaffold” rows the seed generator writes?</p>
+  </div>
+  <p style="font-size:13.5px;color:var(--muted);margin:10px 0 0">
+    Routed to the council rather than to Kerwin, per the standing directive: <em>“If needed, use the llm
+    council skill for advice, not me.”</em>
+  </p>
+
+  <h2>The defect, in one look</h2>
+  <p>D16 is enforced in two places and they do not agree. The file-side gate is correctly scoped. The
+  Postgres trigger is not:</p>
+<pre><code>-- validate_science_overrides() on workout_templates, verbatim
+if not exists (select 1 from public.program_principles p
+               where p.principle_key = k) then          -- &lt;-- no template scope
+  raise exception 'D16 violation: science_overrides key "%" has no program_principles row', k;</code></pre>
+  <p>Proven live against prod in a rolled-back transaction: a brand-new template declaring
+  <code>rep_floor</code> with zero principles of its own passes, by riding Brick by Brick’s citation.</p>
+
+  <!-- ─────────── VERDICT ─────────── -->
+  <div class="verdict">
+    <span class="tag">Council verdict</span>
+    <p class="ruling">D16 means <span class="own">“THIS template cites ITS OWN principle.”</span>
+    <code>template_id IS NULL</code> never satisfies D16. The scaffold is deleted outright — not promoted,
+    not retained after adoption.</p>
+    <p>Four of five advisors reached this independently, by four different routes. The decisive argument:
+    a corpus-wide existence check is satisfied by the first program ever admitted, <em>forever</em> — the
+    loose reading makes D16 vacuous by construction, not merely weak.</p>
+  </div>
+
+  <h2>Where the advisors landed</h2>
+  <div class="spectrum">
+    <div class="row"><div class="lbl">First Principles</div>
+      <div class="val"><span class="own">Own-template scope.</span> A principle with no template is “an orphan
+      claim about nothing.” The scaffold is a fossil of the wrong data model. → option 3.</div></div>
+    <div class="row"><div class="lbl">Outsider</div>
+      <div class="val"><span class="own">Own-template scope.</span> “A citation is something someone cites.”
+      Rejects option 2 (“option 4 with extra steps”) and option 4 (“a trigger that raises exceptions isn’t
+      advisory”).</div></div>
+    <div class="row"><div class="lbl">Executor</div>
+      <div class="val"><span class="own">Own-template scope.</span> Not a judgment call — the file gate already
+      implements it; the DB side is wrong. Supplies the migration order.</div></div>
+    <div class="row"><div class="lbl">Expansionist</div>
+      <div class="val"><span class="split">Split the concept.</span> Promote the NULL rows into a library-level
+      citation registry + a per-template applicability claim. <em>Dissent — deferred, not discarded.</em></div></div>
+    <div class="row"><div class="lbl">Contrarian</div>
+      <div class="val"><span class="split">The WHERE clause isn’t the bug.</span> Scope alone is “a turnstile with
+      no wall”; flag the gap instead of picking. <em>Partly upheld — see blind spots 2 &amp; 4.</em></div></div>
+  </div>
+
+  <h3>Peer review — 5 of 5 reviewers agreed</h3>
+  <table>
+    <tr><th>Question</th><th>Result</th></tr>
+    <tr><td>Strongest response</td><td><strong>Executor — 5/5, unanimous.</strong> Only response that pairs the
+      correct reading with an ordered, individually-rollbackable plan. Three reviewers independently singled out
+      the same insight: <strong>defer the trigger BEFORE scoping it.</strong></td></tr>
+    <tr><td>Biggest blind spot</td><td><strong>Expansionist — 4/5.</strong> A two-table refactor for a corpus with
+      one override key; and the registry model <em>is</em> the model that produced this bug — it legalizes
+      borrowing and calls it a feature.</td></tr>
+    <tr><td>Missed by all five</td><td><strong>Audit prod before choosing.</strong> Raised independently by three
+      reviewers. If any live template is satisfied only by a NULL or borrowed row, Migration B breaks live
+      data.</td></tr>
+  </table>
+
+  <h2>Blind spots the review round caught</h2>
+  <ol class="steps">
+    <li><strong>Audit prod first — gating.</strong> Which templates have <code>science_overrides</code> keys with
+      no own-<code>template_id</code> principle row? This should drive the migration’s shape, not follow it.</li>
+    <li><strong>The trigger is one-sided.</strong> It fires on <code>workout_templates</code> only. Nothing guards
+      <code>program_principles</code> on DELETE/UPDATE — delete the citation tomorrow and the override survives
+      forever, unaudited.</li>
+    <li><strong>A scoped trigger does not repair existing rows.</strong> It fires on future writes only.
+      Templates already in violation stay in violation, silently.</li>
+    <li><strong>Deferral assumes one transaction.</strong> True for the generated seed SQL.
+      <em>Unverified</em> for <code>ingest-program.mjs</code> and the adoption clone — and if the clone copies
+      <code>science_overrides</code> without principles, Migration B breaks adoption on day one.</li>
+    <li><strong>Nothing prevents recurrence.</strong> The standing D17 finding: <code>doctrine.mjs</code> has no DB
+      connection and structurally cannot get one in CI, so file gate and trigger can silently diverge again —
+      exactly as they did here.</li>
+    <li><strong>Citation fields are free text.</strong> <code>source: 'trust me'</code> passes both gates. Real,
+      but correctly deprioritized: a corpus-quality problem, not a correctness hole.</li>
+  </ol>
+
+  <h2>The recommendation</h2>
+  <ol class="steps">
+    <li><strong>Step 0 — audit prod (gating).</strong> Do not write Migration B before this returns.</li>
+    <li><strong>Step 1 — Notion → <code>DOCTRINE.md</code> → <code>doctrine.mjs</code>,</strong> in that order.
+      One sentence. This documents behavior the file gate already has.</li>
+    <li><strong>Step 2 — Migration A.</strong> <code>CONSTRAINT TRIGGER … DEFERRABLE INITIALLY DEFERRED</code>,
+      body unchanged. Behavior-identical, zero-risk, fires at COMMIT. This is the whole chicken-and-egg fix.</li>
+    <li><strong>Step 3 — Migration B.</strong> Scope the body to <code>p.template_id = NEW.id</code>. Acceptance:
+      Brick by Brick seeds clean; the borrow attack now fails.</li>
+    <li><strong>Step 4 — regenerate</strong> <code>epic031_seed_programs.sql</code> with the scaffold block
+      deleted. Never hand-edit the generated file.</li>
+    <li><strong>Step 5 — Migration C.</strong> <code>DELETE FROM program_principles WHERE template_id IS NULL</code>,
+      then drop the partial unique index. Last — least reversible.</li>
+    <li><strong>Step 6 — recurrence guard.</strong> Run the borrow attack in a rolled-back txn as a checked step,
+      or snapshot the trigger body into the repo. File the DELETE/UPDATE guard as its own bug.</li>
+  </ol>
+  <p>Each migration keeps its predecessor’s definition as a commented <code>CREATE OR REPLACE</code> in the
+  header, so every step has a one-statement rollback.</p>
+  <p><strong>The Expansionist’s registry is rejected on timing, not on merit</strong>, and is recorded in Notion
+  with an explicit revisit trigger: <em>when the corpus exceeds ~10 templates or a second override key goes
+  live.</em> Its diagnosis — citation text will drift across programs — is correct; the wrong response to a
+  correct-but-early idea is to lose it.</p>
+
+  <div class="first">
+    <span class="tag">The one thing to do first</span>
+    <p><strong>Run the prod audit.</strong> One query: is any live template currently satisfied <em>only</em> by a
+    NULL-<code>template_id</code> row or by another template’s principle row?</p>
+    <p>Not the Notion write-up. Not Migration A. It is the only cheap way to learn whether Migration B is a clean
+    tightening or a data-breaking change — and it is the last remaining unknown in the sequence.</p>
+  </div>
+
+  <h2>Full advisor responses</h2>
+
+  <details>
+    <summary>The Contrarian <span class="who">— “the WHERE clause is not the bug”</span></summary>
+    <div class="body">
+      <p>Everyone in this thread is arguing about the trigger’s WHERE clause. The WHERE clause is not the bug.
+      Three things nobody has asked:</p>
+      <p><strong>1. The trigger is a snapshot check, not an invariant.</strong> It fires on
+      <code>workout_templates</code> insert/update and asks “does a row exist right now?” Nothing guards
+      <code>program_principles</code> on DELETE or UPDATE. Delete the citation tomorrow and the override survives
+      forever, unaudited. Perfectly scope option 1 and you have still built a turnstile with no wall. If D16 means
+      anything enforceable in Postgres, it needs the <em>principles</em> side locked too — and nobody has proposed
+      that, which tells me the group is optimizing the artifact it can see.</p>
+      <p><strong>2. The adoption clone will break or launder, and nobody has checked which.</strong> Cloning a
+      template row copies <code>science_overrides</code>. Does it copy principles? If no: strict scoping breaks
+      every adoption of Brick by Brick on day one — your only shipping feature path. If yes: it manufactures
+      citations at user-click rate, which is worse than the ingest threat everyone is worried about. This is the
+      near-term path; community ingest is hypothetical. You are hardening the door of a building you haven’t poured
+      yet.</p>
+      <p><strong>3. <code>claim</code>, <code>rationale</code>, <code>source</code> are free text.</strong> A row
+      reading <code>source: 'trust me'</code> satisfies both enforcement paths today. The guarantee was already
+      decorative; scoping only makes it decorative per-template.</p>
+      <p>And the meta-flaw: D16’s canonical line does not specify scope. Picking option 1 or 2 <em>is</em> inventing
+      the answer — the exact failure mode this project claims to be eliminating. Correct move: flag the gap, freeze
+      the three direct-DB writers, and take scope + lifecycle + clone semantics to Notion as one ruling.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The First Principles Thinker <span class="who">— “what is a principle a property of?”</span></summary>
+    <div class="body">
+      <p>You’re asking a schema question. The real question is: <strong>what is a principle a property of?</strong></p>
+      <p>You’ve been treating <code>program_principles</code> as a citation registry — a shared bibliography keyed
+      by <code>principle_key</code>. That’s why the original constraint was <code>UNIQUE(principle_key)</code>
+      globally, why the scaffold with NULL <code>template_id</code> felt natural, and why the trigger checks
+      existence rather than ownership. The data model says “a principle is a library-wide fact.”</p>
+      <p>But D16’s text says something else. “Sovereignty without a cited principle” — sovereignty is exercised
+      <em>by a template</em>. The thing being justified is not “3-rep blocks are scientifically defensible in
+      general.” It’s “<strong>this</strong> program, for <strong>these</strong> reasons, deviates here.” A citation
+      isn’t a fact you look up; it’s an argument a specific author makes about a specific program. Two programs can
+      cite the same PDF page and one can still be wrong — because the justification is contextual (Brick by Brick
+      earns <code>rep_floor</code> via a strength-phase mesocycle; a random ingested program might just want heavy
+      singles).</p>
+      <p>So the answer to your question is: <strong>D16 means THIS template cites ITS OWN principle.</strong> Not
+      because that’s the safer reading, but because the other reading makes D16 meaningless by construction — a
+      corpus-wide existence check is satisfied by the first program ever admitted, forever.</p>
+      <p>Which dissolves the scaffold problem. The scaffold isn’t a chicken-and-egg workaround to preserve. It’s a
+      <strong>fossil of the wrong model</strong> — it only ever made sense when principles were library-wide facts.
+      A principle with no template isn’t a principle; it’s an orphan claim about nothing. Delete the concept
+      (option 3), defer the trigger to end-of-transaction, and the ordering problem evaporates.</p>
+      <p>Write the doctrine line in Notion first: <em>a principle row is meaningless without an owning
+      template.</em></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Expansionist <span class="who">— “that orphan row is the feature you accidentally built”</span></summary>
+    <div class="body">
+      <p><strong>The NULL-<code>template_id</code> row is not an orphan. It’s the feature you accidentally built and
+      are about to delete.</strong></p>
+      <p>Read it again: a principle that belongs to the <em>corpus</em> rather than to one template. That is exactly
+      the object a community library needs — a citation registry. Per-template principle rows are copy-paste
+      evidence; the hundredth program citing Schoenfeld 2021 re-types the claim, the rationale, and probably mangles
+      the source. When that paper is superseded in 2028 you have a hundred divergent strings and no way to find
+      them.</p>
+      <p>So don’t choose between scoped and unscoped. <strong>Split the concept.</strong> <code>principles</code> =
+      library-level, reviewed, versioned, one row per citation, <code>template_id</code> gone entirely (your NULL
+      rows, promoted). <code>template_principle_claims</code> = this template invokes principle P for key K, plus
+      <em>its own applicability rationale</em> — why a 3-rep block is justified in <strong>this</strong> program.
+      D16 then reads: an override requires a registered principle <strong>and</strong> a template-scoped claim of
+      applicability. Borrowing becomes legal, explicit, and auditable, instead of accidental and silent. The
+      chicken-and-egg dissolves: the registry is populated before any template exists, which is what the scaffold was
+      already doing.</p>
+      <p>The undervalued upside: this makes doctrine <em>user-facing</em>. Every published program carries a visible
+      “why this deviates” panel with sources. No fitness app ships that. It’s the difference between “a program
+      library” and “the only program library where you can audit the science.” Ingestion stops being a threat vector
+      and becomes a citation-harvesting engine — the corpus gets more trustworthy as it grows, not less.</p>
+      <p>One override key exists today. That’s the cheapest moment this refactor will ever cost. Write the registry
+      ruling into Notion now.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Outsider <span class="who">— “a bibliography nobody points to is a pile of paper”</span></summary>
+    <div class="body">
+      <p>Reading the canonical line cold, with no history: <em>“Sovereignty without a cited principle is a D16
+      failure.”</em> A citation is something <strong>someone cites</strong>. A bibliography sitting in a shared table
+      that nobody’s paper points to is not a citation — it’s a pile of paper. The plain-English answer is already
+      “THIS template cites ITS OWN,” and you don’t need a Notion ruling to discover that; you need one to
+      <em>record</em> it. Don’t invoke the “flag ambiguity, never invent” rule here. That rule protects you from
+      fabricating rep ranges you can’t source. It is not a license to call your own sentence ambiguous because the
+      fix is inconvenient.</p>
+      <p>The scaffold is not a second problem entangled with the first. It’s the first problem leaving fingerprints.
+      Ask what a NULL-<code>template_id</code> principle row <em>means</em> in the domain: “a scientific override
+      belonging to no program.” No author would ever write that. It exists solely because a check got attached to the
+      wrong table — you put the validation on <code>workout_templates</code>, so it fires before the thing it
+      validates can exist, so you invented a placeholder to lie to it. The orphan rows are the system telling you the
+      concept is fake. Delete it (option 3), and validate at transaction end or from the
+      <code>program_principles</code> side.</p>
+      <p>Two framings I’d reject outright. Option 2’s “loose scope” — you’d be writing down, in SQL, that one unowned
+      row licenses the entire library. That’s not a compromise, that’s option 4 with extra steps. And option 4’s
+      “advisory trigger”: a trigger that raises exceptions isn’t advisory. Pick enforcing or delete it; a rule
+      enforced 90% of the time is mostly a story you tell yourself.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Executor <span class="who">— “defer first, then scope” · unanimous pick</span></summary>
+    <div class="body">
+      <p>D16 means “THIS template cites ITS OWN principle.” That’s not a judgment call — the file-side gate already
+      implements it, and the DB side is just wrong. You don’t need a philosophy debate; you need the two enforcers to
+      agree.</p>
+      <p>Monday morning, in this order:</p>
+      <ol class="steps">
+        <li><strong>Notion + DOCTRINE.md, one sentence</strong>: “A <code>science_overrides</code> key is satisfied
+        only by a <code>program_principles</code> row whose <code>template_id</code> equals the template’s own id.
+        <code>template_id IS NULL</code> never satisfies D16.” Ten minutes. It unblocks everything else and it’s the
+        rule that already exists in <code>doctrine.mjs</code>, so you’re documenting reality, not inventing.</li>
+        <li><strong>Migration A — make the trigger a <code>CONSTRAINT TRIGGER … DEFERRABLE INITIALLY
+        DEFERRED</code></strong> with the current unscoped body. Behavior-identical, zero risk, but now it fires at
+        COMMIT. This is the whole chicken-and-egg fix: template insert, then principle insert, same transaction,
+        check runs after both. Verify in a rolled-back txn: insert template+principle together (passes), insert
+        template alone (fails at commit).</li>
+        <li><strong>Migration B — scope the body</strong> to <code>p.template_id = NEW.id</code>. Only safe after A.
+        Verify with the same live rollback trick: re-run the Brick by Brick seed (must pass), then the borrow attack
+        from the bug report (must now fail).</li>
+        <li><strong>Regenerate <code>epic031_seed_programs.sql</code></strong> with the scaffold block deleted —
+        never hand-edit it, <code>sync-seed-programs.mjs</code> owns it.</li>
+        <li><strong>Migration C — <code>DELETE FROM program_principles WHERE template_id IS NULL</code></strong>,
+        then drop the partial unique index. Do this last; it’s the rollback-safest step to defer.</li>
+      </ol>
+      <p>Rollback for each: keep the prior trigger definition in the migration header as a commented
+      <code>CREATE OR REPLACE</code>. A/B are two statements each.</p>
+      <p>Option 2 (allow NULL) is the trap — it ships a permanent hole to save one migration. Option 4 is worse: an
+      advisory trigger is a lie in the schema. Do A→B→regenerate→C.</p>
+    </div>
+  </details>
+
+  <h2>Peer review highlights</h2>
+  <details>
+    <summary>All five reviews <span class="who">— anonymized as A–E, map revealed in the transcript</span></summary>
+    <div class="body">
+      <p><strong>Review 1.</strong> Strongest: A — “E argues the <em>why</em> better; A is E plus a shippable plan.”
+      Blind spot: D — “it designs a community citation registry for a corpus with <strong>one</strong> override key,
+      and never notices its own split still leaves the trigger unscoped.” Missed by all: nothing prevents recurrence
+      (the D17 problem); and do existing templates re-validate on UPDATE once scaffolds are deleted?</p>
+      <p><strong>Review 2.</strong> Strongest: A — the <code>DEFERRABLE</code> step “dissolves the chicken-and-egg
+      <em>before</em> scoping, so the scaffold deletion is a cleanup, not a prerequisite.” Blind spot: D — “it makes
+      borrowing <em>legal by design</em>, which is the exact hole under discussion.” Missed by all: nobody proposes
+      auditing existing rows; a scoped trigger only fires on future writes.</p>
+      <p><strong>Review 3.</strong> Strongest: A — “Pair E’s reasoning as the Notion line with A’s plan.” Blind spot:
+      D — “its ‘registry + claims’ model reintroduces exactly the existence check E shows is vacuous… in which case
+      it’s option 1 with extra tables.” Missed by all: whether prod’s existing principle rows are patched to a
+      template_id or still NULL — “query that before writing the migration.”</p>
+      <p><strong>Review 4.</strong> Strongest: A — “defer first, <em>then</em> scope — the correct order, since
+      scoping before deferring breaks every seed insert.” Notes C “correctly kills B’s misuse of the flag-the-gap
+      rule — that rule guards against fabricating unsourced science, not against reading your own sentence.” Missed
+      by all: deferral assumes template and principle land in the <em>same transaction</em> — unchecked for
+      <code>ingest-program.mjs</code> and the adoption clone.</p>
+      <p><strong>Review 5.</strong> Strongest: A — “E has the best reasoning but stops at the ruling; A reaches
+      production.” Blind spot: D — “trading a silent hole for a sanctioned one.” Missed by all: <strong>audit prod
+      before choosing</strong> — “that finding should drive the ruling, not follow it.”</p>
+    </div>
+  </details>
+
+  <footer>
+    <p>Council convened 2026-08-15 for <strong>BUG-77 part 2</strong> (Wave 3.3, the last Wave 3 blocker) —
+    the D16 scope ruling and the fate of the NULL-<code>template_id</code> scaffold rows.<br>
+    5 advisors · 5 anonymized peer reviews · chairman synthesis. Full transcript:
+    <code>council-transcript-2026-08-15-bug77.md</code>.</p>
+  </footer>
+
+</div>
+</body>
+</html>

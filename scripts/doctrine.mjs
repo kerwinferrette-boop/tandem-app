@@ -25,7 +25,8 @@
  * Invariants are tagged SAFETY (bind EVERY program path — generated, authored,
  * library-adopted; no override exists) or SCIENCE_DEFAULT (bind the generated
  * path; an AUTHORED program may deviate ONLY via a science_overrides key that
- * matches a program_principles row — claim + rationale + citation). The D1-D15
+ * matches a program_principles row BELONGING TO THAT SAME TEMPLATE — claim +
+ * rationale + citation; scope ruled 2026-08-15, BUG-77 pt 2). The D1-D15
  * assertions below run against the GENERATED engine exactly as before — nothing
  * is weakened. The D16 section additionally validates authored seed programs
  * (seeds/*.json) against SAFETY rules + override-with-citation.
@@ -117,6 +118,16 @@ const OVERRIDE_KEYS = {
 // under the registered key AND that key carries a program_principles row. The
 // principle-row check is the same D16 rule enforced at the DB by
 // validate_science_overrides(); this is its file-side twin.
+//
+// SCOPE IS LOAD-BEARING (ruled 2026-08-15, BUG-77 part 2 — D16 Notion page).
+// `principleKeys` is built from THIS seed's own `principles` array (see :731), so
+// this guard asks "does THIS template cite its OWN principle?" — never "does a row
+// carrying that key exist somewhere?". Do not widen it to a corpus-wide set to make
+// a seed pass: a corpus-wide check is satisfied permanently by the first program
+// ever admitted, which makes D16 vacuous by construction rather than by accident.
+// The DB twin was the loose one (BUG-77) and was tightened to match THIS — not the
+// reverse. Note this gate CANNOT see the database (D17), so its agreement with the
+// trigger is a convention maintained by hand, not something `npm run verify` proves.
 const tierGuard = (clauseId, { fname, overrides, principleKeys, msg }) => {
   const tier = tierOf(clauseId);
   const id = clauseId.split('.')[0];

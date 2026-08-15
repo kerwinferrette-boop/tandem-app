@@ -2507,8 +2507,17 @@ async function fetchTemplateBundle(templateId) {
     ? await sb.from('template_exercises').select('*, exercises(slug)').in('day_id', dayIds).order('ex_order')
     : { data: [], error: null };
   if (ee) throw ee;
+  // BUG-77 pt 2. The principles are part of the template, not decoration: under the
+  // scoped D16 trigger (migrations/0009) a template may only carry a
+  // science_overrides key that its OWN program_principles row justifies. A clone
+  // that copies the overrides without the citations is a D16 violation, so the
+  // bundle has to carry them or adoptTemplate cannot build a legal clone.
+  const { data: principles, error: pe } = await sb.from('program_principles')
+    .select('principle_key, claim, rationale, source_citation').eq('template_id', templateId);
+  if (pe) throw pe;
   return {
     template,
+    principles: principles || [],
     blocks: blocks.map(b => ({
       ...b,
       days: days.filter(d => d.block_id === b.id).map(d => ({
@@ -2532,6 +2541,16 @@ async function adoptTemplate(templateId, btn) {
     const uid = currentUser.id;
     const src = bundle.template;
     // 1. Clone the template row, owner-scoped (RLS: author_id must = auth.uid()).
+    //
+    // BUG-77 pt 2 — THE THREE-STATEMENT WRITE PROTOCOL. science_overrides is
+    // deliberately withheld here and applied in step 1c, AFTER the clone's own
+    // principles exist. The scoped D16 trigger (migrations/0009) fires BEFORE
+    // INSERT/UPDATE on this table and now requires a program_principles row whose
+    // template_id is THIS clone's id — which cannot exist before the clone has an
+    // id. Writing the overrides up front is therefore unsatisfiable by construction.
+    // Deferring the trigger does not fix it either: supabase-js sends each call as
+    // its own transaction, so there is no shared transaction for a DEFERRABLE
+    // constraint to resolve at COMMIT. Ordering is the fix.
     const cloneSlug = `${src.slug}-${uid.slice(0, 8)}`;
     const { data: clone, error: ce } = await sb.from('workout_templates').upsert({
       name: src.name, slug: cloneSlug, author_id: uid, is_published: false,
@@ -2540,12 +2559,31 @@ async function adoptTemplate(templateId, btn) {
       days_per_week: src.days_per_week, split_type: src.split_type,
       equipment_tier: src.equipment_tier, difficulty: src.difficulty,
       tagline: src.tagline, description: src.description, coaching_notes: src.coaching_notes,
-      science_overrides: src.science_overrides, source_provenance: src.source_provenance,
+      science_overrides: {}, source_provenance: src.source_provenance,
       cloned_from: src.id,
     }, { onConflict: 'slug' }).select('id').single();
     if (ce) throw ce;
     // Re-adopt safety: wipe any prior clone children before re-inserting.
     await sb.from('template_blocks').delete().eq('template_id', clone.id);
+    // 1b. Clone the citations onto the clone itself. Copying an authored program's
+    // sovereignty without copying what justifies it is exactly the borrow that the
+    // scoped trigger exists to reject — the clone must stand on its own citation,
+    // not on the original's. created_by = uid is required by the principles_write
+    // RLS policy; template_id = clone.id is what makes it satisfy D16.
+    await sb.from('program_principles').delete().eq('template_id', clone.id);
+    if (bundle.principles.length) {
+      const { error: ppe } = await sb.from('program_principles').insert(
+        bundle.principles.map(p => ({
+          principle_key: p.principle_key, claim: p.claim, rationale: p.rationale,
+          source_citation: p.source_citation, created_by: uid, template_id: clone.id,
+        }))
+      );
+      if (ppe) throw ppe;
+    }
+    // 1c. Now the overrides are legal — the rows they cite exist and belong here.
+    const { error: soe } = await sb.from('workout_templates')
+      .update({ science_overrides: src.science_overrides }).eq('id', clone.id);
+    if (soe) throw soe;
     // 2. Clone blocks → days → exercises (id remapping via returned ids).
     for (const b of bundle.blocks) {
       const { data: nb, error: nbe } = await sb.from('template_blocks').insert({
