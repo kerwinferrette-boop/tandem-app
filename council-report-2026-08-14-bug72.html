@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Council — BUG-72 · Group C dead-object drops</title>
+<style>
+  :root{
+    --ink:#14161a; --mute:#5b6472; --line:#e3e6ec; --bg:#fbfcfd; --card:#fff;
+    --red:#b3261e; --amber:#8a6100; --green:#1c6b3f; --blue:#1a4f9c; --violet:#5b3fa8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:40px 20px 80px;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:860px;margin:0 auto}
+  header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:32px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  h1{font-size:30px;line-height:1.2;margin:10px 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--mute);font-size:14px}
+  h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);
+    margin:38px 0 14px;font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:14px}
+  .verdict{border-left:4px solid var(--green);background:#f4faf6}
+  .verdict .big{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0 0 8px}
+  code{background:#f1f3f7;padding:2px 6px;border-radius:4px;font-size:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre{background:#14161a;color:#e8eaf0;padding:16px 18px;border-radius:8px;overflow-x:auto;
+    font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre .c{color:#8d97a8}
+  table{width:100%;border-collapse:collapse;margin:6px 0 2px;font-size:14.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;
+    padding:3px 9px;border-radius:20px;text-transform:uppercase}
+  .drop{background:#fdecea;color:var(--red)}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:4px 0 10px}
+  .adv{border:1px solid var(--line);border-radius:8px;padding:12px 10px;text-align:center;background:#fff}
+  .adv .n{font-size:11.5px;font-weight:700;line-height:1.3;margin-bottom:8px}
+  .adv .v{font-size:11px;font-weight:700;color:var(--red)}
+  .adv .s{font-size:10.5px;color:var(--mute);margin-top:6px;line-height:1.35}
+  details{border:1px solid var(--line);border-radius:8px;background:#fff;margin-bottom:8px}
+  details[open]{background:#fff}
+  summary{cursor:pointer;padding:13px 18px;font-weight:600;font-size:14.5px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";color:var(--mute)}
+  details[open] summary::before{content:"▾ "}
+  details .body{padding:0 18px 18px;font-size:14.5px;color:#242832}
+  .flag{border-left:3px solid var(--amber);padding-left:14px;margin:14px 0;font-size:14.5px}
+  .ok{border-left:3px solid var(--green);padding-left:14px;margin:14px 0;font-size:14.5px}
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--mute)}
+  .lbl{font-weight:700;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">LLM Council · Tandem · Wave 1.4</div>
+  <h1>BUG-72 — should the four Group C objects be dropped?</h1>
+  <div class="sub">2026-08-14 · convened under the standing directive to route judgment calls to the council</div>
+</header>
+
+<h2>The finding that changed the question</h2>
+<div class="card">
+  <p style="margin-top:0">The object being audited as “unused clutter,” <code>progressive_overload_recommendations</code>, turned out to have this body:</p>
+<pre>WHEN min_reps_hit &gt;= 10 THEN round(weight_lbs * <b>1.025</b> / 5.0) * 5   <span class="c">-- +2.5%</span>
+WHEN min_reps_hit &gt;= 7  THEN weight_lbs                            <span class="c">-- hold</span>
+ELSE GREATEST(round(weight_lbs * <b>0.95</b> / 5.0) * 5, 5)              <span class="c">-- -5%</span></pre>
+  <p>That is a <b>fixed ±2.5% ratchet</b> — the exact thing <b>D11</b> forbids (“the working 1RM must be
+  <i>earned</i>, never a fixed weekly step”). It is PostgREST-addressable and has no consumer today.</p>
+  <p style="margin-bottom:0">This reframes <b>BUG-38</b>, which was filed as “the ±2.5% ratchet still exists” and then
+  marked <i>likely stale</i> because the JS function it named never existed. The ratchet was never
+  missing — <b>it lived in the database as a view</b>, where <code>doctrine.mjs</code> (a Node script
+  that reads repo files only, with no DB connection) structurally cannot see it.</p>
+</div>
+
+<h2>Council verdict</h2>
+<div class="card verdict">
+  <p class="big">Drop all four. Unanimous, 5/5.</p>
+  <p style="margin-bottom:0">Not one advisor argued to keep any object. The clash was never about the drop —
+  it was about <b>scope</b>: whether the drop may ship without a DB-connected gate to replace the blind spot it exposes.</p>
+</div>
+
+<div class="grid">
+  <div class="adv"><div class="n">The<br>Contrarian</div><div class="v">DROP ALL</div><div class="s">…but not alone. Gate stays green for the same wrong reason.</div></div>
+  <div class="adv"><div class="n">First<br>Principles</div><div class="v">DROP ALL</div><div class="s">Wrong question. Make Postgres a governed surface.</div></div>
+  <div class="adv"><div class="n">The<br>Expansionist</div><div class="v">DROP ALL</div><div class="s">The blind hemisphere is the real find.</div></div>
+  <div class="adv"><div class="n">The<br>Outsider</div><div class="v">DROP ALL</div><div class="s">You’re counciling an action with an undo button.</div></div>
+  <div class="adv"><div class="n">The<br>Executor</div><div class="v">DROP ALL</div><div class="s">One migration, this afternoon. Six steps.</div></div>
+</div>
+
+<h2>Per-object ruling</h2>
+<div class="card" style="padding-top:8px">
+<table>
+<tr><th>Object</th><th>Ruling</th><th>Why</th></tr>
+<tr><td><code>progressive_overload_recommendations</code></td><td><span class="pill drop">Drop</span></td><td>Live D11 violation, PostgREST-reachable, gate-invisible</td></tr>
+<tr><td><code>medal_comparison</code></td><td><span class="pill drop">Drop</span></td><td>Correct but unused; cost is that every future audit re-litigates it</td></tr>
+<tr><td><code>weight_trend</code></td><td><span class="pill drop">Drop</span></td><td>Same</td></tr>
+<tr><td><code>exercise_notes</code></td><td><span class="pill drop">Drop</span></td><td>0 rows; its only referrer is the script that deletes it</td></tr>
+<tr><td><code>calculate_1rm()</code>, <code>update_personal_record()</code></td><td><span class="pill drop">Drop</span></td><td>0 triggers, 0 dependents; 0006’s rollback target, now applied and asserted</td></tr>
+</table>
+</div>
+
+<h2>Where the council clashed</h2>
+<div class="card">
+  <p style="margin-top:0"><span class="lbl">Contrarian, First Principles, Expansionist (+ 2 of 3 reviewers):</span>
+  the drop must not merge alone. Delete the view and <code>npm run verify</code> is still green
+  <i>for the same wrong reason</i>. The real deliverable is a DB-connected gate — an object allowlist,
+  a <code>doctrine-db.mjs</code>, a new invariant D17.</p>
+  <p style="margin-bottom:0"><span class="lbl">Executor (+ the pragmatic reviewer):</span> that is a wave, not a cleanup ticket.
+  And the proposed remedy has a defect its own proponents missed — <b>a checked-in schema snapshot rots
+  silently and passes green</b>, which is the same failure class it claims to fix.</p>
+</div>
+
+<h2>Blind spots caught in peer review</h2>
+<div class="card">
+  <p style="margin-top:0">Four emerged only in review. Three were verifiable rather than arguable, so they were verified.</p>
+
+  <div class="flag"><span class="lbl">1. The <code>anon</code> GRANTs were never checked.</span> <b>Verified — and it was worse than assumed.</b>
+  All four objects carry <code>anon=arwdDxtm</code>: <b>full</b> privileges, not read-only.
+  <code>exercise_notes</code> has RLS + 1 policy backstopping it, so this is not a live hole — but the
+  brief’s reasoning (“<code>security_invoker</code> means own-rows-only”) was not the thing actually protecting it.</div>
+
+  <div class="ok"><span class="lbl">2. Sweep for siblings before deleting the search key.</span> <b>Done.</b>
+  Swept every view body and every <code>pg_proc.prosrc</code> in <code>public</code> for
+  <code>1.025 / 0.95 / 1.05 / 'increase weight' / 'reduce weight'</code>. Exactly one hit: the view itself.
+  <b>The blind spot has exactly one sample.</b></div>
+
+  <div class="ok"><span class="lbl">3. Nobody verified disuse at runtime.</span> <b>Done.</b>
+  0 PostgREST hits across all four objects in the available log window, on top of 0 code references and
+  0 <code>pg_depend</code> dependents.</div>
+
+  <div class="flag"><span class="lbl">4. D17 cannot land in this commit.</span> Two reviewers caught this independently:
+  CLAUDE.md mandates <b>Notion → DOCTRINE.md → doctrine.mjs</b>, in that order. Inventing an invariant inline to
+  satisfy a cleanup ticket would violate the very doctrine-is-law rule being invoked to justify it.
+  <b>This is what breaks the tie.</b></div>
+</div>
+
+<h2>The recommendation</h2>
+<div class="card verdict">
+  <p style="margin-top:0"><b>Drop all four now. File the blind spot; do not build it into this commit.</b></p>
+  <p>The scope argument is <i>correct about the diagnosis</i> and <i>wrong about the vehicle</i>. Holding a
+  four-object cleanup hostage to an unbuilt gate would leave a known D11 violation live in production while
+  the “proper” fix is designed. That trade is backwards.</p>
+  <p>The Contrarian’s fear — “you’ll have burned the one piece of evidence” — is answered by the migration
+  itself: the verbatim <code>CREATE VIEW</code> body is preserved in the rollback block, in git, permanently.
+  <b>The evidence survives; only the executable artifact dies.</b></p>
+  <p style="margin-bottom:0">Reject the Expansionist’s rebuild-as-read-model and keep-the-idea proposals outright —
+  three hypothetical features attached to a deletion, in a repo whose standing rule is “don’t design for
+  hypothetical future requirements.”</p>
+</div>
+
+<h2>Advisor responses in full</h2>
+<details><summary>The Contrarian — “shipping only the DROP is a trap”</summary><div class="body">
+<p>Drop all four. That’s the easy part, and it’s also a trap — shipping only the DROP lets everyone declare
+victory over a problem you haven’t touched. The ratchet view is not the bug. The bug is that a
+doctrine-violating recommendation engine lived in production for months and your LAW-grade gate returned green
+the entire time, because the gate reads files and the violation lived in Postgres.</p>
+<p>Two things you’re taking on faith: <b>“Zero references” is a grep of THIS repo</b> — it doesn’t cover saved
+queries, edge functions, or untracked bundles in your working tree. And <b>“reversible via rollback block” is
+false in your environment</b>: <code>execute_sql</code> DDL never lands in <code>schema_migrations</code>, so a
+rollback block in a file nobody applied is a comment, not a safety net. Also,
+<code>security_invoker = on</code> is not the same as “not exposed” — <b>check the actual GRANTs to
+<code>anon</code>.</b></p>
+</div></details>
+
+<details><summary>The First Principles Thinker — “two engines, one governed”</summary><div class="body">
+<p>You’re asking “drop or keep four objects?” The actual problem is that you have two engines and only one is
+governed. Doctrine is enforced against files because doctrine was <i>written</i> against files — an accident of
+tooling, not a principle. The principle is “every surface that can tell a human what weight to lift is bound by
+D11/D12.” Postgres is such a surface and has never once been gated. This view isn’t a bug you found; it’s the
+first sample from a blind spot of unknown size.</p>
+<p>The ratchet view: drop — not because it’s unused, but because “unused” is the weakest possible defense of a
+thing that violates law. It’s one <code>.from()</code> call from being real. The other three compute nothing
+prescriptive; cost of existence zero, cost of deletion zero — that symmetry means the question is genuinely
+uninteresting, and spending council cycles on it is how you avoid the interesting one.</p>
+</div></details>
+
+<details><summary>The Expansionist — “the blind hemisphere is the real find”</summary><div class="body">
+<p>Drop all four — but BUG-72’s real deliverable is the blind hemisphere you just found. Everything in Postgres —
+view bodies, PL/pgSQL, triggers, RLS predicates — is invisible to the gate. An entire class of violations that can
+never be caught, and you found one on the first look. Build <code>scripts/doctrine-db.mjs</code>: introspect
+<code>pg_get_viewdef</code> / <code>pg_proc.prosrc</code> / <code>pg_policy</code>, write a checked-in snapshot,
+let the existing file-reading gate audit it.</p>
+<p>Second: that view body isn’t trash, it’s a <b>fixture</b> — check it into the doctrine tests as the canonical
+negative example. Third: the view’s <i>shape</i> is a free spec for a server-side read model that would unlock
+cron nudges and notifications. <i>(Chairman’s note: rejected as scope creep.)</i></p>
+</div></details>
+
+<details><summary>The Outsider — “you’re counciling an action with an undo button”</summary><div class="body">
+<p>Drop all four. When undo is one migration away, “keep it just in case” isn’t caution, it’s a decision you’re
+declining to make.</p>
+<p>Two pieces of reasoning I don’t buy. <i>“Deletes a future feature’s landing zone”</i> — an empty view is not a
+landing zone; nothing lands on it. What you’d preserve is not capability, it’s the feeling of having already
+started. <i>“Evidence needed to close BUG-38”</i> — evidence is a paragraph and a definition, not a live production
+object. Keeping a running artifact as its own exhibit is how a two-person app accumulates a museum.</p>
+<p>The thing nobody is saying: the ratchet didn’t survive because someone was careless. It survived because your
+gate reads files and your team reads gate output, and <b>“the gate is green” quietly became “the system is
+compliant.”</b> That substitution is the actual bug.</p>
+</div></details>
+
+<details><summary>The Executor — “one migration, this afternoon”</summary><div class="body">
+<ol>
+<li>Copy the four <code>CREATE</code> bodies into the rollback block — that’s your BUG-38 evidence. Evidence lives
+in the migration file and the ticket, not in prod.</li>
+<li><code>DROP VIEW progressive_overload_recommendations</code> — not a judgment call.</li>
+<li>Drop <code>medal_comparison</code> and <code>weight_trend</code> in the same migration. “Cheap to keep” is wrong
+framing — the cost is that <b>every future audit re-litigates them.</b></li>
+<li>Drop <code>exercise_notes</code>, and <b>in the same commit delete the <code>DELETE</code> line from
+<code>test-users-purge.sql</code></b>, or the purge script errors on a missing table next month.</li>
+<li>Run via <code>execute_sql</code> and record it in the ticket, since the ledger under-reports.</li>
+<li>Close BUG-38 citing this commit; its premise was wrong and the real artifact is now gone.</li>
+</ol>
+</div></details>
+
+<details><summary>Peer review highlights (3 reviewers, anonymised inputs)</summary><div class="body">
+<p><b>Reviewer 1 —</b> Strongest: the Contrarian, the only one treating the brief’s own claims as falsifiable.
+Biggest blind spot: the Executor’s pure-hygiene framing. All five missed: runtime evidence of disuse; that a
+checked-in snapshot silently drifts; and that <b>CLAUDE.md requires Notion-first before D17.</b></p>
+<p><b>Reviewer 2 (skeptical) —</b> Strongest: the Contrarian. Biggest blind spot: the Executor — recommends running
+DDL via <code>execute_sql</code> and tracking it in a ticket, normalising the exact ungoverned path that let the
+ratchet hide. All five missed: <b>sweep <code>pg_proc</code> and triggers for sibling ±2.5% logic while the
+signature is still in hand — you’re deleting the search key.</b></p>
+<p><b>Reviewer 3 (pragmatic) —</b> Strongest: the Executor, the only shippable sequence, and the only one catching
+that dropping <code>exercise_notes</code> orphans the purge script. Biggest blind spot: the Expansionist —
+<b>three hypothetical features attached to a four-object deletion, in a project with an explicit
+anti-over-engineering rule.</b></p>
+</div></details>
+
+<h2>Carried forward — not closed by this council</h2>
+<div class="card">
+  <ul style="margin:0;padding-left:20px">
+    <li><b>The gate’s DB blind spot</b> — file to Notion as a proposed invariant (D17: no database object may emit
+    prescriptive load). <b>Notion first.</b> Do not write it into <code>DOCTRINE.md</code> or
+    <code>doctrine.mjs</code> inline.</li>
+    <li>Any future schema-snapshot approach: <b>a stale snapshot passing green is the same failure class.</b>
+    Freshness must itself be gated, or don’t build it.</li>
+    <li><b>Residual risk, stated plainly:</b> the two Edge Functions (<code>qa-session-validator</code>,
+    <code>expand-and-log-bug</code>) were not read. Both are QA/bug-logging tooling, and 0 runtime hits corroborate
+    that neither consumes a progression view. If one did, the rollback block restores the object in one statement.</li>
+  </ul>
+</div>
+
+<footer>
+  Council convened 2026-08-14 · 5 advisors, 3 peer reviewers, 1 chairman synthesis ·
+  Full transcript: <code>council-transcript-2026-08-14-bug72.md</code><br>
+  Counciled: whether to drop <code>progressive_overload_recommendations</code>,
+  <code>medal_comparison</code>, <code>weight_trend</code>, <code>exercise_notes</code> under BUG-72.
+</footer>
+
+</div>
+</body>
+</html>

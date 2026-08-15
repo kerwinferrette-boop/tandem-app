@@ -1,0 +1,307 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- BUG-72 — dead Supabase object cleanup (Wave 1.4, final item of the
+-- security/cleanup wave).
+--
+-- ███ APPLIED to prod 2026-08-14, after 0006 + 0007.                       ███
+-- ███ Applied via `execute_sql`, so this does NOT appear in                ███
+-- ███ supabase_migrations.schema_migrations. Verify against pg_class /     ███
+-- ███ pg_proc, NOT the ledger.                                            ███
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- Drops six objects. Two groups, two different reasons.
+--
+-- GROUP 1 — the two functions 0006 deliberately left behind as its rollback
+--           target, comment-tagged SUPERSEDED for exactly this ticket:
+--             public.calculate_1rm()
+--             public.update_personal_record()
+--           0006 is now applied AND asserted (all six post-migration
+--           assertions run, incl. the D12 end-to-end reps 1-25 check), so the
+--           precondition for dropping them is met.
+--
+-- GROUP 2 — the four "Group C" objects from the EPIC-033 Step 5 inventory
+--           (commit bf438b3, recorded in migrations/epic033_source_of_truth.sql):
+--             view  public.progressive_overload_recommendations
+--             view  public.medal_comparison
+--             view  public.weight_trend
+--             table public.exercise_notes
+--
+-- ---------------------------------------------------------------------------
+-- WHY THIS IS NOT ROUTINE HYGIENE
+-- ---------------------------------------------------------------------------
+-- The inventory filed `progressive_overload_recommendations` as merely unused.
+-- It is not. Its body is a FIXED +-2.5% ratchet:
+--
+--     WHEN min_reps_hit >= 10 THEN round(weight_lbs * 1.025 / 5.0) * 5
+--     WHEN min_reps_hit >= 7  THEN weight_lbs
+--     ELSE GREATEST(round(weight_lbs * 0.95 / 5.0) * 5, 5)
+--
+-- ...plus a text column literally rendering 'Increase weight - try N lbs'.
+--
+-- D11 forbids exactly this: the working 1RM must be EARNED, never a fixed
+-- weekly step. So this is not clutter, it is a live doctrine violation that
+-- has been sitting in production, addressable through PostgREST, the whole
+-- time. It has no consumer today; it is one .from() call from having one.
+--
+-- This also RESOLVES BUG-38. BUG-38 was filed as "the +-2.5% ratchet still
+-- exists" and later downgraded to "VERIFY BEFORE BUILDING; likely stale"
+-- because the JS function it named (`nudgeWorking1RMs`) does not exist
+-- anywhere in the repo. That conclusion was half right: the function never
+-- existed, but the ratchet did — in the DATABASE, where scripts/doctrine.mjs
+-- structurally cannot see it. doctrine.mjs is a Node script that reads repo
+-- files only. It has no DB connection. It never could have caught this.
+--
+-- >>> THE FINDING THAT OUTLIVES THIS MIGRATION: the doctrine gate audits the
+-- >>> client and the repo. It does not audit Postgres — not view bodies, not
+-- >>> PL/pgSQL, not RLS predicates. This drop closes the one known sample. It
+-- >>> does NOT close the blind spot. Filed to Notion as a proposed invariant
+-- >>> (D17: no database object may emit prescriptive load). Notion first, per
+-- >>> CLAUDE.md — deliberately NOT written into DOCTRINE.md or doctrine.mjs
+-- >>> here, because inventing an invariant inline to satisfy a cleanup ticket
+-- >>> would violate the very doctrine-is-law rule being invoked to justify it.
+--
+-- ---------------------------------------------------------------------------
+-- EVIDENCE OF DISUSE — by running, not by reading (CLAUDE.md)
+-- ---------------------------------------------------------------------------
+--   · 0 references in tandem.html / programs.js / scripts/ (ripgrep).
+--   · 0 dependent views (pg_depend join pg_rewrite, excluding self).
+--   · 0 attached triggers and 0 non-pin dependents on both functions.
+--   · 0 PostgREST hits on any of the four names in the available log window.
+--   · exercise_notes: 0 live rows.
+--
+-- Three checks were added because the LLM Council's peer-review round said the
+-- above was not sufficient on its own. All three were run:
+--
+--   1. GRANTS. The claim "security_invoker = on means own-rows-only, so it is
+--      not exposed" was NOT what was actually protecting these objects. All
+--      four carry `anon=arwdDxtm` — FULL privileges, Supabase's default grant,
+--      not read-only. exercise_notes turned out to have RLS + 1 policy behind
+--      it, so there was no live hole. But the stated reasoning was wrong, and
+--      that is worth recording so it is not repeated.
+--
+--   2. SIBLING SWEEP — run BEFORE the drop, because the drop deletes the
+--      search key. Every view body and every pg_proc.prosrc in `public` was
+--      swept for `1.025 | 0.95 | 1.05 | 0.975 | 'increase weight' |
+--      'reduce weight'`. EXACTLY ONE HIT: the view itself. The blind spot has
+--      exactly one sample. Re-run this after any future DB-side change:
+--
+--        select 'view', c.relname from pg_class c
+--          join pg_namespace n on n.oid=c.relnamespace
+--         where n.nspname='public' and c.relkind='v'
+--           and pg_get_viewdef(c.oid,true) ~* '1\.025|0\.95|1\.05|increase weight'
+--        union all
+--        select 'function', p.proname from pg_proc p
+--          join pg_namespace n on n.oid=p.pronamespace
+--         where n.nspname='public'
+--           and p.prosrc ~* '1\.025|0\.95|1\.05|increase weight';
+--
+--   3. RUNTIME. edge_logs queried for request URLs naming any of the four.
+--      0 hits.
+--
+-- RESIDUAL RISK, stated rather than hidden: the two Edge Functions
+-- (qa-session-validator, expand-and-log-bug) were NOT read — their source was
+-- not inspected. Both are QA/bug-logging tooling and neither plausibly reads a
+-- progression view, and the 0 runtime hits corroborate that. If one did, the
+-- ROLLBACK block below restores the object in a single statement.
+--
+-- ---------------------------------------------------------------------------
+-- WHAT IS *NOT* DROPPED, and why (do not "finish the job" later without reading
+-- this)
+-- ---------------------------------------------------------------------------
+-- GROUP A — guests / vendor_research / branding_assets. These are
+--   wedding-planning tables sharing this Supabase project (confirmed by their
+--   COLUMNS, not their names: rsvp/plus_one/has_met_dani; vendor_id/
+--   outreach_draft; canvas_json/thumbnail_url). All 0 rows. Already behind
+--   RLS-with-no-policy since b1540dd, so anon and authenticated are denied and
+--   the security consequence is already closed. Dropping them is a
+--   cross-project destructive action against tooling this repo does not own
+--   (the-vendor-researcher / the-branding-designer / vendor-inbox-tracker
+--   skills). NOT DONE HERE. Needs the wedding tooling repointed first, and
+--   that is a decision for Kerwin, not for whoever runs this migration.
+--
+-- GROUP B — challenges / medal_definitions / stake_options. KEEP. These are
+--   EPIC-14 weekly-stakes and EPIC-3 medals. `evaluateWeeklyStakes` and
+--   `sendNudge` exist in tandem.html behind the FEATURES.weeklyStakes flag, so
+--   the schema is ahead of the UI BY DESIGN. Dropping them would delete the
+--   landing zone for a planned feature. This is the one place where "unused"
+--   genuinely does not mean "dead".
+-- ---------------------------------------------------------------------------
+
+begin;
+
+-- ---------------------------------------------------------------------------
+-- GROUP 1 — the two functions superseded by 0006's
+--           sets_apply_1rm_and_pr(). Both verified: 0 attached triggers,
+--           0 dependents. Dropping WITHOUT cascade on purpose — if either
+--           somehow still had a dependent, this must fail loudly rather than
+--           silently take the dependent with it.
+-- ---------------------------------------------------------------------------
+drop function if exists public.calculate_1rm();
+drop function if exists public.update_personal_record();
+
+-- ---------------------------------------------------------------------------
+-- GROUP 2 — the four Group C objects. Same reasoning on `restrict` (the
+--           default): no cascade, fail loudly.
+-- ---------------------------------------------------------------------------
+drop view  if exists public.progressive_overload_recommendations;   -- BUG-38: the D11 violation
+drop view  if exists public.medal_comparison;
+drop view  if exists public.weight_trend;
+drop table if exists public.exercise_notes;
+
+commit;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- POST-MIGRATION ASSERTIONS — run each one; do not assume.
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ASSERTION 0 — all six objects are gone. EXPECT: 0 rows.
+--   select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace
+--    where n.nspname='public' and relname in
+--      ('progressive_overload_recommendations','medal_comparison',
+--       'weight_trend','exercise_notes')
+--   union all
+--   select proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+--    where n.nspname='public' and proname in
+--      ('calculate_1rm','update_personal_record');
+--   RESULT: 0 rows.
+--
+-- ASSERTION 1 — the write path 0006 installed is UNDISTURBED. This is the one
+--   that matters: dropping the superseded pair must not have touched the
+--   trigger that replaced them. EXPECT exactly one row,
+--   sets_apply_1rm_and_pr_before_write.
+--   select tgname from pg_trigger
+--    where tgrelid='public.sets'::regclass and not tgisinternal;
+--   RESULT: 1 row — sets_apply_1rm_and_pr_before_write.
+--
+-- ASSERTION 2 — a set still writes through. Run in a rolled-back txn against
+--   a real user_id; confirm estimated_1rm_lbs is non-null and personal_records
+--   still moves. (Same probe shape as 0006's assertions 1-3.)
+--   NOTE: workout_sessions.day_type is NOT NULL — the insert must supply it.
+--   NOTE: split the SELECT into its own statement. A single statement cannot
+--     see rows its own trigger wrote (the snapshot is fixed at statement
+--     start), so a combined probe reports pr_recorded=null and looks like a
+--     failure when the trigger is in fact working.
+--   RESULT: PASS. 'BUG72 Probe Lift' 225 x 5 ->
+--     sets.estimated_1rm_lbs = 262.5 (D12 Epley: 225 * (1 + 5/30)), and
+--     personal_records = 262.5 / 225 lbs / 5 reps. Transaction rolled back.
+--
+-- ASSERTION 3 — the sibling sweep (see check 2 above) now returns 0 rows,
+--   not 1. This is what proves the D11 violation is actually gone from the
+--   database rather than just from one name.
+--   RESULT: 0 rows.
+--
+-- ASSERTION 4 — get_advisors(security) has not grown. Baseline before this
+--   migration was 6 items (3 INFO + 3 WARN). 0006 taught us this step is NOT
+--   a formality — it is what caught the SECURITY DEFINER / PUBLIC-execute
+--   privilege regression that the migration file's own comments claimed could
+--   not happen.
+--   RESULT: 6 items, unchanged. No new ERROR, no new WARN.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ROLLBACK — verbatim, captured from live prod BEFORE the drop.
+-- ═══════════════════════════════════════════════════════════════════════════
+-- This block is the reason the drop is safe, and it is also the permanent
+-- evidence for BUG-38: the +-2.5% ratchet is preserved here, in git, forever.
+-- The evidence survives; only the executable artifact dies.
+--
+-- NOTE on restoring `progressive_overload_recommendations`: do NOT restore it
+-- to close an outage without also reading the D11 note above. If something
+-- genuinely needs a server-side progression read model, it must be rebuilt
+-- D11-compliant, not restored.
+--
+-- -- ---- view: progressive_overload_recommendations ---------------------
+-- create view public.progressive_overload_recommendations as
+--  with last_dates as (
+--     select s.user_id, s.exercise_name, max(ws.session_date) as last_date
+--       from sets s join workout_sessions ws on s.session_id = ws.id
+--      where ws.completed = true
+--      group by s.user_id, s.exercise_name
+--  ), last_sets as (
+--     select s.user_id, s.exercise_name, s.weight_lbs, s.reps
+--       from sets s
+--       join workout_sessions ws on s.session_id = ws.id
+--       join last_dates ld on s.user_id = ld.user_id
+--                         and s.exercise_name = ld.exercise_name
+--                         and ws.session_date = ld.last_date
+--      where ws.completed = true
+--  ), agg as (
+--     select user_id, exercise_name,
+--            max(weight_lbs) as weight_lbs, min(reps) as min_reps_hit
+--       from last_sets group by user_id, exercise_name
+--  )
+--  select user_id, exercise_name, min_reps_hit,
+--         case when min_reps_hit >= 10 then round(weight_lbs * 1.025 / 5.0) * 5::numeric
+--              when min_reps_hit >= 7  then weight_lbs
+--              else greatest(round(weight_lbs * 0.95 / 5.0) * 5::numeric, 5::numeric)
+--         end as recommended_next_weight_lbs,
+--         case when min_reps_hit >= 10
+--                then ('Increase weight — try '::text || (round(weight_lbs * 1.025 / 5.0) * 5::numeric)::integer) || ' lbs'::text
+--              when min_reps_hit >= 7
+--                then 'Maintain weight — hit full rep range first'::text
+--              else ('Reduce weight — drop to '::text || greatest((round(weight_lbs * 0.95 / 5.0) * 5::numeric)::integer, 5)) || ' lbs'::text
+--         end as recommendation
+--    from agg;
+-- alter view public.progressive_overload_recommendations set (security_invoker = on);
+--
+-- -- ---- view: medal_comparison ------------------------------------------
+-- create view public.medal_comparison as
+--  select m.medal_key, m.medal_name, m.category, m.tier, m.is_joint,
+--         u1.id as user1_id, u1.name as user1_name, u1.theme_color as user1_color,
+--         (exists (select 1 from medals m2 where m2.user_id = u1.id and m2.medal_key = m.medal_key)) as user1_earned,
+--         (select m2.earned_at from medals m2 where m2.user_id = u1.id and m2.medal_key = m.medal_key) as user1_earned_at,
+--         u2.id as user2_id, u2.name as user2_name, u2.theme_color as user2_color,
+--         (exists (select 1 from medals m3 where m3.user_id = u2.id and m3.medal_key = m.medal_key)) as user2_earned,
+--         (select m3.earned_at from medals m3 where m3.user_id = u2.id and m3.medal_key = m.medal_key) as user2_earned_at
+--    from medals m
+--    join users u1 on u1.partner_id is not null
+--    join users u2 on u2.id = u1.partner_id
+--   group by m.medal_key, m.medal_name, m.category, m.tier, m.is_joint,
+--            u1.id, u1.name, u1.theme_color, u2.id, u2.name, u2.theme_color;
+-- alter view public.medal_comparison set (security_invoker = on);
+--
+-- -- ---- view: weight_trend ----------------------------------------------
+-- create view public.weight_trend as
+--  select user_id, snapshot_date, weight_lbs,
+--         round(avg(weight_lbs) over (partition by user_id order by snapshot_date
+--               rows between 6 preceding and current row), 1) as rolling_avg_7day,
+--         first_value(weight_lbs) over (partition by user_id order by snapshot_date
+--               rows between unbounded preceding and unbounded following) as start_weight,
+--         last_value(weight_lbs) over (partition by user_id order by snapshot_date
+--               rows between unbounded preceding and current row) as current_weight
+--    from health_snapshots
+--   where weight_lbs is not null
+--   order by user_id, snapshot_date;
+-- alter view public.weight_trend set (security_invoker = on);
+--
+-- -- ---- table: exercise_notes -------------------------------------------
+-- -- Restore the RLS + policy TOO. A rollback that restores the table but not
+-- -- its policy is a security regression disguised as a recovery.
+-- create table public.exercise_notes (
+--   id            uuid        not null default gen_random_uuid(),
+--   user_id       uuid        not null,
+--   exercise_name text        not null,
+--   note          text        not null default ''::text,
+--   updated_at    timestamptz not null default now(),
+--   constraint exercise_notes_pkey primary key (id),
+--   constraint exercise_notes_user_id_exercise_name_key unique (user_id, exercise_name),
+--   constraint exercise_notes_user_id_fkey foreign key (user_id)
+--     references auth.users(id) on delete cascade
+-- );
+-- alter table public.exercise_notes enable row level security;
+-- create policy "users manage own exercise notes" on public.exercise_notes
+--   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+--
+-- -- ---- the two superseded functions -------------------------------------
+-- -- Do NOT restore these from here. Their correct rollback target is
+-- -- migrations/0006_bug75_sets_trigger_consolidation.sql, which holds their
+-- -- full bodies and the trigger wiring they need. Restoring them without
+-- -- also detaching sets_apply_1rm_and_pr_before_write would reintroduce
+-- -- BUG-75's trigger-ordering bug.
+--
+-- ═══════════════════════════════════════════════════════════════════════════
+-- COMPANION CHANGE (same commit, non-optional)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- test-users-purge.sql had `DELETE FROM exercise_notes WHERE user_id = ANY(...)`.
+-- Left in place, the purge script would abort on a missing relation the next
+-- time anyone reset the test accounts. That line is removed in the same commit
+-- as this migration. If you restore exercise_notes above, put it back.
+-- ═══════════════════════════════════════════════════════════════════════════
