@@ -2,9 +2,10 @@
 -- BUG-75 — the two BEFORE INSERT triggers on public.sets fire in the wrong
 -- order, because Postgres orders same-timing triggers by NAME.
 --
--- ███ NOT APPLIED. Migrations in this repo are applied by Kerwin, by hand. ███
--- ███ The client-side half of this fix ships first (tandem.html, same     ███
--- ███ commit) and is safe on its own — see SEQUENCING below.              ███
+-- ███ APPLIED to prod 2026-08-14. All six POST-MIGRATION ASSERTIONS below  ███
+-- ███ were run and passed. The client-side half shipped first in 618cdeb.  ███
+-- ███ NOTE: applied via execute_sql, so it is NOT registered in            ███
+-- ███ supabase_migrations.schema_migrations. Verify against pg_trigger.    ███
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ---------------------------------------------------------------------------
@@ -117,10 +118,18 @@
 
 begin;
 
+-- SECURITY INVOKER, not DEFINER. An earlier draft of this file said DEFINER and
+-- claimed it "matched the two it replaces". That claim was false and the advisor
+-- caught it: check_pr_on_set_insert/set_1rm_before_insert were both INVOKER with
+-- proacl = {postgres, service_role} only. Applying the DEFINER version raised two
+-- NEW advisor WARNs (anon + authenticated can execute it via /rest/v1/rpc/),
+-- because a bare CREATE FUNCTION grants EXECUTE to PUBLIC by default. A BEFORE
+-- trigger function never needs to be callable directly. The REVOKEs below restore
+-- byte-identical privileges to the pair being replaced.
 create or replace function public.sets_apply_1rm_and_pr()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $$
 declare
@@ -187,6 +196,10 @@ begin
   return NEW;
 end;
 $$;
+
+revoke all on function public.sets_apply_1rm_and_pr() from public;
+revoke all on function public.sets_apply_1rm_and_pr() from anon;
+revoke all on function public.sets_apply_1rm_and_pr() from authenticated;
 
 comment on function public.sets_apply_1rm_and_pr() is
   'BUG-75. Single BEFORE INSERT/UPDATE trigger on public.sets. Replaces the pair '
@@ -271,9 +284,17 @@ commit;
 --      in tandem.html for every r. 12 -> 315.0, 13 -> 315.0 (the floor holding).
 --
 -- 5. No new advisor findings:
---      get_advisors(security) and get_advisors(performance) introduce no new
---      ERROR and no new WARN over the known 6-item baseline. This function is
---      SECURITY DEFINER with a pinned search_path, matching the two it replaces.
+--      get_advisors(security) introduces no new ERROR and no new WARN over the
+--      known 6-item baseline (3 INFO rls_enabled_no_policy + pg_net in public +
+--      connect_partner DEFINER + leaked-password-protection).
+--      RESULT: this assertion FAILED on first application and is the reason the
+--      function is INVOKER with explicit REVOKEs. Do not treat this step as a
+--      formality — it is the only thing that caught the privilege regression.
+--      Confirm proacl matches the replaced pair exactly:
+--        select proname, prosecdef, array_to_string(proacl,' | ')
+--          from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+--         where n.nspname='public' and proname='sets_apply_1rm_and_pr';
+--        EXPECT: false | postgres=X/postgres | service_role=X/postgres
 --
 -- 6. Live smoke, after the client is deployed: log one real set in the app and
 --    confirm sets.estimated_1rm_lbs is non-null and personal_records moved if it

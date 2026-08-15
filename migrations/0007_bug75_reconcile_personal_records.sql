@@ -2,8 +2,9 @@
 -- BUG-75, part 2 — repair the personal_records rows that the trigger-order bug
 -- already got wrong.
 --
--- ███ NOT APPLIED. And unlike 0006, this one is NOT purely an engineering    ███
--- ███ call — see "THE DECISION THIS NEEDS" before running it.                ███
+-- ███ APPLIED to prod 2026-08-14, after 0006. Kerwin ruled option (i)       ███
+-- ███ CORRECT FORWARD: repair the six rows, leave every already-awarded     ███
+-- ███ streak point alone. UPDATE 6; re-run of the dry run returns 0 rows.   ███
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ---------------------------------------------------------------------------
@@ -53,9 +54,9 @@
 -- this is a call about the competition, so it is Kerwin's to make, and it is
 -- written down here rather than decided by whoever runs the migration.
 --
--- >>> KERWIN: (i) or (ii)? If (i), apply as-is. If (ii), do NOT apply as-is —
--- >>> the point re-award has to be designed against streaks, and Dani should
--- >>> know her opponent's score moved before it moves.
+-- >>> RULED 2026-08-14 — Kerwin: (i) CORRECT FORWARD. Applied as written.
+-- >>> streaks was not touched. No competition result was retroactively restated.
+-- >>> The "tell Dani" step under AFTER is therefore still outstanding.
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
@@ -107,8 +108,8 @@ select pr.exercise_name,
 rollback;
 
 -- ---------------------------------------------------------------------------
--- THE REPAIR. Uncomment and run only after the dry run above matches, and only
--- after the (i)/(ii) decision above is made.
+-- THE REPAIR — this is what was run on 2026-08-14. The dry run above returned
+-- exactly the six expected rows first (no seventh), all earned 2026-06-11.
 --
 -- Deliberately one-directional: `> 0.5` only. A recorded PR HIGHER than
 -- anything in `sets` is not this bug — it is a set that was logged locally and
@@ -126,13 +127,21 @@ rollback;
 --  where e.user_id = pr.user_id
 --    and e.exercise_name = pr.exercise_name
 --    and e.best_1rm - pr.best_estimated_1rm_lbs > 0.5;
--- EXPECT: UPDATE 6
+-- ACTUAL: UPDATE 6. Every one was a 12-rep set on 2026-06-11:
+--   Tricep Rope Pushdown       80 x 12 -> 112.0
+--   Tricep Overhead Extension  65 x 12 ->  91.0
+--   Cable Crunch               50 x 12 ->  70.0
+--   Arnold Press               40 x 12 ->  56.0
+--   Cable Low-to-High Fly      40 x 12 ->  56.0
+--   Cable Lateral Raise        25 x 12 ->  35.0
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- AFTER
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. Re-run the dry-run SELECT. EXPECT: 0 rows.
+-- 1. Re-run the dry-run SELECT. DONE — 0 still drifted, 67 PR rows compared,
+--    all now within the +/-0.5 rounding band.
 -- 2. Tell Dani. Six of Kerwin's records moved up. On a two-person scoreboard
 --    that is a conversation, not a changelog entry. This is listed as a step
 --    because it is the step most likely to be skipped.
+--    >>> STILL OUTSTANDING as of 2026-08-14. Not a thing code can close.
 -- ═══════════════════════════════════════════════════════════════════════════
