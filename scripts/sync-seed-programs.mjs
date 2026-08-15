@@ -76,9 +76,12 @@ for (const fname of files) {
     L.push(``);
     L.push(`  insert into public.program_principles (principle_key, claim, rationale, source_citation, created_by, template_id)`);
     L.push(`  values (${q(p.principle_key)}, ${q(p.claim)}, ${q(p.rationale)}, ${q(p.source_citation)}, ${q(t.author_id)}, tid)`);
-    L.push(`  on conflict (principle_key) do update set`);
+    // Arbiter must be the (template_id, principle_key) constraint. Migration 0002
+    // (BUG-77) replaced the old global UNIQUE (principle_key), so the bare
+    // `on conflict (principle_key)` this used to emit now aborts with 42P10.
+    L.push(`  on conflict (template_id, principle_key) do update set`);
     L.push(`    claim = excluded.claim, rationale = excluded.rationale,`);
-    L.push(`    source_citation = excluded.source_citation, template_id = excluded.template_id;`);
+    L.push(`    source_citation = excluded.source_citation;`);
   }
   L.push(`end $$;`);
   parts.push(L.join('\n'));
@@ -88,6 +91,24 @@ for (const fname of files) {
 // are inserted inside the same DO block AFTER the template row. If the trigger is
 // BEFORE/AFTER per-statement this ordering matters — so principles are ALSO
 // emitted standalone up front, before any template block runs.
+//
+// ⚠ BLOCKED ON THE BUG-77 D16 RULING — this scaffold's lifecycle is undecided.
+// The live trigger body is verbatim:
+//     if not exists (select 1 from public.program_principles p
+//                    where p.principle_key = k) then raise ...
+// i.e. unscoped: ANY row carrying the key satisfies it. On a cold seed no row
+// exists when the first template row is written, so this NULL-template_id
+// scaffold IS load-bearing today. Since migration 0002 split the constraint into
+// UNIQUE (template_id, principle_key) + a partial unique index on
+// (principle_key) WHERE template_id IS NULL, the scaffold and the per-template
+// row are no longer the same row — the per-template block used to PATCH the
+// scaffold (it set template_id = excluded.template_id), and now it inserts
+// alongside it. Re-running this file therefore leaves ONE ORPHAN scaffold row
+// per principle in addition to the real template-scoped row.
+// Deliberately NOT resolved here: whether the scaffold should be promoted,
+// deleted after adoption, or removed outright depends on whether D16 means "a
+// principle exists somewhere" or "this template cites its own principle" — the
+// exact question BUG-77 part 2 is waiting on. Do not invent the answer inline.
 const principleHeader = [];
 for (const fname of files) {
   const seed = JSON.parse(fs.readFileSync(path.join(seedsDir, fname), 'utf8'));
@@ -95,7 +116,7 @@ for (const fname of files) {
     principleHeader.push(
 `insert into public.program_principles (principle_key, claim, rationale, source_citation, created_by)
 values (${q(p.principle_key)}, ${q(p.claim)}, ${q(p.rationale)}, ${q(p.source_citation)}, ${q(seed.template.author_id)})
-on conflict (principle_key) do update set
+on conflict (principle_key) where template_id is null do update set
   claim = excluded.claim, rationale = excluded.rationale, source_citation = excluded.source_citation;`);
   }
 }
