@@ -195,7 +195,7 @@ targetability verdict per term). It is deliberately absent rather than guessed �
 answering an exercise-science question from memory, and a placeholder full of plausible-sounding
 terms is precisely the failure mode this project is eliminating.
 
-Committed now for durability (EPIC-031 was lost as an unpushed commit). §5, §6 and the
+Committed now for durability. §5, §6 and the
 recommended Phase 2 scope land in the follow-up commit.
 
 The proposal will state, per term: term · parent group · anatomical source URL ·

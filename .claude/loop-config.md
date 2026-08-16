@@ -251,8 +251,8 @@ Mechanics:
 - Still **absolutely denied, no exception**: force-push, `netlify deploy`, and
   `supabase apply_migration`. Those stay human-only — Kerwin deploys + device-verifies.
   tandem-tpm reconciles status.
-- **Pushing to `main` is authorized when the gates are green** (Kerwin, 2026-07-28, after the
-  EPIC-031 loss below): *"just use your git connector to push to main. If you verify that it
+- **Pushing to `main` is authorized when the gates are green** (Kerwin, 2026-07-28): *"just use
+  your git connector to push to main. If you verify that it
   works through the various tests we've come up with, then it's fine with me."* The gate is
   `ship_gate_command` (`npm run verify`, 7/7) **and** `persona_matrix_command`
   (`npm run validate:personas`, 630) both green, **run and shown**, not asserted. Green gates,
@@ -269,14 +269,20 @@ contains the loop's brain.
 
 ## Durability — "verified" is not "shipped" until it is on a remote ref (2026-07-28, Kerwin)
 
-**The EPIC-031 loss is the worked example, and it must not repeat.** On 2026-07-24 a session built
-the entire Living Program Library in a git worktree (`.worktrees/epic-031`), committed it locally as
-`ffa99c0`, and recorded "BUILD COMPLETE … verify 7/7 … 2,622 checks PASS" in Notion. On 2026-07-25 a
-second session re-verified it, rebased it, and re-recorded success. **Neither session ever pushed it**
-— the dependency gate literally read *"Kerwin pushes the rebased branch — sandbox cannot git push."*
-Nobody did, the container was reclaimed, and every line of that code ceased to exist. What survived
-was only the Supabase migrations, because those were written to an **external, persistent** system.
-The code had no external destination, so it had no existence.
+**The rules below are sound. The story that used to justify them was wrong — read this first.**
+
+An earlier session concluded that EPIC-031 had been destroyed: built in a worktree, committed
+locally as `ffa99c0`, never pushed, container reclaimed. That conclusion was **retracted in commit
+`a0b7b25` and is false.** The code was never lost. It was untracked files in a local working
+directory — invisible to remote scanning, which is why the search for it came back empty — and it
+landed on `main` in `a6cb6c0`. `materializeTemplate`, `adoptTemplate`, `openProgramLibrary`, the
+`epic031_*` migrations and seeds are all present today, with D16 ACTIVE.
+
+The real lesson is narrower and duller than the ghost story: **"not in git" and "does not exist" are
+different claims**, and collapsing them cost more time than any push ever would have.
+
+Do not cite EPIC-031 as a data-loss cautionary tale. It is not one. The rules below stand on their
+own — `git push` is still how work becomes durable, and that needs no dead epic to justify it.
 
 Standing rules, derived from that failure:
 
@@ -293,19 +299,17 @@ Standing rules, derived from that failure:
 4. **Never record a Notion completion claim that git cannot corroborate.** Before writing DELIVERED /
    COMPLETE / SHIPPED on an Epic or a consolidation note, confirm the symbols actually exist on a
    remote ref (`git grep -l "<symbol>" origin/main`). The 2026-07-24 consolidation notes on
-   EPIC-026/027/029/030 all claimed delivery "inside EPIC-031" and were false the moment the
-   container died — which is worse than no note, because the next session reads "delivered" and
-   skips the work.
-5. **Schema and code drift apart when only one is durable.** EPIC-031's migrations are live in
-   `zsvktcvqmppsshtpeljt` while its code is gone. Before rebuilding anything that migrates, CHECK
+   EPIC-026/027/029/030 claimed delivery "inside EPIC-031" for work that was not yet on a remote —
+   worse than no note, because the next session reads "delivered" and skips the work.
+5. **Schema and code can drift apart.** Before rebuilding anything that migrates, CHECK
    THE LIVE DB FIRST (`list_tables`) — re-applying an applied migration or re-seeding seeded rows
    duplicates published data.
 
-## commit vs push — the distinction that cost us EPIC-031 (2026-07-28, Kerwin)
+## commit vs push — the distinction that matters (2026-07-28, Kerwin)
 
 Kerwin, 2026-07-28: *"I think I just didn't know what the difference was between git commit & git push when
-I wrote those rules."* That is the honest root cause of the whole EPIC-031 loss, and it is worth stating
-plainly so nobody writes those rules that way again.
+I wrote those rules."* That is the honest root cause of the scare, and it is worth stating plainly so
+nobody writes those rules that way again.
 
 - **`git commit`** saves a snapshot **inside this container only.** Nothing leaves the machine. If the
   container is reclaimed — which happens routinely, between sessions — the commit is gone. A commit is a
@@ -315,7 +319,7 @@ plainly so nobody writes those rules that way again.
 
 **A permission policy that allows `commit` but denies `push` therefore produces work that looks saved and
 is not.** The agent commits, reports success truthfully, and the work evaporates on container teardown.
-That is exactly what happened: the 2026-07-24 EPIC-031 build committed `ffa99c0`, was refused on push by
+That is the failure mode to avoid: the 2026-07-24 build committed `ffa99c0`, was refused on push by
 this repo's own deny list, recorded "sandbox cannot git push" in Notion as a limitation rather than an
 emergency, and died with the container. The database survived only because Supabase writes have no local
 stage to get stranded in.
@@ -346,8 +350,8 @@ Because the two have different failure modes. **A Supabase write has no local st
 `apply_migration` goes straight to the live project, so intent and durability are the same step.
 **A git write is local by default** — `git commit` lands in an ephemeral container and `git push` is a
 separate step that was, until 2026-07-28, blocked by this repo's own deny list. One system had no gate
-and nowhere to get stuck; the other had both. That is the entire reason EPIC-031's schema survived and
-its code did not.
+and nowhere to get stuck; the other had both. That asymmetry is why the schema was trivially
+durable while the code needed a manual step nobody was authorized to take.
 
 The residue: as of the 2026-07-28 audit the live schema existed in **no file anywhere**. Supabase was the
 source of truth and git was derived — exactly backwards. `migrations/0001_baseline_live_schema.sql`
@@ -415,7 +419,7 @@ Standing practice:
 
 ## Two-tier doctrine (EPIC-031) — SAFETY hard, SCIENCE overridable-with-provenance
 
-Once EPIC-031 lands, `scripts/doctrine.mjs` invariants split into **SAFETY** (always enforced, every path —
+`scripts/doctrine.mjs` invariants split into **SAFETY** (always enforced, every path —
 compound-first, injury filter, equipment tier, monotonic + earned-only 1RM, no-superset-on-primary) and
 **SCIENCE_DEFAULT** (enforced for GENERATED programs; an authored/library program may exceed a band via
 `science_overrides` ONLY if a matching `program_principles` row justifies it — invariant **D16**). This does
@@ -424,8 +428,8 @@ expert programs. Sovereignty without a cited principle is a D16 failure, not a l
 
 ## Daily-run program ingestion — the "learns more each program" loop (EPIC-031)
 
-Once Fable ships the EPIC-031 schema (`workout_templates`/`template_blocks`/`template_days`/
-`template_exercises` + `program_principles`): each daily run, Claude finds **one** acclaimed program online
+The EPIC-031 schema is live (`workout_templates`/`template_blocks`/`template_days`/
+`template_exercises` + `program_principles`), so this is unblocked: each daily run, Claude finds **one** acclaimed program online
 (WebSearch/WebFetch — acclaimed lifters/coaches), extracts its **structure** into the library tables and its
 **reasoning** into `program_principles` (via Supabase MCP), rebuilt **own-brand with source provenance** —
 never verbatim/trademarked content. The corpus compounds so a future phase can have the generator consume
