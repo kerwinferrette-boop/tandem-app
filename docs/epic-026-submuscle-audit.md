@@ -199,10 +199,113 @@ prefix-compatibility verdict · call sites needing change · **whether any exerc
 preferentially bias it**. Terms with no targetable exercise will be flagged and excluded rather
 than quietly included — a vocabulary term the generator cannot act on is dead weight in the schema.
 
-The working recommendation, subject to that sourcing: **additive-only, zero renames in Phase 1**,
-so every new term is literally prefixed by an existing parent and the prefix rule keeps working by
-construction. That means rejecting the Notion epic's `calf_gastrocnemius` / `calf_soleus` (they
-break the `['gastrocnemius','soleus','calf']` slot at `programs.js:1640`) and `glute_maximus` (the
-bank ships `glute_max`). The suffix-named delt and trap families are the one place where staying
-additive costs real expressiveness — that trade-off goes to Kerwin as an explicit costed choice
-with the call-site list, not decided here.
+### Correction: the `calf_*` rename does NOT break the calf slots
+
+An earlier draft of this report — and the Phase 1 brief — asserted that renaming to
+`calf_gastrocnemius` / `calf_soleus` would break the live `['gastrocnemius','soleus','calf']` slot.
+**That is wrong, and it was wrong in the brief too.** Verified by running:
+
+- `'calf_gastrocnemius'.startsWith('calf')` → `true`.
+- **Every** slot that names `gastrocnemius` also names `calf` — `['gastrocnemius','calf']` at
+  `programs.js:1356, 1361, 1658` and `['gastrocnemius','soleus','calf']` at `:1640`. All four
+  survive on the `calf` token alone.
+- `'glute_maximus'.startsWith('glute_max')` → `true`, so `glute_max` → `glute_maximus` is
+  prefix-transparent on the request side as well.
+
+The renames are safe. They are still not *recommended* — see §6 — but the reason is cost/benefit,
+not breakage. Recording the correction because reasoning from what sounded right about the prefix
+rule, instead of running it, is the precise failure mode CLAUDE.md exists to stop.
+
+---
+
+## 5b. Four further defects, all verified by running the engine
+
+These are additional to the three in §3 and were surfaced by the vocabulary research.
+
+### Defect 4 — the bank's only soleus exercise is unreachable from 3 of 4 calf slots
+
+`Seated Calf Raise` is tagged `primary: ['soleus']`. Nothing else carries that tag, and `soleus`
+has no prefix relation to `gastrocnemius` or `calf`. Measured pools (isolation):
+
+```
+['gastrocnemius','soleus','calf']  -> 6  Standing · Seated · Leg Press · Single-Leg · DB Standing · Smith
+['gastrocnemius','calf']           -> 5  (Seated Calf Raise EXCLUDED)
+```
+
+Only `programs.js:1640` names `soleus`. The one-off Legs day, the one-off Hinge day and the
+generated leg day (`:1356`, `:1361`, `:1658`) can never prescribe it. The exercise's own `why` text
+argues the soleus needs its own high-rep work — the engine cannot deliver it.
+
+### Defect 5 — Seated Calf Raise offers the user zero swap options
+
+`getExerciseSubstitutes()` (`programs.js:1288`, consumed at `tandem.html:3888`) does **not** use the
+prefix rule. It uses exact tag equality:
+
+```js
+(e.muscleGroups?.primary || []).some(g => primaryGroups.includes(g))
+```
+
+Because `soleus` is a peer tag shared with nothing, the swap list is empty. Verified by running:
+
+```
+Seated Calf Raise   -> (NONE)
+Standing Calf Raise -> Leg Press Calf Raise | Single-Leg Calf Raise | DB Standing Calf Raise | Smith Machine Calf Raise
+```
+
+This matters for the vocabulary design: **a `calf_*` rename would NOT fix it** (`calf_soleus` and
+`calf_gastrocnemius` are still unequal strings). Only adding a shared parent co-tag does.
+
+### Defect 6 — `glute_minimus` in the slot at `:1638` is inert
+
+`['glute_max','glute_medius','glute_minimus']` and `['glute_max','glute_medius']` return
+**identical 7-exercise pools** — both `glute_minimus`-tagged exercises are also `glute_medius`-tagged.
+The third token does nothing.
+
+### Defect 7 — `adductor` is tagged but has no consumer
+
+No slot anywhere requests `adductor`. `['adductor']` + `isolation` returns an **empty pool**: the
+three `adductor`-tagged lifts are all `compound` (Romanian Deadlift, Sumo RDL, DB Sumo Squat) and
+the only true adduction movement, Copenhagen Plank, is `category: 'core'`. The tag is inert.
+
+### And the gap under all of them
+
+`grep` over `scripts/doctrine.mjs` and `scripts/validate-programs.mjs` finds **no assertion
+referencing `muscleGroups`, `muscle_primary`, or slot pools at all.** A vocabulary change can empty
+a candidate pool and ship with `npm run verify` fully green. Defects 1, 2, 4 and 7 all share that
+single root cause.
+
+---
+
+## 5c. Lower body — sourced vocabulary (quads, hamstrings, glutes, adductors, calves)
+
+**Source-integrity flag, stated up front:** WebFetch egress was blocked for kenhub.com,
+ncbi.nlm.nih.gov, physio-pedia.com, teachmeanatomy.info and acefitness.org in the session that
+produced this. Citations below are URLs located and read *via search-result synthesis, not verbatim
+page reads*. Kenhub — the reference the Notion epic names — was unreachable. **Every claim here
+should be confirmed against a directly-fetched primary source before the vocabulary is locked.**
+
+**Second flag:** Notion **Exercise Science Schema v0.5** (`37bca37f935b81cb9478e4906ada58c9`)
+specifies `muscle_group_primary` as a *coarse* enum only — `chest | back | shoulders | quads |
+hamstrings | glutes | biceps | triceps | core | calves`. It never mentions heads or sub-groups, and
+never mentions adductors. **The shipped bank's head-level vocabulary is already a divergence from
+v0.5 that no source authorizes.** `DOCTRINE.md` contains no muscle-group invariant at all. Locking
+this vocabulary means amending v0.5 first, per CLAUDE.md's "change Notion first" rule.
+
+| term | parent | source | prefix-compat | targetable? |
+|---|---|---|---|---|
+| `quad_rectus_femoris` | `quad` | [PMC8866009](https://pmc.ncbi.nlm.nih.gov/articles/PMC8866009/); [J Sports Sci 2024](https://www.tandfonline.com/doi/full/10.1080/02640414.2024.2444713) | yes | **YES** — strongest case in the family. Reduced hip flexion (40° vs 90°) in leg extension gave "extreme evidence" of greater RF hypertrophy. Bank already has Reverse Nordic, Sissy Squat, Leg Extension |
+| `quad_vastus_lateralis` | `quad` | [PMC8866009](https://pmc.ncbi.nlm.nih.gov/articles/PMC8866009/); [JSCR](https://doi.org/10.1519/JSC.0000000000005338) | yes | **Partially** — as "the vasti," not VL specifically. Squat drives distal VL where leg extension drives RF. No source found biasing VL over VM |
+| `quad_vastus_medialis` | `quad` | [Physiother Theory Pract](https://www.tandfonline.com/doi/abs/10.1080/09593980802686953) — 20 EMG studies, 387 participants | yes | **NO — not separable from VL.** 17 of 20 studies found no preferential VMO activation. Keep as descriptive detail; the generator must not treat VL/VM as separable targets |
+| `quad_vastus` *(new, additive)* | `quad` | derived | yes — **already a request token at `:1656` with no matching tag** | **YES at group level.** Makes the de-facto token real and gives the exact-match substitute path something to bite |
+| `quad_vastus_intermedius` *(Notion-proposed)* | `quad` | [PMC8866009](https://pmc.ncbi.nlm.nih.gov/articles/PMC8866009/) | yes | **NO — EXCLUDE, dead weight.** Zero bank exercises can bias it. ⚠️ But exclude on *"no targeting exercise exists"*, **not** on the folk claim that VI can't be recruited preferentially — that claim is **UNVERIFIED**; fine-wire studies do record VI independently |
+| `hamstring_biceps_femoris` *(spelling fix)* | `hamstring` | [StatPearls NBK546688](https://www.ncbi.nlm.nih.gov/books/NBK546688/); [JOSPT fMRI](https://www.jospt.org/doi/10.2519/jospt.2018.7748) | yes, 0 slots break | **YES, contested.** Hip-extension work raises BFlh:ST ratio vs Nordic. **Counter-evidence:** [2025 meta-analysis](https://www.tandfonline.com/doi/full/10.1080/02640414.2025.2486879) found no overall ST-vs-BF difference. Adopt the spelling; treat head-bias as soft preference, never a doctrine invariant |
+| `hamstring_semitendinosus` **(MISSING from bank)** | `hamstring` | [StatPearls NBK539862](https://www.ncbi.nlm.nih.gov/books/NBK539862/); [JOSPT](https://www.jospt.org/doi/10.2519/jospt.2018.7748) | yes | **YES — and its absence is a live mis-tagging.** Nordic preferentially recruits ST. The bank tags Nordic Curl `['hamstring_bicep_femoris','hamstring_semimembranous']` — naming the two heads the evidence says Nordic *de-emphasises* and omitting the one it emphasises. **Highest-value single correction in this report** |
+| `hamstring_semimembranosus` *(spelling fix)* | `hamstring` | [StatPearls NBK542215](https://www.ncbi.nlm.nih.gov/books/NBK542215/) | yes, 0 slots break | **NO as an independent target — UNVERIFIED.** No source separates SM from ST by exercise selection. Keep the corrected spelling only if always co-tagged with ST; a standalone SM target is dead weight. **Kerwin decision, not invented here** |
+| `glute_max` → `glute_maximus` | `glute` | [JOSPT 2016](https://www.jospt.org/doi/10.2519/jospt.2016.6493) | **yes — 0 of 14 slot literals break** (verified by simulation) | **YES.** Single-limb squat/deadlift give greatest GMax activation |
+| `glute_medius` | `glute` | [JOSPT 2017](https://www.jospt.org/doi/10.2519/jospt.2017.7229); [JOSPT 2013 fine-wire](https://www.jospt.org/doi/10.2519/jospt.2013.4116) | yes | **YES.** Side-lying abduction is distinct from the hip-extension pattern driving GMax. Bank has Abductor Machine, Banded Hip Abduction |
+| `glute_minimus` | `glute` | [JOSPT 2017](https://www.jospt.org/doi/10.2519/jospt.2017.7229) | yes | **NO — EXCLUDE.** JOSPT 2017: *"no reason to suspect that activation of the gluteus minimus for any of the exercises evaluated would differ from that of the gluteus medius."* Proven redundant in code too (Defect 6) |
+| `adductor` | root | [StatPearls NBK534842](https://www.ncbi.nlm.nih.gov/books/NBK534842/) | yes | **Functionally incoherent as one term.** Posterior adductor magnus is a *hip extensor*; the tag conflates it with true adductors. ⚠️ The bank's `why` for DB Sumo Squat / Sumo RDL claims an adductor shift that EMG ranking [contradicts](https://pubmed.ncbi.nlm.nih.gov/23945760/) — sumo/wide-stance rank **lowest** among adduction exercises. Coaching-copy bug, filed separately |
+| `calf` *(promote to real tag, additive)* | root | [Physiopedia Triceps Surae](https://www.physio-pedia.com/Triceps_Surae) | yes — already a request token at 4 sites | **Yes at group level.** Currently a near-orphan: 1 primary use, on a *cardio* entry |
+| `calf_gastrocnemius` *(rename)* | `calf` | [PMC10753835](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10753835/) | **yes — 0 slots break** | **YES — cleanest targetability case in lower body.** Standing vs seated over 12 wk: **+12.4% vs +1.7%** lateral gastroc, **+9.2% vs +0.6%** medial. Bank has 5 straight-knee variants |
+| `calf_soleus` *(rename)* | `calf` | [Physiopedia](https://www.physio-pedia.com/Triceps_Surae); [PMID 37015022](https://pubmed.ncbi.nlm.nih.gov/37015022/) | **yes — and it repairs Defect 4** | **YES.** Knee flexion puts gastrocnemius in active insufficiency while soleus activity holds. Thin but real: one exercise |
+| `calf_gastrocnemius_medial` / `_lateral` | `calf_gastrocnemius` | [Physiopedia](https://www.physio-pedia.com/Triceps_Surae) | yes | **NO — EXCLUDE. UNVERIFIED.** No evidence that foot/toe rotation biases one head; both heads responded in the same direction to the same stimulus. Do not add on gym folklore |
