@@ -1362,7 +1362,14 @@ const FOCUS_SLOTS = {
   full_body: [['pec_major','pec','compound'],['lat_dorsi','','compound'],['quad','','compound'],['hamstring','glute_max','compound'],['anterior_delt','lateral_delt','isolation']],
 };
 const ONEOFF_CORE_GROUPS = ['rectus_abdominis','transverse_abdominis','oblique','quadratus_lumborum','erector_spinae'];
-const ONEOFF_CARDIO_GROUPS = ['full_body','lower_body','glute_max'];
+// BUG-83 (2026-08-16, EPIC-026 Phase 1 audit, Notion 3beca37f935b813e8ddadd7a6f2ea0e5): 'lower_body'
+// removed — it never matched any exercise's muscleGroups tag (cardio entries carry emphasis:['lower_body',...]
+// but groupsMatch checks muscleGroups.primary/secondary, a different field; 'lower_body' is not a muscle-group
+// tag anywhere in EXERCISE_BANK). Verified behavior-neutral: 'full_body' and 'glute_max' already match every
+// cardio candidate 'lower_body' was ever meant to catch (node scripts/audit-muscle-tags.mjs confirms 0 exercises
+// under the live prefix rule). Same removal applied to the two TEMPLATES cardioGroups arrays and
+// SHOULDER_TEMPLATE below that also carried this dead token.
+const ONEOFF_CARDIO_GROUPS = ['full_body','glute_max'];
 
 function getSingleDay(focus, opts = {}) {
   const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -1629,7 +1636,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['pec_major','pec'],                          cat:'isolation'},
         {role:'acc2',      groups:['tricep'],                                   cat:'isolation'},
         {role:'acc3',      groups:['posterior_delt','lateral_delt'],            cat:'isolation'},
-      ], cardioGroups:['full_body','lower_body','glute_max'] },
+      ], cardioGroups:['full_body','glute_max'] },
     { key:'day2', label:'Day 2 · Lower Hinge', color:'var(--amber)',
       rationale:'Hip hinge pattern — glutes, hamstrings, posterior chain. Calf and hip abductor accessories.',
       slots:[
@@ -1638,7 +1645,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['glute_max','glute_medius','glute_minimus'], cat:'isolation'},
         {role:'acc2',      groups:['hamstring'],                                cat:'isolation'},
         {role:'acc3',      groups:['gastrocnemius','soleus','calf'],            cat:'isolation'},
-      ], cardioGroups:['full_body','lower_body','glute_max'] },
+      ], cardioGroups:['full_body','glute_max'] },
     { key:'day3', label:'Day 3 · Upper Pull', color:'var(--blue)',
       rationale:'Vertical and horizontal pull emphasis — back, biceps. Rear delt accessory balances the press.',
       slots:[
@@ -1688,7 +1695,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       {role:'acc3',    groups:['tricep'],                       cat:'isolation'},
       {role:'acc4',    groups:['bicep'],                        cat:'isolation'},
     ],
-    cardioGroups:['full_body','lower_body','glute_max'],
+    cardioGroups:['full_body','glute_max'],
   };
 
   try {
