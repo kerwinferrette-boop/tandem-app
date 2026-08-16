@@ -915,25 +915,20 @@ let d18Checked = 0;
   }
   if (callSites.length < 20) fail('D18', `only found ${callSites.length} call sites — extraction likely broken (expected 30+)`);
 
-  // KNOWN_GAPS — a pre-existing, bounded, cited exception list. Discovered WHILE
-  // building this gate (not invented): at 'home' tier, EXERCISE_BANK has zero
-  // isolation-category exercises tagged lat_dorsi, bicep, upper_trap, or
-  // brachialis/brachioradialis (bodyweight/band equipment cannot isolate these the
-  // way a cable/machine can). That is a real defect — it silently narrows Back/Arms/
-  // Pull/Shoulders one-off and template slots for home-tier users — but it is a bank-
-  // CONTENT gap (needs new exercises added with sourced load coefficients/cues per
-  // CLAUDE.md's no-fabrication rule), not a selection-logic bug, and fixing it is out
-  // of BUG-82's scope. Filed separately as BUG-88 (Notion Bug & QA Log, Cycle 54,
-  // 2026-08-16) rather than silently left uncaught. Keyed on content (groups|cat|tier),
-  // not call-site position, so it stays valid across refactors. Remove an entry ONLY
-  // when BUG-88 ships bank exercises that close it — this list must never grow to
+  // KNOWN_GAPS — a bounded, cited exception list. Discovered while building this gate
+  // (BUG-82, Cycle 54): at 'home' tier, EXERCISE_BANK had zero isolation-category
+  // exercises tagged lat_dorsi, bicep, upper_trap, or brachialis/brachioradialis.
+  // Filed as BUG-88 (Notion Bug & QA Log, 2026-08-16) and CLOSED same day (Cycle 55,
+  // exercise-science-research pass): added band-curl, band-hammer-curl,
+  // band-straight-arm-pulldown, band-shrug to EXERCISE_BANK (programs.js) — sourced,
+  // cited entries (Aboodarda et al. 2019 SAGE Open Medicine band-modality equivalence;
+  // Washif et al. 2022 MDPI straight-arm-pulldown lat EMG; hammer-curl brachioradialis
+  // EMG corroboration — full citations in each entry's code comment). All four D18
+  // gaps this allowlist covered are now genuinely closed, not just widened around, so
+  // the set is empty. Left as a Set (not deleted) so a FUTURE bounded, cited exception
+  // has a place to go without restructuring the gate — this list must never grow to
   // cover a NEW empty-pool defect; that is exactly what D18 exists to catch.
-  const KNOWN_GAPS = new Set([
-    'bicep|isolation|home',
-    'lat_dorsi|isolation|home',
-    'upper_trap|isolation|home',
-    'brachialis,brachioradialis|isolation|home',
-  ]);
+  const KNOWN_GAPS = new Set([]);
   for (const site of callSites) {
     for (const t of TIER_ORDER) {
       d18Checked++;
@@ -973,7 +968,7 @@ console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
 console.log(`  D15 primary compounds held for a whole primary block (>=8wk, mesocycle-aligned; <=15wk = one block) — ${d15Checked} assertions over T=4..24`);
-console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (4 known pre-existing gaps allowlisted, see BUG-88)`);
+console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (0 allowlisted gaps — BUG-88's 4 pre-existing home-tier gaps closed Cycle 55)`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {
