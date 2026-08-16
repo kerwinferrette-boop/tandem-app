@@ -2,8 +2,9 @@
 -- BUG-77, part 2 — scope validate_science_overrides() to the template's OWN
 -- program_principles rows.
 --
--- ███ NOT APPLIED. GATED ON THE CODE FIX — see ORDERING below. Applying this  ███
--- ███ before adoptTemplate + sync-seed-programs.mjs ship WILL break adoption. ███
+-- ███ APPLIED TO PROD 2026-08-15, after commit 5ac64e3 was pushed and the      ███
+-- ███ Netlify deploy was verified byte-identical to local tandem.html (the     ███
+-- ███ ORDERING gate below). Assertions 0-5 all PASS — see APPLIED RESULT.      ███
 --
 -- Migration 0002 split the constraint into UNIQUE (template_id, principle_key) plus
 -- a partial unique index on (principle_key) WHERE template_id IS NULL. It did NOT
@@ -90,9 +91,31 @@
 --     3. UPDATE the template to set the real science_overrides       -- passes on OWN rows
 --
 -- APPLY THIS FILE ONLY AFTER both writers use that protocol:
---   [ ] tandem.html adoptTemplate() clones program_principles
---   [ ] scripts/sync-seed-programs.mjs drops the NULL scaffold + regenerated
---       migrations/epic031_seed_programs.sql (GENERATED — never hand-edit)
+--   [x] tandem.html adoptTemplate() clones program_principles      — 5ac64e3, deployed
+--   [x] scripts/sync-seed-programs.mjs drops the NULL scaffold + regenerated
+--       migrations/epic031_seed_programs.sql (GENERATED — never hand-edit)  — 5ac64e3
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- APPLIED RESULT — 2026-08-15, via execute_sql (NOT recorded in
+-- supabase_migrations.schema_migrations; verify against pg_proc, not the ledger).
+--
+--   ASSERTION 0 (pre)  brick-by-brick / rep_floor .......... OK — own row
+--   pg_proc carries `p.template_id = new.id` ............... PASS — scoped
+--   trigger binding trg_validate_science_overrides ......... PASS — intact
+--   ASSERTION 1  compliant template still writable ......... PASS — no exception
+--   ASSERTION 2  BORROW ATTACK rejected .................... PASS — D16 violation raised
+--   ASSERTION 3  NULL template_id does not satisfy ......... PASS — D16 violation raised
+--   ASSERTION 4  three-statement write protocol ............ PASS — all 3 steps
+--   ASSERTION 5  updated_at still bumped ................... PASS — bumped
+--   ASSERTION 0 (post) re-run .............................. OK — own row
+--
+-- PROCESS NOTE, recorded because it cost a cleanup: the assertion batch was run
+-- WITHOUT a trailing explicit `rollback;`. MCP execute_sql autocommits, so
+-- ASSERTION 4's probe rows (template 'assert4-probe' + its principle) COMMITTED and
+-- had to be deleted afterwards; prod was verified back to 2 templates / 1 principle.
+-- Assertions 2 and 3 were unaffected — they raise, so they roll back to their own
+-- savepoint. Every future probe batch must end in an explicit `rollback;`.
 -- ---------------------------------------------------------------------------
 
 begin;

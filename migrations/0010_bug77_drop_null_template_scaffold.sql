@@ -1,9 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- BUG-77, part 2 (cleanup) — retire the NULL-template_id principle scaffold.
 --
--- ███ NOT APPLIED. APPLY LAST, AFTER 0009 IS APPLIED AND ASSERTED.           ███
--- ███ This is the least reversible step in the sequence: the DELETE is not   ███
--- ███ recoverable from the schema, only from the seed files.                 ███
+-- ███ APPLIED TO PROD 2026-08-15, last in the sequence, after 0009 was       ███
+-- ███ applied and all its assertions passed. The DELETE removed 0 rows —     ███
+-- ███ it guaranteed the state rather than changing it. See APPLIED RESULT.   ███
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ---------------------------------------------------------------------------
@@ -106,6 +106,29 @@ commit;
 --                             and p.template_id = ov.template_id)
 --             then 'OK — own row' else 'ORPHANED BY THE PURGE' end as verdict
 --   from ov order by verdict desc;
+
+-- ---------------------------------------------------------------------------
+-- APPLIED RESULT — 2026-08-15, via execute_sql.
+--
+--   PRE-FLIGHT  rows with template_id is null ......... 0  (as predicted)
+--   DELETE ............................................ DELETE 0 — a no-op, as intended
+--   ASSERTION 1  no scaffold rows survive ............. 0
+--   ASSERTION 2  program_principles_global_key_uniq ... gone (0 rows in pg_indexes)
+--   ASSERTION 3  per-template arbiter still stands .... CREATE UNIQUE INDEX
+--                program_principles_template_key_uniq ON public.program_principles
+--                USING btree (template_id, principle_key)
+--   ASSERTION 4  corpus still D16-clean ............... brick-by-brick/rep_floor = OK — own row
+--   ASSERTION 5  regenerated seed is idempotent ....... before = 1, after = 1, orphans = 0
+--
+-- ASSERTION 5 scope note, stated rather than glossed: lines 318-324 of
+-- migrations/epic031_seed_programs.sql (the principles upsert + the overrides patch)
+-- were replayed TWICE against prod inside `begin; ... rollback;`, with probe text in
+-- claim/rationale/source_citation — those are precisely the columns the DO UPDATE
+-- overwrites and cannot affect row count. The arbiter and the write order are
+-- verbatim. The full 60KB file was not replayed: there is no psql and no service
+-- credential in this environment, only MCP execute_sql. The orphan-per-re-run
+-- behaviour this sequence removes is a row-count property, which is what was measured.
+-- ---------------------------------------------------------------------------
 
 -- ── ASSERTION 5 · the regenerated seed file is idempotent against the new shape.
 -- Run migrations/epic031_seed_programs.sql twice inside one rolled-back transaction
