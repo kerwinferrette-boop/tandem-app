@@ -5,6 +5,8 @@
 proposal for Kerwin to approve *before* any backfill starts — retagging 171 rows twice because
 the vocabulary shifted is the failure this phase exists to prevent.
 
+**Notion:** [EPIC-026 Phase 1 — Sub-Muscle-Group Audit + Vocabulary Proposal](https://app.notion.com/p/3beca37f935b81a2bd58fbbab79f49fb) (child of the EPIC-026 extension epic).
+
 **Date:** 2026-08-16 · **Reproduce every number below:** `node scripts/audit-muscle-tags.mjs`
 (add `--table` for the full 171-row table, `--json` for machine-readable output).
 
@@ -80,7 +82,7 @@ number. The bank is already substantially sub-tagged; what it is not is *consist
 
 The 24 "atomic-only" exercises are **not** automatically a gap. They carry tags like `rhomboid`,
 `adductor`, `lat_dorsi` for which the vocabulary draws no sub-division — which may be entirely
-correct. Whether any of them *should* be subdivided is a research question, answered in §4.
+correct. Whether any of them *should* be subdivided is a research question, answered in §5c and §5d.
 Lumping them in with real gaps is exactly how a gap count turns back into a vibe.
 
 ---
@@ -101,9 +103,11 @@ The third clause makes the second redundant and is **unanchored** — it matches
 defects below. All three are **reported, not fixed**: `groupsMatch` is Phase 3, which requires an
 `exercise-science-research` pass and a doctrine invariant because it is program-selection logic.
 
-Filed as **BUG-82**, **BUG-83**, **BUG-84**.
+Filed as **BUG-87** (Defect 1), **BUG-83** (Defect 2), and **BUG-85** (the actionable part of
+Defect 3). The root cause under all of them is **BUG-82**. Six bugs were filed in total — the
+audit found more than the three anticipated; see §8 for the full index.
 
-### Defect 1 — `quad` slots can draw a core muscle (BUG-82)
+### Defect 1 — `quad` slots can draw a core muscle (BUG-87)
 
 `'quad'` prefix-matches `quadratus_lumborum`. Measured:
 
@@ -117,7 +121,7 @@ at `:1637`. A quad compound slot can legally select a QL exercise. This is the o
 collision in the vocabulary today — but it is structural, not a one-off typo: any future term
 sharing a prefix with another muscle reintroduces it.
 
-### Defect 2 — `lower_body` is a dead term that fails OPEN (BUG-83)
+### Defect 2 — `lower_body` is a dead term that fails OPEN (BUG-83, live today)
 
 `ONEOFF_CARDIO_GROUPS` (`programs.js:1365`) is `['full_body','lower_body','glute_max']`.
 `lower_body` matches **zero** of the 50 vocabulary terms — no exercise carries it. It contributes
@@ -125,7 +129,7 @@ nothing to the candidate pool and never has. It fails silently: an unmatched gro
 empty pool rather than an error, which is the exact silent-failure class this project keeps
 getting bitten by. Nothing today asserts that a requested group name resolves to a non-empty pool.
 
-### Defect 3 — 11 tags no slot can reach (BUG-84)
+### Defect 3 — 11 tags no slot can reach (BUG-85 covers the sharpest case)
 
 Across **every** call site — `FOCUS_SLOTS`, `TEMPLATES`, `SHOULDER_TEMPLATE`, `CORE_GROUPS`,
 `ONEOFF_CORE_GROUPS`, `ONEOFF_CARDIO_GROUPS` — these tags are unreachable:
@@ -222,7 +226,7 @@ rule, instead of running it, is the precise failure mode CLAUDE.md exists to sto
 
 These are additional to the three in §3 and were surfaced by the vocabulary research.
 
-### Defect 4 — the bank's only soleus exercise is unreachable from 3 of 4 calf slots
+### Defect 4 — the bank's only soleus exercise is unreachable from 3 of 4 calf slots (BUG-84)
 
 `Seated Calf Raise` is tagged `primary: ['soleus']`. Nothing else carries that tag, and `soleus`
 has no prefix relation to `gastrocnemius` or `calf`. Measured pools (isolation):
@@ -236,7 +240,7 @@ Only `programs.js:1640` names `soleus`. The one-off Legs day, the one-off Hinge 
 generated leg day (`:1356`, `:1361`, `:1658`) can never prescribe it. The exercise's own `why` text
 argues the soleus needs its own high-rep work — the engine cannot deliver it.
 
-### Defect 5 — Seated Calf Raise offers the user zero swap options
+### Defect 5 — Seated Calf Raise offers the user zero swap options (BUG-84)
 
 `getExerciseSubstitutes()` (`programs.js:1288`, consumed at `tandem.html:3888`) does **not** use the
 prefix rule. It uses exact tag equality:
@@ -267,7 +271,7 @@ No slot anywhere requests `adductor`. `['adductor']` + `isolation` returns an **
 three `adductor`-tagged lifts are all `compound` (Romanian Deadlift, Sumo RDL, DB Sumo Squat) and
 the only true adduction movement, Copenhagen Plank, is `category: 'core'`. The tag is inert.
 
-### And the gap under all of them
+### And the gap under all of them (BUG-82 — the root cause)
 
 `grep` over `scripts/doctrine.mjs` and `scripts/validate-programs.mjs` finds **no assertion
 referencing `muscleGroups`, `muscle_primary`, or slot pools at all.** A vocabulary change can empty
@@ -309,3 +313,237 @@ this vocabulary means amending v0.5 first, per CLAUDE.md's "change Notion first"
 | `calf_gastrocnemius` *(rename)* | `calf` | [PMC10753835](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10753835/) | **yes — 0 slots break** | **YES — cleanest targetability case in lower body.** Standing vs seated over 12 wk: **+12.4% vs +1.7%** lateral gastroc, **+9.2% vs +0.6%** medial. Bank has 5 straight-knee variants |
 | `calf_soleus` *(rename)* | `calf` | [Physiopedia](https://www.physio-pedia.com/Triceps_Surae); [PMID 37015022](https://pubmed.ncbi.nlm.nih.gov/37015022/) | **yes — and it repairs Defect 4** | **YES.** Knee flexion puts gastrocnemius in active insufficiency while soleus activity holds. Thin but real: one exercise |
 | `calf_gastrocnemius_medial` / `_lateral` | `calf_gastrocnemius` | [Physiopedia](https://www.physio-pedia.com/Triceps_Surae) | yes | **NO — EXCLUDE. UNVERIFIED.** No evidence that foot/toe rotation biases one head; both heads responded in the same direction to the same stimulus. Do not add on gym folklore |
+
+---
+
+## 5d. Upper body + core — sourced vocabulary
+
+Same source-integrity caveat as §5c: every anatomy/journal domain (Kenhub, NCBI/StatPearls, PMC,
+TeachMeAnatomy, Physiopedia, ACE, NSCA) returned `403 CONNECT` at the egress gateway. Citations are
+**search-retrieved, not fetch-and-quote**. If any ruling here becomes an ACTIVE D-invariant, the
+allowlist needs `ncbi.nlm.nih.gov`, `pmc.ncbi.nlm.nih.gov`, `jospt.org`, `tandfonline.com` first.
+
+### Finding: the sub-head vocabulary is write-only — nothing requests it
+
+Across all 73 slot definitions and 29 distinct group names, **not one names a sub-head**.
+`pec_major_clavicular`, `tricep_long_head`, `bicep_brachii_*`, `rectus_abdominis_lower`,
+`oblique_internal`, `middle_trap`, `lower_trap`, `upper_pec`, `external_rotator`,
+`serratus_anterior`, `supraspinatus` are never asked for — they reach the generator only by being
+swept up in a parent prefix match, or not at all.
+
+**So today the granularity debate has zero effect on exercise selection.** It becomes load-bearing
+the moment **D6b (PENDING, per-muscle weekly volume)** ships, because that is the first consumer
+that will read these tags. **Rule on the vocabulary before D6b, not after.**
+
+### Chest / back
+
+| term | source | prefix-compat | targetable? |
+|---|---|---|---|
+| `pec_major_sternal` | [StatPearls NBK525991](https://www.ncbi.nlm.nih.gov/books/NBK525991/) | yes | **YES** — 16 primary. Anatomy says *sternocostal*, bank says *sternal*; cosmetic, not worth a rename |
+| `pec_major_clavicular` | [Rodríguez-Ridao 2020, IJERPH](https://pmc.ncbi.nlm.nih.gov/articles/PMC7579505/) | yes | **YES — genuinely biased by incline angle.** 0/15/30/45/60° tested, **30° highest**; a later trial says optimum 43°. **Direction robust, optimum contested — do not encode a specific degree** |
+| `upper_pec` | not an anatomical term | **NO** — orphan | **REJECT.** Duplicates clavicular head *and* causes a live defect (Defect 8 below) |
+| `lat_dorsi` | [StatPearls NBK537216](https://www.ncbi.nlm.nih.gov/books/NBK537216/) | yes | **YES** — 19 primary. ⚠️ **Never shorten to `lat`** — see Defect 9 |
+| `rhomboid` | [EMG comparison](https://www.researchgate.net/publication/265294445_Comparison_of_Electromyographic_Activity_When_Performing_an_Inverted_Row_With_and_Without_a_Suspension_Device) | own parent | **PARTIAL.** Cannot be isolated from middle trapezius by surface EMG; literature reports "middle trapezius/rhomboid" as one unit. **D6b must not count `rhomboid` and `middle_trap` as two independent muscles** |
+| `erector_spinae` | [McGill group](https://pubmed.ncbi.nlm.nih.gov/11415651/) | own parent | **WEAKLY** — only 2 primary (Good Morning, Bird Dog) vs 15 secondary. A bank gap, not a vocabulary gap |
+
+### Traps and delts — the suffix-naming decision
+
+All three trap regions ([StatPearls NBK518994](https://www.ncbi.nlm.nih.gov/books/NBK518994/)) and
+all three deltoid parts ([StatPearls NBK537056](https://www.ncbi.nlm.nih.gov/books/NBK537056/)) are
+anatomically real and individually targetable:
+
+- `upper_trap` — [Ekstrom 2003, JOSPT 33(5)](https://www.jospt.org/doi/10.2519/jospt.2003.33.5.247): unilateral shrug greatest upper-trap EMG. 4 primary.
+- `lower_trap` — **strongest trap evidence**: prone overhead arm raise in line with lower-trap fibers, **85–97% MVIC**. 4 primary. Currently an orphan.
+- `middle_trap` — targetable in principle, but only **1** primary exercise (Prone T-Raise) and no slot requests it.
+- `anterior_delt` (13 primary) / `lateral_delt` (16) / `posterior_delt` (8) — all targetable; [Campos et al. systematic review](https://www.sciencedirect.com/science/article/abs/pii/S1360859222001607), [Botton 2013](https://pubmed.ncbi.nlm.nih.gov/24947920/).
+
+**Verdict: DO NOT rename to `trap_*` / `delt_*`.** Cost is **~97 tag occurrences + 19 slot literals
++ a seeded-data migration across three surfaces** (`programs.js`,
+`migrations/epic031_exercises_seed.sql`, live Supabase rows). Benefit is a parent `['delt']` or
+`['trap']` slot **that no template wants and that the science argues against** — the parts have
+distinct actions and distinct best exercises, which is exactly why the shoulders template already
+enumerates them individually. The `['delt']` → 0 failure is real, but the fix is the **gate** (§6),
+not the rename.
+
+### Arms
+
+| term | source | prefix-compat | targetable? |
+|---|---|---|---|
+| `bicep_brachii` | [TeachMeAnatomy upper arm](https://teachmeanatomy.info/upper-limb/muscles/upper-arm/) | yes | **YES** — 6 primary. Should be the canonical term |
+| `bicep` (1 use, Chin-Up) | informal | yes | **Collapse into `bicep_brachii`** — zero behavior change, both match `['bicep']` |
+| `bicep_brachii_long_head` / `_short_head` | [Kobayashi 2024, EJSC](https://onlinelibrary.wiley.com/doi/am-pdf/10.1002/ejsc.12279) | yes | **NOT RELIABLY — the evidence does not support the claim as written.** EMG does not show reliable preferential activation of one head. What *is* supported is **regional proximal-vs-distal hypertrophy driven by shoulder position**. The bank's mapping (Incline DB Curl → "long head", Preacher → "short head") is a **mislabeled proxy for proximal/distal**. Harmless to selection; **do not delete, but D6b must not treat them as separate muscles** |
+| `brachialis` | [TeachMeAnatomy](https://teachmeanatomy.info/upper-limb/muscles/upper-arm/) | no, but has its own slot | **YES** — 4 primary. **A sibling of `bicep_brachii`, never a child** |
+| `brachioradialis` | [StatPearls NBK526110](https://www.ncbi.nlm.nih.gov/books/NBK526110/) | no, own slot | **YES** — 4 primary. **Definitively NOT parented under biceps**: forearm muscle, posterior/extensor compartment, radial nerve. Parenting it under biceps would be an anatomical error |
+| `tricep_long_head` | [Maeo 2023, Eur J Sport Sci 23(7)](https://www.tandfonline.com/doi/full/10.1080/17461391.2022.2100279) | yes | **YES — the single strongest sub-head case in the whole bank.** 21 adults, 12 wk, within-subject overhead vs neutral cable extension: long head **+28.5% vs +19.6%** volume (~1.5×), no difference in lateral/medial. Bank's mapping is correct. **ADOPT** |
+| `tricep_medial` / `tricep_lateral` | [forearm-position pushdown study](https://www.researchgate.net/publication/378472477_Forearm_Position_Influences_Triceps_Brachii_Activation_During_Triceps_Push-Down_Exercise) | yes | **NO — EXCLUDE both.** Medial head lies deep to the others and cannot be recorded by surface EMG. And **proven identical in this bank** — see Defect 10 |
+| `long_head_tricep` (2 secondary) | fifth spelling of `tricep_long_head` | **NO** — invisible to `['tricep']` | Real defect; safe corrective retag, but ⚠️ **UNVERIFIED** whether pullover / straight-arm pulldown should count as tricep volume at all — verify first or the fix silently inflates it |
+
+### Core
+
+| term | source | targetable? |
+|---|---|---|
+| `rectus_abdominis` | segmentally innervated T7–T12 | **YES** — 12 primary |
+| `rectus_abdominis_lower` | [Diagnostic ultrasound, PMC10824285 (2024)](https://pmc.ncbi.nlm.nih.gov/articles/PMC10824285/) | **YES — as a REGION, with real evidence.** Significant segment × exercise interaction: crunch produced **36.4% greater** thickness change in upper segments, reverse pattern in lower. The bank's three tagged exercises are exactly the leg-raise class the study used. ⚠️ **Contested:** the same source calls the differential "task-specific," and the evidence is for **activation/thickness change, not hypertrophy over a block**. **ADOPT, but document as a region, never a head; D6b must not treat it as a separate muscle** |
+| `transverse_abdominis` | [Physiopedia TrA](https://www.physio-pedia.com/Transversus_Abdominis) | **NO by exercise selection — exclude from volume targets, but DO NOT DELETE.** Selective TrA activation is documented only for the abdominal drawing-in *cue*, not exercise choice, and even that is debated. **The tag is load-bearing in `CORE_GROUPS` — deleting it shrinks the core pool by 14 exercises** |
+| `oblique_external` | real muscle | **YES as "obliques"** — 9 primary |
+| `oblique_internal` | real muscle | **NO separately — EXCLUDE.** IO's 6 primaries are a **verified strict subset** of EO's 9. EO/IO differ in rotation direction, but every bank exercise is bilateral, so nothing separates them. The operative term is `oblique`, which `CORE_GROUPS` already requests |
+| `quadratus_lumborum` | [McGill fine-wire](https://pubmed.ncbi.nlm.nih.gov/11415616/) | **YES — best deep-muscle evidence in the report.** Intramuscular electrodes: QL most active muscle (**~54%**) in isometric side-support. Bank has Side Plank. **ADOPT.** ⚠️ but see Defect 1 |
+| `core` (9 secondary) | non-anatomical catch-all | **N/A — inert.** Verified: `CORE_GROUPS` does not include `'core'`, so all 9 tags are unreachable. Harmless noise |
+| `external_rotator` | [StatPearls NBK441844](https://www.ncbi.nlm.nih.gov/books/NBK441844/) | **NO — EXCLUDE.** Not a muscle (a functional group). Both tagged exercises are scapular-retraction movements, and **the bank has no dedicated external-rotation exercise at all** |
+| `supraspinatus` / `serratus_anterior` | real muscles | **NO in this bank — EXCLUDE from targets.** Zero primary entries each. Keep as descriptive metadata |
+
+### Forearms — a bank gap, not a vocabulary gap
+
+Of 171 exercises, **zero** are wrist curls, reverse wrist curls, carries, or grip work. Any
+`wrist_flexor` / `wrist_extensor` / `forearm` term added today would be untargetable by definition.
+**Flagged for Kerwin to fill with exercises first**, not papered over with terms for an empty set.
+
+---
+
+## 5e. Three more defects from the upper-body pass, all verified by running
+
+### Defect 8 — Landmine Press is unreachable from every chest and push slot (BUG-85)
+
+```
+Landmine Press: {"primary":["anterior_delt","upper_pec"],"secondary":["tricep","serratus_anterior"]}
+groupsMatch(Landmine Press, ['pec'])       -> false
+```
+
+`upper_pec` has no prefix relation to `pec`. The exercise enters programs only via `anterior_delt`.
+⚠️ Retagging it to `pec_major_clavicular` would fix this, but **UNVERIFIED** whether Landmine Press
+actually biases the clavicular head — no source found. Retag only once one exists.
+
+### Defect 9 — `lat` would collide with `lateral_delt` (latent)
+
+```
+pool for ['lat_dorsi'] -> 22       pool for ['lat'] -> 38
+```
+
+Shortening `lat_dorsi` to `lat` bleeds **16 lateral-raise / press movements into a back slot**. Not
+live — recorded because it is the exact trap the next person to "tidy" this vocabulary will fall into.
+
+### Defect 10 — `tricep_lateral` and `tricep_medial` are the same set
+
+```
+tricep_lateral (7)  lateral MINUS medial: []
+tricep_medial  (9)  medial MINUS lateral: ["Skull Crusher","JM Press"]
+```
+
+`tricep_lateral` is a **strict subset** of `tricep_medial`. Not one exercise in the bank
+distinguishes them. Two vocabulary terms encoding one identical concept would make **D6b
+double-count the same sets as two muscles**.
+
+---
+
+## 6. Recommendation
+
+**Both research passes independently reached the same #1 conclusion, and it is not about naming.**
+
+### A. Ship the gate first — it is worth more than every rename combined
+
+Nothing in `scripts/doctrine.mjs` or `scripts/validate-programs.mjs` asserts anything about
+`muscleGroups`, `muscle_primary`, or slot-pool emptiness. `pick()` returns `null` on an empty pool
+and every caller is `if (chosen) { … }`, so **the slot is silently dropped with no warning**. The
+`usable` guard only checks `slots[0]`, so an unreachable *accessory* slot ships a 4-exercise day
+where 5 was intended and every gate stays green (`programs.js:1704`).
+
+Propose a new invariant: **every slot group array in `FOCUS_SLOTS`, `TEMPLATES`,
+`SHOULDER_TEMPLATE`, `CORE_GROUPS` and `ONEOFF_*` resolves to a non-empty candidate pool at every
+equipment tier.** This is **SAFETY** tier, not SCIENCE_DEFAULT — an empty pool drops a prescribed
+exercise on every path, generated and authored alike. It converts silent fail-open into CI failure
+and catches Defects 1, 2, 4, 7 and the `['delt']`/`['trap']` cases in one stroke.
+`scripts/audit-muscle-tags.mjs` already computes everything it needs.
+
+### B. Additive-only vocabulary — zero renames, zero migration
+
+1. **Add `calf` as a co-tag** on all 6 triceps-surae entries. Repairs Defect 4 *and* Defect 5 —
+   and note a `calf_*` rename would **not** fix Defect 5, because `getExerciseSubstitutes` needs an
+   exact shared tag.
+2. **Add `hamstring_semitendinosus`** to Nordic Curl, Slider Leg Curl, Glute-Ham Raise.
+3. **Add `quad_vastus` as a co-tag** on the 19 VL/VM entries — it is already a request token at
+   `:1656` with no tag behind it.
+4. **Spelling fixes** (prefix-safe, 0 slots break): `hamstring_bicep_femoris` →
+   `hamstring_biceps_femoris`; `hamstring_semimembranous` → `hamstring_semimembranosus`.
+5. **Collapse `bicep` → `bicep_brachii`** (1 occurrence, zero behavior change).
+
+Parent co-tags are the only change that also improves the exact-match substitute path. Every one of
+these touches `migrations/epic031_exercises_seed.sql` and the seeded Supabase rows — they are data
+migrations, not one-line edits, and `programs.js` plus the migration must change in the **same
+commit** or the DB reverts on next sync.
+
+### C. Reject as dead weight, with reasons
+
+`quad_vastus_intermedius` (no targeting exercise exists — **not** the folk "cannot be recruited"
+claim, which is UNVERIFIED) · `glute_minimus` (JOSPT 2017 + proven redundant in code) ·
+`calf_gastrocnemius_medial`/`_lateral` (unverified) · `tricep_lateral` + `tricep_medial` (identical
+sets) · `upper_pec` (not anatomical, duplicates clavicular) · `external_rotator` (not a muscle; no
+ER exercise in the bank) · `quad` as a *primary tag on a strength lift* (its only 4 uses are cardio).
+
+**Keep but exclude from any D6b volume target:** `transverse_abdominis`, `oblique_internal`,
+`supraspinatus`, `serratus_anterior`, `core`, `bicep_brachii_long_head`/`_short_head`.
+
+### D. Do NOT rename delts, traps, or the `calf_*` family
+
+Not because they break — §5's correction proves they don't — but because the cost is ~97 tag
+occurrences plus a three-surface data migration, and the benefit is a parent slot no template wants.
+
+### E. Needs Kerwin — flagged, not filled
+
+1. **The schema conflict, highest priority.** Notion **v0.5** sanctions a coarse 10-value enum
+   (`chest|back|shoulders|quads|hamstrings|glutes|biceps|triceps|core|calves`). The code runs a
+   50-term anatomical vocabulary. `research-report (8).pdf` (all 18 pages extracted) and the
+   Framework docx contain **zero** hits for `anatom`, `clavicular`, `trapez`, `delt`, `oblique`.
+   **The entire existing vocabulary is undocumented drift from Tandem's own source of truth.**
+   Per CLAUDE.md, v0.5 must be amended *before* `/DOCTRINE.md` — rule on this first.
+2. `rectus_abdominis_lower` → is there regional *hypertrophy*, or only activation? Unsourced.
+3. Biceps: relabel `long_head`/`short_head` as **proximal/distal** per Kobayashi 2024? That is the
+   construct the evidence supports, but it is a genuine rename.
+4. `hamstring_semimembranosus` as an independent target — no source separates SM from ST.
+5. Splitting `adductor` into `adductor_magnus` (hip extensor) vs `adductor_longus`/`_brevis`.
+6. **Bank gaps** (exercises missing, not terms): forearm/grip **0**, dedicated external rotation
+   **0**, primary serratus **0**, primary erector spinae **2**, primary middle trap **1**.
+7. **Citation grade.** Every anatomy domain was egress-blocked. Allowlist and re-verify before any
+   of this becomes an ACTIVE D-invariant.
+
+---
+
+## 7. Recommended Phase 2 scope
+
+**Phase 2 should not start with the backfill.** In priority order:
+
+| # | work | why first |
+|---|---|---|
+| 1 | **Kerwin rules on the v0.5 schema conflict** | Everything else is unauthorized until the schema sanctions sub-tags. Notion first, then `/DOCTRINE.md`, per CLAUDE.md |
+| 2 | **Ship the empty-pool gate** (§6A) as a PENDING→ACTIVE invariant, plus fix the live `lower_body` dead term | Converts this whole defect class from silent to blocking. Must land *before* any tag change, so the tag change is protected by it |
+| 3 | **Wire a bank↔Supabase drift check into `npm run verify`** | Drift is zero today; nothing keeps it there |
+| 4 | **The additive backfill** (§6B) — 36 exercises, not 171 | Now protected by the gate |
+| 5 | **Re-verify citations** against fetch-accessible sources | Required before any of it becomes doctrine |
+
+Phase 3 (`groupsMatch` itself) still requires its own `exercise-science-research` pass. The narrow
+fix — dropping the unanchored `a.startsWith(g)` clause and keeping `a === g || a.startsWith(g+'_')`
+— would resolve Defects 1 and 9 permanently, but it is a behavior change to selection logic and
+needs its own audit.
+
+---
+
+## 8. Bug index
+
+Six bugs filed in the Tandem Bug & QA Log. The brief anticipated three; the audit found more, so
+all six are filed rather than the extras being buried in a report section.
+
+| ID | severity | what | report |
+|---|---|---|---|
+| **BUG-82** | P1 | **Root cause** — no gate asserts a slot's candidate pool is non-empty; an unreachable accessory slot is silently dropped and every check stays green | §6A |
+| **BUG-83** | P2 | `lower_body` matches zero exercises — the only *live* instance of the BUG-82 class | §3 D2 |
+| **BUG-84** | P1 | Seated Calf Raise unreachable from 3 of 4 calf slots **and** offers zero swaps | §5b D4/D5 |
+| **BUG-85** | P1 | Landmine Press unreachable from every chest and push slot (`upper_pec`) | §5e D8 |
+| **BUG-86** | P1 | Nordic Curl tagged with the heads the evidence says it de-emphasises; `semitendinosus` absent from the bank | §5c |
+| **BUG-87** | P2 | `quad` prefix-matches `quadratus_lumborum` (latent), plus the `lat`/`lateral_delt` trap | §3 D1, §5e D9 |
+
+**BUG-82 is the one to fix first.** BUG-83, BUG-84 and BUG-87 are all instances of it; fixing them
+individually leaves the class open.
+
+Not filed as bugs, recorded here as vocabulary findings for the Phase 2 decision: the inert
+`glute_minimus` token (§5b D6), the consumerless `adductor` tag (§5b D7), and the identical
+`tricep_lateral`/`tricep_medial` sets (§5e D10) — that last one is not a defect today but would
+make D6b double-count if it shipped unchanged.
