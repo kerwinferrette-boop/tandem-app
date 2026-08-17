@@ -3363,7 +3363,12 @@ function buildDayHTML(day, phase) {
       // C7/BUG-45: name-only when named — the id fallback was serving another
       // lift's 1RM here (the phantom "1RM ~105" shown on the bench card was
       // actually the Z-Press number leaking through _prStore[ex.id]).
-      const pr1rm = ex.name ? (_dayWorking[ex.name]?.rm ?? _prStore[ex.name]) : _prStore[ex.id];
+      // BUG-91 pt3: earnedOneRM, not `??`. The working store is device-local and never
+      // hydrated from Supabase, while _prStore IS merged up from personal_records — so a
+      // stale local working number outranked a higher synced PR and this card showed the
+      // lower one. This is the site the USER actually looks at. Missed in the first pass
+      // (0bca806 fixed 2 of 4 call sites); caught by the backlog workflow's adversarial triage.
+      const pr1rm = ex.name ? earnedOneRM(_dayWorking[ex.name]?.rm, _prStore[ex.name]) : _prStore[ex.id];
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
       // compute a starting weight from the user's calibrated 1RM instead of
@@ -3386,7 +3391,8 @@ function buildDayHTML(day, phase) {
           if (bankEntry?.oneRmFactor != null) {
             const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
               // C7/BUG-45: name-only when named — no cross-exercise id fallback.
-              (_ex.name ? (_dayWorking[_ex.name]?.rm ?? _prStore[_ex.name]) : _prStore[_ex.id]) || null,
+              // BUG-91 pt3: same earnedOneRM rule as the primary site above.
+              (_ex.name ? earnedOneRM(_dayWorking[_ex.name]?.rm, _prStore[_ex.name]) : _prStore[_ex.id]) || null,
               cfg.sex, dayCompound1RMs, cfg.weeks);
             const origW = origTgt.weight ?? _ex.w;
             if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
@@ -5208,14 +5214,30 @@ function getOverdueDays() {
   for (let i = 1; i < tSlots.length; i++) minGap = Math.min(minGap, tSlots[i] - tSlots[i - 1]);
   const allowed = minGap + 1; // one extra grace day
   const hist = LS.get('tandem_history') || [];
+  // BUG-96: sessions from BEFORE this program started are not this program's history.
+  // Without this guard, building a new program while the last old-program session was
+  // more than `allowed` days ago flagged the user overdue on day zero of a brand-new
+  // plan — the second half of Kerwin's 2026-08-05 report ("I just built a new program
+  // and it starts on day 5, and also says I'm overdue?"). The day-5 half was closed by
+  // BUG-93's queue; this is the overdue half. Same start-date guard completedSessionCount()
+  // already applies, so the two agree on what counts as this program's history.
+  const start = new Date(cfg.startDate + 'T00:00:00');
+  const hasStart = !isNaN(start);
   let last = null;
   hist.forEach(h => {
     if (h.completed === false) return; // cloud-hydrated incomplete sessions don't count
     const raw = h.session_date || h.date;
     if (!raw) return;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
-    if (!isNaN(d) && (!last || d > last)) last = d;
+    if (isNaN(d)) return;
+    if (hasStart && d < start) return;  // pre-program session — not this plan's history
+    if (!last || d > last) last = d;
   });
+  // No session yet under THIS program: measure the gap from the start date rather than
+  // returning 0. A plan started two weeks ago with nothing logged genuinely IS overdue,
+  // and Kerwin's ruling was that overdue should still show — he only objected to it
+  // advancing past work, which BUG-93 handles separately.
+  if (!last && hasStart) last = new Date(start);
   if (!last) return 0;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   last.setHours(0, 0, 0, 0);
