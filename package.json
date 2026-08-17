@@ -6,7 +6,8 @@
     "validate:programs": "node scripts/validate-programs.mjs",
     "verify": "node scripts/verify.mjs",
     "validate:personas": "node scripts/persona-matrix.mjs",
-    "walkthrough:onboarding": "node scripts/onboarding-lifecycle-walkthrough.mjs"
+    "walkthrough:onboarding": "node scripts/onboarding-lifecycle-walkthrough.mjs",
+    "outcome": "node scripts/outcome.mjs"
   },
   "devDependencies": {
     "playwright": "1.56.1"

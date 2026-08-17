@@ -220,6 +220,82 @@ This keeps granularity clean: per-behavior user stories live in User Story Cover
 (the loop's working tracker), the Bug Log and Epics stay as the human-facing queues,
 and tandem-tpm reconciles a story's Resolved status back onto its linked Bug/Epic.
 
+## ⛔ THE OUTCOME RULE — read before anything else in this file (2026-08-17)
+
+**A cycle is not done because the code is legal. A cycle is done when a real person is
+measurably getting stronger.**
+
+### What happened
+
+2026-08-17, Kerwin asked to see his bench press from seven weeks ago. He couldn't: the app had
+prescribed bench press **once, 60 days earlier**. Across his whole history, **27 of 44 tracked
+exercises had exactly one session**. In the trailing 8 weeks: 34 exercises trained, **8
+measurable, 24% repeat coverage.** You cannot get stronger at a lift you do once.
+
+That had been true for two months, across **56 unattended cycles**, every one of which reported
+`verify` 9/9, `validate:personas` 630/630, `walkthrough` 0 findings. All true. All green. All
+blind.
+
+### Why it happened — the actual cause, not the flattering one
+
+An LLM Council convened on this (report + transcript committed alongside) and **unanimously
+rejected** the self-diagnosis "Claude optimizes for defensible completion instead of user
+outcome." Their reasoning: a character flaw is unfalsifiable, unfixable, and conveniently
+locates the problem inside the agent rather than inside the machinery — which lets the machinery
+off the hook.
+
+The real cause is mundane and structural: **not one of the nine checks reads production data.**
+`persona-matrix` runs 630 invented people. `validate-programs` runs synthetic combos.
+`onboarding-lifecycle` stubs Supabase out entirely. The app has two real users and 374 real sets,
+and the test suite had never looked at either. *An agent optimizes what is measurable. Only
+legality was measurable. So only legality got optimized.* Given that instrumentation, a perfectly
+diligent agent produces the same 56 cycles.
+
+Two aggravating facts, both verified in code, not assumed:
+- **No exposure counter exists anywhere.** `grep -c` for `exposure|sessionsFor|timesPerformed|
+  repeatCount` returns **0** in `programs.js` and **0** in `tandem.html`. The engine has no
+  concept of "how many times has this user done this lift."
+- **Variety is the stated design goal** (`programs.js:1515`: *"Rotation context drives variety
+  over time"*), with `dedupeConsecutiveDays` actively substituting a lift away when it would
+  repeat. So 27-of-44 is not a defect in the engine — it is the engine working as designed,
+  toward the wrong objective.
+
+### The rules this creates — binding, and they outrank the convenience of a green report
+
+1. **`npm run outcome` runs EVERY cycle, FIRST, before any file is opened.** It queries live
+   Supabase for real users and reports repeat-exposure coverage, sessions per lift, 1RM
+   trajectory, and stale lifts. It **fails rather than skips** when it cannot reach production —
+   a blind gate that reports success is the exact BUG-79 failure mode and is worse than no gate.
+2. **The cycle report LEADS with those numbers.** Gate counts ("9/9", "630/630") may not be the
+   headline and may not stand alone as evidence of a good cycle. Per the council: what gets
+   reported is what gets optimized. A cycle summary containing no numbers about a human body is
+   **void, not green.**
+3. **This gate cannot be satisfied by closing a tracker row, writing an audit, passing a
+   synthetic matrix, or shipping a fix.** It goes green only when a real person trains the same
+   lift more than once and gets stronger. That is the entire point — it is deliberately outside
+   the agent's ability to self-satisfy.
+4. **It is RED today (24% vs a 50% floor), and it should stay red until the engine repeats
+   lifts.** Do not tune the thresholds down to get green. Do not add a skip flag. If a threshold
+   is wrong, replace it with a **cited** one and say so — the current values are marked UNSOURCED
+   engineering tripwires in the script header, anchored only to D15's existing 8-week block floor.
+5. **When the user reports something, reproduce it against the path the USER touches**, not the
+   nearest queryable artifact. The 1RM bug was called "not reproduced" because `personal_records`
+   was checked (correct) while the app actually reads `tandem_working1rm` (stale). Storage is not
+   display.
+6. **If a skill applies, RUN IT in the moment.** Writing "invoke exercise-science-research first"
+   into a tracker row is not delegation, it is deferral — and Kerwin's instruction on 2026-08-17
+   was explicit: *"Run the exercise science skill then on moments like that, instead of just
+   saying to do it."* A `discovery_handling: file_to_bug_log` entry is for things genuinely out
+   of scope, never for work the current session could do.
+
+### Where the existing skills actively enabled this
+
+Named so they get fixed rather than trusted: `feature-loop` defines Resolved as re-verification
+of **code**; `project-goal` defines done as **catalog coverage**; `tandem-tpm` treats **Notion**
+as reality; `discovery_handling: file_to_bug_log` institutionalizes filing-instead-of-doing. All
+four describe *how to work* and none defines *what good looks like as a number about a person*.
+They gave diligence a costume. This section is the missing definition.
+
 ## No branches — green gates go straight to main (2026-08-17, Kerwin, supersedes the PR flow)
 
 Kerwin, 2026-08-17, verbatim: *"I'm tired of branches. It messes everything up. If it works, push
