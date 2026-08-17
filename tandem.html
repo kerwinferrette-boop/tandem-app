@@ -2278,7 +2278,7 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // id is consulted solely when there is no name at all — then it's the only
   // identity available, not a cross-exercise leak.
   const oneRM = exName
-    ? (working[exName]?.rm ?? prs[exName])
+    ? earnedOneRM(working[exName]?.rm, prs[exName])
     : prs[exId];
 
   // EPIC-9 Step E: canonical compound 1RM map (working-first) so accessories
@@ -3256,7 +3256,7 @@ function buildDayHTML(day, phase) {
   day.blocks.forEach(b => (b.exs || []).forEach(e => {
     // EPIC-9: working 1RM first (living number), then C7 name PR. C7/BUG-45:
     // name-only when named — a recycled slot-id can hold another movement's 1RM.
-    const _rm = e && (e.name ? (_dayWorking[e.name]?.rm ?? _dayPrs[e.name]) : _dayPrs[e.id]);
+    const _rm = e && (e.name ? earnedOneRM(_dayWorking[e.name]?.rm, _dayPrs[e.name]) : _dayPrs[e.id]);
     if (!_rm) return;
     dayCompound1RMs[e.name] = _rm;
     // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
@@ -3955,6 +3955,33 @@ function applySwap(id, newName) {
 // entire 13+ range instead: it's the one formula the source validates continuously
 // across both the 10-15 and 15-20 rep bands, so it's a defensible single fallback
 // rather than a fabricated third curve. Flagged for Ralph: get the Desgorces equation.
+// BUG-91 / D11 (SAFETY: earned-only, monotonic). The displayed + prescribed 1RM is
+// the HIGHER of the two earned numbers, not working-first-unconditionally.
+//
+// Why the old `working[name]?.rm ?? prs[name]` was wrong: those two stores do not
+// sync the same way. `tandem_prs` is merged UP from Supabase personal_records on
+// login/restore (two call sites, both max-guarded), but `tandem_working1rm` is
+// device-local — never written to Supabase, never hydrated from it. So a stale
+// local working number outranked a HIGHER all-time PR that had synced from another
+// device or been restored from cloud, and the app showed the lower one forever.
+// clearHistory() made it worse by removing tandem_prs while leaving working intact.
+//
+// Both inputs are earned (reconcileWorking1RMs and the set-log PR path each only
+// ever raise, never lower), so max() cannot fabricate a number — it can only stop
+// a stale copy from hiding a real lift. That is strictly MORE D11-conformant.
+//
+// CAVEAT, flagged not assumed: this presumes the working 1RM is never DELIBERATELY
+// held below the all-time PR. No such mechanism exists today (the old ±2.5% downward
+// nudge died with nudgeWorking1RMs). If a detraining/layoff regression is ever added
+// — a real training concept — that design must revisit this function first.
+function earnedOneRM(workingRm, prRm) {
+  const w = Number.isFinite(workingRm) ? workingRm : null;
+  const p = Number.isFinite(prRm) ? prRm : null;
+  if (w == null) return p ?? undefined;
+  if (p == null) return w;
+  return Math.max(w, p);
+}
+
 function calcRM(w, r) {
   if (r === 1) return w;
   if (r <= 12) return w * (1 + r / 30);                                   // Epley
@@ -4078,7 +4105,10 @@ function buildHistoryModal() {
 
 function clearHistory() {
   if (confirm('Clear all session history, PRs, and progressive overload data?')) {
-    ['tandem_history','tandem_prs','tandem_lastsets'].forEach(k=>localStorage.removeItem(k));
+    // BUG-91: tandem_working1rm belongs in this list. Omitting it left an orphaned
+    // working 1RM that survived the clear, outranked the (now-empty) PR store via
+    // earnedOneRM, and could not be cleared by any UI path.
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm'].forEach(k=>localStorage.removeItem(k));
     buildHistoryModal();
   }
 }
