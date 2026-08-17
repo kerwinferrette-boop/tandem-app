@@ -4933,18 +4933,16 @@ function getWeekSchedule() {
 // slot does not. If he wants a missed day to be picked up rather than passed over, that
 // is a second change to the day cadence and it contradicts a ruling he made himself,
 // so it is surfaced for a decision instead of being silently overridden here.
-function deriveProgramWeek() {
-  const perWeek = Number(cfg?.days);
-  if (!perWeek || perWeek < 1) return null;
-  const cap = Number(cfg.weeks) || 12;
-
-  // Count COMPLETED sessions on/after the program start. A session the user did
-  // not finish is not volume, so it does not advance the program.
+// Completed sessions on/after the program start. The single counter both the week
+// and the day-queue derive from, so they can never disagree about where he is.
+// A session the user did not finish is not volume and does not advance anything —
+// same completed===false rule getOverdueDays() already applies.
+function completedSessionCount() {
   const start = cfg?.startDate ? new Date(cfg.startDate + 'T00:00:00') : null;
   const hist = LS.get('tandem_history') || [];
   let done = 0;
   for (const h of hist) {
-    if (h.completed === false) continue;              // same rule getOverdueDays() uses
+    if (h.completed === false) continue;
     const raw = h.session_date || h.date;
     if (!raw) continue;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -4952,7 +4950,41 @@ function deriveProgramWeek() {
     if (start && !isNaN(start) && d < start) continue; // pre-program history doesn't count
     done++;
   }
-  return Math.max(1, Math.min(cap, Math.floor(done / perWeek) + 1));
+  return done;
+}
+
+function deriveProgramWeek() {
+  const perWeek = Number(cfg?.days);
+  if (!perWeek || perWeek < 1) return null;
+  const cap = Number(cfg.weeks) || 12;
+  return Math.max(1, Math.min(cap, Math.floor(completedSessionCount() / perWeek) + 1));
+}
+
+// ── nextProgramDayKey() — BUG-93. A missed workout is DELAYED, not skipped. ──
+//
+// Kerwin's ruling, 2026-08-17: "The overdue thing can still show, but I don't want it
+// to advance a workout."
+//
+// Before this, getProgramDayNumber() mapped today's CALENDAR slot straight to a program
+// day (cadence[diffDays % 7]). Miss Monday's day1 and Tuesday served day2 — day1 was
+// never performed and never returned. Over a 12-week program that silently drops whole
+// sessions, and it is the day-level twin of the week bug in BUG-92.
+//
+// The program is now a QUEUE. Position is completedSessionCount() % days, so the next
+// training slot always serves the next unperformed workout, however long the gap was.
+//
+// WHAT DELIBERATELY DID NOT CHANGE: computeWeekCadence() still decides, from the
+// calendar, WHETHER today is a training day or a rest day. That is BUG-30/BUG-73
+// territory — recovery gaps, max-consecutive caps, weekday spread — locked by
+// scripts/cadence-smoke.mjs, and it is the right owner of that question. The split is:
+//   calendar  -> train today, or rest?
+//   completion -> which workout?
+// Overdue detection (getOverdueDays) is untouched and still fires, per the ruling: he
+// wants to SEE that he is behind, he just does not want the app to skip past the work.
+function nextProgramDayKey() {
+  const perWeek = Number(cfg?.days);
+  if (!perWeek || perWeek < 1) return null;
+  return 'day' + ((completedSessionCount() % perWeek) + 1);
 }
 
 // Stored week, advanced to the calendar week when the calendar is ahead. Never rewinds.
@@ -4968,7 +5000,15 @@ function currentWeekFromStorage() {
 // phantom Day 5/6/7 on a 4-day plan. Locked by scripts/cadence-smoke.mjs.
 function getProgramDayNumber() {
   const s = getWeekSchedule();
-  return s ? s.cadence[s.todayIndex] : null;
+  if (!s) return null;
+  const slot = s.cadence[s.todayIndex];
+  // BUG-93: the calendar still owns train-vs-rest; the QUEUE owns which workout.
+  // A rest slot stays a rest slot. A training slot serves the next unperformed day
+  // rather than the one the calendar happens to point at, so a missed session is
+  // delayed rather than dropped. Falls back to the calendar mapping if the queue
+  // cannot be computed (no cfg.days), so behaviour never degrades to null.
+  if (slot === 'rest') return 'rest';
+  return nextProgramDayKey() || slot;
 }
 
 // ── getOverdueDays() — BUG-030 rewrite ──
