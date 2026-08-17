@@ -1861,7 +1861,7 @@ sb.auth.onAuthStateChange((event, session) => {
       if (savedCfg?.goal) {
         cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
-        currentWeek = LS.get('tandem_week') || 1;
+        currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
         renderTracker(); showView('dashboard');
       } else {
         // BUG-003 fix: new context (home screen icon, new device) — try cloud restore before onboarding
@@ -4573,7 +4573,7 @@ function skipAuth() {
   if (savedCfg?.goal) {
     cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
-    currentWeek = LS.get('tandem_week') || 1;
+    currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
     renderTracker(); showView('dashboard');
   } else {
     showView('onboard');
@@ -4871,6 +4871,59 @@ function getWeekSchedule() {
   const labelFor = key => key === 'rest' ? 'Rest'
     : (program.find(d => d.key === key)?.label || key).replace(/^Day\s*\d+\s*·\s*/, '');
   return { cadence, todayIndex: ((diffDays % 7) + 7) % 7, program, labelFor };
+}
+
+// ── deriveProgramWeek() — BUG-92. The week never advanced on its own. ──
+//
+// FOUND IN PRODUCTION DATA, not by reading code (2026-08-17). Kerwin's
+// workout_sessions.week_number over three months: Jun 1,2,2,2,3,3,3 → Jul 1,1,1,1,2,2,3,3
+// → Aug 1,1. He restarted three times and NEVER got past week 3 of a 12-week program.
+//
+// Cause: `currentWeek` was only ever written by (a) buildProgram(), which correctly
+// sets it to 1 for a genuinely new program, (b) changeWeek(), a MANUAL arrow the user
+// has to click, and (c) cloud restore. Nothing advanced it with the calendar. grep for
+// currentWeek++ / advanceWeek / weekFromStart found nothing.
+//
+// The damage is not cosmetic. `currentWeek` drives the phase, the rep scheme, the %1RM
+// target AND the rotation context that selects exercises. A user pinned near week 1
+// re-rolls his exercise selection on every rebuild, which is why his horizontal press
+// appears under seven names across six sessions (DB Bench → High Incline + Z-Press →
+// Flat/Decline/Low Incline) while the generator itself is provably stable across weeks
+// 1-8. The fragmentation came from restarts, not from rotation.
+//
+// SHOULD: the week is calendar-anchored to cfg.startDate, exactly as the DAY cadence
+// already is. That is not a new rule — getWeekSchedule() above computes the same
+// diffDays and takes diffDays % 7 for the day slot, "start-date-anchored per Kerwin's
+// call" (BUG-30, locked by scripts/cadence-smoke.mjs). This applies the SAME anchor to
+// the week that was already ruled for the day. The research corpus is SILENT on
+// missed-session catch-up (0 hits for detrain|missed session|layoff in
+// research-report (8).pdf and the Framework docx), so no catch-up rule is invented
+// here — the existing in-repo precedent is used instead of a fabricated one.
+//
+// MONOTONIC BY DESIGN: callers take max(stored, derived), so this can only ever move a
+// user FORWARD. It cannot silently rewind someone who manually browsed back to review
+// an earlier week, and it cannot lose a position restored from cloud. Same
+// never-goes-backward posture as D11's earned-only 1RM.
+//
+// Returns null when there is no usable start date, so every caller falls back to the
+// stored value and nothing changes for a program that predates startDate capture.
+function deriveProgramWeek() {
+  if (!cfg?.startDate) return null;
+  const start = new Date(cfg.startDate + 'T00:00:00');
+  if (isNaN(start)) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((today - start) / 86400000);
+  if (diffDays < 0) return null;                      // start date in the future
+  const wk = Math.floor(diffDays / 7) + 1;            // day 0-6 = week 1
+  const cap = Number(cfg.weeks) || 12;
+  return Math.max(1, Math.min(cap, wk));              // never past the program's end
+}
+
+// Stored week, advanced to the calendar week when the calendar is ahead. Never rewinds.
+function currentWeekFromStorage() {
+  const stored = LS.get('tandem_week') || 1;
+  const derived = deriveProgramWeek();
+  return derived == null ? stored : Math.max(stored, derived);
 }
 
 // ── getProgramDayNumber() — BUG-030 rewrite; delegates to getWeekSchedule ──
@@ -5608,7 +5661,7 @@ function refreshAvatarPreview(){
     if (savedCfg?.goal) {
       cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
-      currentWeek = LS.get('tandem_week') || 1;
+      currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
       if (currentUser) {
         const { data: lastSession } = await sb.from('workout_sessions')
           .select('session_date,day_type')
