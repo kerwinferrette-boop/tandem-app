@@ -51,6 +51,48 @@ const URL_ = process.env.SUPABASE_URL;
 const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const JSON_OUT = process.argv.includes('--json');
 
+// ── CORRECTION, 2026-08-17, same day, before this gate ever ran a cycle ──────
+//
+// The first version of this file counted sessions per `exercise_name` and would
+// have reported Kerwin as barely progressing. He pushed back — "I've benched more
+// than once, it may be called barbell bench press now" — and he was right. The
+// error was mine twice over: I grepped `ILIKE '%bench%'`, got one row back, and
+// treated the absence of a NAME as the absence of the LIFT.
+//
+// What the data actually shows: he pressed on six separate days Jun→Aug and got
+// substantially stronger (High Incline Barbell 135→155 lb in ten days, est 1RM
+// 189→207; Flat Barbell 160 for a 217 est 1RM by August). The progression was
+// real and already recorded. It was invisible because it is spread across seven
+// names: DB Bench Press, Flat Barbell Press, Low Incline, High Incline, Decline,
+// Z-Press, Arnold Press.
+//
+// At the MUSCLE level his coverage is fine — lats 6 training days, biceps 4,
+// calves 4, delts 4, quads 4, chest 3, triceps 3, glutes 3, abs 3. So "the app
+// never trains him" was wrong.
+//
+// The actual defect is FRAGMENTATION: the app rotates the variant on nearly
+// every exposure, so a muscle is trained repeatedly while no single lift ever
+// accumulates a load history.
+//   lateral_delt      4 training days / 4 distinct names
+//   pec_major_sternal 3 training days / 4 distinct names
+//   gastrocnemius     4 training days / 3 distinct names
+// A user cannot see progress, and per-lift progressive overload cannot compute,
+// when the lift changes every session.
+//
+// Two consequences this file must respect:
+//  1. Measure exposure at the MUSCLE level (via the exercises table's
+//     muscle_primary), because that is where "am I training this?" lives.
+//  2. Measure trackability at the NAME level, because that is where "can I see
+//     progress / can overload compute?" lives. These are different questions and
+//     conflating them is what produced the wrong first version.
+//  3. NEVER compare est_1RM across different names as if it were one series.
+//     Decline 231 vs Low Incline 161 is not a regression, it is a different lift.
+//
+// Kerwin caught this within an hour of the file being written. That is the third
+// time in one session the user was the detector. Left in the source rather than
+// quietly rewritten, because the failure mode this file exists to prevent is
+// exactly "confident number, unexamined premise."
+
 // ── Thresholds ───────────────────────────────────────────────────────────────
 // FLAGGED AS UNSOURCED, deliberately and visibly. These are engineering
 // tripwires, NOT exercise-science claims, and CLAUDE.md forbids dressing an
@@ -67,8 +109,17 @@ const JSON_OUT = process.argv.includes('--json');
 // If Kerwin pulls research on training frequency, replace these and cite it.
 const WINDOW_DAYS          = 56;  // 8 weeks — matches D15's block floor
 const MIN_SESSIONS_PRIMARY = 3;   // UNSOURCED tripwire; see above
-const STALE_DAYS           = 21;  // a prescribed lift silent this long is a finding
-const MIN_REPEAT_COVERAGE  = 0.50; // ≥50% of trained exercises should have ≥2 sessions
+const STALE_DAYS           = 21;  // a muscle silent this long is a finding
+const MIN_MUSCLE_EXPOSURE  = 3;   // training days per muscle in the window
+// FRAGMENTATION: distinct exercise names per training day for a muscle.
+// 1.0 = same lift every time (perfectly trackable). Approaching 1 name per
+// session = a new lift every exposure, so nothing accumulates a load history.
+// 0.75 means: across 4 sessions you saw at most 3 different names. UNSOURCED
+// tripwire — it is set to catch lateral_delt's observed 4-names-in-4-sessions,
+// not to encode an optimal rotation rate. D1/D15 govern rotation cadence and
+// say accessories rotate every 2-3 weeks; a name changing EVERY session is
+// faster than D1 itself allows, which is the contradiction this detects.
+const MAX_FRAGMENTATION    = 0.75;
 
 async function q(sql) {
   const res = await fetch(`${URL_}/rest/v1/rpc/exec_sql`, {
@@ -112,6 +163,12 @@ async function main() {
   const users = await rest('users?select=id,name&limit=50');
   if (!users.length) return void (fail('no users in production'), process.exit(1));
 
+  // muscle_primary comes from the exercises table — the ONLY way to ask "is this
+  // muscle being trained" rather than "is this string repeating". See the
+  // correction block above for why that distinction is the whole point.
+  const bank = await rest('exercises?select=name,muscle_primary&limit=1000');
+  const muscleOf = Object.fromEntries(bank.map(e => [e.name, (e.muscle_primary || []).join('+') || 'untagged']));
+
   const since = new Date(Date.now() - WINDOW_DAYS * 864e5).toISOString();
   const report = [];
   let allPass = true;
@@ -119,84 +176,92 @@ async function main() {
   for (const u of users) {
     const sets = await rest(
       `sets?select=exercise_name,created_at,weight_lbs,reps,estimated_1rm_lbs` +
-      `&user_id=eq.${u.id}&created_at=gte.${since}&estimated_1rm_lbs=not.is.null&limit=5000`
+      `&user_id=eq.${u.id}&created_at=gte.${since}&limit=5000`
     );
     if (!sets.length) continue;
 
-    // Group by exercise → distinct training days + 1RM trajectory
-    const byEx = {};
+    // ── Layer 1: MUSCLE exposure — "is this being trained at all?" ───────────
+    const byMuscle = {};
     for (const s of sets) {
-      const day = s.created_at.slice(0, 10);
-      (byEx[s.exercise_name] ||= { days: new Set(), points: [] });
-      byEx[s.exercise_name].days.add(day);
-      byEx[s.exercise_name].points.push({ day, rm: Number(s.estimated_1rm_lbs) });
+      const m = muscleOf[s.exercise_name] || 'unmapped';
+      (byMuscle[m] ||= { days: new Set(), names: new Set() });
+      byMuscle[m].days.add(s.created_at.slice(0, 10));
+      byMuscle[m].names.add(s.exercise_name);
     }
-
-    const exercises = Object.entries(byEx).map(([name, v]) => {
+    const muscles = Object.entries(byMuscle).map(([m, v]) => {
       const days = [...v.days].sort();
-      const first = v.points.filter(p => p.day === days[0]).reduce((m, p) => Math.max(m, p.rm), 0);
-      const last  = v.points.filter(p => p.day === days.at(-1)).reduce((m, p) => Math.max(m, p.rm), 0);
       return {
-        name,
+        muscle: m,
         sessions: days.length,
+        variants: v.names.size,
+        // fragmentation: distinct names per training day. 1.0 = a new lift every session.
+        frag: days.length ? v.names.size / days.length : 0,
         daysSinceLast: Math.floor((Date.now() - new Date(days.at(-1)).getTime()) / 864e5),
-        first1rm: Math.round(first),
-        last1rm: Math.round(last),
-        delta: Math.round(last - first),
-        measurable: days.length >= 2,
       };
-    }).sort((a, b) => b.sessions - a.sessions || b.delta - a.delta);
+    }).sort((a, b) => b.frag - a.frag || b.sessions - a.sessions);
 
-    const total      = exercises.length;
-    const repeated   = exercises.filter(e => e.sessions >= 2).length;
-    const wellTrained= exercises.filter(e => e.sessions >= MIN_SESSIONS_PRIMARY).length;
-    const coverage   = total ? repeated / total : 0;
-    const progressing= exercises.filter(e => e.measurable && e.delta > 0).length;
-    const regressing = exercises.filter(e => e.measurable && e.delta < 0).length;
-    const stale      = exercises.filter(e => e.daysSinceLast > STALE_DAYS && e.sessions >= 2);
+    // ── Layer 2: NAME trackability — "can progress be seen / can overload compute?" ──
+    // Trajectory is computed ONLY within a single name. Never across names.
+    const byName = {};
+    for (const s of sets) {
+      if (s.estimated_1rm_lbs == null) continue;
+      const day = s.created_at.slice(0, 10);
+      (byName[s.exercise_name] ||= { days: new Set(), points: [] });
+      byName[s.exercise_name].days.add(day);
+      byName[s.exercise_name].points.push({ day, rm: Number(s.estimated_1rm_lbs) });
+    }
+    const lifts = Object.entries(byName).map(([name, v]) => {
+      const days = [...v.days].sort();
+      const at = d => v.points.filter(p => p.day === d).reduce((m, p) => Math.max(m, p.rm), 0);
+      return { name, sessions: days.length, trackable: days.length >= 2,
+               delta: Math.round(at(days.at(-1)) - at(days[0])) };
+    }).sort((a, b) => b.sessions - a.sessions);
 
-    report.push({ user: u.name || u.id, total, repeated, wellTrained, coverage,
-                  progressing, regressing, exercises });
+    const trackable  = lifts.filter(l => l.trackable);
+    const progressing= trackable.filter(l => l.delta > 0).length;
+    const regressing = trackable.filter(l => l.delta < 0).length;
+    const fragmented = muscles.filter(m => m.sessions >= 2 && m.frag > MAX_FRAGMENTATION);
+    const under      = muscles.filter(m => m.sessions < MIN_MUSCLE_EXPOSURE);
+    const stale      = muscles.filter(m => m.daysSinceLast > STALE_DAYS);
 
+    report.push({ user: u.name || u.id, muscles, lifts, progressing, regressing });
     if (JSON_OUT) continue;
 
     console.log(`\n═══ ${u.name || u.id} — last ${WINDOW_DAYS} days ═══\n`);
-    console.log(`  exercises trained ................ ${total}`);
-    console.log(`  with >=2 sessions (measurable) ... ${repeated}  (${(coverage * 100).toFixed(0)}%)`);
-    console.log(`  with >=${MIN_SESSIONS_PRIMARY} sessions ............... ${wellTrained}`);
-    console.log(`  measurably STRONGER .............. ${progressing}`);
-    console.log(`  measurably WEAKER ................ ${regressing}`);
-    console.log(`  UNMEASURABLE (single session) .... ${total - repeated}`);
+    console.log(`  muscles trained .................. ${muscles.length}`);
+    console.log(`  trained >=${MIN_MUSCLE_EXPOSURE}x .................... ${muscles.filter(m => m.sessions >= MIN_MUSCLE_EXPOSURE).length}`);
+    console.log(`  lifts with a trackable history .. ${trackable.length} of ${lifts.length}`);
+    console.log(`  measurably STRONGER ............. ${progressing}`);
+    console.log(`  measurably WEAKER ............... ${regressing}`);
 
-    if (exercises.length) {
-      console.log(`\n  exercise                        sessions   1RM        last seen`);
-      console.log(`  ────────────────────────────────────────────────────────────────`);
-      for (const e of exercises.slice(0, 18)) {
-        const trend = !e.measurable ? '     —  unmeasurable'
-                    : `${String(e.first1rm).padStart(4)}→${String(e.last1rm).padEnd(4)} ${e.delta > 0 ? '+' + e.delta : e.delta}`;
-        console.log(`  ${e.name.slice(0, 30).padEnd(30)} ${String(e.sessions).padStart(4)}    ${trend.padEnd(18)} ${e.daysSinceLast}d ago`);
-      }
+    console.log(`\n  muscle                          sessions  names  frag   last`);
+    console.log(`  ──────────────────────────────────────────────────────────────`);
+    for (const m of muscles.slice(0, 16)) {
+      const flag = m.sessions >= 2 && m.frag > MAX_FRAGMENTATION ? ' ← new lift almost every session' : '';
+      console.log(`  ${m.muscle.slice(0, 30).padEnd(30)} ${String(m.sessions).padStart(5)}  ${String(m.variants).padStart(5)}  ${m.frag.toFixed(2)}  ${m.daysSinceLast}d${flag}`);
     }
 
     console.log('');
-    if (coverage < MIN_REPEAT_COVERAGE)
-      allPass = fail(`${u.name || u.id}: only ${(coverage * 100).toFixed(0)}% of exercises have a second session — ` +
-                     `${total - repeated} of ${total} lifts cannot show progress at all. Below the ${MIN_REPEAT_COVERAGE * 100}% floor.`);
-    else ok(`repeat-exposure coverage ${(coverage * 100).toFixed(0)}%`);
+    if (fragmented.length)
+      allPass = fail(`${u.name || u.id}: ${fragmented.length} muscle(s) get a DIFFERENT lift almost every session — ` +
+                     fragmented.slice(0, 4).map(m => `${m.muscle} (${m.variants} names / ${m.sessions} sessions)`).join(', ') +
+                     `. The muscle is trained but no lift accumulates a load history, so progress is invisible and ` +
+                     `per-lift overload cannot compute. Rotating faster than D1's own 2-3 week accessory cadence.`);
+    else ok(`no muscle is fragmented beyond ${MAX_FRAGMENTATION} names/session`);
 
-    if (wellTrained === 0)
-      allPass = fail(`${u.name || u.id}: NOT ONE exercise reached ${MIN_SESSIONS_PRIMARY} sessions in ${WINDOW_DAYS} days. ` +
-                     `A program that never repeats a lift cannot progressively overload it (contradicts D15's 8-week block intent).`);
-    else ok(`${wellTrained} exercise(s) reached ${MIN_SESSIONS_PRIMARY}+ sessions`);
+    if (under.length)
+      allPass = fail(`${u.name || u.id}: ${under.length} muscle(s) trained <${MIN_MUSCLE_EXPOSURE}x in ${WINDOW_DAYS}d — ` +
+                     under.slice(0, 5).map(m => `${m.muscle} (${m.sessions})`).join(', '));
+    else ok(`every trained muscle reached ${MIN_MUSCLE_EXPOSURE}+ sessions`);
 
     if (stale.length)
-      allPass = fail(`${u.name || u.id}: ${stale.length} previously-repeated lift(s) untouched >${STALE_DAYS}d — ` +
-                     stale.slice(0, 5).map(e => `${e.name} (${e.daysSinceLast}d)`).join(', '));
-    else ok(`no established lift stale beyond ${STALE_DAYS}d`);
+      allPass = fail(`${u.name || u.id}: ${stale.length} muscle(s) untouched >${STALE_DAYS}d — ` +
+                     stale.slice(0, 5).map(m => `${m.muscle} (${m.daysSinceLast}d)`).join(', '));
+    else ok(`no muscle stale beyond ${STALE_DAYS}d`);
 
     if (regressing > progressing)
       allPass = fail(`${u.name || u.id}: more lifts regressing (${regressing}) than progressing (${progressing}).`);
-    else ok(`${progressing} progressing vs ${regressing} regressing`);
+    else ok(`${progressing} lift(s) progressing vs ${regressing} regressing`);
   }
 
   if (JSON_OUT) { console.log(JSON.stringify(report, null, 2)); process.exit(0); }
