@@ -524,11 +524,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .calc-result-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
 .pct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .pct-card{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:9px 6px;
-  text-align:center;cursor:pointer;transition:all .15s;}
-.pct-card:hover,.pct-card.on{background:var(--accent-dim);border-color:rgba(24,194,106,.4);}
+  text-align:center;transition:all .15s;}
 .pct-val{font-family:var(--font-display);font-size:19px;color:var(--text);}
 .pct-lbl{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:1px;}
-.pct-card.on .pct-val{color:var(--accent2);}
 .formula-tabs{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
 .ftab{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--s2);
   font-family:var(--font-mono);font-size:10px;color:var(--muted2);cursor:pointer;transition:all .15s;}
@@ -3978,7 +3976,7 @@ function calcORM() {
   const one = calcRM(w, r);
   resEl.textContent = Math.round(one);
   grid.innerHTML = [100,95,90,85,80,75,70,65,60,55,50,45].map(p => `
-    <div class="pct-card" onclick="this.classList.toggle('on')">
+    <div class="pct-card">
       <div class="pct-val">${Math.round(one*p/100)}</div>
       <div class="pct-lbl">${p}%</div>
     </div>`).join('');
