@@ -220,6 +220,40 @@ This keeps granularity clean: per-behavior user stories live in User Story Cover
 (the loop's working tracker), the Bug Log and Epics stay as the human-facing queues,
 and tandem-tpm reconciles a story's Resolved status back onto its linked Bug/Epic.
 
+## No branches — green gates go straight to main (2026-08-17, Kerwin, supersedes the PR flow)
+
+Kerwin, 2026-08-17, verbatim: *"I'm tired of branches. It messes everything up. If it works, push
+it to main. If I don't like it, I'll make a bug note of it and we'll go from there. As long as
+everything is cross referenced from the brand bible we've built on notion and we're using that &
+the other rules as a roadmap before committing, it's fine."*
+
+**This is now the default path, not the exception.** The 2026-07-28 "push to main is authorized
+when the gates are green" allowance below is promoted from *permitted* to *expected*. Do not open
+a PR and wait; do not park verified work on a session branch. Green gates → `git push origin
+HEAD:main` → verify the remote ref by reading it back.
+
+What did NOT change, and is the whole basis of the trade:
+
+1. **The gate is still the gate.** `npm run verify` (9/9, incl. doctrine) **and**
+   `npm run validate:personas` (630) **and** `npm run walkthrough:onboarding` (0 findings) — all
+   **run and shown**, never asserted. Not green, do not push. "If it works" is a condition, not a
+   figure of speech.
+2. **Notion is still law, and the cross-reference is mandatory.** Every program-touching change
+   still names its governing doc (5-Goal Taxonomy / Programming Architecture Reference / Exercise
+   Science Schema v0.5 / Periodization Spec) and states how it conforms, per `doctrine_is_law`
+   and `source_first_rigor` below. The roadmap-before-committing rule is the *reason* branches
+   became unnecessary — it moves review earlier, it doesn't remove it.
+3. **Scope-lock, `max_fix_attempts_per_story`, forbidden-ops, and independent-verification-before-
+   Resolved all still apply exactly as written.** Autonomy on the *destination* is not autonomy on
+   the *process*.
+4. **Still absolutely denied:** force-push (all forms), `netlify deploy`, `supabase
+   apply_migration`. Those can destroy or overwrite; a normal push cannot.
+
+Kerwin's stated backstop is that he files a Bug & QA Log note on anything he doesn't like and it
+gets worked through the normal pipeline. A branch is still correct in exactly one case: a genuine
+human decision is pending (see BUG-59) — that is what `Needs Human` and
+`docs/needs-human-rulings.md` are for, and it is not a way to defer durability.
+
 ## Loop-closure: push on verify, don't sit on the working tree
 
 The loop runs in an **ephemeral remote clone** (Claude Code on the web), so fixes have to
