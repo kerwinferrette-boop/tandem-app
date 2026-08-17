@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -81,6 +81,7 @@ const TIERS = {
   D14: 'SCIENCE_DEFAULT', // realization week shape
   D15: 'SCIENCE_DEFAULT', // fixed primary compounds
   D16: 'SAFETY',          // the override protocol itself is not overridable
+  D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -864,6 +865,84 @@ try {
   if (!/DOCTRINE/.test(String(e.message))) fail('D16', `tier-map completeness check failed: ${e.message}`);
 }
 
+// ── D18 (ACTIVE) — Every slot's candidate pool is non-empty at every tier ──────
+// BUG-82 (Notion 3beca37f935b815c88bcc58f10bd2b8b, filed 2026-08-16, EPIC-026 Phase 1
+// audit): pick()/select() return null on an empty candidate pool and every caller is
+// `if (chosen) { ... }` — the slot is silently dropped, no warning, every other gate
+// stays green. The pre-existing `usable` guard in buildDynamicProgram only checks
+// slots[0] (the primary compound) for the ONE tier a given generation call happens to
+// request. Tier SAFETY per D2's existing "each live goal generates a legal, non-empty
+// program" principle (BUG-82 is that same principle applied per-slot instead of
+// per-program) — an empty pool drops a prescribed exercise on every path (generated,
+// authored, adopted), so no science_overrides escape hatch applies. This is a pure
+// selection-mechanism / string-matching correctness question (does group g match any
+// bank entry's muscleGroups tag), not an exercise-science content question, so it needs
+// no external research citation — see BUG-82's should/could/did audit in the Cycle 54
+// commit body.
+//
+// Extraction mirrors scripts/audit-muscle-tags.mjs's proven technique (regex over the
+// live source + FOCUS_SLOTS/ONEOFF_* read from the running engine, self-checked against
+// the live groupsMatch string) so this gate and that audit can never silently diverge.
+let d18Checked = 0;
+{
+  const liveMatch = code.match(/a === g \|\| a\.startsWith\(g\+'_'\) \|\| a\.startsWith\(g\)/);
+  if (!liveMatch) fail('D18', 'live groupsMatch prefix rule differs from the copy this gate uses — update D18 before trusting its verdict');
+  const groupsMatchD18 = (ex, groups) => {
+    const all = [...(ex.muscleGroups?.primary || []), ...(ex.muscleGroups?.secondary || [])];
+    return groups.some(g => all.some(a => a === g || a.startsWith(g + '_') || a.startsWith(g)));
+  };
+  const callSites = [];
+  for (const [focus, slots] of Object.entries(FOCUS_SLOTS || {})) {
+    slots.forEach(([a, b, cat], i) => callSites.push({ where: `FOCUS_SLOTS.${focus}[${i}]`, groups: [a, b].filter(Boolean), cat }));
+  }
+  callSites.push({ where: 'ONEOFF_CORE_GROUPS', groups: ONEOFF_CORE_GROUPS || [], cat: 'core' });
+  callSites.push({ where: 'ONEOFF_CARDIO_GROUPS', groups: ONEOFF_CARDIO_GROUPS || [], cat: 'cardio' });
+  for (const m of code.matchAll(/role:\s*'[^']*',\s*groups:\s*\[([^\]]*)\]\s*,\s*cat:\s*'([^']*)'/g)) {
+    const groups = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
+    if (groups.length) callSites.push({ where: `slot literal @line${code.slice(0, m.index).split('\n').length}`, groups, cat: m[2] });
+  }
+  for (const m of code.matchAll(/cardioGroups:\s*\[([^\]]*)\]/g)) {
+    const groups = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
+    if (groups.length) callSites.push({ where: `cardioGroups @line${code.slice(0, m.index).split('\n').length}`, groups, cat: 'cardio' });
+  }
+  {
+    const i = code.indexOf('const CORE_GROUPS');
+    if (i !== -1) {
+      const span = code.slice(i, code.indexOf('];', i));
+      const groups = [...span.matchAll(/'([^']+)'/g)].map(x => x[1]);
+      if (groups.length) callSites.push({ where: 'CORE_GROUPS', groups, cat: 'core' });
+    }
+  }
+  if (callSites.length < 20) fail('D18', `only found ${callSites.length} call sites — extraction likely broken (expected 30+)`);
+
+  // KNOWN_GAPS — a bounded, cited exception list. Discovered while building this gate
+  // (BUG-82, Cycle 54): at 'home' tier, EXERCISE_BANK had zero isolation-category
+  // exercises tagged lat_dorsi, bicep, upper_trap, or brachialis/brachioradialis.
+  // Filed as BUG-88 (Notion Bug & QA Log, 2026-08-16) and CLOSED same day (Cycle 55,
+  // exercise-science-research pass): added band-curl, band-hammer-curl,
+  // band-straight-arm-pulldown, band-shrug to EXERCISE_BANK (programs.js) — sourced,
+  // cited entries (Aboodarda et al. 2019 SAGE Open Medicine band-modality equivalence;
+  // Washif et al. 2022 MDPI straight-arm-pulldown lat EMG; hammer-curl brachioradialis
+  // EMG corroboration — full citations in each entry's code comment). All four D18
+  // gaps this allowlist covered are now genuinely closed, not just widened around, so
+  // the set is empty. Left as a Set (not deleted) so a FUTURE bounded, cited exception
+  // has a place to go without restructuring the gate — this list must never grow to
+  // cover a NEW empty-pool defect; that is exactly what D18 exists to catch.
+  const KNOWN_GAPS = new Set([]);
+  for (const site of callSites) {
+    for (const t of TIER_ORDER) {
+      d18Checked++;
+      const reqIdx = TIER_ORDER.indexOf(t);
+      const n = Object.values(EXERCISE_BANK).filter(e =>
+        TIER_ORDER.indexOf(e.tier) <= reqIdx && e.category === site.cat && groupsMatchD18(e, site.groups)).length;
+      const key = `${site.groups.join(',')}|${site.cat}|${t}`;
+      if (n === 0 && !KNOWN_GAPS.has(key)) {
+        fail('D18', `${site.where} [${site.groups.join(',')}] cat=${site.cat}: 0 candidates at tier=${t} — an empty pool silently drops this slot (BUG-82)`);
+      }
+    }
+  }
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -889,6 +968,7 @@ console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12
 console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others maintain) — ${d13Checked} deload-weeks checked`);
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
 console.log(`  D15 primary compounds held for a whole primary block (>=8wk, mesocycle-aligned; <=15wk = one block) — ${d15Checked} assertions over T=4..24`);
+console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (0 allowlisted gaps — BUG-88's 4 pre-existing home-tier gaps closed Cycle 55)`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {

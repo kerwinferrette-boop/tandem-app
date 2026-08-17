@@ -461,6 +461,22 @@ const EXERCISE_BANK = {
     emphasis:['shoulders','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front, and available anywhere a pair of dumbbells is. The direct stimulus for upper-trap mass and a fuller yoke.',
     cues:['Dumbbells at the sides, arms straight, shoulders relaxed to start','Shrug straight up toward the ears — do not roll the shoulders','Hold the top squeeze for one count','Lower to a full stretch at the bottom before the next rep']},
+  'band-shrug':{
+    // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero upper_trap
+    // isolation exercises. Mirrors barbell-shrug/db-shrug's own rationale (direct upper-trap
+    // stimulus via straight-arm elevation) applied to a band anchored underfoot. Band-vs-free-weight
+    // modality equivalence (comparable activation/hypertrophy when volume/intensity matched):
+    // Aboodarda et al. 2019, SAGE Open Medicine, meta-analysis of elastic resistance training.
+    // FLAG: no band-shrug-specific EMG study was found (repo research-report(8)/Framework docx are
+    // silent on band exercises entirely — 0 hits for 'band'/'elastic'/'shrug'); this entry rests on
+    // (a) the established anatomical case for shrugging as upper-trap's direct action, already
+    // accepted for the barbell/DB entries above, plus (b) the general band-modality-equivalence
+    // meta-analysis — not a band-shrug-specific citation. Flagged per CLAUDE.md rather than invented.
+    name:'Band Shrug', videoId:null,
+    muscleGroups:{primary:['upper_trap']},
+    emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull, needing no equipment beyond a band.',
+    cues:['Stand on the band with both feet, one handle in each hand','Arms straight throughout — do not bend the elbows','Shrug straight UP toward the ears — do not roll the shoulders','Hold the top squeeze for one count, then lower to a full stretch']},
   'alternating-db-shoulder-press':{
     name:'Alternating DB Shoulder Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep','core']},
@@ -517,6 +533,19 @@ const EXERCISE_BANK = {
     emphasis:['back','pull','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The only movement that isolates the lat without any bicep contribution — the arm stays straight throughout. Trains the lat-to-hip-drive pattern that makes deadlifts and rows stronger.',
     cues:['Cable overhead, arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
+  'band-straight-arm-pulldown':{
+    // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero lat_dorsi isolation
+    // exercises. Same movement pattern as straight-arm-pulldown above (only cable->band swap),
+    // citing that entry's own rationale plus: (a) Washif et al. 2022, MDPI Applied Sciences —
+    // straight-arm pulldown produces significantly higher concentric lat-dorsi activation than
+    // compound press movements; (b) Aboodarda et al. 2019, SAGE Open Medicine — band resistance
+    // produces comparable muscle activation/hypertrophy to free weights/cable when volume and
+    // intensity are matched, the citation already used for every other band-* entry in this bank.
+    name:'Band Straight-Arm Pulldown', videoId:null,
+    muscleGroups:{primary:['lat_dorsi'],secondary:['long_head_tricep','posterior_delt']},
+    emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'The only home-tier movement that isolates the lat without any bicep contribution — the arm stays straight throughout, same pattern as the cable version. Trains the lat-to-hip-drive pattern that makes deadlifts and rows stronger, needing only a band anchored overhead.',
+    cues:['Anchor the band overhead (door anchor or high point), arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
   'neutral-grip-lat-pulldown':{
     name:'Neutral-Grip Lat Pulldown', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','rhomboid','posterior_delt']},
@@ -695,6 +724,35 @@ const EXERCISE_BANK = {
     emphasis:['biceps','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The rope keeps a neutral grip under constant cable tension through the whole range — including the stretch at the bottom where dumbbells go slack — making it the most consistent brachialis/brachioradialis builder for arm thickness.',
     cues:['Rope attachment at the low pulley, neutral grip','Curl up keeping the elbows pinned to the sides','Flare the rope ends apart slightly at the top for peak squeeze','Lower slowly against the constant cable tension']},
+  'band-curl':{
+    // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero bicep_brachii
+    // isolation exercises — this single entry closes 5 of the 10 empty-pool checks BUG-88 named
+    // (FOCUS_SLOTS.back[3], arms[0], arms[2], pull[2]/[4] all request bare ['bicep']; groupsMatch's
+    // prefix rule already makes 'bicep_brachii' satisfy a ['bicep'] search, same as every other
+    // bicep entry in this bank). Standard supinated-grip curl, same pattern as barbell-curl/db-curl
+    // above. Citation: Aboodarda et al. 2019, SAGE Open Medicine meta-analysis — band resistance
+    // training produces comparable muscle activation and hypertrophy to free weights when volume
+    // and intensity are matched (the same citation already used for band-chest-fly/band-lateral-raise
+    // elsewhere in this bank).
+    name:'Band Curl', videoId:null,
+    muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
+    emphasis:['biceps','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'The standard supinated curl pattern, needing only a band anchored underfoot — band tension rises through the range, peaking near the top where the bicep is already strongest, unlike a dumbbell which goes light at lockout.',
+    cues:['Stand on the band, one handle in each hand, supinated grip','Elbows pinned to sides — do not let them drift forward','Full extension at bottom (stretch)','Squeeze at the top; do not swing — hinge at the elbow only']},
+  'band-hammer-curl':{
+    // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero brachialis/
+    // brachioradialis isolation exercises — closes FOCUS_SLOTS.arms[4]. Same neutral-grip pattern
+    // as hammer-curl (DB) above. Citation: comparative EMG work on curl variants (summarized via
+    // Garage Gym Reviews' review of the primary literature, corroborating hammer-curl's own
+    // in-bank rationale) found the neutral/pronated grip drives the greatest brachioradialis
+    // activation and higher brachialis recruitment than the supinated curl — the reason the DB
+    // version above is tagged brachialis/brachioradialis-primary rather than bicep_brachii-primary.
+    // Band-modality equivalence: Aboodarda et al. 2019, SAGE Open Medicine (see band-curl above).
+    name:'Band Hammer Curl', videoId:null,
+    muscleGroups:{primary:['brachialis','brachioradialis'],secondary:['bicep_brachii']},
+    emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Neutral grip shifts the primary load to brachialis — the muscle beneath the bicep that pushes it up — same as the dumbbell version, using only a band anchored underfoot. Also trains brachioradialis for forearm size.',
+    cues:['Stand on the band, neutral grip (thumbs up), one handle in each hand','Elbows fixed to sides','Can be done simultaneously or alternating','Keep the wrist neutral throughout']},
 
   // ── TRICEPS ───────────────────────────────────────────
   'tricep-rope-pushdown':{
@@ -1362,7 +1420,14 @@ const FOCUS_SLOTS = {
   full_body: [['pec_major','pec','compound'],['lat_dorsi','','compound'],['quad','','compound'],['hamstring','glute_max','compound'],['anterior_delt','lateral_delt','isolation']],
 };
 const ONEOFF_CORE_GROUPS = ['rectus_abdominis','transverse_abdominis','oblique','quadratus_lumborum','erector_spinae'];
-const ONEOFF_CARDIO_GROUPS = ['full_body','lower_body','glute_max'];
+// BUG-83 (2026-08-16, EPIC-026 Phase 1 audit, Notion 3beca37f935b813e8ddadd7a6f2ea0e5): 'lower_body'
+// removed — it never matched any exercise's muscleGroups tag (cardio entries carry emphasis:['lower_body',...]
+// but groupsMatch checks muscleGroups.primary/secondary, a different field; 'lower_body' is not a muscle-group
+// tag anywhere in EXERCISE_BANK). Verified behavior-neutral: 'full_body' and 'glute_max' already match every
+// cardio candidate 'lower_body' was ever meant to catch (node scripts/audit-muscle-tags.mjs confirms 0 exercises
+// under the live prefix rule). Same removal applied to the two TEMPLATES cardioGroups arrays and
+// SHOULDER_TEMPLATE below that also carried this dead token.
+const ONEOFF_CARDIO_GROUPS = ['full_body','glute_max'];
 
 function getSingleDay(focus, opts = {}) {
   const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -1629,7 +1694,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['pec_major','pec'],                          cat:'isolation'},
         {role:'acc2',      groups:['tricep'],                                   cat:'isolation'},
         {role:'acc3',      groups:['posterior_delt','lateral_delt'],            cat:'isolation'},
-      ], cardioGroups:['full_body','lower_body','glute_max'] },
+      ], cardioGroups:['full_body','glute_max'] },
     { key:'day2', label:'Day 2 · Lower Hinge', color:'var(--amber)',
       rationale:'Hip hinge pattern — glutes, hamstrings, posterior chain. Calf and hip abductor accessories.',
       slots:[
@@ -1638,7 +1703,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['glute_max','glute_medius','glute_minimus'], cat:'isolation'},
         {role:'acc2',      groups:['hamstring'],                                cat:'isolation'},
         {role:'acc3',      groups:['gastrocnemius','soleus','calf'],            cat:'isolation'},
-      ], cardioGroups:['full_body','lower_body','glute_max'] },
+      ], cardioGroups:['full_body','glute_max'] },
     { key:'day3', label:'Day 3 · Upper Pull', color:'var(--blue)',
       rationale:'Vertical and horizontal pull emphasis — back, biceps. Rear delt accessory balances the press.',
       slots:[
@@ -1688,7 +1753,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       {role:'acc3',    groups:['tricep'],                       cat:'isolation'},
       {role:'acc4',    groups:['bicep'],                        cat:'isolation'},
     ],
-    cardioGroups:['full_body','lower_body','glute_max'],
+    cardioGroups:['full_body','glute_max'],
   };
 
   try {
