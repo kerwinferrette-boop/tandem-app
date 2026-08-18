@@ -45,8 +45,11 @@ const tagsOf      = (s) => [...primaryOf(s), ...secondaryOf(s)];
 // ── The live matcher, copied verbatim from programs.js so the audit measures
 //    what the engine ACTUALLY does, not what we wish it did. If this drifts from
 //    the real groupsMatch, the assertion at the bottom fails loudly.
+// BUG-87 (2026-08-18): the bare `tag.startsWith(group)` fallback was removed from
+// the live rule (it let 'quad' collide with 'quadratus_lumborum') — this copy
+// follows suit so the audit keeps measuring reality, not the pre-fix rule.
 const matches = (tag, group) =>
-  tag === group || tag.startsWith(group + '_') || tag.startsWith(group);
+  tag === group || tag.startsWith(group + '_');
 
 // ── Slot definitions: FOCUS_SLOTS / ONEOFF_* come from the runtime. TEMPLATES,
 //    SHOULDER_TEMPLATE and CORE_GROUPS are function-local, so scan the source for
@@ -225,6 +228,14 @@ if (process.argv.includes('--table')) {
 // ── Self-check: the matcher above must still be the one programs.js uses. If the
 //    engine's rule changes and this copy doesn't, every number above goes quietly
 //    wrong — exactly the silent-failure class this project keeps getting bitten by.
-const live = src.match(/a === g \|\| a\.startsWith\(g\+'_'\) \|\| a\.startsWith\(g\)/);
-console.log(`\n${live ? 'OK' : 'WARNING'}: live groupsMatch prefix rule ${live ? 'matches' : 'DIFFERS FROM'} the copy used by this audit.`);
+// BUG-87 (2026-08-18): both live copies (getSingleDay, buildDynamicProgram) must have
+// the bare `|| a.startsWith(g)` fallback REMOVED — its presence is the regression this
+// guards against, not just the presence of the `g + '_'` rule.
+const fixedRule = /a === g \|\| a\.startsWith\(g\s*\+\s*'_'\)\)\)/g;
+const staleRule = /a\.startsWith\(g\s*\+\s*'_'\)\s*\|\|\s*a\.startsWith\(g\)\)/;
+const fixedCount = [...src.matchAll(fixedRule)].length;
+const regressed = staleRule.test(src);
+const live = fixedCount >= 2 && !regressed;
+console.log(`\n${live ? 'OK' : 'WARNING'}: live groupsMatch prefix rule ${live ? 'matches' : 'DIFFERS FROM'} the copy used by this audit` +
+  ` (fixed-pattern copies found: ${fixedCount}, stale bare-fallback present: ${regressed}).`);
 if (!live) process.exitCode = 1;

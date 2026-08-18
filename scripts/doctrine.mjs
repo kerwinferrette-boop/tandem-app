@@ -886,11 +886,17 @@ try {
 // the live groupsMatch string) so this gate and that audit can never silently diverge.
 let d18Checked = 0;
 {
-  const liveMatch = code.match(/a === g \|\| a\.startsWith\(g\+'_'\) \|\| a\.startsWith\(g\)/);
+  // BUG-87 (2026-08-18): the bare `|| a.startsWith(g)` fallback was removed from the
+  // live rule (it let 'quad' collide with 'quadratus_lumborum', a lower-back muscle,
+  // in a leg slot) — this copy and its self-check follow suit. See programs.js's
+  // groupsMatch (getSingleDay + buildDynamicProgram) for the fix + verification.
+  const fixedPattern = /a === g \|\| a\.startsWith\(g\s*\+\s*'_'\)\)\)/g;
+  const staleFallback = /a\.startsWith\(g\s*\+\s*'_'\)\s*\|\|\s*a\.startsWith\(g\)\)/;
+  const liveMatch = [...code.matchAll(fixedPattern)].length >= 2 && !staleFallback.test(code);
   if (!liveMatch) fail('D18', 'live groupsMatch prefix rule differs from the copy this gate uses — update D18 before trusting its verdict');
   const groupsMatchD18 = (ex, groups) => {
     const all = [...(ex.muscleGroups?.primary || []), ...(ex.muscleGroups?.secondary || [])];
-    return groups.some(g => all.some(a => a === g || a.startsWith(g + '_') || a.startsWith(g)));
+    return groups.some(g => all.some(a => a === g || a.startsWith(g + '_')));
   };
   const callSites = [];
   for (const [focus, slots] of Object.entries(FOCUS_SLOTS || {})) {

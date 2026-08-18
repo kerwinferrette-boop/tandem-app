@@ -1438,9 +1438,15 @@ function getSingleDay(focus, opts = {}) {
   const injuryBlocked = makeInjuryBlocked(opts.injuries);
   const tierOk = (e) => tierOrder.indexOf(e.tier) <= (reqIdx < 0 ? 2 : reqIdx);
   // groupsMatch — identical prefix rule to buildDynamicProgram's
+  // BUG-87 (2026-08-18): the trailing `|| a.startsWith(g)` bare-prefix fallback let a
+  // slot's group name collide with an unrelated muscle tag that merely shares a leading
+  // substring — 'quad' matched 'quadratus_lumborum' (a lower-back/core muscle), pulling a
+  // lumbar exercise into a leg slot. Verified behavior-neutral otherwise: every other
+  // requested group's matched-exercise set is identical with the fallback removed
+  // (node scripts/audit-muscle-tags.mjs confirms 0 collisions, 0 new dead terms).
   const groupsMatch = (e, groups) => {
     const all = [...(e.muscleGroups.primary || []), ...(e.muscleGroups.secondary || [])];
-    return groups.some(g => all.some(a => a === g || a.startsWith(g + '_') || a.startsWith(g)));
+    return groups.some(g => all.some(a => a === g || a.startsWith(g + '_')));
   };
   // deterministic candidate pool — identical sort to bank()
   const select = (groups, cat, used) => Object.values(EXERCISE_BANK)
@@ -1527,9 +1533,11 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
   // filter helpers
   const tierOk = (ex) => tierOrder.indexOf(ex.tier) <= reqIdx;
+  // BUG-87 (2026-08-18): bare-prefix fallback removed — see identical fix + rationale
+  // on getSingleDay's groupsMatch above.
   const groupsMatch = (ex, groups) => {
     const all = [...(ex.muscleGroups.primary||[]),...(ex.muscleGroups.secondary||[])];
-    return groups.some(g => all.some(a => a === g || a.startsWith(g+'_') || a.startsWith(g)));
+    return groups.some(g => all.some(a => a === g || a.startsWith(g+'_')));
   };
   // GEN-fix (exercise-selection mechanism): bank() now returns a candidate
   // pool in a fixed, explainable priority order instead of raw EXERCISE_BANK
