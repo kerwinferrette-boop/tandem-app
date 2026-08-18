@@ -30,8 +30,17 @@ not ship on a selection engine with a live collision bug in it.
       anatomy, not a training-science finding. No new science citation required. It sits under
       existing D2 (legal programs) + the same slot-returns-what-it-asked-for principle D18 encodes.
 - [ ] **2. Ship MOVEMENT_FAMILIES** — canonical macro/micro exercise taxonomy in `programs.js`.
-- [ ] **3. Fix BUG-87** — `groupsMatch` prefix collisions (quad→quadratus_lumborum live;
-      lat→lateral_delt latent). Changes live selection logic.
+- [x] **3. Fix BUG-87** — DONE 2026-08-18, pushed `main` @ `4191df6`. Removed the bare
+      `|| a.startsWith(g)` fallback from both live `groupsMatch` copies (`getSingleDay`,
+      `buildDynamicProgram`) plus its two regression-guard mirrors (`scripts/audit-muscle-
+      tags.mjs`, `scripts/doctrine.mjs` D18). Verified: `node scripts/audit-muscle-tags.mjs`
+      → 0 cross-parent collisions (was 1: quad→quadratus_lumborum); full old-vs-new
+      coverage diff across all 30 slot call sites shows 'quad' is the ONLY group affected,
+      losing exactly `quadratus_lumborum` and nothing else. `npm run verify` 9/9,
+      `validate:personas` 630/630, `walkthrough:onboarding` 0 findings, all green post-fix.
+      `lat`→`lateral_delt` was confirmed still latent (no live call site requests bare
+      `lat` today) but is now structurally impossible too, since the fix removed the
+      mechanism, not just this one instance.
 - [ ] **4. Five stale-checks** — thread through gaps. The DB-column-rename check is NOT optional
       regardless of the ~80% already-fixed prior (a stale rename silently corrupts writes).
 - [ ] **5. BUG-38 Phase A** — RPE input UI. No dependency; Phase B stays citation-blocked.
@@ -62,6 +71,20 @@ not ship on a selection engine with a live collision bug in it.
   only). Step 5 (RPE UI) deliberately held back from the workflow: it touches `tandem.html` while
   the builds touch `programs.js`, and running both against worktrees branched from the same main
   risks a messy merge. Do it in the main checkout AFTER the workflow lands.
+- **2026-08-18 (later same day, next session)** — Workflow `w3q60pnhf`'s output was never found
+  on disk or on a remote ref when this session resumed — steps 2/4/6 had NOT actually landed
+  despite the progress log entry above implying they were in flight (MOVEMENT_FAMILIES absent,
+  `docs/epic-029-scope.md` absent, `scripts/movement-families-check.mjs` absent). Only step 3
+  (BUG-87) was re-done from scratch this session, directly in the main checkout (not a worktree),
+  verified per CLAUDE.md's should/could/did audit, and pushed straight to `main` @ `4191df6` per
+  the "No branches" policy. Steps 2, 4, 5, 6, 7 remain exactly as unstarted as the checklist above
+  shows — do not assume the prior session's launched workflow produced anything recoverable.
+  Also ran the outcome gate this cycle (via Supabase MCP `execute_sql`, replicating
+  `scripts/outcome.mjs`'s logic, since `SUPABASE_SERVICE_ROLE_KEY` is not set as an env var in
+  this session): Kerwin is still RED on all four outcome checks (5 fragmented muscles, 20/25
+  under-exposed, 15 stale, 3 regressing > 2 progressing), and Dani has had 0 sets in 69 days —
+  a real user gone completely dark, invisible to the gate's own skip-empty-user logic. Reported
+  to Kerwin directly via notification; not something code in this repo can fix.
 
 ### If you are resuming cold, read this
 Run `git log --oneline -15` and `npm run verify` first. The wave is additive and each step is
