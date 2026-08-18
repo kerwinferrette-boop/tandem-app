@@ -81,6 +81,7 @@ const TIERS = {
   D14: 'SCIENCE_DEFAULT', // realization week shape
   D15: 'SCIENCE_DEFAULT', // fixed primary compounds
   D16: 'SAFETY',          // the override protocol itself is not overridable
+  D17: 'SAFETY',          // PENDING — same class as D11, a live violation was user-facing load prescription
   D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
 };
 
@@ -949,6 +950,7 @@ const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
   ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
+  ['D17', 'No database object (view/function/trigger) may emit a prescriptive load — closes the blind spot that let a fixed +/-2.5% ratchet live in a Postgres view (BUG-38/BUG-72) while file-side D11 reported 882/882 green. Tier SAFETY (same class as D11). Enforcement: Kerwin ruled option (b) 2026-08-17 — a DB-connected sweep, scripts/d17-db-sweep.mjs, run manually until a CI service-role credential exists. Ran live 2026-08-17: 0 hits. NOT wired into this gate — doing so today would itself be the failure this invariant is about, a check claiming to see what it cannot', 'when a CI DB credential exists'],
 ];
 
 // ── Report ─────────────────────────────────────────────────────────────────────
