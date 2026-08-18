@@ -83,6 +83,7 @@ const TIERS = {
   D16: 'SAFETY',          // the override protocol itself is not overridable
   D17: 'SAFETY',          // PENDING — same class as D11, a live violation was user-facing load prescription
   D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
+  D19: 'SAFETY',          // a slot returns what it asked for — muscle-group matching is anchored
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -950,6 +951,85 @@ let d18Checked = 0;
   }
 }
 
+// ── D19 (ACTIVE) — muscle-group matching is ANCHORED at the taxonomy separator ─
+// BUG-87 (2026-08-18, EPIC-026 Phase 2; docs/epic-026-submuscle-audit.md §3 Defect 1).
+// groupsMatch used to read `a === g || a.startsWith(g+'_') || a.startsWith(g)`. The
+// third clause strictly SUBSUMES the first two, so what actually executed was a bare
+// unanchored prefix test: a request token matched any bank tag merely BEGINNING with
+// the same characters, ignoring the '_' boundary the sub-muscle vocabulary is built on.
+// Live consequence: a bare 'quad' slot matched 'quadratus_lumborum' — a lower-back
+// muscle — so a quadriceps slot could be filled with lumbar work.
+//
+// TIER + CITATION (state this precisely, it is the subtle part): this is an
+// ENGINEERING-CORRECTNESS invariant, not an exercise-science finding. "A quad slot must
+// not return a lumbar muscle" needs no research citation because quadratus lumborum
+// being a lower-back muscle is DEFINITIONAL anatomy, not a training-science claim. It
+// sits under existing doctrine rather than new doctrine: D2's "each live goal generates
+// a LEGAL program" and the same slot-returns-what-it-asked-for principle D18 encodes
+// (D18 says the pool is non-empty; D19 says the pool is the RIGHT pool). Tier SAFETY for
+// D18's reason — a mis-targeted slot ships on every path (generated, authored, adopted),
+// so no science_overrides escape hatch applies. What is NOT settled here, and is
+// deliberately not asserted: whether the sub-muscle VOCABULARY itself is scientifically
+// correct. That is EPIC-026 Phase 3's exercise-science-research pass
+// (docs/epic-026-submuscle-audit.md:522-525), still owed.
+//
+// TEETH: this does not regex the source and call it a day. It EXTRACTS the live matching
+// expression from programs.js, compiles it, and tests the real shipped predicate against
+// an independently-written reference over the full cross-product of every request token
+// and every muscle tag in EXERCISE_BANK. Re-adding the unanchored clause makes the
+// quad/quadratus_lumborum pair diverge and the gate goes red.
+let d19Checked = 0;
+{
+  // Both copies must exist and must be byte-identical in rule text — getSingleDay's
+  // one-off engine and buildDynamicProgram's bank() are required to select alike.
+  const rules = [...code.matchAll(/const groupsMatch = \((?:e|ex), groups\) => \{[\s\S]*?return groups\.some\(g => all\.some\(a => (.+?)\)\);\s*\};/g)].map(m => m[1]);
+  if (rules.length !== 2) {
+    fail('D19', `expected exactly 2 groupsMatch definitions in programs.js, found ${rules.length} — the one-off and generated engines must both be gated`);
+  }
+  const norm = (s) => s.replace(/\s+/g, '');
+  if (rules.length === 2 && norm(rules[0]) !== norm(rules[1])) {
+    fail('D19', `the two groupsMatch rules differ — getSingleDay and buildDynamicProgram would select differently:\n      one-off: ${rules[0]}\n      generated: ${rules[1]}`);
+  }
+  // Reference rule, written independently of the source expression: a tag satisfies a
+  // request token iff it IS that token, or is one of its children below the '_' separator.
+  const reference = (a, g) => a === g || a.startsWith(g + '_');
+
+  // Request-token extraction, done independently of D18's copy on purpose: two
+  // independent extractions that agree are worth more than one shared helper.
+  const tokens = new Set();
+  for (const slots of Object.values(FOCUS_SLOTS || {})) for (const [a, b] of slots) { if (a) tokens.add(a); if (b) tokens.add(b); }
+  for (const t of (ONEOFF_CORE_GROUPS || [])) tokens.add(t);
+  for (const t of (ONEOFF_CARDIO_GROUPS || [])) tokens.add(t);
+  for (const m of code.matchAll(/(?:groups|cardioGroups):\s*\[([^\]]*)\]/g)) {
+    for (const q of m[1].matchAll(/'([^']+)'/g)) tokens.add(q[1]);
+  }
+  {
+    const i = code.indexOf('const CORE_GROUPS');
+    if (i !== -1) for (const q of code.slice(i, code.indexOf('];', i)).matchAll(/'([^']+)'/g)) tokens.add(q[1]);
+  }
+  if (tokens.size < 20) fail('D19', `only extracted ${tokens.size} request tokens — extraction likely broken (expected 25+)`);
+
+  // Every muscle tag the bank actually uses.
+  const tags = new Set();
+  for (const e of Object.values(EXERCISE_BANK)) {
+    for (const a of [...(e.muscleGroups?.primary || []), ...(e.muscleGroups?.secondary || [])]) tags.add(a);
+  }
+
+  for (const [idx, expr] of rules.entries()) {
+    let live;
+    try { live = new Function('a', 'g', `return ${expr};`); }
+    catch (err) { fail('D19', `could not compile live groupsMatch rule #${idx + 1} (${expr}): ${err.message}`); continue; }
+    for (const g of tokens) {
+      for (const a of tags) {
+        d19Checked++;
+        if (live(a, g) !== reference(a, g)) {
+          fail('D19', `groupsMatch copy #${idx + 1} is not anchored: request token '${g}' ${live(a, g) ? 'MATCHES' : 'fails to match'} bank tag '${a}' — expected ${reference(a, g)}. An unanchored prefix lets a slot return a different parent muscle (BUG-87: bare 'quad' matched 'quadratus_lumborum', a lower-back muscle).`);
+        }
+      }
+    }
+  }
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -977,6 +1057,7 @@ console.log(`  D13 goal-specific deload intensity (Hypertrophy dips, others main
 console.log(`  D14 realization weeks (final-week strength test, not a light week) — ${d14Checked} checks`);
 console.log(`  D15 primary compounds held for a whole primary block (>=8wk, mesocycle-aligned; <=15wk = one block) — ${d15Checked} assertions over T=4..24`);
 console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (0 allowlisted gaps — BUG-88's 4 pre-existing home-tier gaps closed Cycle 55)`);
+console.log(`  D19 muscle-group matching is anchored at '_' — a slot returns what it asked for (BUG-87) — ${d19Checked} token×tag checks against the live compiled rule, both engines`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {

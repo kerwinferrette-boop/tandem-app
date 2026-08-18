@@ -29,7 +29,19 @@ not ship on a selection engine with a live collision bug in it.
       ENGINEERING-CORRECTNESS claim — quadratus lumborum being a lower-back muscle is definitional
       anatomy, not a training-science finding. No new science citation required. It sits under
       existing D2 (legal programs) + the same slot-returns-what-it-asked-for principle D18 encodes.
-- [ ] **2. Ship MOVEMENT_FAMILIES** — canonical macro/micro exercise taxonomy in `programs.js`.
+- [x] **2. Ship MOVEMENT_FAMILIES** — DONE 2026-08-18. 48 families over all 175 slugs, INERT
+      (nothing reads it). `scripts/movement-families-check.mjs` enforces 7 invariants. **11 gaps
+      flagged in the in-file header as G1–G11, not guessed** — the one needing a ruling: v0.5's
+      8-value enum has no value for trunk work or conditioning, so 30 slugs carry `pattern: null`
+      (24 core, 6 cardio). v0.5 handles conditioning at a different level entirely (Table 3
+      `template_sessions.day_type` includes 'conditioning'), so forcing them into `isolation` would
+      have been fabrication — a Rower is not isolation, a Pallof Press is not single-joint.
+      Also flagged: no lunge/unilateral or bridging value; `carry` has zero members (bank has no
+      loaded carry at all); no conventional Barbell Deadlift slug despite v0.5 naming it canonical;
+      `canonicalLift` null on 43/48 families because v0.5's table names only five.
+      **Known process gap:** the check script is NOT in `npm run verify` yet, so the
+      exactly-one-family invariant can rot when a bank entry is added. Wiring a gate in the same
+      change that adds the data it gates is bad practice — land it as a follow-up.
 - [x] **3. Fix BUG-87** — DONE 2026-08-18, pushed `main` @ `4191df6`. Removed the bare
       `|| a.startsWith(g)` fallback from both live `groupsMatch` copies (`getSingleDay`,
       `buildDynamicProgram`) plus its two regression-guard mirrors (`scripts/audit-muscle-
@@ -85,6 +97,23 @@ not ship on a selection engine with a live collision bug in it.
   under-exposed, 15 stale, 3 regressing > 2 progressing), and Dani has had 0 sets in 69 days —
   a real user gone completely dark, invisible to the gate's own skip-empty-user logic. Reported
   to Kerwin directly via notification; not something code in this repo can fix.
+
+- **2026-08-18 (correction to the entry above)** — the note saying workflow `w3q60pnhf`'s output
+  "was never found on disk or on a remote ref" is **wrong, and worth understanding rather than just
+  deleting.** The output was never lost. It was sitting uncommitted in the workflow's git
+  worktrees at `.claude/worktrees/wf_026b87a8-f9d-2` and `-3` — which is exactly where
+  `isolation: 'worktree'` agents are supposed to leave it. The prior session checked `git log`
+  and the main checkout, found nothing, and concluded the work didn't exist. **"Not on a branch"
+  and "does not exist" are different claims** — the same conflation the durability section of
+  loop-config already warns about, repeated. Recovered both worktrees by patch; nothing was
+  rebuilt. Whoever resumes a workflow-launched wave: run `git worktree list` FIRST.
+  Consequence of the double-work: BUG-87 got fixed twice, independently and identically (both
+  removed the bare `|| a.startsWith(g)` from both `groupsMatch` copies). Theirs landed first at
+  `4191df6` and is what's on main; mine was discarded in favour of it. Kept from mine: the
+  MOVEMENT_FAMILIES taxonomy and the **D19** invariant, which is stronger than the D18 mirror-sync
+  they shipped — D19 runs 3,024 token×tag checks against the *live compiled rule* extracted from
+  BOTH engines, so the two copies cannot silently diverge. Proved it has teeth rather than
+  asserting it: reverted the fix, watched D19 go red naming the exact collision, restored, green.
 
 ### If you are resuming cold, read this
 Run `git log --oneline -15` and `npm run verify` first. The wave is additive and each step is

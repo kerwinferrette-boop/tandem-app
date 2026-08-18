@@ -1292,6 +1292,234 @@ const EXERCISE_BANK = {
 };
 
 // ═══════════════════════════════════════════════════════
+// MOVEMENT_FAMILIES — canonical movement taxonomy over EXERCISE_BANK
+//
+// ── PROVENANCE (this is NOT a new invention) ───────────────────────────
+// Exercise Science Schema v0.5 (Notion page 37bca37f935b81cb9478e4906ada58c9),
+// Part 3 "Proposed Supabase Schema", Table 1 `exercises`, specifies VERBATIM:
+//
+//   • `movement_pattern` — horizontal_push | horizontal_pull | vertical_push |
+//     vertical_pull | squat | hinge | carry | isolation
+//   • `canonical_lift` — "which barbell lift this exercise maps to (e.g.
+//     'Barbell Bench Press'). NULL for exercises with no barbell equivalent."
+//
+// Both fields were specified in v0.5 and NEVER POPULATED. EPIC-026's sub-muscle
+// audit confirmed it: `movement_pattern` is 0/171 populated — "schema ahead of
+// data" (docs/epic-026-submuscle-audit.md). This const populates that field in
+// code, ahead of any migration. It invents no taxonomy.
+//
+// The five `canonicalLift` values used below are ONLY the ones v0.5's own
+// load_coefficient table names, together with the exercises it maps to them:
+//   Barbell Bench Press   ← Dumbbell Bench Press 0.76, Dumbbell Incline Press 0.70,
+//                           Smith Machine Bench 0.95, Machine Chest Press 1.05
+//   Barbell Squat         ← Leg Press 1.27, Goblet Squat 0.17, Hack Squat 0.95
+//   Barbell Deadlift      ← Dumbbell RDL 0.55
+//   Weighted Pull-up      ← Lat Pulldown 0.90
+//   Barbell Overhead Press← Dumbbell Shoulder Press 0.80, Arnold Press 0.65
+// Every other family carries `canonicalLift: null`. That is v0.5's own rule for
+// accessory work, restated in its Part 5 Open Question 3: "Exercises with no
+// canonical lift: Lateral raises, curls, pushdowns — no barbell 1RM to derive
+// from. Recommendation: prescribe by RPE only." Where a barbell version exists
+// in the bank but v0.5 names no canonical lift for it (rows, shrugs, hip
+// thrusts, good mornings), null is the honest value — filling it in would be
+// inventing a coefficient anchor the source does not sanction.
+//
+// ── HOW A FAMILY IS DECIDED ───────────────────────────────────────────
+// A family = one canonical movement plus the variants that are expressions of
+// THE SAME movement — i.e. `canonical_lift` semantics, generalised to the
+// accessory work that has no canonical lift. Grouping is by joint action and
+// movement pattern ONLY. It is explicitly NOT by co-occurrence in any user's
+// training log: Z-Press and Arnold Press sit in `overhead-press` (vertical
+// push) because that is what they are, regardless of which log they happen to
+// appear next to.
+//
+// `pattern` holds a v0.5 enum value, or `null` where the v0.5 enum has no value
+// that fits (see GAPS below). Null is deliberate — v0.5's 8-value enum contains
+// no trunk/anti-movement value and no conditioning value, and inventing one
+// would be exactly the fabrication CLAUDE.md forbids. v0.5 handles conditioning
+// one level up instead, at Table 3 `day_type` ('conditioning'), not at
+// movement_pattern.
+//
+// ── GAPS / INTERPRETATIONS, flagged rather than hidden ────────────────
+// G1  core (24 slugs) and machine/calisthenic cardio (6 slugs) → pattern:null.
+//     No v0.5 movement_pattern value covers anti-extension, anti-rotation,
+//     spinal flexion, or steady-state conditioning. Needs a source ruling.
+// G2  v0.5 has no `lunge` / unilateral value. Knee-dominant single-leg work
+//     (`lunge` family) is filed under `squat`; hip-dominant single-leg work
+//     (single-leg RDLs) under `hinge`. Interpretation, not a citation.
+// G3  v0.5 has no `bridge` value. `hip-thrust` is filed under `hinge` (loaded
+//     hip extension). Interpretation.
+// G4  Incline presses sit in `bench-press` on the STRENGTH of v0.5's own
+//     mapping (Dumbbell Incline Press → Barbell Bench Press, 0.70) — cited,
+//     not assumed. `high-incline-barbell-press` (45–60°, bank tags it
+//     anterior_delt co-primary) is the weakest member of that family.
+// G5  `dips` → horizontal_push and `landmine-press` → vertical_push are both
+//     contested classifications in the wider literature and unnamed by v0.5.
+//     Each gets its own single-variant family so the pattern label is the only
+//     thing at risk, never the grouping.
+// G6  `upright-row` → vertical_pull follows the pattern of the bar path, but
+//     the bank tags it lateral_delt + upper_trap, unlike the lat-dominant
+//     vertical pulls. Flagged.
+// G7  `close-grip-barbell-press` is in `bench-press` (it is a bench press)
+//     although the bank tags tricep as its primary mover.
+// G8  There is no conventional Barbell Deadlift slug in EXERCISE_BANK, so the
+//     `Barbell Deadlift` canonical lift has no self-referential member here.
+//
+// ── STATUS: INERT DATA ────────────────────────────────────────────────
+// Nothing reads this. It is not wired into getProgram, buildDynamicProgram,
+// bank(), pick(), groupsMatch(), getExerciseSubstitutes, the trend view, or any
+// UI. It ships as a layer, deliberately, so it cannot regress behaviour.
+// Invariants are proven by `node scripts/movement-families-check.mjs`:
+// every EXERCISE_BANK slug appears in exactly one family, and every declared
+// variant slug exists in EXERCISE_BANK.
+// ═══════════════════════════════════════════════════════
+const MOVEMENT_FAMILIES = {
+
+  // ── HORIZONTAL PUSH ──────────────────────────────────
+  'bench-press':{ label:'Bench Press', pattern:'horizontal_push', canonicalLift:'Barbell Bench Press',
+    variants:['flat-barbell-press','db-bench-press','incline-db-press','low-incline-barbell-press',
+              'high-incline-barbell-press','decline-barbell-press','decline-db-press',
+              'close-grip-barbell-press','machine-chest-press','alternating-db-bench-press',
+              'alternating-incline-db-press','db-floor-press','cable-chest-press','squeeze-press',
+              'smith-machine-bench-press']},
+  'push-up':{ label:'Push-Up', pattern:'horizontal_push', canonicalLift:null,
+    variants:['push-up']},
+  'dip':{ label:'Dip', pattern:'horizontal_push', canonicalLift:null,   // G5
+    variants:['dips']},
+  'chest-fly':{ label:'Chest Fly', pattern:'isolation', canonicalLift:null,
+    variants:['db-fly','incline-db-fly','band-chest-fly','pec-deck','high-to-low-cable-fly',
+              'cable-low-to-high-fly']},
+
+  // ── VERTICAL PUSH ────────────────────────────────────
+  'overhead-press':{ label:'Overhead Press', pattern:'vertical_push', canonicalLift:'Barbell Overhead Press',
+    variants:['barbell-ohp','db-shoulder-press','seated-db-shoulder-press','alternating-db-shoulder-press',
+              'arnold-press','z-press','push-press','machine-shoulder-press','smith-machine-shoulder-press']},
+  'landmine-press':{ label:'Landmine Press', pattern:'vertical_push', canonicalLift:null,   // G5
+    variants:['landmine-press']},
+
+  // ── SHOULDER / SCAPULAR ISOLATION ────────────────────
+  'lateral-raise':{ label:'Lateral Raise', pattern:'isolation', canonicalLift:null,
+    variants:['db-lateral-raise','cable-lateral-raise','single-arm-cable-lateral-raise',
+              'lateral-raise-machine','band-lateral-raise']},
+  'front-raise':{ label:'Front Raise', pattern:'isolation', canonicalLift:null,
+    variants:['db-front-raise','cable-front-raise']},
+  'rear-delt-fly':{ label:'Rear Delt Fly', pattern:'isolation', canonicalLift:null,
+    variants:['rear-delt-fly','reverse-fly','cable-rear-delt-fly','reverse-pec-deck',
+              'face-pull','band-pull-apart']},
+  'prone-scapular-raise':{ label:'Prone Scapular Raise', pattern:'isolation', canonicalLift:null,
+    variants:['prone-y-raise','prone-t-raise']},
+  'shrug':{ label:'Shrug', pattern:'isolation', canonicalLift:null,
+    variants:['shrug-barbell','db-shrug','band-shrug']},
+  'upright-row':{ label:'Upright Row', pattern:'vertical_pull', canonicalLift:null,   // G6
+    variants:['upright-row','cable-upright-row']},
+
+  // ── VERTICAL PULL ────────────────────────────────────
+  'pull-up':{ label:'Pull-Up / Pulldown', pattern:'vertical_pull', canonicalLift:'Weighted Pull-up',
+    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown']},
+
+  // ── HORIZONTAL PULL ──────────────────────────────────
+  'row':{ label:'Row', pattern:'horizontal_pull', canonicalLift:null,
+    variants:['barbell-row','pendlay-row','dumbbell-row','single-arm-db-row','kroc-row',
+              'seated-cable-row','t-bar-row','chest-supported-row','chest-supported-db-row',
+              'machine-high-row','table-inverted-row']},
+  'straight-arm-pulldown':{ label:'Straight-Arm Pulldown', pattern:'isolation', canonicalLift:null,
+    variants:['straight-arm-pulldown','band-straight-arm-pulldown']},
+  'pullover':{ label:'Pullover', pattern:'isolation', canonicalLift:null,
+    variants:['db-pullover']},
+
+  // ── ELBOW FLEXION ────────────────────────────────────
+  'biceps-curl':{ label:'Biceps Curl', pattern:'isolation', canonicalLift:null,
+    variants:['barbell-curl','ez-bar-curl','db-curl','incline-db-curl','concentration-curl',
+              'preacher-curl','spider-curl','cable-curl','bayesian-cable-curl','zottman-curl',
+              'band-curl']},
+  'hammer-curl':{ label:'Hammer / Reverse Curl', pattern:'isolation', canonicalLift:null,
+    variants:['hammer-curl','cross-body-hammer-curl','cable-rope-hammer-curl','band-hammer-curl',
+              'reverse-curl']},
+
+  // ── ELBOW EXTENSION ──────────────────────────────────
+  'tricep-pushdown':{ label:'Tricep Pushdown', pattern:'isolation', canonicalLift:null,
+    variants:['tricep-rope-pushdown','straight-bar-pushdown']},
+  'tricep-extension':{ label:'Tricep Extension', pattern:'isolation', canonicalLift:null,
+    variants:['tricep-overhead-extension','cable-overhead-extension','skull-crusher']},
+  'tricep-kickback':{ label:'Tricep Kickback', pattern:'isolation', canonicalLift:null,
+    variants:['db-kickback','single-arm-cable-kickback']},
+  'tricep-dip':{ label:'Tricep Dip', pattern:'isolation', canonicalLift:null,
+    variants:['bench-dip','tricep-dip-machine']},
+  'diamond-push-up':{ label:'Diamond Push-Up', pattern:'isolation', canonicalLift:null,
+    variants:['diamond-push-up']},
+  'jm-press':{ label:'JM Press', pattern:'isolation', canonicalLift:null,
+    variants:['jm-press']},
+
+  // ── SQUAT ────────────────────────────────────────────
+  'squat':{ label:'Squat', pattern:'squat', canonicalLift:'Barbell Squat',
+    variants:['barbell-back-squat','front-squat','smith-machine-squat','landmine-squat',
+              'hack-squat','leg-press','goblet-squat','bodyweight-squat','db-sumo-squat']},
+  'lunge':{ label:'Lunge / Split Squat', pattern:'squat', canonicalLift:null,   // G2
+    variants:['bulgarian-split-squat','db-split-squat','db-lunge','reverse-lunge','curtsy-lunge',
+              'step-up']},
+  'leg-extension':{ label:'Leg Extension', pattern:'isolation', canonicalLift:null,
+    variants:['leg-extension','sissy-squat','reverse-nordic']},
+
+  // ── HINGE ────────────────────────────────────────────
+  'romanian-deadlift':{ label:'Romanian Deadlift', pattern:'hinge', canonicalLift:'Barbell Deadlift',
+    variants:['romanian-deadlift','stiff-leg-deadlift','db-rdl','single-leg-db-rdl',
+              'bodyweight-single-leg-rdl','sumo-rdl']},
+  'good-morning':{ label:'Good Morning', pattern:'hinge', canonicalLift:null,
+    variants:['good-morning']},
+  'hip-thrust':{ label:'Hip Thrust / Glute Bridge', pattern:'hinge', canonicalLift:null,   // G3
+    variants:['hip-thrust','barbell-hip-thrust','glute-bridge','single-leg-glute-bridge',
+              'frog-pump']},
+  'cable-pull-through':{ label:'Cable Pull-Through', pattern:'hinge', canonicalLift:null,
+    variants:['cable-pull-through']},
+  'leg-curl':{ label:'Leg Curl', pattern:'isolation', canonicalLift:null,
+    variants:['lying-leg-curl','seated-leg-curl','nordic-curl','slider-leg-curl','glute-ham-raise']},
+
+  // ── HIP ISOLATION ────────────────────────────────────
+  'glute-kickback':{ label:'Glute Kickback', pattern:'isolation', canonicalLift:null,
+    variants:['cable-kickback']},
+  'hip-abduction':{ label:'Hip Abduction', pattern:'isolation', canonicalLift:null,
+    variants:['abductor-machine','banded-hip-abduction']},
+
+  // ── ANKLE ISOLATION ──────────────────────────────────
+  'calf-raise':{ label:'Calf Raise', pattern:'isolation', canonicalLift:null,
+    variants:['standing-calf-raise','seated-calf-raise','leg-press-calf-raise','single-leg-calf-raise',
+              'db-standing-calf-raise','smith-machine-calf-raise']},
+
+  // ── TRUNK — pattern:null, see G1 ─────────────────────
+  'plank':{ label:'Plank', pattern:null, canonicalLift:null,
+    variants:['plank','side-plank','copenhagen-plank']},
+  'dead-bug':{ label:'Dead Bug / Bird Dog', pattern:null, canonicalLift:null,
+    variants:['dead-bug','bird-dog']},
+  'ab-rollout':{ label:'Ab Rollout', pattern:null, canonicalLift:null,
+    variants:['ab-wheel-rollout']},
+  'hollow-body-hold':{ label:'Hollow Body Hold', pattern:null, canonicalLift:null,
+    variants:['hollow-body-hold']},
+  'dragon-flag':{ label:'Dragon Flag', pattern:null, canonicalLift:null,
+    variants:['dragon-flag']},
+  'crunch':{ label:'Crunch', pattern:null, canonicalLift:null,
+    variants:['cable-crunch','standing-cable-crunch','machine-ab-crunch','weighted-decline-sit-up',
+              'v-up']},
+  'leg-raise':{ label:'Leg Raise', pattern:null, canonicalLift:null,
+    variants:['hanging-knee-raise','hanging-leg-raise','toes-to-bar','reverse-crunch']},
+  'pallof-press':{ label:'Pallof Press', pattern:null, canonicalLift:null,
+    variants:['pallof-press']},
+  'trunk-rotation':{ label:'Trunk Rotation', pattern:null, canonicalLift:null,
+    variants:['cable-woodchopper','landmine-rotation','russian-twist']},
+  'oblique-crunch':{ label:'Oblique Crunch', pattern:null, canonicalLift:null,
+    variants:['standing-cable-oblique-crunch','hanging-oblique-raise','bicycle-crunch']},
+
+  // ── CONDITIONING — pattern:null, see G1 ──────────────
+  'machine-cardio':{ label:'Machine Cardio', pattern:null, canonicalLift:null,
+    variants:['incline-treadmill','stationary-bike','elliptical','rower']},
+  'calisthenic-cardio':{ label:'Calisthenic Cardio', pattern:null, canonicalLift:null,
+    variants:['jumping-jacks','high-knees']},
+  // KB Swing is bank-category 'cardio' but is a ballistic hip hinge — the one
+  // conditioning movement v0.5's enum DOES have a value for.
+  'kb-swing':{ label:'KB Swing', pattern:'hinge', canonicalLift:null,
+    variants:['kb-swing']},
+};
+
+// ═══════════════════════════════════════════════════════
 // INJURY-AWARE FILTERING
 // makeInjuryBlocked(injuries) → predicate (name) => bool
 //   Maps free-text injury keywords to contraindicated movement-name
