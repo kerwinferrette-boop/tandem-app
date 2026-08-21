@@ -84,6 +84,7 @@ const TIERS = {
   D17: 'SAFETY',          // PENDING — same class as D11, a live violation was user-facing load prescription
   D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
   D19: 'SAFETY',          // a slot returns what it asked for — muscle-group matching is anchored
+  D20: 'SCIENCE_DEFAULT', // PENDING — one-off recency de-prioritization, same kind as D1's rotation preference
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -1037,6 +1038,7 @@ const PENDING = [
   ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D17', 'No database object (view/function/trigger) may emit a prescriptive load — closes the blind spot that let a fixed +/-2.5% ratchet live in a Postgres view (BUG-38/BUG-72) while file-side D11 reported 882/882 green. Tier SAFETY (same class as D11). Enforcement: Kerwin ruled option (b) 2026-08-17 — a DB-connected sweep, scripts/d17-db-sweep.mjs, run manually until a CI service-role credential exists. Ran live 2026-08-17: 0 hits. NOT wired into this gate — doing so today would itself be the failure this invariant is about, a check claiming to see what it cannot', 'when a CI DB credential exists'],
+  ['D20', 'getSingleDay (one-off generator) soft-deprioritizes a recently-trained muscle within its focus family, reusing RECOVERY_PARAMS hours-by-goal rather than a hard exclusion or a new invented number. Kerwin ruled 2026-08-21 on reusing RECOVERY_PARAMS for this scenario.', 'when EPIC-028 (widened) ships'],
 ];
 
 // ── Report ─────────────────────────────────────────────────────────────────────

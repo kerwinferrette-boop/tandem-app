@@ -101,6 +101,31 @@ catalog:
              (persona_matrix, validate:programs, verify) ever drives the onboarding UI, so
              this entire class of bug had zero chance of being caught before a human hit it."
 
+    - name: "exercise_intake_promotion"
+      what: "The 🧬 Tandem — Exercise Intake Notion database (686275b5-60e3-4b30-80dc-9d85a260a557) —
+             where the separately-run tandem-exercise-science-ingestion Cowork skill stages
+             source-vetted exercise candidates. That skill NEVER edits code or Supabase (by its own
+             scope). Nothing else promotes an 'Approved' row into EXERCISE_BANK — this is the gap
+             this source closes. Query the intake DB for Status='Approved' rows each cycle; for
+             each, add the additive EXERCISE_BANK entry to programs.js (name/muscleGroups/
+             equipment/tier/category/why/cues per the row's fields), regenerate
+             migrations/epic031_exercises_seed.sql via scripts/sync-exercise-bank.mjs so code and
+             the seed file agree (apply_migration stays human-only, same as every other schema
+             path), then flip the intake row's Status to 'Merged' with the commit sha in 'Merged
+             Commit'. This is squarely in-scope, additive-only code work — the same shape already
+             used for BUG-84/86/88's sourced entries — NOT discovery/research, which stays entirely
+             in Cowork's ingestion skill. Do not run ingestion itself from this loop; only consume
+             its 'Approved' output."
+      when: "Run once per cycle, even when the tracker shows 0 Untested + 0 Failing — same
+             standing-source rule as persona_matrix. A merged entry gets logged in the cycle
+             report and the run_log_db the same as any other fix; it does not need its own
+             Bug/Epic row first since the intake DB IS its own tracker (Approved -> Merged is
+             the whole lifecycle for this source)."
+      first_run_finding: "2026-08-21 — added per Kerwin's directive in-chat: ingestion (research/
+             sourcing) stays in Cowork; the code-merge step belongs in this loop instead, since it's
+             ordinary scope-locked EXERCISE_BANK work, not speculative discovery. No rows were
+             Approved as of this writing — first real run TBD."
+
     - name: "code_contradiction_audit"
       what: "A periodic read-only sweep for two-code-paths-disagree issues (the kind of thing
              '38fca37f935b8142808af5e9c16c9894' — Code Contradictions & Stale-Code Audit —
