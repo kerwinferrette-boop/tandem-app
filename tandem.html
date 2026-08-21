@@ -4980,6 +4980,71 @@ const RECOVERY_PARAMS = {
   transform:    { sameGroupHours: 36, maxConsecutive: 2 }, // intermediate
 };
 
+// ══ EPIC-027 / EPIC-028 · SHARED RECENT-TRAINING-HISTORY READ ══
+// One fetch, two projections. Sits here deliberately: D20 reuses RECOVERY_PARAMS
+// above as its recency threshold rather than inventing a second number.
+//
+// `sets.created_at` is a real timestamptz, so no join to workout_sessions is needed.
+// Verified against prod 2026-08-21: sets.exercise_name holds the DISPLAY name
+// (EXERCISE_BANK[].name, e.g. "Flat Barbell Press"), with a handful of legacy rows
+// carrying a slug instead ("tr-row") — so the index below is keyed on BOTH.
+let _bankByName = null;
+function bankIndexByName() {
+  if (_bankByName) return _bankByName;
+  _bankByName = {};
+  if (typeof EXERCISE_BANK === 'undefined') return _bankByName;
+  for (const [slug, e] of Object.entries(EXERCISE_BANK)) {
+    _bankByName[slug.toLowerCase()] = e;
+    if (e.name) _bankByName[e.name.toLowerCase()] = e;
+  }
+  return _bankByName;
+}
+
+async function fetchRecentSets(days = 7) {
+  if (!currentUser?.id) return [];
+  const sinceISO = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await sb.from('sets')
+    .select('exercise_name, weight_lbs, reps, created_at')
+    .eq('user_id', currentUser.id)
+    .gte('created_at', sinceISO)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('[history] fetchRecentSets failed', error); return []; }
+  return data || [];
+}
+
+// Projection A (EPIC-028 / D20) — { muscleTag: hoursSinceLastTrained }.
+// PRIMARY tags only: secondary involvement at accessory volume is not what a
+// recovery window describes, and weighting it would stretch RECOVERY_PARAMS past
+// its scope. See /DOCTRINE.md D20 + Notion mirror 3c3ca37f935b8189ac8ff6f9c3311da2 §2b.
+function recentMuscleLoad(sets, now = Date.now()) {
+  const idx = bankIndexByName();
+  const out = {};
+  for (const s of sets || []) {
+    const e = idx[String(s.exercise_name || '').toLowerCase()];
+    if (!e) continue;
+    const t = Date.parse(s.created_at);
+    if (!Number.isFinite(t)) continue;
+    const hrs = (now - t) / 3600000;
+    for (const tag of (e.muscleGroups?.primary || [])) {
+      if (out[tag] == null || hrs < out[tag]) out[tag] = hrs;
+    }
+  }
+  return out;
+}
+
+// Projection B (EPIC-027) — that one lift's recent sets, newest first (the fetch
+// already ordered them). Resolves slug and display name to the same bank entry so
+// legacy slug-keyed rows are not silently dropped from a lift's history.
+function recentSetsFor(exerciseName, sets) {
+  const idx = bankIndexByName();
+  const want = String(exerciseName || '').toLowerCase();
+  const target = idx[want] || null;
+  return (sets || []).filter(s => {
+    const n = String(s.exercise_name || '').toLowerCase();
+    return n === want || (target != null && idx[n] === target);
+  });
+}
+
 // Classify a day label into a muscle group for conflict detection.
 // Push and Pull are kept separate so they can be placed adjacent (different muscles).
 // BUG-73 fix: "lower" is Tandem's only lower-body recovery unit (RECOVERY_PARAMS/BUG-030
