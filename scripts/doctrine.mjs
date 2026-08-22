@@ -1162,6 +1162,89 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
       }
     }
   }
+  // (5) INERT under EVERY malformed/absent permutation, not just the one pair in
+  // (1). Merged in from the parallel D20 build (EPIC-028, 2026-08-21). D20 invents
+  // no fallback number, so a missing window, a zero window and a NaN window must
+  // each be as inert as no exposure at all — otherwise the D9/D18 matrices, which
+  // all call getSingleDay without these opts, are no longer testing what they claim.
+  for (const focus of ONEOFF_FOCUSES) {
+    for (const tier of TIER_ORDER) {
+      const baseNames = namesOf(getSingleDay(focus, { tier }));
+      if (!baseNames.length) continue; // D9/D18 own emptiness; nothing for D20 to say
+      for (const inert of [{ recentExposure: null },
+                           { recentExposure: {} },
+                           { recentExposure: { pec_major_sternal: 1 } },            // exposure, no window
+                           { recencyThresholdHours: thresholds[0] },                // window, no exposure
+                           { recentExposure: { pec_major_sternal: 1 }, recencyThresholdHours: 0 },
+                           { recentExposure: { pec_major_sternal: 1 }, recencyThresholdHours: NaN }]) {
+        d20Checked++;
+        const got = namesOf(getSingleDay(focus, { tier, ...inert }));
+        if (JSON.stringify(got) !== JSON.stringify(baseNames)) {
+          fail('D20', `${focus}/${tier}: opts ${JSON.stringify(inert)} changed the output — D20 must be INERT without a well-formed exposure AND window (it invents no fallback number)`);
+        }
+      }
+    }
+  }
+
+  // (6) STEERING NEVER COSTS A SLOT. This is the "soft, never hard-excludes"
+  // guarantee enforced on the OUTPUT — where it is actually falsifiable — rather
+  // than argued from the mechanism. Neither steering rank filters a pool, so D20
+  // cannot empty a slot DIRECTLY; but slots fill in order against a shared `used`
+  // set, so REORDERING can make an earlier slot consume the one exercise a later,
+  // scarcer slot had left. That slot's pool then comes back empty and the caller
+  // silently drops it (`if (chosen) {...}` — the exact swallow-the-gap pattern D18
+  // exists to police).
+  //
+  // Found by RUNNING the merged engine, not by reading it: 48 of 552
+  // focus×tier×window×flagged cases came back one exercise short, concentrated at
+  // the sparse `home` tier. Check (4)'s saturation stress is structurally BLIND to
+  // this, because saturation drives steering inert and so never exercises the
+  // reordering path at all — which is precisely why this clause exists separately.
+  const bankByName = {};
+  for (const e of Object.values(EXERCISE_BANK)) bankByName[e.name] = e;
+  for (const focus of ONEOFF_FOCUSES) {
+    for (const tier of TIER_ORDER) {
+      const baseNames = namesOf(getSingleDay(focus, { tier }));
+      if (!baseNames.length) continue;
+      // Flag every PRIMARY tag the unsteered day actually uses: maximal steering
+      // pressure that still leaves fresh alternatives reachable elsewhere in the
+      // bank — the regime saturation can never reach.
+      const exposure = {};
+      for (const n of baseNames) for (const t of (bankByName[n]?.muscleGroups?.primary || [])) exposure[t] = 1;
+      for (const thr of thresholds) {
+        d20Checked++;
+        const steered = namesOf(getSingleDay(focus, { tier, recentExposure: exposure, recencyThresholdHours: thr }));
+        if (steered.length !== baseNames.length) {
+          fail('D20', `${focus}/${tier}/thr=${thr}: steering changed the EXERCISE COUNT (${baseNames.length} → ${steered.length}) — D20 reorders, it must never cost a slot. D20 is SCIENCE_DEFAULT; D9's structural law is SAFETY, and a preference never outranks SAFETY`);
+        }
+      }
+    }
+  }
+
+  // (7) THE THRESHOLD IS NOT INVENTED — the CALL SITE, not just the engine.
+  // getSingleDay takes the window as a parameter, so the engine alone can never
+  // prove the RULED source is what reaches it. A gate that only tests the engine
+  // cannot see a caller that quietly invented its own 72.
+  {
+    // Every argument site, not "somewhere nearby": a proximity window would pass a
+    // file that reads RECOVERY_PARAMS for the banner text and then hands the engine
+    // a hand-typed number. Each `recencyThresholdHours:` RHS, to its line end, must name it.
+    const sites = [...tandemHtml.matchAll(/recencyThresholdHours\s*:\s*([^\n]*)/g)];
+    d20Checked++;
+    if (!sites.length) {
+      fail('D20', 'tandem.html never passes recencyThresholdHours to getSingleDay — the one-off entry point is not wired to D20');
+    }
+    for (const [, rhs] of sites) {
+      d20Checked++;
+      if (!/\bRECOVERY_PARAMS\b/.test(rhs)) {
+        fail('D20', `tandem.html passes \`recencyThresholdHours: ${rhs.trim()}\` — not sourced from RECOVERY_PARAMS. The ruled threshold is RECOVERY_PARAMS hours-by-goal (48/24/36, BUG-30; Kerwin 2026-08-21), never an invented number`);
+      }
+    }
+    d20Checked++;
+    if (/const\s+RECOVERY_PARAMS/.test(code)) {
+      fail('D20', 'programs.js has grown its own RECOVERY_PARAMS copy — one table, passed in (this is the two-copies drift D19 had to police in groupsMatch)');
+    }
+  }
 } else {
   console.log('  (note: getSingleDay/FOCUS_SLOTS not available — D20 skipped)');
 }
@@ -1194,7 +1277,7 @@ console.log(`  D14 realization weeks (final-week strength test, not a light week
 console.log(`  D15 primary compounds held for a whole primary block (>=8wk, mesocycle-aligned; <=15wk = one block) — ${d15Checked} assertions over T=4..24`);
 console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (0 allowlisted gaps — BUG-88's 4 pre-existing home-tier gaps closed Cycle 55)`);
 console.log(`  D19 muscle-group matching is anchored at '_' — a slot returns what it asked for (BUG-87) — ${d19Checked} token×tag checks against the live compiled rule, both engines`);
-console.log(`  D20 getSingleDay soft-deprioritizes a recently-trained muscle within its focus family (EPIC-028) — ${d20Checked} focus×tier checks (no-op backward-compat + steer-fires-somewhere + never-empty under maximal-recency stress)`);
+console.log(`  D20 one-off soft-deprioritizes a recently-trained muscle, reuses RECOVERY_PARAMS, inert by default (EPIC-028) — ${d20Checked} assertions over focus×tier×window (no-op + inert permutations + steer-fires, exact-key and anchored-parent + never-empty and byte-identical under saturation + never costs a slot + call site sources the ruled threshold)`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {

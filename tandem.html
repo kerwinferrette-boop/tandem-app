@@ -1620,7 +1620,21 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div id="goalSummary" style="font-size:13px;color:var(--muted2);line-height:1.8;"></div>
     <button class="clear-btn" style="color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);margin-top:14px;" onclick="resetProgram()">← Rebuild Program</button>
     <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openProgramLibrary()">📚 Browse Program Library</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openOneOff()">⚡ Build Me a Workout</button>
     <div id="goalSyncInfo" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
+  </div>
+</div>
+
+<!-- ONE-OFF "BUILD ME A WORKOUT" (EPIC-028) -->
+<div class="modal-overlay" id="modal-oneoff" onclick="if(event.target===this)closeModal('oneoff')">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('oneoff')">✕</button>
+    <div class="modal-title">Build Me a Workout</div>
+    <div class="modal-sub">A single session, right now. Not part of your periodized program — nothing here changes your plan or your week.</div>
+    <div id="oneoffFocusRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
+    <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
+    <div id="oneoffDay" style="margin-top:14px;"></div>
   </div>
 </div>
 
@@ -5043,6 +5057,65 @@ function recentSetsFor(exerciseName, sets) {
     const n = String(s.exercise_name || '').toLowerCase();
     return n === want || (target != null && idx[n] === target);
   });
+}
+
+// ══ EPIC-028 · ONE-OFF "BUILD ME A WORKOUT" ENTRY POINT ══
+// getSingleDay has existed in programs.js since D9 with ZERO callers in the app —
+// the generator was gated but unreachable. This is that caller. It renders through
+// the EXISTING buildDayHTML path (no second render path), so a one-off looks and
+// behaves like any generated day, and it writes nothing: a one-off is explicitly
+// not part of the periodized program (D9 exempts it from D1/D4/D7 by design).
+let _oneoffSets = null; // recent-sets read, cached for the life of the open modal
+
+// Goal key for RECOVERY_PARAMS. 'burn_fat' is the onboarding pill's value and
+// 'fat_burn' is the canonical key — same alias weekFactor() already applies.
+function oneOffGoalKey() {
+  const g = cfg.goal === 'burn_fat' ? 'fat_burn' : cfg.goal;
+  return RECOVERY_PARAMS[g] ? g : 'build_muscle';
+}
+
+async function openOneOff() {
+  openModal('oneoff');
+  const row = document.getElementById('oneoffFocusRow');
+  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
+  row.innerHTML = focuses.map(f =>
+    `<button class="profile-pill" data-oneoff="${f}" onclick="renderOneOff('${f}')">${f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</button>`
+  ).join('');
+  document.getElementById('oneoffDay').innerHTML = '';
+  document.getElementById('oneoffRecency').textContent = 'Reading your recent training…';
+  // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
+  // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
+  _oneoffSets = await fetchRecentSets(7);
+  const winHrs = (RECOVERY_PARAMS[oneOffGoalKey()] || RECOVERY_PARAMS.build_muscle).sameGroupHours;
+  const inWindow = Object.entries(recentMuscleLoad(_oneoffSets)).filter(([, h]) => h < winHrs);
+  document.getElementById('oneoffRecency').textContent = inWindow.length
+    ? `Still inside your ${winHrs}h recovery window: ${inWindow.map(([t]) => t.replace(/_/g, ' ')).join(', ')}. These get de-prioritized, not blocked.`
+    : `Nothing trained in the last ${winHrs}h — picking straight from the bank.`;
+}
+
+function renderOneOff(focus) {
+  document.querySelectorAll('#oneoffFocusRow .profile-pill').forEach(b =>
+    b.classList.toggle('active', b.dataset.oneoff === focus));
+  const goalKey = oneOffGoalKey();
+  const day = getSingleDay(focus, {
+    // BUG-59: tier + injuries are SAFETY invariants binding EVERY path.
+    tier: resolveEquipmentTier(),
+    injuries: cfg.injuries,
+    recentExposure: recentMuscleLoad(_oneoffSets || []),
+    // D20 (SCIENCE_DEFAULT, EPIC-028) — the ruled threshold. RECOVERY_PARAMS is the
+    // single source of it; programs.js takes it as a parameter and never copies the
+    // table. Kerwin ruling 2026-08-21; Notion 3c3ca37f935b8189ac8ff6f9c3311da2.
+    recencyThresholdHours: (RECOVERY_PARAMS[goalKey] || RECOVERY_PARAMS.build_muscle).sameGroupHours,
+  });
+  const host = document.getElementById('oneoffDay');
+  if (!day) { host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
+  // buildDayHTML needs a phase — it drives the rep display through effectiveReps().
+  // Use the user's CURRENT phase, the same getPhase(currentWeek, goal, weeks) every
+  // other call site uses. A one-off is exempt from the program's STRUCTURE (D9: no
+  // D1/D4/D7), not from its goal's rep band — inventing a phase here, or passing
+  // null, would put the reps outside D10's taxonomy band for that goal.
+  host.innerHTML = buildDayHTML(day, getPhase(currentWeek, cfg.goal, cfg.weeks));
+  if (typeof renderIcons === 'function') renderIcons();
 }
 
 // Classify a day label into a muscle group for conflict detection.

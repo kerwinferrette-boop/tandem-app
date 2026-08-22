@@ -1706,12 +1706,38 @@ function getSingleDay(focus, opts = {}) {
     }
     return false;
   };
-  // deterministic candidate pool — identical sort to bank(), PLUS an optional
-  // freshness rank ahead of the existing oneRmFactor/alpha tiebreak. freshGroups
-  // only ever WIDENS the legal pool (groups ∪ freshGroups) — it never removes a
-  // legal candidate, so a slot can never come up empty because of this (D20:
-  // "soft, never hard-excludes"). When freshGroups is empty the sort is
-  // unchanged from the pre-D20 comparator.
+  // D20 has TWO steering axes, because a focus family is nested and "a different
+  // muscle within the same focus family" can mean either level:
+  //
+  //   ACROSS slot tokens — freshGroups below. Handles e.g. arms: bicep is recent,
+  //     so widen to brachialis, which the same focus's FOCUS_SLOTS already asks for.
+  //
+  //   WITHIN one slot token — recentPenalty here. Widening alone cannot see this
+  //     level and silently leaves the flagged muscle in place. Live example:
+  //     FOCUS_SLOTS.chest asks both compound slots for the single token
+  //     'pec_major', but the bank has TWO muscles under it — pec_major_sternal and
+  //     pec_major_clavicular. Train sternal, and every other compound group in the
+  //     chest focus is isolation, so freshGroups is empty and widening finds
+  //     nothing: the day comes back with a sternal-pec compound in slot 1, still
+  //     inside the recovery window. Clavicular is "legally available a different
+  //     muscle in the same family", which is exactly what D20's text says to steer
+  //     to. Demoting the recent candidate reaches it; widening cannot.
+  //
+  // 1 = this candidate's own PRIMARY muscle is inside the window, 0 = it is not.
+  // Uses isRecent, so it inherits the same D19-anchored separator rule rather than
+  // an exact-key lookup — a bank entry whose primary is a PARENT tag ('quad') must
+  // still register against a leaf exposure key ('quad_rectus_femoris').
+  // PRIMARY only, for the same reason isFresh is primary-only (see below): a
+  // recovery window describes recovery of the TRAINED muscle, and scoring the
+  // co-tagged synergists would mark nearly everything recent.
+  const recentPenalty = (e) => (steeringActive && (e.muscleGroups.primary || []).some(isRecent)) ? 1 : 0;
+  // deterministic candidate pool — identical sort to bank(), PLUS the two optional
+  // D20 ranks ahead of the existing oneRmFactor/alpha tiebreak. Both REORDER only:
+  // freshGroups only ever WIDENS the legal pool (groups ∪ freshGroups) and
+  // recentPenalty only demotes within it — neither removes a legal candidate, so a
+  // slot can never come up empty because of this (D20: "soft, never hard-excludes"),
+  // and D9/D18 hold by construction rather than by a runtime check. With no
+  // exposure the sort is unchanged from the pre-D20 comparator.
   const select = (groups, cat, used, freshGroups = []) => {
     const freshSet = freshGroups.length ? new Set(freshGroups) : null;
     // PRIMARY tags only, deliberately — the same scope recentMuscleLoad() uses
@@ -1725,6 +1751,12 @@ function getSingleDay(focus, opts = {}) {
     return Object.values(EXERCISE_BANK)
       .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, freshSet ? [...groups, ...freshGroups] : groups) && !injuryBlocked(e.name) && !used.has(e.name))
       .sort((a, b) => {
+        // WITHIN-token demotion first: it is the direct measure of "this exact
+        // candidate trains a muscle you just trained." A fresh alternate-group
+        // candidate scores 0 here anyway, so putting this first never overrides
+        // the widening — the two ranks agree wherever they both have an opinion.
+        const rp = recentPenalty(a) - recentPenalty(b);
+        if (rp !== 0) return rp;
         if (freshSet) {
           const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
           if (diff !== 0) return diff;
@@ -1801,8 +1833,33 @@ function getSingleDay(focus, opts = {}) {
     if (cardio) blocks.push({ label: 'Zone 2 · 20 min', cardio: true, exs: [mk(cardio, 'card', { sets: 1, duration: 20, cardioOnly: true, unit: 'sec', r: 1 })] });
   }
   const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  return { key: 'oneoff', oneOff: true, focus: key, label: `${label} Day`, color: 'var(--accent)',
+  const day = { key: 'oneoff', oneOff: true, focus: key, label: `${label} Day`, color: 'var(--accent)',
     rationale: `One-off ${label} session — compound-first, ${opts.tier || 'full_gym'} tier. Not part of a periodized program.`, blocks };
+  if (!steeringActive) return day;
+
+  // ── D20's "soft, never hard-excludes" — the LAST mile ────────────────────────
+  // Neither steering rank filters a pool, so no single slot can be emptied by
+  // D20 directly. But slots are filled in order against a shared `used` set, so
+  // REORDERING can still cost a slot indirectly: steering makes an earlier slot
+  // consume the one exercise a later, scarcer slot had left, that later slot's
+  // pool comes back empty, and the caller silently drops it (`if (chosen) {...}`
+  // — the exact swallow-the-gap pattern D18 exists to police).
+  //
+  // Found by RUNNING the combined engine, not by reading it, and confirmed to be
+  // PRE-EXISTING on main rather than introduced here: 48 of 552 focus × tier ×
+  // window × flagged-exercise cases came back one exercise short, concentrated at
+  // the sparse `home` tier (e.g. legs/home 7 → 6). A saturation-only test cannot
+  // see this, because saturation drives steering inert and so never exercises the
+  // reordering path at all.
+  //
+  // So the guarantee is enforced where it is actually falsifiable — on the OUTPUT.
+  // getSingleDay is pure and cheap, so recompute the unsteered day and yield to it
+  // if steering cost a slot. D20 is a SCIENCE_DEFAULT preference; D9's structural
+  // law is SAFETY, and a preference never outranks SAFETY. The recursion is
+  // one-deep by construction: the inner call has steering off.
+  const baseline = getSingleDay(focus, { ...opts, recentExposure: null, recencyThresholdHours: 0 });
+  const filled = (d) => (d?.blocks || []).reduce((n, b) => n + (b.exs || []).length, 0);
+  return filled(day) < filled(baseline) ? baseline : day;
 }
 const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 
