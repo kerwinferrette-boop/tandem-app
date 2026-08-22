@@ -84,7 +84,7 @@ const TIERS = {
   D17: 'SAFETY',          // PENDING — same class as D11, a live violation was user-facing load prescription
   D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
   D19: 'SAFETY',          // a slot returns what it asked for — muscle-group matching is anchored
-  D20: 'SCIENCE_DEFAULT', // PENDING — one-off recency de-prioritization, same kind as D1's rotation preference
+  D20: 'SCIENCE_DEFAULT', // one-off recency de-prioritization, same kind as D1's rotation preference
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -1031,6 +1031,141 @@ let d19Checked = 0;
   }
 }
 
+// ── D20 (ACTIVE) — getSingleDay SOFT-deprioritizes a recently-trained muscle ────
+// EPIC-028 (widened), 2026-08-22. `getSingleDay`'s FOCUS_SLOTS candidate selection
+// now reads opts.recentExposure ({tag: hoursSinceTrained}, PRIMARY tags only — the
+// exact shape recentMuscleLoad() produces in tandem.html) and opts.recencyThreshold-
+// Hours (a plain number the CALLER resolves from RECOVERY_PARAMS[goal].sameGroup-
+// Hours — tandem.html:4977, BUG-30 — getSingleDay does not read RECOVERY_PARAMS
+// itself, deliberately: that constant lives in tandem.html, and this engine also
+// runs standalone under this very gate's vm sandbox). When a slot's own group is
+// under threshold, its candidate pool WIDENS (never narrows) to the other muscle
+// groups the SAME focus's FOCUS_SLOTS array already asks for at the same category,
+// and a fresher (non-recent) match ranks ahead of the existing oneRmFactor/alpha
+// tiebreak — soft de-prioritization, never a hard exclusion (D20's own text: "if
+// nothing fresher is legally available for that slot, still fill it with the
+// original group"). Tier SCIENCE_DEFAULT (same class as D1's rotation preference) —
+// see DOCTRINE.md D20 row for the full citation chain.
+//
+// TEETH, mirroring D18/D19's technique: this does not just call getSingleDay once
+// and eyeball it. It (1) extracts RECOVERY_PARAMS' three live sameGroupHours values
+// out of tandem.html so the thresholds this gate tests are the actual shipped
+// numbers, not a hand-copied duplicate that could drift; (2) proves NO-OP
+// backward-compatibility — recentExposure/threshold absent produces byte-identical
+// output to a call with an empty/zero one, across every focus×tier; (3) proves the
+// mechanism actually STEERS at least once across the matrix when a fresh legal
+// alternative exists (catches a regression where the widening/ranking silently
+// stops firing — e.g. the BUG caught while building this gate, where scoring
+// freshness on primary+secondary tags let a curl's co-tagged brachialis secondary
+// falsely mark a bicep-primary exercise "fresh" and defeat steering entirely —
+// fixed by scoring PRIMARY tags only); (4) proves NEVER-EMPTY under a maximal
+// stress case (every muscle tag in EXERCISE_BANK flagged recent at 1 hour, so no
+// fresh alternative can exist anywhere) — D9's structural properties (non-empty,
+// compound-before-accessory, dup-free, tier-legal) must still hold for every
+// focus×tier×threshold, proving "soft" never degrades into "the slot goes unfilled."
+let d20Checked = 0;
+if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const rpMatch = tandemHtml.match(/const RECOVERY_PARAMS = \{([\s\S]*?)\n\};/);
+  if (!rpMatch) fail('D20', 'could not locate RECOVERY_PARAMS in tandem.html — the shared BUG-30 threshold table this gate tests against');
+  const thresholds = [...(rpMatch ? rpMatch[1] : '').matchAll(/sameGroupHours:\s*(\d+)/g)].map(m => Number(m[1]));
+  if (thresholds.length < 3) fail('D20', `expected 3 RECOVERY_PARAMS.sameGroupHours values (build_muscle/fat_burn/transform), found ${thresholds.length} — extraction likely broken`);
+
+  // Isolation-only-scoring regression guard: the live isFresh() must read PRIMARY
+  // tags only. Re-adding secondary tags reintroduces the exact defect this D20
+  // build caught (a synergist-tagged exercise from the RECENT group scoring as
+  // "fresh" and silently defeating steering).
+  const isFreshLine = code.match(/const isFresh = \(e\) => freshSet && \(e\.muscleGroups\.primary \|\| \[\]\)\.some\(a => freshSet\.has\(a\)\);/);
+  if (!isFreshLine) fail('D20', 'getSingleDay\'s freshness scoring no longer reads PRIMARY tags only — a secondary-tag synergist (e.g. every curl co-tagging brachialis) can silently defeat steering again');
+
+  const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
+
+  for (const focus of ONEOFF_FOCUSES) {
+    for (const tier of TIER_ORDER) {
+      d20Checked++;
+      // (1) NO-OP backward compatibility — absent vs explicit-empty must agree.
+      const noOpts = getSingleDay(focus, { tier });
+      const explicitEmpty = getSingleDay(focus, { tier, recentExposure: {}, recencyThresholdHours: thresholds[0] });
+      if (JSON.stringify(namesOf(noOpts)) !== JSON.stringify(namesOf(explicitEmpty))) {
+        fail('D20', `${focus}/${tier}: recentExposure:{} changed output vs opts absent entirely — steering must be a strict no-op when there is nothing recent`);
+      }
+    }
+  }
+
+  // (3) Steering actually fires somewhere across the matrix — build_muscle's 48h
+  // threshold, every focus, every own-slot muscle flagged recent at 1 hour (well
+  // under all three thresholds) one at a time, at full_gym tier (richest pool).
+  // recentExposure is keyed by the FOCUS_SLOTS token itself here (an exact-key
+  // hit), which exercises isRecent's "tag === g" branch; the parent/child branch
+  // ("tag.startsWith(g + '_')") is exercised separately below.
+  let steeredAtLeastOnce = false;
+  for (const focus of ONEOFF_FOCUSES) {
+    const slots = FOCUS_SLOTS[focus] || [];
+    const ownGroups = new Set(slots.flatMap(s => [s[0], s[1]].filter(Boolean)));
+    const base = getSingleDay(focus, { tier: 'full_gym' });
+    for (const g of ownGroups) {
+      const steered = getSingleDay(focus, { tier: 'full_gym', recentExposure: { [g]: 1 }, recencyThresholdHours: thresholds[0] });
+      if (JSON.stringify(namesOf(base)) !== JSON.stringify(namesOf(steered))) { steeredAtLeastOnce = true; break; }
+    }
+    if (steeredAtLeastOnce) break;
+  }
+  if (!steeredAtLeastOnce) fail('D20', 'flagging a muscle group recent (1h, under every RECOVERY_PARAMS threshold) never changed getSingleDay\'s output anywhere across every focus — the steering mechanism appears to be disabled/dead');
+
+  // (3b) The parent/child anchoring branch specifically — recentMuscleLoad()
+  // (tandem.html) keys its real output by whatever fine-grained tag the trained
+  // exercise's OWN .primary carries (e.g. 'quad_rectus_femoris'), while a
+  // FOCUS_SLOTS token is often the coarser PARENT ('quad'). An exact-key lookup
+  // would silently never match this pair and leave every parent-level slot
+  // permanently inert — the exact defect caught while building this gate. Prove
+  // a real leaf tag (drawn from EXERCISE_BANK, not invented) steers a legs slot.
+  {
+    const legsBase = getSingleDay('legs', { tier: 'full_gym' });
+    const legsSteered = getSingleDay('legs', { tier: 'full_gym', recentExposure: { quad_rectus_femoris: 1, quad_vastus: 1 }, recencyThresholdHours: thresholds[0] });
+    if (JSON.stringify(namesOf(legsBase)) === JSON.stringify(namesOf(legsSteered))) {
+      fail('D20', 'a leaf/child muscle tag (quad_rectus_femoris) recent did not steer the "legs" focus\'s parent-token "quad" slot — isRecent() must anchor on the taxonomy separator the same way groupsMatch (D19) does, not do an exact-key lookup');
+    }
+  }
+
+  // (4) Never-empty AND byte-identical-to-baseline under maximal stress — every
+  // muscle tag EXERCISE_BANK uses is flagged recent, so literally no fresh
+  // alternative can exist anywhere in ANY focus family. Per the D20 Notion mirror
+  // page §5 clause 2 ("output is identical to the no-history output"), this must
+  // not just hold D9's shape — it must reproduce the exact no-history exercise
+  // list, because every slot's freshGroups computation is required to come back
+  // empty (every candidate group is itself recent) and take the untouched,
+  // pre-D20 code path.
+  const allTags = new Set();
+  for (const e of Object.values(EXERCISE_BANK)) for (const t of [...(e.muscleGroups?.primary || []), ...(e.muscleGroups?.secondary || [])]) allTags.add(t);
+  const stressExposure = {};
+  for (const t of allTags) stressExposure[t] = 1;
+  for (const focus of ONEOFF_FOCUSES) {
+    for (const tier of TIER_ORDER) {
+      const base = getSingleDay(focus, { tier });
+      for (const thr of thresholds) {
+        d20Checked++;
+        const day = getSingleDay(focus, { tier, recentExposure: stressExposure, recencyThresholdHours: thr });
+        if (!day || !Array.isArray(day.blocks) || day.blocks.length === 0) { fail('D20', `${focus}/${tier}/thr=${thr}: maximal-recency stress produced an EMPTY session — soft de-prioritization must never leave a slot unfilled`); continue; }
+        const labels = day.blocks.map(b => String(b.label || ''));
+        const ci = labels.findIndex(l => /compound/i.test(l));
+        const ai = labels.findIndex(l => /accessor/i.test(l));
+        if (ci !== -1 && ai !== -1 && ci > ai) fail('D20', `${focus}/${tier}/thr=${thr}: maximal-recency stress broke compound-before-accessory ordering (D3/D9)`);
+        const exs = day.blocks.flatMap(b => (b.exs || []).map(e => e.name));
+        if (new Set(exs).size !== exs.length) fail('D20', `${focus}/${tier}/thr=${thr}: maximal-recency stress produced a duplicate lift`);
+        const reqIdx = TIER_ORDER.indexOf(tier);
+        for (const n of exs) {
+          const t = TIER_BY_NAME[String(n).trim().toLowerCase()];
+          if (t && TIER_ORDER.indexOf(t) > reqIdx) fail('D20', `${focus}/${tier}/thr=${thr}: "${n}" exceeds tier under maximal-recency stress`);
+        }
+        if (JSON.stringify(namesOf(base)) !== JSON.stringify(namesOf(day))) {
+          fail('D20', `${focus}/${tier}/thr=${thr}: maximal-recency stress (every tag recent, so no fresh alternative exists anywhere) did not reproduce the no-history exercise list byte-for-byte — D20 Notion page §5 clause 2 requires exact identity here, not just D9 shape`);
+        }
+      }
+    }
+  }
+} else {
+  console.log('  (note: getSingleDay/FOCUS_SLOTS not available — D20 skipped)');
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -1038,7 +1173,6 @@ const PENDING = [
   ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D17', 'No database object (view/function/trigger) may emit a prescriptive load — closes the blind spot that let a fixed +/-2.5% ratchet live in a Postgres view (BUG-38/BUG-72) while file-side D11 reported 882/882 green. Tier SAFETY (same class as D11). Enforcement: Kerwin ruled option (b) 2026-08-17 — a DB-connected sweep, scripts/d17-db-sweep.mjs, run manually until a CI service-role credential exists. Ran live 2026-08-17: 0 hits. NOT wired into this gate — doing so today would itself be the failure this invariant is about, a check claiming to see what it cannot', 'when a CI DB credential exists'],
-  ['D20', 'getSingleDay (one-off generator) soft-deprioritizes a recently-trained muscle within its focus family, reusing RECOVERY_PARAMS hours-by-goal rather than a hard exclusion or a new invented number. Kerwin ruled 2026-08-21 on reusing RECOVERY_PARAMS for this scenario.', 'when EPIC-028 (widened) ships'],
 ];
 
 // ── Report ─────────────────────────────────────────────────────────────────────
@@ -1060,6 +1194,7 @@ console.log(`  D14 realization weeks (final-week strength test, not a light week
 console.log(`  D15 primary compounds held for a whole primary block (>=8wk, mesocycle-aligned; <=15wk = one block) — ${d15Checked} assertions over T=4..24`);
 console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (0 allowlisted gaps — BUG-88's 4 pre-existing home-tier gaps closed Cycle 55)`);
 console.log(`  D19 muscle-group matching is anchored at '_' — a slot returns what it asked for (BUG-87) — ${d19Checked} token×tag checks against the live compiled rule, both engines`);
+console.log(`  D20 getSingleDay soft-deprioritizes a recently-trained muscle within its focus family (EPIC-028) — ${d20Checked} focus×tier checks (no-op backward-compat + steer-fires-somewhere + never-empty under maximal-recency stress)`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {

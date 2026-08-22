@@ -1676,16 +1676,66 @@ function getSingleDay(focus, opts = {}) {
     const all = [...(e.muscleGroups.primary || []), ...(e.muscleGroups.secondary || [])];
     return groups.some(g => all.some(a => a === g || a.startsWith(g + '_')));
   };
-  // deterministic candidate pool — identical sort to bank()
-  const select = (groups, cat, used) => Object.values(EXERCISE_BANK)
-    .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, groups) && !injuryBlocked(e.name) && !used.has(e.name))
-    .sort((a, b) => {
-      if (a.oneRmFactor != null || b.oneRmFactor != null) {
-        const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
-        if (diff !== 0) return diff;
-      }
-      return a.name.localeCompare(b.name);
-    })[0] || null;
+  // ── D20 (EPIC-028) — per-muscle recency SOFT de-prioritization ─────────────
+  // opts.recentExposure: { muscleTag: hoursSinceLastTrained } — the exact shape
+  // recentMuscleLoad() (tandem.html, EPIC-027/028 shared read path) produces,
+  // PRIMARY muscle tags only. opts.recencyThresholdHours: a plain number of
+  // hours, supplied BY THE CALLER as RECOVERY_PARAMS[goal].sameGroupHours — the
+  // existing, shipped, Kerwin-approved number (BUG-30). getSingleDay deliberately
+  // does not read RECOVERY_PARAMS itself (that constant lives in tandem.html,
+  // not programs.js, and this engine is also loaded standalone by
+  // scripts/doctrine.mjs's vm sandbox + Node test scripts) — it only consumes
+  // the resolved number, so no goal-selection logic or new threshold is invented
+  // here. Both opts absent/empty ⇒ steeringActive is false ⇒ every code path
+  // below is a no-op and select() behaves byte-identically to before this change.
+  const recentExposure = (opts.recentExposure && typeof opts.recentExposure === 'object') ? opts.recentExposure : null;
+  const recencyThresholdHours = Number.isFinite(opts.recencyThresholdHours) ? opts.recencyThresholdHours : 0;
+  const steeringActive = !!(recentExposure && recencyThresholdHours > 0);
+  // recentExposure is keyed by whatever PRIMARY tag the trained exercise actually
+  // carries (recentMuscleLoad()'s definition) — the fine-grained bank leaf, e.g.
+  // 'quad_rectus_femoris' — while a FOCUS_SLOTS token is often the coarser PARENT,
+  // e.g. 'quad'. An exact-key lookup here would silently never match a parent
+  // slot token against a child exposure key (caught while building this gate: the
+  // exact-key version left every non-leaf FOCUS_SLOTS token permanently inert).
+  // Reuses the identical D19-anchored rule groupsMatch already enforces — same
+  // separator semantics, applied to recentExposure's keys instead of the bank's.
+  const isRecent = (g) => {
+    if (!steeringActive) return false;
+    for (const tag in recentExposure) {
+      if ((tag === g || tag.startsWith(g + '_')) && recentExposure[tag] < recencyThresholdHours) return true;
+    }
+    return false;
+  };
+  // deterministic candidate pool — identical sort to bank(), PLUS an optional
+  // freshness rank ahead of the existing oneRmFactor/alpha tiebreak. freshGroups
+  // only ever WIDENS the legal pool (groups ∪ freshGroups) — it never removes a
+  // legal candidate, so a slot can never come up empty because of this (D20:
+  // "soft, never hard-excludes"). When freshGroups is empty the sort is
+  // unchanged from the pre-D20 comparator.
+  const select = (groups, cat, used, freshGroups = []) => {
+    const freshSet = freshGroups.length ? new Set(freshGroups) : null;
+    // PRIMARY tags only, deliberately — the same scope recentMuscleLoad() uses
+    // (tandem.html comment ~5015). Most isolation lifts co-tag a synergist as
+    // SECONDARY (e.g. every curl variant secondarily hits brachialis/
+    // brachioradialis — real anatomy, elbow-flexor synergists), so scoring on
+    // primary+secondary made nearly every bicep candidate register as "fresh"
+    // via its secondary tag and silently defeated the steering (caught by the
+    // functional-proof check below before this was fixed).
+    const isFresh = (e) => freshSet && (e.muscleGroups.primary || []).some(a => freshSet.has(a));
+    return Object.values(EXERCISE_BANK)
+      .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, freshSet ? [...groups, ...freshGroups] : groups) && !injuryBlocked(e.name) && !used.has(e.name))
+      .sort((a, b) => {
+        if (freshSet) {
+          const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
+          if (diff !== 0) return diff;
+        }
+        if (a.oneRmFactor != null || b.oneRmFactor != null) {
+          const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
+          if (diff !== 0) return diff;
+        }
+        return a.name.localeCompare(b.name);
+      })[0] || null;
+  };
   // light weight default; render layer (buildDayHTML) overrides from PRs/calibration
   const defW = (e) => e.equipment === 'barbell' ? 95 : e.equipment === 'machine' ? 70
     : e.equipment === 'cable' ? 35 : e.equipment === 'dumbbell' ? 35 : 0;
@@ -1704,10 +1754,30 @@ function getSingleDay(focus, opts = {}) {
   const comp = [], acc = [];
   slots.forEach((s, i) => {
     const groups = [s[0], s[1]].filter(Boolean);
-    const chosen = select(groups, s[2], used);
+    const cat = s[2];
+    // D20: only widen this slot's pool when ITS OWN requested group(s) are
+    // under the recovery threshold. The alternative pool is every OTHER
+    // muscle group this same focus already asks for at the SAME category
+    // (same FOCUS_SLOTS array, cat-matched — never crosses compound/isolation,
+    // preserving D3/D9's compound-first structure) that is itself NOT recent.
+    // "Same focus family" is deliberately scoped to FOCUS_SLOTS[key] rather
+    // than the whole muscle taxonomy — D20 says "within the same focus
+    // family," not "anywhere legal," and this keeps a chest/back/arms day
+    // from drifting into an unrelated muscle group.
+    let freshGroups = [];
+    if (steeringActive && groups.some(isRecent)) {
+      const ownAndSeen = new Set(groups);
+      slots.forEach((other, j) => {
+        if (j === i || other[2] !== cat) return;
+        [other[0], other[1]].filter(Boolean).forEach(g => {
+          if (!ownAndSeen.has(g) && !isRecent(g)) { ownAndSeen.add(g); freshGroups.push(g); }
+        });
+      });
+    }
+    const chosen = select(groups, cat, used, freshGroups);
     if (!chosen) return;
     used.add(chosen.name);
-    (s[2] === 'compound' ? comp : acc).push(mk(chosen, i, s[2] === 'isolation' ? { sets: 3 } : {}));
+    (cat === 'compound' ? comp : acc).push(mk(chosen, i, cat === 'isolation' ? { sets: 3 } : {}));
   });
   // 2 core movements, then an optional Zone 2 finisher
   const core = [];
