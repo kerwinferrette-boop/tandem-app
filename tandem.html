@@ -5381,11 +5381,14 @@ function oneOffBack() {
 }
 
 // Card markup is identical between the two grids — same classes, same scrim/caption
-// structure, same --card-url convention. Only the photo prefix and handler differ.
-function oneOffCardHTML(slug, face, prefix, handler, dataAttr, label) {
+// structure, same --card-url convention. Only the photo and the handler differ, so the
+// photo arrives as a finished URL rather than a filename fragment this has to assemble:
+// the goal cards are sex-specific and the focus cards are not, and a function that took
+// a "prefix" could only express one of those two shapes.
+function oneOffCardHTML(slug, face, photo, handler, dataAttr, label) {
   return `<button class="oneoff-card" ${dataAttr}="${slug}" aria-pressed="false"
       aria-label="${label}"
-      style="--card-url:url('public/${prefix}-${slug.replace(/_/g, '-')}.jpg')"
+      style="--card-url:url('${photo}')"
       onclick="${handler}">
       <span class="oneoff-scrim"></span>
       <span class="oneoff-cap">
@@ -5393,6 +5396,15 @@ function oneOffCardHTML(slug, face, prefix, handler, dataAttr, label) {
         <span class="oneoff-name">${face.title}</span>
       </span>
     </button>`;
+}
+
+// The goal cards show a lifter of the user's own sex. userSexKey() is the app's ONE
+// owner of that question — it already resolves the profile-modal live edit, then cfg.sex,
+// then the stored profile, and HERO_PHOTOS reads it too. A second sex resolver here would
+// be a silo that drifts the day the precedence changes. Focus cards stay sex-neutral:
+// there is one set of nine photos and no second set to choose between.
+function oneOffGoalPhoto(goalKey) {
+  return `public/goal-${goalKey.replace(/_/g, '-')}-${userSexKey()}.jpg`;
 }
 
 // Step 1 → 2. The recency banner is computed HERE, not at modal open, because its
@@ -5425,12 +5437,14 @@ async function openOneOff() {
   oneOffState.goal = null;
   oneOffState.focus = null;
   _oneoffSets = null;
+  // Built on every open, so a sex changed in the profile modal is reflected the next
+  // time the wizard is opened — same lifecycle as applyHeroImages, no extra machinery.
   document.getElementById('oneoffGoalRow').innerHTML = ONEOFF_GOALS.map(g =>
-    oneOffCardHTML(g.key, g, 'goal', `pickOneOffGoal('${g.key}')`, 'data-oneoff-goal',
+    oneOffCardHTML(g.key, g, oneOffGoalPhoto(g.key), `pickOneOffGoal('${g.key}')`, 'data-oneoff-goal',
       `Build a ${g.title} workout`)).join('');
   const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
   document.getElementById('oneoffFocusRow').innerHTML = focuses.map(f =>
-    oneOffCardHTML(f, oneOffFace(f), 'oneoff', `renderOneOff('${f}')`, 'data-oneoff',
+    oneOffCardHTML(f, oneOffFace(f), `public/oneoff-${f.replace(/_/g, '-')}.jpg`, `renderOneOff('${f}')`, 'data-oneoff',
       `Build a ${oneOffFace(f).title} workout`)).join('');
   showOneOffStep(1);
   renderRecencyBanner();
