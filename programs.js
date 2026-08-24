@@ -1490,6 +1490,33 @@ const EXERCISE_BANK = {
     emphasis:['glutes','lower_body','full_body'], equipment:'dumbbell', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
     why:'Trains hip extension power and cardiovascular conditioning simultaneously. At high rep counts the metabolic demand rivals sprinting. Posterior chain loading makes this cardio that also builds muscle.',
     cues:['Hip hinge — this is NOT a squat; hike the bell back between legs','Drive hips forward explosively; the bell floats to chest height by momentum','Squeeze glutes hard at the top of every rep','Re-hinge immediately on the way down — do not squat to receive the bell']},
+
+  // ── Exercise Intake promotions (Status: Applied → code-merge step, per
+  // .claude/loop-config.md self_generated_sources.exercise_intake_promotion) ──
+  'band-external-rotation':{
+    name:'Band External Rotation', videoId:null,
+    muscleGroups:{primary:['external_rotator']},
+    emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Trains external rotation at the shoulder joint itself rather than at the shoulder blade. Pull-aparts and face pulls retract the scapula; this rotates the humerus inside the socket, which is a different job and the one the bank currently has no dedicated entry for. Band tension stays constant through a range where a dumbbell gives almost nothing at the start, which is why rehab-side coaching keeps it at the front of shoulder work. The source is explicit that the upper arm must stay pinned at the side — a rolled towel under the arm is its recommended fix — because letting the elbow drift away converts the movement into something that is no longer pure external rotation.',
+    cues:['Anchor the band at about elbow height and stand side-on, working arm on the outside','Elbow bent to 90 degrees and tucked at your side; a rolled towel under the arm keeps it there','Rotate the forearm away from your stomach — the upper arm does not move','Control the band all the way back; do not let it snap your hand to your belly']},
+  'lateral-step-down':{
+    name:'Lateral Step-Down', videoId:null,
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis'],secondary:['glute_max','glute_medius']},
+    emphasis:['quads','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
+    why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a zero-equipment single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
+    cues:['Stand on a 6-7 inch step with all the weight through the working leg','Reach the free leg out to the side and tap the heel down - do not push off it','Let the working knee travel forward; that range is what you are training','Slow and controlled on the way down; hold a wall or rail if balance is the limiter']},
+  'band-row':{
+    name:'Band Row', videoId:null,
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'compound', oneRmFactor:null,
+    why:'The first band compound in the bank and the only home-tier pull whose resistance can be dialed down. Table Inverted Row loads by body angle, which sets a hard floor a deconditioned or rehabbing lifter may not clear; a band starts near zero and scales by band choice and anchor distance. Horizontal pulling is also the least shoulder-demanding pull pattern, so it is the right entry point before any overhead work.',
+    cues:['Anchor the band at chest height to a sturdy object or door','Sit or stand tall, arms extended, slight tension at the start','Start the pull with the shoulder blade, then let the elbow follow','Drive elbows back toward the hips, not flared wide','Control the return all the way out - keep tension the whole range']},
+  'mcgill-curl-up':{
+    name:'McGill Curl-Up', videoId:null, unit:'sec', secs:10,
+    muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external','transverse_abdominis']},
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    why:'The third McGill Big 3 movement, and the one the bank is missing. Trains the anterior core to hold a braced trunk while the hands stay under the small of the back to preserve its natural inward curve, so the abs work hard without the repeated spinal flexion a sit-up demands. Side Plank and Bird Dog both already name the McGill Big 3 in their own rationale; this completes the set.',
+    cues:['Lie on your back, one knee bent with that foot flat, the other leg straight','Slide both hands palm-down under the small of your back and keep its natural arch - do not press the back flat','Brace the abs, then lift head and shoulders as one rigid unit only an inch or two; chin does not tuck, neck does not crane','Hold ten seconds breathing normally, lower with control, and add repetitions rather than a longer hold as it gets easier']},
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1613,6 +1640,8 @@ const MOVEMENT_FAMILIES = {
     variants:['shrug-barbell','db-shrug','band-shrug']},
   'upright-row':{ label:'Upright Row', pattern:'vertical_pull', canonicalLift:null,   // G6
     variants:['upright-row','cable-upright-row']},
+  'external-rotation':{ label:'External Rotation', pattern:'isolation', canonicalLift:null,
+    variants:['band-external-rotation']},
 
   // ── VERTICAL PULL ────────────────────────────────────
   'pull-up':{ label:'Pull-Up / Pulldown', pattern:'vertical_pull', canonicalLift:'Weighted Pull-up',
@@ -1622,7 +1651,7 @@ const MOVEMENT_FAMILIES = {
   'row':{ label:'Row', pattern:'horizontal_pull', canonicalLift:null,
     variants:['barbell-row','pendlay-row','dumbbell-row','single-arm-db-row','kroc-row',
               'seated-cable-row','t-bar-row','chest-supported-row','chest-supported-db-row',
-              'machine-high-row','table-inverted-row']},
+              'machine-high-row','table-inverted-row','band-row']},
   'straight-arm-pulldown':{ label:'Straight-Arm Pulldown', pattern:'isolation', canonicalLift:null,
     variants:['straight-arm-pulldown','band-straight-arm-pulldown']},
   'pullover':{ label:'Pullover', pattern:'isolation', canonicalLift:null,
@@ -1657,7 +1686,7 @@ const MOVEMENT_FAMILIES = {
               'hack-squat','leg-press','goblet-squat','bodyweight-squat','db-sumo-squat']},
   'lunge':{ label:'Lunge / Split Squat', pattern:'squat', canonicalLift:null,   // G2
     variants:['bulgarian-split-squat','db-split-squat','db-lunge','reverse-lunge','curtsy-lunge',
-              'step-up']},
+              'step-up','lateral-step-down']},
   'leg-extension':{ label:'Leg Extension', pattern:'isolation', canonicalLift:null,
     variants:['leg-extension','sissy-squat','reverse-nordic']},
 
@@ -1708,6 +1737,8 @@ const MOVEMENT_FAMILIES = {
     variants:['cable-woodchopper','landmine-rotation','russian-twist']},
   'oblique-crunch':{ label:'Oblique Crunch', pattern:null, canonicalLift:null,
     variants:['standing-cable-oblique-crunch','hanging-oblique-raise','bicycle-crunch']},
+  'mcgill-curl-up':{ label:'McGill Curl-Up', pattern:null, canonicalLift:null,
+    variants:['mcgill-curl-up']},
 
   // ── CONDITIONING — pattern:null, see G1 ──────────────
   'machine-cardio':{ label:'Machine Cardio', pattern:null, canonicalLift:null,
