@@ -49,6 +49,207 @@ function renderIcons(root){
 // GOAL-ADAPTIVE PROGRAM LIBRARY
 // ═══════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════
+// LOAD PROGRESSION — RULED 2026-08-23. The step is a PERCENTAGE of the current
+// load. It is never a fixed pound increment.
+//
+// What was here: `incComp`/`incAcc`, a flat 2.5/5/10 lb step. That charges the
+// same absolute jump to a 400 lb squat (+1.3%) and a 20 lb lateral raise (+25%),
+// which are not the same stimulus in any framework. `pctTop`/`pctInc` sat beside
+// them, read by nothing — dead since the file was written.
+//
+// SHOULD (research-report (8).pdf's OWN citation [8] — ACSM position stand,
+// "Progression models in resistance training for healthy adults",
+// PMID 19204579): "a 2-10% increase in load [should] be applied when the
+// individual can perform the current workload for one to two repetitions over
+// the desired number." The increment is a percentage; the trigger is a rep
+// surplus. NSCA states the same rule with the multi-joint / single-joint split
+// made explicit — "core" (multi-joint) lifts progress at roughly double the rate
+// of "assistance" (single-joint) work (upper assistance 2.5-5% against lower core
+// 5-10%+ for intermediates; 1-2% against 5% for novices).
+//
+// DID: `pctComp` below is the per-phase compound rate. Every value is one of the
+// old `pctInc` numbers, which are Kerwin's authored figures — the change here is
+// that they are now READ, and that each has been checked to sit inside ACSM's
+// cited 2-10% band. No new per-phase number is invented. The accessory rate is
+// DERIVED, not tabulated (same reason D21's ladder derives its rungs): it is
+// pctComp x ACCESSORY_PROGRESSION_RATIO, clamped back into the band. See
+// progressionPct() below for the ratio's citation.
+//
+// FLAGGED, NOT FILLED: ACSM/NSCA's trigger is the "2-for-2 rule" — two reps over
+// goal on TWO CONSECUTIVE sessions. Tandem retains only the single most recent
+// session per lift (`tandem_lastsets` holds one entry per exercise name), so the
+// rep half is enforceable today and the two-sessions half is not. The rep half
+// ships; the consecutive-session half needs a history change and is Kerwin's call.
+// ═══════════════════════════════════════════════════════
+
+// Multi-joint lifts progress at roughly twice the rate of single-joint work. The
+// ratio is read off NSCA's own paired bands rather than invented: novice 5% lower-
+// body core against 1-2% upper assistance, intermediate/advanced 5-10%+ core
+// against 2.5-5% assistance. Both pairs sit near 2:1, so accessories take half the
+// phase's compound rate. Clamped back into ACSM's 2-10% band by progressionPct(),
+// which is load-bearing: build_muscle's peak phase is 3%, and half of that is 1.5%.
+const ACCESSORY_PROGRESSION_RATIO = 0.5;
+
+// ── Loadable-weight rounding — the ONE home for both granularities ──
+// Declared here (the shared layer, loaded first) and used from tandem.html too. They
+// are deliberately NOT redeclared there: top-level `const` lives in the shared global
+// lexical environment, so a second declaration is a hard SyntaxError that takes the
+// whole app down. Verified by running it rather than by reasoning about it — the same
+// shared-scope behaviour holds inside node:vm, so the gates exercise the real thing.
+//
+// Equipment-representability constants, NOT prescriptions. They differ on purpose:
+const PRESCRIPTION_STEP_LBS = 5;    // barbell plates load in pairs → 5 lb granularity
+const LOAD_STEP_LBS = 2.5;          // smallest adjustment: micro-plates / low-end dumbbells
+function roundToStep(w) { return Math.round(w / LOAD_STEP_LBS) * LOAD_STEP_LBS; }
+const PROGRESSION_PCT_MIN = 2;   // ACSM position stand, PMID 19204579
+const PROGRESSION_PCT_MAX = 10;  // ACSM position stand, PMID 19204579
+
+// ── The ONE home for a generated exercise's default prescription ──
+// Both engines built this inline and identically — `e.unit==='sec' ? (e.secs || 45) : 10`
+// at getSingleDay's mk() and at buildDynamicProgram's emitter. Two copies of a number
+// is the drift D19/D21/D24 all had to police, and the `|| 45` half was an INVENTED
+// default on top of it: no source prescribes a 45-second hold, and the comment beside
+// it cited only "Kerwin 2026-07-13, 45 default".
+//
+// It is kept rather than deleted (unlike D23's REST_SECONDS) for one reason, and the
+// reason is what makes it defensible: it is provably UNREACHABLE. Every `unit:'sec'`
+// entry in EXERCISE_BANK declares its own `secs` (Plank 60 / Side Plank 45 / Hollow
+// Body Hold 30 / Copenhagen Plank 30), and D25 asserts that, so this branch is a guard
+// against a malformed future bank entry, not a prescription anyone receives. The day it
+// CAN fire, the gate fails first and the bank gets fixed — which is the point.
+//
+// DEFAULT_REPS is likewise a placeholder, not a prescription: the render layer resolves
+// weighted work through effectiveReps() (D10/D14), so this value only survives where a
+// phase has not spoken.
+const TIMED_HOLD_FALLBACK_SECS = 45;
+const DEFAULT_REPS = 10;
+function defaultPrescription(e) {
+  return e && e.unit === 'sec' ? (e.secs || TIMED_HOLD_FALLBACK_SECS) : DEFAULT_REPS;
+}
+
+// ── The ONE home for an untrained lifter's STARTING load ──────────────────────
+// This number had FOUR copies. Three of them disagreed, and two of those three
+// were keyed by exercise names that do not exist:
+//
+//   programs.js buildDynamicProgram  NSCA_DEFAULTS + baseW()   sex-aware, correct names
+//   programs.js getSingleDay         defW()                    SEX-BLIND, no matrix, no oneRmFactor
+//   programs.js materializeTemplate  defW(eq)                  SEX-BLIND, equipment string only
+//   tandem.html DEFAULT_WEIGHTS      getWeekTarget's 'default' sex-aware, 5 DEAD KEYS
+//
+// Verified by running, not by reading:
+//   • The one-off prescribed a woman 95 lb on a barbell press where her own weekly
+//     program prescribed 55 — a 73% over-prescription, for the app's second user,
+//     on the flagship "Build Me a Workout" surface.
+//   • tandem.html's DEFAULT_WEIGHTS names 'Barbell Squat' / 'Barbell Bench Press' /
+//     'Overhead Press' / 'Leg Curl'. EXERCISE_BANK calls them 'Barbell Back Squat' /
+//     'Flat Barbell Press' / 'Barbell Overhead Press' / 'Lying Leg Curl'. So 4 of 13
+//     male entries and 1 of 12 female entries were unreachable — including the three
+//     heaviest lifts a man is prescribed. That branch has been silently dead since
+//     EPIC-9 and no gate could see it, because a lookup miss is not an error.
+//
+// SEED_WEIGHTS is the surviving matrix — the NSCA-informed one whose keys all resolve
+// (0 dead keys, asserted by D26). No number is new here; the dead-named copy is
+// deleted rather than "reconciled", because reconciling would have meant inventing
+// values for names the bank does not have.
+//
+// Source: Notion EPIC-9 default-weight matrices (NSCA-informed untrained-lifter
+// starting loads). ⚠️ The matrix is a starting GUESS by design — D11 governs what
+// happens next, and a single logged set replaces it with an earned number.
+const SEED_WEIGHTS = {
+  female: {
+    'Hip Thrust': 45, 'Barbell Hip Thrust': 45,
+    'Romanian Deadlift': 35, 'DB RDL': 35,
+    'Goblet Squat': 25,
+    'Bulgarian Split Squat': 15,
+    'DB Bench Press': 20,
+    'Dumbbell Row': 25,
+    'Lat Pulldown': 40,
+    'Arnold Press': 15,
+    'Cable Lateral Raise': 7.5,
+    'Lying Leg Curl': 30, 'Seated Leg Curl': 30,
+    'Cable Kickback': 15,
+    'Leg Extension': 30
+  },
+  male: {
+    'Barbell Back Squat': 135, 'Hack Squat': 135,
+    'Romanian Deadlift': 135,
+    'Leg Press': 180,
+    'Flat Barbell Press': 135,
+    'DB Bench Press': 50,
+    'Barbell Row': 95,
+    'Dumbbell Row': 50,
+    'Lat Pulldown': 80,
+    'Barbell Overhead Press': 75,
+    'Cable Lateral Raise': 15,
+    'Lying Leg Curl': 60, 'Seated Leg Curl': 60,
+    'Leg Extension': 70
+  }
+};
+
+// Generic per-equipment floor, used only where the matrix is silent.
+const SEED_BASE_LBS = {
+  female: { barbell: 55, machine: 40, cable: 20, dumbbell: 15 },
+  male:   { barbell: 95, machine: 70, cable: 35, dumbbell: 35 }
+};
+
+function isFemaleSex(sex) {
+  const s = String(sex == null ? '' : sex).toLowerCase();
+  return s === 'f' || s === 'female';
+}
+
+// Lazy name index. EXERCISE_BANK is keyed by slug; every caller that has only a
+// display name (tandem.html's getWeekTarget) needs the entry to read equipment
+// and oneRmFactor off it, and a second hand-maintained name table is exactly what
+// this whole block exists to delete.
+const _seedBankByName = {};
+function bankEntryByName(name) {
+  if (!name) return null;
+  if (!_seedBankByName.__built) {
+    for (const e of Object.values(EXERCISE_BANK)) if (e && e.name) _seedBankByName[e.name] = e;
+    Object.defineProperty(_seedBankByName, '__built', { value: true });
+  }
+  return _seedBankByName[name] || null;
+}
+
+// seedWeight(entry, { sex, dbCap }) → starting lb for an untrained lifter, or 0 for
+// bodyweight/band. Matrix first, then the generic equipment floor scaled by the
+// exercise's own oneRmFactor.
+//
+// ⚠️ FLAGGED, NOT SILENTLY CHANGED: the cable branch applies neither oneRmFactor nor
+// step-rounding, while barbell/machine round to PRESCRIPTION_STEP_LBS and dumbbell
+// rounds to LOAD_STEP_LBS and honours the user's dumbbell cap. That asymmetry is
+// inherited verbatim from baseW() and is preserved here on purpose — cable stacks
+// come in fixed, machine-specific increments that neither constant describes, and no
+// source in the repo says what a cable step should be. Normalising it would be
+// inventing a number to make the function look tidier. Raised for a ruling.
+function seedWeight(entry, opts) {
+  const e = entry || {};
+  const o = opts || {};
+  const key = isFemaleSex(o.sex) ? 'female' : 'male';
+  const cap = (Number.isFinite(o.dbCap) && o.dbCap > 0) ? o.dbCap : Infinity;
+
+  const named = SEED_WEIGHTS[key][e.name];
+  // Matrix dumbbell entries are per-hand — still respect the user's cap.
+  if (named != null) return e.equipment === 'dumbbell' ? Math.min(named, cap) : named;
+
+  const base = SEED_BASE_LBS[key][e.equipment];
+  if (base == null) return 0;                       // bodyweight / band
+  const f = e.oneRmFactor || 1.0;
+  if (e.equipment === 'cable') return base;         // see the flag above
+  if (e.equipment === 'dumbbell') return Math.min(roundToStep(base * f), cap);
+  return Math.round(base * f / PRESCRIPTION_STEP_LBS) * PRESCRIPTION_STEP_LBS;
+}
+
+// progressionPct(phase, compound) — the ONE place a progression rate is decided.
+// Returns a percentage (e.g. 8 means +8% of the current working load).
+function progressionPct(phase, compound) {
+  const base = Number(phase && phase.pctComp);
+  if (!Number.isFinite(base) || base <= 0) return PROGRESSION_PCT_MIN;
+  const raw = compound ? base : base * ACCESSORY_PROGRESSION_RATIO;
+  return Math.min(PROGRESSION_PCT_MAX, Math.max(PROGRESSION_PCT_MIN, raw));
+}
+
 // Phase definitions per goal
 const PHASES = {
   fat_burn: [
@@ -56,10 +257,10 @@ const PHASES = {
     // definition. Reps stay HIGH (12-15) across every block; progress by adding LOAD, never by
     // dropping into strength reps. Short rest + the circuit/superset structure drive the metabolic
     // (EPOC) stimulus. Enforced by doctrine D10.
-    {name:'Metabolic Foundation', intent:'High-rep circuit work with short rest to build work capacity. Reps stay high — progress by adding load, not by dropping reps (fat loss is metabolic, not maximal).', weeks:[1,3],  reps:'15·14·13', restComp:60,  restAcc:45,  incComp:2.5, incAcc:2.5, pctTop:10, pctInc:10},
-    {name:'Metabolic Build',      intent:'Add load at the same high-rep range, short rest held. Muscle is preserved under the deficit while metabolic demand stays high.',                                     weeks:[4,6],  reps:'15·13·12', restComp:60,  restAcc:45,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:10},
-    {name:'Metabolic Power',      intent:'Densest phase — high reps, minimal rest, circuit/superset structure drives EPOC. Load keeps climbing within the high-rep range.',                                   weeks:[7,9],  reps:'14·13·12', restComp:75,  restAcc:45,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:8},
-    {name:'Peak Conditioning',    intent:'Leanest, most conditioned phase — still high-rep. You are lifting more load at 12-15 reps than in week 1.',                                                        weeks:[10,12],reps:'15·13·12', restComp:75,  restAcc:45,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6}
+    {name:'Metabolic Foundation', intent:'High-rep circuit work with short rest to build work capacity. Reps stay high — progress by adding load, not by dropping reps (fat loss is metabolic, not maximal).', weeks:[1,3],  reps:'15·14·13', restComp:60,  restAcc:45,  pctComp:10},
+    {name:'Metabolic Build',      intent:'Add load at the same high-rep range, short rest held. Muscle is preserved under the deficit while metabolic demand stays high.',                                     weeks:[4,6],  reps:'15·13·12', restComp:60,  restAcc:45,  pctComp:10},
+    {name:'Metabolic Power',      intent:'Densest phase — high reps, minimal rest, circuit/superset structure drives EPOC. Load keeps climbing within the high-rep range.',                                   weeks:[7,9],  reps:'14·13·12', restComp:75,  restAcc:45,  pctComp:8},
+    {name:'Peak Conditioning',    intent:'Leanest, most conditioned phase — still high-rep. You are lifting more load at 12-15 reps than in week 1.',                                                        weeks:[10,12],reps:'15·13·12', restComp:75,  restAcc:45,  pctComp:6}
   ],
   build_muscle: [
     // Science audit 2026-07-22 (Finding 2, Kerwin-approved): Build Muscle stays in the HYPERTROPHY
@@ -67,14 +268,14 @@ const PHASES = {
     // separate Strength goal, and reps 5-30 give equivalent hypertrophy when volume-equated to
     // failure, so there is no size benefit to going lower). Periodization comes from the volume
     // ramp + load progression, not from sliding into strength reps. Enforced by doctrine D10.
-    {name:'Hypertrophy Foundation',intent:'Establish movement patterns and work capacity. Volume descends within the block — technique then load. Reps stay in the hypertrophy range.',                        weeks:[1,3],  reps:'12·10·8',  restComp:120, restAcc:75,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},
-    {name:'Hypertrophy Build',     intent:'Add load, hold volume. Growth accelerates as the working weight climbs at 8-11 reps.',                                                                            weeks:[4,6],  reps:'11·9·8',   restComp:120, restAcc:75,  incComp:5,   incAcc:5,   pctTop:6,  pctInc:6},
-    {name:'Hypertrophy Intensify', intent:'Heavier compounds at the bottom of the hypertrophy range. Highest mechanical-tension stimulus of the program — still hypertrophy, not maximal strength.',          weeks:[7,9],  reps:'10·8·7',   restComp:135, restAcc:90,  incComp:10,  incAcc:5,   pctTop:5,  pctInc:5},
-    {name:'Peak Hypertrophy',      intent:'Peak load at the 6-8 rep floor of the hypertrophy range. Strongest you have been at every lift — without dropping into 1-5 rep max-strength work.',                weeks:[10,12],reps:'9·7·6',    restComp:150, restAcc:90,  incComp:5,   incAcc:5,   pctTop:4,  pctInc:3}
+    {name:'Hypertrophy Foundation',intent:'Establish movement patterns and work capacity. Volume descends within the block — technique then load. Reps stay in the hypertrophy range.',                        weeks:[1,3],  reps:'12·10·8',  restComp:120, restAcc:75,  pctComp:8},
+    {name:'Hypertrophy Build',     intent:'Add load, hold volume. Growth accelerates as the working weight climbs at 8-11 reps.',                                                                            weeks:[4,6],  reps:'11·9·8',   restComp:120, restAcc:75,  pctComp:6},
+    {name:'Hypertrophy Intensify', intent:'Heavier compounds at the bottom of the hypertrophy range. Highest mechanical-tension stimulus of the program — still hypertrophy, not maximal strength.',          weeks:[7,9],  reps:'10·8·7',   restComp:135, restAcc:90,  pctComp:5},
+    {name:'Peak Hypertrophy',      intent:'Peak load at the 6-8 rep floor of the hypertrophy range. Strongest you have been at every lift — without dropping into 1-5 rep max-strength work.',                weeks:[10,12],reps:'9·7·6',    restComp:150, restAcc:90,  pctComp:3}
   ],
   transform: [
-    {name:'Recomp Foundation',    intent:'Moderate deficit, high protein, progressive overload. Rep range descends across 3 weeks — establishes the work capacity base.',    weeks:[1,3],  reps:'12·10·8',  restComp:90,  restAcc:60,  incComp:5,   incAcc:2.5, pctTop:8,  pctInc:8},
-    {name:'Recomp Build',         intent:'Add load, maintain intensity. Muscle grows while fat continues to drop. Floor at 8 reps — no heavier in a deficit.',             weeks:[4,6],  reps:'10·9·8',   restComp:90,  restAcc:60,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:6,
+    {name:'Recomp Foundation',    intent:'Moderate deficit, high protein, progressive overload. Rep range descends across 3 weeks — establishes the work capacity base.',    weeks:[1,3],  reps:'12·10·8',  restComp:90,  restAcc:60,  pctComp:8},
+    {name:'Recomp Build',         intent:'Add load, maintain intensity. Muscle grows while fat continues to drop. Floor at 8 reps — no heavier in a deficit.',             weeks:[4,6],  reps:'10·9·8',   restComp:90,  restAcc:60,  pctComp:6,
      subs:{
        // Evidence-informed pressing progression (Fonseca et al. 2014 JSCR — exercise variation > load variation for balanced hypertrophy).
        // Foundation: DB Bench (stabilisers, bilateral parity). Build: Incline DB (adds upper-pec angle, same implement — ~86% of flat DB strength).
@@ -85,7 +286,7 @@ const PHASES = {
          why:'At 30–45° the clavicular pec head dominates EMG activity. DB variation adds deeper bottom-position stretch versus barbell. Evidence-informed progression: same implement (dumbbell), adds upper-pec angle.',
          cues:['Set bench to 30° — not steeper','Elbows at 60–70° from torso, not flared to 90°','Full stretch at bottom without shoulder impingement','Drive up and slightly in — slight arc, not straight up']}
      }},
-    {name:'Recomp Power',         intent:'Heaviest phase. Body composition changes become visually apparent. 8-rep floor maintained throughout.',                           weeks:[7,9],  reps:'9·8·8',    restComp:120, restAcc:75,  incComp:10,  incAcc:5,   pctTop:8,  pctInc:5,
+    {name:'Recomp Power',         intent:'Heaviest phase. Body composition changes become visually apparent. 8-rep floor maintained throughout.',                           weeks:[7,9],  reps:'9·8·8',    restComp:120, restAcc:75,  pctComp:5,
      subs:{
        // Power phase: moves from DB to barbell (higher absolute load ceiling). Keeps 30° angle — same upper-pec stimulus, adds barbell strength capacity.
        'tr-dbench': {id:'tr-libar',  name:'Low Incline Barbell Press', badge:'compound',
@@ -95,7 +296,7 @@ const PHASES = {
          why:'Barbell load ceiling for the power phase. 30° incline is the mechanically safest pressing angle for the shoulder joint. Same vector as the Incline DB from Build, now with barbell to allow heavier absolute loading needed for the power phase.',
          cues:['Retract scapula into the bench','Lower bar to mid-chest','Drive through heels to the floor','Full lockout at top']}
      }},
-    {name:'Recomp Peak',          intent:'The results phase. Scale may barely move but the mirror tells the real story. Load is at its peak — 8 reps all week.',           weeks:[10,12],reps:'8·8·8',    restComp:120, restAcc:75,  incComp:5,   incAcc:5,   pctTop:8,  pctInc:3,
+    {name:'Recomp Peak',          intent:'The results phase. Scale may barely move but the mirror tells the real story. Load is at its peak — 8 reps all week.',           weeks:[10,12],reps:'8·8·8',    restComp:120, restAcc:75,  pctComp:3,
      subs:{
        // Peak phase: flat barbell — maximum mechanical advantage and absolute load for peak strength expression.
        'tr-dbench': {id:'tr-flatbar',  name:'Flat Barbell Press', badge:'compound',
@@ -1588,16 +1789,41 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 }
 
 // ═══════════════════════════════════════════════════════
-// EPIC-8a: experience-level branching (Cycle 30 fix, re-implemented).
-// REST_SECONDS — per-experience-tier rest window, keyed by exercise
-// category. 'intermediate' values match the pre-EPIC-8a hardcoded
-// constants byte-for-byte (90/60) — required for no-regression.
+// REST OWNERSHIP — RULED 2026-08-23. `PHASES` owns rest. Nothing else does.
+//
+// EPIC-8a's REST_SECONDS table (beginner 105/75, intermediate 90/60, advanced
+// 75/45) is DELETED here, not merely unwired. Three findings, all verified by
+// running rather than by reading:
+//
+//  1. It never reached a user. The render layer resolves rest as
+//     `ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc)` —
+//     tandem.html:3516/3551 and the countdown at :3977. `ex.rest` is read
+//     NOWHERE in tandem.html. Every number this table produced was computed,
+//     carried through four transform passes, and discarded at the last step.
+//     It has been dead since EPIC-8a shipped.
+//  2. No source supports keying rest to training experience. research-report
+//     (8).pdf §3 is titled "TRAINING VARIABLES BY GOAL" and prescribes rest by
+//     goal — 60-90s upper isolation, 90-120s lower compound (hypertrophy),
+//     3-5min (strength). §6 "Skill Level Progressions" is the section that
+//     WOULD have licensed an experience-keyed table, and it never mentions rest
+//     at all. Notion's 5-Goal Taxonomy likewise makes rest part of each goal's
+//     signature ("2min rest on compounds" / "short rest" / "moderate rest").
+//     Every canonical source keys rest to GOAL. None keys it to experience.
+//  3. Its numbers were uncited. Same class as D4b, which DOCTRINE.md holds
+//     PENDING precisely because "per-experience numbers are deliberately NOT
+//     invented here." Wiring an invented table into the render path would have
+//     made a fabrication user-visible — strictly worse than leaving it dead.
+//
+// So this is a deletion, not a migration. Wiring REST_SECONDS into the one-off's
+// mk() (as was done earlier the same day, on the theory that a dead table is a
+// silo to be closed) was the wrong repair: the table was dead because it was
+// WRONG, and connecting it would have shipped the error instead of the omission.
+// Closing a silo means collapsing to the correct owner, not to the nearest one.
+//
+// normalizeExperience() stays — experience still legitimately drives drop-set
+// flagging (flagDropSet) and the advanced RPE coaching cue, both of which are
+// annotations rather than prescriptions.
 // ═══════════════════════════════════════════════════════
-const REST_SECONDS = {
-  beginner:     { compound: 105, isolation: 75 },
-  intermediate: { compound: 90,  isolation: 60 },
-  advanced:     { compound: 75,  isolation: 45 }
-};
 function normalizeExperience(experience) {
   return (experience === 'beginner' || experience === 'advanced') ? experience : 'intermediate';
 }
@@ -1768,15 +1994,21 @@ function getSingleDay(focus, opts = {}) {
         return a.name.localeCompare(b.name);
       })[0] || null;
   };
-  // light weight default; render layer (buildDayHTML) overrides from PRs/calibration
-  const defW = (e) => e.equipment === 'barbell' ? 95 : e.equipment === 'machine' ? 70
-    : e.equipment === 'cable' ? 35 : e.equipment === 'dumbbell' ? 35 : 0;
+  // Starting weight: the SAME owner the weekly engine uses. This was its own sex-blind
+  // table that ignored the NSCA matrix and oneRmFactor entirely, so the one-off handed a
+  // woman 95 lb on a barbell press her own weekly program starts at 55. The render layer
+  // still overrides from PRs/calibration where history exists — but with no history, this
+  // number is what she reads off the card, so "it's only a default" was never a defence.
+  const defW = (e) => seedWeight(e, { sex: opts.sex, dbCap: opts.maxDb });
   const mk = (e, i, over = {}) => e && ({
     id: `oneoff-${key}-${i}`, name: e.name,
     badge: e.category === 'compound' ? 'compound' : 'isolation',
     sets: e.category === 'compound' ? 4 : 3,
-    w: defW(e), r: e.unit === 'sec' ? (e.secs || 45) : 10,
-    rest: e.category === 'compound' ? 90 : 60,
+    w: defW(e), r: defaultPrescription(e),
+    // No `rest` field. A GENERATED exercise does not get to author a rest window —
+    // PHASES does, keyed by goal and phase, resolved at render. Emitting a number
+    // here would recreate the dead-value bug: the render layer would ignore it and
+    // the app would carry two disagreeing answers to one question.
     compound: e.category === 'compound', isCore: e.category === 'core',
     cardioOnly: e.category === 'cardio', unit: e.unit || 'reps',
     equipment: e.equipment || null, why: e.why || '', cues: e.cues || [], ...over,
@@ -1817,17 +2049,37 @@ function getSingleDay(focus, opts = {}) {
     const c = select(ONEOFF_CORE_GROUPS, 'core', used);
     if (!c) break;
     used.add(c.name);
-    core.push(mk(c, `k${i}`, { sets: 3, rest: 30 }));
+    // No rest override. The 30s that used to sit here was uncited — no repo or
+    // Notion source prescribes a core-specific rest window — and it was dead
+    // anyway (the block rendered at phase.restAcc: 45s on fat_burn, 60s on
+    // transform, 75s on build_muscle, while its own label read "Rest 30 sec").
+    // Deleting an invented number is the D4b-consistent move; core now rests at
+    // the goal's accessory window like every other non-compound movement.
+    core.push(mk(c, `k${i}`, { sets: 3 }));
   }
   const blocks = [];
   if (comp.length) blocks.push({ label: 'Compound Block', exs: comp });
   if (acc.length) {
     // Supersets are a great fit for a one-off (time-crunched, no progression to
     // protect). Opt-in via opts.supersets — pairs accessories, never the compounds.
-    if (opts.supersets && acc.length >= 2) blocks.push(...pairIntoSupersets(acc, 45));
+    //
+    // Rest and eligibility BOTH come from SUPERSET_CFG — the same table the weekly
+    // path reads in applySupersets(). This used to be a hardcoded 45, which meant
+    // "how long do you rest between superset pairs" had two different answers
+    // depending on which path built the day, and the goal-specific values below
+    // (fat_burn 30s for the EPOC effect, transform 60s) were silently unreachable
+    // from the one-off. A goal with no SUPERSET_CFG entry — build_muscle — gets no
+    // supersets here for the same reason it gets none weekly, rather than getting
+    // them at some third arbitrary rest value.
+    const ssRest = SUPERSET_CFG[opts.goal]?.rest;
+    if (opts.supersets && ssRest != null && acc.length >= 2) blocks.push(...pairIntoSupersets(acc, ssRest));
     else blocks.push({ label: 'Accessory Block', exs: acc });
   }
-  if (core.length) blocks.push({ label: 'Core Block · Rest 30 sec', exs: core });
+  // Label names no rest number. A block heading that asserts a window the render
+  // layer then overrides is a lie printed directly above the truth — this one read
+  // "Rest 30 sec" over lines rendering 45/60/75s. Rest is stated once, on the
+  // exercise line, by whoever actually owns it.
+  if (core.length) blocks.push({ label: 'Core Block', exs: core });
   if (opts.cardio) {
     const cardio = select(ONEOFF_CARDIO_GROUPS, 'cardio', used) || Object.values(EXERCISE_BANK).find(e => e.category === 'cardio' && tierOk(e));
     if (cardio) blocks.push({ label: 'Zone 2 · 20 min', cardio: true, exs: [mk(cardio, 'card', { sets: 1, duration: 20, cardioOnly: true, unit: 'sec', r: 1 })] });
@@ -1967,60 +2219,14 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     return pool[((block % pool.length) + pool.length) % pool.length];
   };
 
-  // EPIC-9 Step B: NSCA-informed untrained-lifter starting weights, keyed by
-  // exact EXERCISE_BANK name. Where a name matches, this OVERRIDES the generic
-  // baseW() formula below (Kerwin: "keep baseW, matrix as override"). Source:
-  // Notion EPIC-9 default-weight matrices.
-  const NSCA_DEFAULTS = isFemale ? {
-    'Hip Thrust': 45, 'Barbell Hip Thrust': 45,
-    'Romanian Deadlift': 35, 'DB RDL': 35,
-    'Goblet Squat': 25,
-    'Bulgarian Split Squat': 15,
-    'DB Bench Press': 20,
-    'Dumbbell Row': 25,
-    'Lat Pulldown': 40,
-    'Arnold Press': 15,
-    'Cable Lateral Raise': 7.5,
-    'Lying Leg Curl': 30, 'Seated Leg Curl': 30,
-    'Cable Kickback': 15,
-    'Leg Extension': 30
-  } : {
-    'Barbell Back Squat': 135, 'Hack Squat': 135,
-    'Romanian Deadlift': 135,
-    'Leg Press': 180,
-    'Flat Barbell Press': 135,
-    'DB Bench Press': 50,
-    'Barbell Row': 95,
-    'Dumbbell Row': 50,
-    'Lat Pulldown': 80,
-    'Barbell Overhead Press': 75,
-    'Cable Lateral Raise': 15,
-    'Lying Leg Curl': 60, 'Seated Leg Curl': 60,
-    'Leg Extension': 70
-  };
-
-  // base starting weight from equipment + sex
-  const baseW = (e) => {
-    const nsca = NSCA_DEFAULTS[e.name];
-    if (nsca != null) {
-      // dumbbell entries in the matrix are per-hand — still respect the user's cap
-      return e.equipment === 'dumbbell' ? Math.min(nsca, dbCap) : nsca;
-    }
-    const m = isFemale ? 0.55 : 1.0;
-    const f = e.oneRmFactor || 1.0;
-    if (e.equipment==='barbell')   return Math.round((isFemale?55:95)*f/5)*5;
-    if (e.equipment==='machine')   return Math.round((isFemale?40:70)*f/5)*5;
-    if (e.equipment==='cable')     return isFemale?20:35;
-    if (e.equipment==='dumbbell')  return Math.min(Math.round((isFemale?15:35)*f/2.5)*2.5, dbCap);
-    return 0; // bodyweight / band
-  };
+  // Starting weight comes from seedWeight() — the one declared owner, near the top of
+  // this file. The NSCA matrix and the generic per-equipment formula used to be inlined
+  // here, which is how three other call sites ended up with their own divergent copies.
+  // (`const m = isFemale ? 0.55 : 1.0` also lived here and was read by nothing.)
+  const baseW = (e) => seedWeight(e, { sex, dbCap });
 
   const makeEx = (entry, idSuffix, overrides={}) => {
     if (!entry) return null;
-    // EPIC-8a: rest window now comes from the REST_SECONDS[exp] table instead
-    // of the hardcoded 90/60 — 'intermediate' values are identical to the old
-    // constants, so this is a no-op for the default tier.
-    const restTable = REST_SECONDS[exp];
     // EPIC-8a: advanced tier appends a coaching-cue STRING to compound lifts
     // only (no RPE calculation/storage — annotation only).
     const cues = (exp === 'advanced' && entry.category === 'compound')
@@ -2032,8 +2238,9 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       badge: entry.category==='compound'?'compound':'isolation',
       sets: overrides.sets ?? (entry.category==='compound'?4:3),
       w: baseW(entry),
-      r: entry.unit==='sec' ? (entry.secs || 45) : 10,   // timed holds: per-entry secs (Plank 60 / Side Plank 45, Kerwin 2026-07-13), 45 default
-      rest: entry.category==='compound' ? restTable.compound : restTable.isolation,
+      r: defaultPrescription(entry),   // one home — see defaultPrescription() above (D25)
+      // No `rest`. Same rule as the one-off's mk(): a generated exercise does not
+      // author a rest window — PHASES resolves it at render, keyed by goal + phase.
       compound: entry.category==='compound',
       isCore: entry.category==='core',
       cardioOnly: entry.category==='cardio',
@@ -2154,13 +2361,13 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         const chosen = pick(pool, {role}, tmpl);
         if (!chosen) return null;
         used.add(chosen.name); dayCore.add(chosen.name);
-        return makeEx(chosen, tmpl.key+'-k'+i, {sets:3, rest:30});
+        return makeEx(chosen, tmpl.key+'-k'+i, {sets:3});
       }).filter(Boolean);
 
       const blocks = [];
       if (compExs.length) blocks.push({label:'Compound Block', exs:compExs});
       if (accExs.length)  blocks.push({label:'Accessory Block', exs:accExs});
-      if (coreExs.length) blocks.push({label:'Core Block · Rest 30 sec', exs:coreExs});
+      if (coreExs.length) blocks.push({label:'Core Block', exs:coreExs});
       if (cardioEx) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
         makeEx(cardioEx, tmpl.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
 
@@ -2192,16 +2399,19 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       const chosen = pick(pool, {role}, sa);
       if (!chosen) return null;
       used.add(chosen.name); saCore.add(chosen.name);
-      return makeEx(chosen, sa.key+'-k'+i, {sets:3, rest:30});
+      return makeEx(chosen, sa.key+'-k'+i, {sets:3});
     }).filter(Boolean);
     // GEN-fix (persona-matrix R7): shoulders day is a training day — it needs
     // a cardio finisher too, same as every other generated day.
     const saCardioPool = bank({groups:sa.cardioGroups, cat:'cardio', excl:[...used]});
     const saCardioEx = saCardioPool[0] || bank({groups:sa.cardioGroups, cat:'cardio'})[0] || null;
     const saBlocks = [];
-    if (shoulderExs.length) saBlocks.push({label:'Shoulder Block · Rest 90 sec', exs:shoulderExs});
-    if (armExs.length)      saBlocks.push({label:'Arms Block · Rest 75 sec', exs:armExs});
-    if (saCoreExs.length)   saBlocks.push({label:'Core Block · Rest 30 sec', exs:saCoreExs});
+    // Rest numbers removed from all three headings. These were 90/75/30 regardless
+    // of goal or phase, while the lines beneath them rendered from PHASES — e.g. a
+    // build_muscle week-9 shoulder line reads 150s under a heading claiming 90.
+    if (shoulderExs.length) saBlocks.push({label:'Shoulder Block', exs:shoulderExs});
+    if (armExs.length)      saBlocks.push({label:'Arms Block', exs:armExs});
+    if (saCoreExs.length)   saBlocks.push({label:'Core Block', exs:saCoreExs});
     if (saCardioEx) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
       makeEx(saCardioEx, sa.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
     if (saBlocks.length) {
@@ -2363,12 +2573,34 @@ function pairIntoSupersets(exs, rest) {
     const pair = exs.slice(i, i + 2);
     if (pair.length === 2) {
       const letter = String.fromCharCode(65 + g++);
-      out.push({ label: `Superset ${letter} · Rest ${rest} sec`, superset: true, exs: pair.map(e => ({ ...e, supersetGroup: letter, rest })) });
+      // authoredRest, not rest. This is the ONE deviation from PHASES the sources
+      // actually license: the 5-Goal Taxonomy makes rest length part of what a
+      // superset IS ("circuit-style, short rest" defines Fat Burn; "antagonist
+      // pairing, moderate rest" defines Transform), so pairing two lifts without
+      // shortening the rest is not a superset, it is just two lifts.
+      // `rest` alone was invisible — the render layer reads only authoredRest — so
+      // a fat_burn superset labelled "Rest 30 sec" was rendering its lines at 45s,
+      // silently erasing the very property that made it a fat_burn superset.
+      // `rest` is kept alongside for the authored-template shape, which carries both.
+      out.push({ label: `Superset ${letter} · Rest ${rest} sec`, superset: true, exs: pair.map(e => ({ ...e, supersetGroup: letter, rest, authoredRest: rest })) });
     } else {
       out.push({ label: 'Accessory Block', exs: pair.map(e => ({ ...e })) });
     }
   }
   return out;
+}
+// honorAuthoredRest — promotes a HAND-AUTHORED `rest` into the render layer's only
+// override channel. Scoped deliberately to the static emergency-fallback base and to
+// the seeded-template path, never to generated days: on those two paths a human wrote
+// the number AND wrote the matching block heading ("Compound Block · Rest 75 sec"), so
+// discarding it made the heading false. Generated days have no author and no heading
+// number, so they resolve from PHASES and must stay that way.
+function honorAuthoredRest(program) {
+  if (!Array.isArray(program)) return program;
+  return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => ({
+    ...b, exs: (b.exs || []).map(e => e && e.rest != null && e.authoredRest == null
+      ? { ...e, authoredRest: e.rest } : e),
+  })) }));
 }
 function applySupersets(program, goal) {
   const cfg = SUPERSET_CFG[goal];
@@ -2499,7 +2731,9 @@ function materializeTemplate(tpl, week, opts) {
   const weekInBlock = wk - block.week_start + 1;
   const twRaw = (block.technique_by_week || {})[weekInBlock];
   const blockTech = twRaw && twRaw !== 'none' ? twRaw : null;
-  const defW = (eq) => eq === 'barbell' ? 95 : eq === 'machine' ? 70 : eq === 'cable' ? 35 : eq === 'dumbbell' ? 35 : 0;
+  // Third copy of the starting-weight table, now routed to the one owner. This one took
+  // an equipment STRING, so it could not see the exercise's name or oneRmFactor even in
+  // principle — an adopted authored program prescribed a woman the male barbell default.
 
   // SAFETY (BUG-59). Defaults are deliberately unrestricted: a caller with no
   // user config gets the author's program verbatim, which is what the offline
@@ -2530,7 +2764,7 @@ function materializeTemplate(tpl, week, opts) {
         name: bank.name || ex.slug,
         badge: compound ? 'compound' : 'isolation',
         sets: ex.sets, r: low, repRange: String(ex.reps || low),
-        w: defW(bank.equipment),
+        w: seedWeight(bank, { sex: opts && opts.sex, dbCap: opts && opts.maxDb }),
         rest: ex.rest, authoredRest: ex.rest,
         compound, isCore: ex.role === 'core', role: ex.role,
         unit: bank.unit || 'reps', equipment: bank.equipment || null,
@@ -3839,5 +4073,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
   const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : days === 6 ? build6(base) : base;
-  return applyDeload(applySupersets(applyGoalVolume(built, goal), goal), rotation, weeks);
+  // honorAuthoredRest FIRST, so applySupersets' shorter superset window still wins:
+  // pairIntoSupersets sets authoredRest explicitly and therefore overwrites it.
+  return applyDeload(applySupersets(applyGoalVolume(honorAuthoredRest(built), goal), goal), rotation, weeks);
 }

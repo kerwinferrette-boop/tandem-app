@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -85,6 +85,34 @@ const TIERS = {
   D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
   D19: 'SAFETY',          // a slot returns what it asked for — muscle-group matching is anchored
   D20: 'SCIENCE_DEFAULT', // one-off recency de-prioritization, same kind as D1's rotation preference
+  D21: 'SCIENCE_DEFAULT', // one-off tiered-set ladder — a load-DISTRIBUTION technique, not a new physiological claim
+  // SAFETY. D22 is not a preference about starting loads — it is the same rule D11
+  // and D12 encode: a 1RM is arrived at by the one sanctioned formula, and a
+  // self-reported number never masquerades as an earned one. Prescribing a raw
+  // 8-10RM as a working load is an over-prescription no citation can license.
+  D22: 'SAFETY',          // onboarding estimate is a submaximal RM — convert via calcRM, never prescribe raw
+  // SAFETY, not SCIENCE_DEFAULT, and the reason is worth stating: D23 is not a claim
+  // about the right rest interval — PHASES and SUPERSET_CFG make that claim, and an
+  // authored program is free to disagree with them via authoredRest. D23 says only
+  // that the number the app SHOWS must be the number the app USES. No citation can
+  // license a heading that contradicts the line beneath it, so there is no override.
+  D23: 'SAFETY',          // single rest owner; no block heading may claim a rest it does not own
+  // SAFETY. Like D23, D24 makes no claim about the RIGHT rate — PHASES.pctComp makes that
+  // claim, and its values sit inside ACSM's band. D24 says only that a progression is a
+  // percentage of a real load, sourced from one owner, rounded through one home, and
+  // displayed as what it actually is. Prescribing a flat pound step is an over- or
+  // under-prescription depending only on how heavy the lift is; no citation licenses it.
+  D24: 'SAFETY',          // load progression is a % of the current load, never a fixed lb increment
+  // SAFETY. D25 makes no claim about how long a plank should be — it says a default
+  // has one declared owner, and that an uncited fallback must be PROVED unreachable
+  // rather than trusted. No citation can license two disagreeing copies of one number.
+  D25: 'SAFETY',          // one owner per generated default; the uncited fallback is provably unreachable
+  // SAFETY. D26 makes no claim that 135 lb is the right squat — D11 replaces it with an
+  // earned number after one logged set. It says the number the app shows comes from ONE
+  // owner, knows the user's sex, and is not addressed to an exercise that does not exist.
+  // A sex-blind default is a 73% over-prescription for half the userbase, and a dead
+  // lookup key is a silent one: a miss returns undefined and the caller falls through.
+  D26: 'SAFETY',          // one sex-aware seed-weight owner; no lookup key may name a non-existent exercise
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -294,6 +322,7 @@ for (const goal of CANONICAL_GOALS) for (const days of DAYS) for (const sex of S
 // compound-first, tier-legal, no duplicate lift, non-empty. (Notion: Home-Screen
 // Program Builders. Wire the Home-Screen entry point in the app as a follow-on.)
 let d9Checked = 0;
+let d23Checked = 0;
 if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
   for (const focus of ONEOFF_FOCUSES) for (const tier of TIER_ORDER) {
     const day = getSingleDay(focus, { tier });
@@ -311,14 +340,490 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
       if (t && TIER_ORDER.indexOf(t) > reqIdx) fail('D9', `one-off ${focus}/${tier}: "${n}" exceeds tier (needs ${t})`);
     }
   }
-  // supersets are available on the one-off (opt-in) — and never on its compound block
+  // ── D23 (ACTIVE) — one rest owner, and no heading may claim a number it does not own ──
+  //
+  // This block REPLACES the REST_SECONDS assertion that stood here until 2026-08-23.
+  // That assertion was green and meaningless: it verified that generated exercises
+  // carried an experience-keyed `rest` value which tandem.html's render layer then
+  // discarded (it resolves `ex.authoredRest ?? phase.restComp/restAcc` and reads
+  // `ex.rest` nowhere). It was the D17 failure mode in a file the gate CAN see —
+  // manufacturing confidence in a dead value. Worse, the table it asserted was itself
+  // uncited: research-report (8).pdf §3 keys rest to GOAL, and §6 "Skill Level
+  // Progressions" — the one section that could have licensed an experience-keyed
+  // window — never mentions rest. So the fix was deletion, not connection.
+  //
+  // What is asserted now is the ruling: PHASES owns rest; `authoredRest` is the ONLY
+  // channel a deviation may travel; a block heading may not print a rest number unless
+  // the exercises under it actually carry that number as authoredRest.
+  const restGoals = ['build_muscle', 'transform', 'fat_burn'];
   for (const focus of ['chest', 'legs', 'pull']) {
-    const day = getSingleDay(focus, { tier: 'full_gym', supersets: true });
+    for (const goal of restGoals) {
+      d23Checked++;
+      const day = getSingleDay(focus, { tier: 'full_gym', goal, supersets: true, cardio: goal === 'fat_burn' });
+      for (const b of (day?.blocks || [])) {
+        // (a) A generated exercise must not author a rest window at all. Emitting one
+        // recreates the dead-value bug: the render layer ignores it, and the app then
+        // holds two disagreeing answers to "how long do I rest?".
+        if (!b.superset) {
+          for (const e of (b.exs || [])) {
+            if (e.rest != null) fail('D23', `one-off ${focus}/${goal}: generated "${e.name}" authored rest ${e.rest}s — PHASES owns rest`);
+            if (e.authoredRest != null) fail('D23', `one-off ${focus}/${goal}: generated "${e.name}" set authoredRest ${e.authoredRest}s outside a superset`);
+          }
+        }
+        // (b) The one licensed deviation — supersets — must reach the render layer.
+        // 5-Goal Taxonomy: short rest is part of what a Fat Burn superset IS. Setting
+        // `rest` alone made that property invisible, which is how a "Rest 30 sec"
+        // superset shipped rendering its lines at 45s.
+        if (b.superset) {
+          const want = SUPERSET_CFG[goal]?.rest;
+          if (want == null) fail('D23', `one-off ${focus}/${goal}: superset block on a goal with no SUPERSET_CFG entry`);
+          for (const e of (b.exs || [])) {
+            if (e.authoredRest !== want) fail('D23', `one-off ${focus}/${goal}: superset "${e.name}" authoredRest ${e.authoredRest}s, SUPERSET_CFG says ${want}s`);
+          }
+        }
+        // (c) A heading that prints a rest number must be telling the truth. Anything
+        // else is a lie printed directly above the value it contradicts.
+        const claimed = /rest\s+(\d+)\s*sec/i.exec(b.label || '');
+        if (claimed) {
+          const n = Number(claimed[1]);
+          for (const e of (b.exs || [])) {
+            if (e.authoredRest !== n) fail('D23', `one-off ${focus}/${goal}: block "${b.label}" claims ${n}s but "${e.name}" renders ${e.authoredRest ?? 'phase rest'}`);
+          }
+        }
+      }
+    }
+    // (d) Experience must not move rest — the positive statement of the deletion above.
+    // Deep-equality also still proves normalizeExperience() has one definition of the
+    // default, which the retired block checked separately.
+    d23Checked++;
+    const tiers = ['beginner', 'intermediate', 'advanced', 'nonsense']
+      .map(x => JSON.stringify(getSingleDay(focus, { tier: 'full_gym', experience: x })));
+    if (new Set(tiers).size !== 1) fail('D23', `one-off ${focus}: experience changed the generated day — rest is goal-keyed, not experience-keyed`);
+  }
+  // (e) The WEEKLY path, which is where the untrue headings actually lived longest:
+  // "Shoulder Block · Rest 90 sec" printed a fixed number over lines that render from
+  // PHASES, so a build_muscle week-9 user read 90 in the heading and 150 in the row.
+  // Swept across every goal and split so a heading number cannot creep back in on one
+  // path only. Same two rules as (a)/(c): generated exercises author no rest, and a
+  // heading may only name a rest that its exercises actually carry.
+  if (typeof getProgram === 'function') {
+    for (const goal of restGoals) {
+      for (const days of [2, 3, 4, 5]) {
+        d23Checked++;
+        const prog = getProgram(goal, days, 8, 'M', 'full_gym', null, null, null, { seed: 'd23', week: 1, phase: 0 }, 'intermediate') || [];
+        for (const day of prog) {
+          for (const b of (day?.blocks || [])) {
+            const claimed = /rest\s+(\d+)\s*sec/i.exec(b.label || '');
+            for (const e of (b.exs || [])) {
+              if (!b.superset && !e.authoredRest && e.rest != null) {
+                fail('D23', `weekly ${goal}/${days}d "${day.label}": generated "${e.name}" authored rest ${e.rest}s — PHASES owns rest`);
+              }
+              if (claimed && e.authoredRest !== Number(claimed[1])) {
+                fail('D23', `weekly ${goal}/${days}d: block "${b.label}" claims ${claimed[1]}s but "${e.name}" renders ${e.authoredRest ?? 'phase rest'}`);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  // supersets are available on the one-off (opt-in) — and never on its compound block.
+  // opts.supersets is a PERMISSION, not an instruction: it says this PATH allows them,
+  // while SUPERSET_CFG decides which GOALS take them and at what rest (see D5 below,
+  // which now binds this path too). So the fixture has to name a goal. The assertion
+  // itself — a superset block appears, and the compound block is never one — is
+  // unchanged in strength.
+  for (const focus of ['chest', 'legs', 'pull']) {
+    const day = getSingleDay(focus, { tier: 'full_gym', goal: 'fat_burn', supersets: true });
     if (!(day?.blocks || []).some(b => b.superset)) fail('D9', `one-off ${focus} with supersets:true produced no superset block`);
     if ((day?.blocks || []).some(b => /compound/i.test(b.label || '') && b.superset)) fail('D9', `one-off ${focus}: compound block was supersetted`);
   }
 } else {
   console.log('  (note: getSingleDay not yet exported — D9 skipped)');
+}
+
+// ── D24 (ACTIVE) — a progression is a PERCENTAGE of a real load, from one owner ──
+//
+// This block exists because the previous state of this file could not have caught the
+// bug it closes. `PHASES` carried FOUR progression columns per phase; two of them
+// (`pctTop`, `pctInc`) were read by nothing and had been dead since the file was
+// written, and the two that were live (`incComp`, `incAcc`) were flat pound steps that
+// no source prescribes. Nothing asserted either fact, so both shipped indefinitely —
+// the same dead-value failure mode D23 found in REST_SECONDS, one table over.
+//
+// The dead pair was split on EVIDENCE, not on symmetry with D23: `pctTop` was a rep
+// threshold whose job `effectiveReps` now owns (D10/D14), so it is deleted; `pctInc`
+// was the "% increase signal" ACSM actually prescribes and its 12 authored values all
+// sit inside ACSM's 2-10% band, so it is promoted. Assertion (2) below is what makes
+// that promotion honest rather than convenient — if a future edit pushes a rate outside
+// the cited band, the gate says so instead of the band quietly widening to fit.
+let d24Checked = 0;
+{
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  // Strip line comments before token-grepping. Without this, every assertion below
+  // that says "this token appears nowhere" is defeated by the comments that EXPLAIN
+  // the deletion — the gate would fail on its own documentation, and the natural fix
+  // (delete the explanation) is exactly the wrong one.
+  const stripComments = s => s.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const htmlCode = stripComments(tandemHtml);
+  const jsCode = stripComments(code);
+
+  for (const goal of CANONICAL_GOALS) {
+    (GOAL_PHASES[goal] || []).forEach((p, i) => {
+      const where = `${goal} P${i + 1}`;
+      // (1) The dead and the flat columns are GONE from the data, not merely unread.
+      // Asserted on the live object rather than by grepping the source, so a column
+      // reintroduced by any means fails.
+      d24Checked++;
+      for (const dead of ['incComp', 'incAcc', 'pctTop', 'pctInc']) {
+        if (dead in p) fail('D24', `PHASES.${where} still carries "${dead}" — progression is a percentage (pctComp), and pctTop/pctInc were dead columns`);
+      }
+      // (2) Every authored rate sits inside ACSM's cited band. This is the assertion
+      // that keeps the promotion of pctInc honest: the values were licensed BECAUSE
+      // they already fell in 2-10%, so the band has to keep binding them.
+      d24Checked++;
+      const base = p.pctComp;
+      if (!Number.isFinite(base)) fail('D24', `PHASES.${where}.pctComp is not a number — every phase must name its progression rate`);
+      else if (base < PROGRESSION_PCT_MIN || base > PROGRESSION_PCT_MAX) {
+        fail('D24', `PHASES.${where}.pctComp = ${base}% is outside ACSM's cited ${PROGRESSION_PCT_MIN}-${PROGRESSION_PCT_MAX}% band (PMID 19204579)`);
+      }
+      // (3) Compound outranks accessory (NSCA: multi-joint "core" lifts progress at
+      // roughly double single-joint "assistance" work), the accessory rate is DERIVED
+      // from the compound one rather than tabulated separately (the D21 precedent), and
+      // the clamp holds. The clamp is load-bearing, not decorative: build_muscle and
+      // transform peak at 3%, and half of 3 is 1.5 — below ACSM's floor.
+      d24Checked++;
+      const pc = progressionPct(p, true), pa = progressionPct(p, false);
+      const expected = Math.min(PROGRESSION_PCT_MAX, Math.max(PROGRESSION_PCT_MIN, base * ACCESSORY_PROGRESSION_RATIO));
+      if (pa !== expected) fail('D24', `${where}: accessory rate ${pa}% is not the derived clamp(pctComp x ${ACCESSORY_PROGRESSION_RATIO}) = ${expected}% — it must not be a second authored table`);
+      if (pa > pc) fail('D24', `${where}: accessory rate ${pa}% exceeds compound ${pc}% — NSCA has multi-joint work progressing FASTER, not slower`);
+      if (pc < PROGRESSION_PCT_MIN || pc > PROGRESSION_PCT_MAX || pa < PROGRESSION_PCT_MIN || pa > PROGRESSION_PCT_MAX) {
+        fail('D24', `${where}: progressionPct escaped the band (compound ${pc}%, accessory ${pa}%)`);
+      }
+    });
+  }
+
+  // (4) Garbage in still yields a legal rate, never NaN/null. A prescription site that
+  // received NaN here would render "add NaN%" or silently skip the progression; the
+  // conservative floor is the only safe degenerate answer.
+  for (const bad of [null, undefined, {}, { pctComp: 0 }, { pctComp: -5 }, { pctComp: NaN }, { pctComp: 'eight' }]) {
+    d24Checked++;
+    const v = progressionPct(bad, true);
+    if (!Number.isFinite(v) || v < PROGRESSION_PCT_MIN || v > PROGRESSION_PCT_MAX) {
+      fail('D24', `progressionPct(${JSON.stringify(bad)}) returned ${v} — a degenerate phase must fall back to the conservative floor, not to NaN`);
+    }
+  }
+
+  // (5) THE INVARIANT ITSELF, proved by running rather than by reading the constant:
+  // the step must be PROPORTIONAL. Extract progressLoad out of tandem.html and inject
+  // the real rounding from programs.js (the D21 contract — never a re-typed copy, which
+  // would keep passing after the shipped constant changed).
+  const plMatch = tandemHtml.match(/function progressLoad\(weight, pct, direction\) \{[\s\S]*?\n\}/);
+  const stepFn = code.match(/function roundToStep\(w\) \{[^}]*\}/);
+  const stepConst = code.match(/const LOAD_STEP_LBS = ([\d.]+);/);
+  if (!plMatch || !stepFn || !stepConst) {
+    fail('D24', 'could not extract progressLoad from tandem.html or LOAD_STEP_LBS/roundToStep from programs.js — the progression step must stay a top-level, stably-named helper or this invariant becomes unassertable');
+  } else {
+    const progressLoad = vm.runInNewContext(
+      `(function(){ ${stepConst[0]} ${stepFn[0]} ${plMatch[0]} return progressLoad; })()`);
+    // A flat pound step is exactly the thing that produces the SAME delta at two very
+    // different loads. Assert the opposite at every live rate.
+    for (const goal of CANONICAL_GOALS) {
+      for (const p of (GOAL_PHASES[goal] || [])) {
+        d24Checked++;
+        const pct = progressionPct(p, true);
+        const light = progressLoad(100, pct, 'up') - 100;
+        const heavy = progressLoad(400, pct, 'up') - 400;
+        if (!(heavy > light)) {
+          fail('D24', `${goal}: at ${pct}% a 400 lb lift moved ${heavy} lb and a 100 lb lift moved ${light} lb — a progression that does not scale with the load is a fixed increment wearing a percent sign`);
+        }
+        // Above the LOAD_STEP_LBS floor the delta must actually BE the percentage,
+        // to the loadable rounding — not merely bigger.
+        d24Checked++;
+        const want = roundToStep(400 * pct / 100);
+        if (heavy !== want) fail('D24', `${goal}: 400 lb at ${pct}% moved ${heavy} lb, expected roundToStep(${400 * pct / 100}) = ${want}`);
+      }
+    }
+    // The floor: 2% of an empty 45 lb bar is 0.9 lb. Without a floor that rounds to
+    // zero and the app tells the user to add nothing, forever. Stated in the D24 row
+    // as an equipment constraint rather than hidden.
+    d24Checked++;
+    if (progressLoad(45, PROGRESSION_PCT_MIN, 'up') !== 45 + LOAD_STEP_LBS) {
+      fail('D24', `progressLoad(45, ${PROGRESSION_PCT_MIN}%) must floor at one loadable step (${LOAD_STEP_LBS} lb), not round to zero`);
+    }
+    // No load, no progression — the D11/D22 rule restated at the step: a percentage of
+    // nothing is not a prescription.
+    for (const bad of [null, 0, NaN, -20, undefined]) {
+      d24Checked++;
+      if (progressLoad(bad, 8, 'up') !== null) fail('D24', `progressLoad(${bad}) must return null — a progression needs a load the user actually lifted`);
+    }
+    // A downward step never crosses zero.
+    d24Checked++;
+    if (progressLoad(LOAD_STEP_LBS, PROGRESSION_PCT_MAX, 'down') < LOAD_STEP_LBS) {
+      fail('D24', 'a downward progression went below one loadable step — a deload is not a negative barbell');
+    }
+    // (6) No private copy of the rounding rule. Same two-copies-drift guard D19/D21
+    // apply: if progressLoad grows its own `2.5`, the shared constant stops being the
+    // single home and the two silently diverge.
+    d24Checked++;
+    if (/[\d.]+\s*\)\s*\*\s*[\d.]+|Math\.round\([^)]*\/\s*[\d.]+\s*\)/.test(stripComments(plMatch[0]))) {
+      fail('D24', 'progressLoad contains its own rounding arithmetic — it must call roundToStep(), the single declared home');
+    }
+  }
+
+  // (7) One declared home for each granularity, and it is NOT tandem.html. Top-level
+  // `const` shares one global lexical environment across classic scripts, so a second
+  // declaration is a hard SyntaxError that takes the whole app down at load. This is
+  // the assertion that stops a future session "fixing" the cross-file reference by
+  // redeclaring the constant locally — which reads as tidier and is fatal.
+  for (const name of ['PRESCRIPTION_STEP_LBS', 'LOAD_STEP_LBS']) {
+    d24Checked++;
+    const decls = (jsCode.match(new RegExp(`\\b(?:const|let|var)\\s+${name}\\b`, 'g')) || []).length
+      + (htmlCode.match(new RegExp(`\\b(?:const|let|var)\\s+${name}\\b`, 'g')) || []).length;
+    if (decls !== 1) fail('D24', `${name} is declared ${decls} time(s) across programs.js + tandem.html — it must be declared exactly once (in programs.js) and USED from tandem.html; a redeclaration is a load-time SyntaxError, not a style issue`);
+  }
+
+  // (8) The prescription sites are actually off the dead columns. Grepping the stripped
+  // source catches a reference the PHASES structural check in (1) cannot see — e.g. an
+  // `ex.incComp` read against an object that no longer has the key, which yields
+  // undefined and fails silently rather than loudly.
+  for (const dead of ['incComp', 'incAcc', 'pctTop', 'pctInc']) {
+    d24Checked++;
+    if (new RegExp(`\\b${dead}\\b`).test(htmlCode) || new RegExp(`\\b${dead}\\b`).test(jsCode)) {
+      fail('D24', `"${dead}" is still referenced in live code — it is a deleted column; a read of it now yields undefined and fails silently`);
+    }
+  }
+
+  // (9) No display advertises a pound increment. Same lying-heading class D23 closed:
+  // the goal modal printed "Load progression: +5 lbs" while the engine applied a
+  // percentage, so the number on screen was not the number in the math.
+  d24Checked++;
+  for (const line of htmlCode.split('\n')) {
+    if (/Load progression/i.test(line) && /\+?\$?\{?[^%]*\blbs?\b/.test(line.replace(/Load progression[^<]*/i, m => m)) && !/%/.test(line)) {
+      fail('D24', `a "Load progression" display renders pounds instead of a percentage: ${line.trim()}`);
+    }
+  }
+}
+
+// ── D25 (ACTIVE) — one owner per generated default; the fallback is proved unreachable ──
+//
+// The point of this block is the SECOND assertion, not the first. Deduplicating the
+// inline `e.unit==='sec' ? (e.secs || 45) : 10` into one helper is hygiene; what makes
+// keeping an UNCITED 45 defensible at all is proving nothing can ever receive it. If
+// (2) ever fails, the fallback stops being a guard and becomes an invented prescription
+// — which is why it fails the gate rather than quietly serving 45 seconds to a user.
+let d25Checked = 0;
+{
+  const jsCode = code.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const { defaultPrescription, TIMED_HOLD_FALLBACK_SECS, DEFAULT_REPS } = vm.runInNewContext(
+    `(function(){ ${code}; return { defaultPrescription, TIMED_HOLD_FALLBACK_SECS, DEFAULT_REPS }; })()`, {});
+
+  // (1) ONE owner. Both engines must call the helper; neither may rebuild the ternary.
+  d25Checked++;
+  if (typeof defaultPrescription !== 'function') {
+    fail('D25', 'defaultPrescription() is missing — a generated exercise\'s default prescription must have exactly one declared owner');
+  }
+  d25Checked++;
+  // Excise the OWNER's own body before counting — it is the one place the ternary is
+  // allowed to exist, and a check that fails on its own single source of truth would
+  // push the next session to delete the helper rather than the duplicate.
+  const withoutOwner = jsCode.replace(/function defaultPrescription\(e\) \{[\s\S]*?\n\}/, '');
+  const inlineCopies = (withoutOwner.match(/unit\s*===?\s*'sec'\s*\?\s*\(?\s*\w+\.secs/g) || []).length;
+  if (inlineCopies > 0) {
+    fail('D25', `${inlineCopies} inline copy(ies) of the timed-hold default remain in programs.js — they must call defaultPrescription()`);
+  }
+  d25Checked++;
+  const callSites = (jsCode.match(/\bdefaultPrescription\(/g) || []).length;
+  if (callSites < 2) {
+    fail('D25', `defaultPrescription() is called from ${callSites} site(s) — both engines (getSingleDay's mk() and buildDynamicProgram's emitter) must route through it, or the silo is only half closed`);
+  }
+
+  // (2) THE LOAD-BEARING ONE: the uncited 45 is unreachable. Every timed bank entry
+  // declares its own hold, so the fallback is a guard rather than a prescription.
+  // research-report (8).pdf and the Programming Architecture Reference are both silent
+  // on isometric durations — that silence is why the number could not be promoted, and
+  // why its unreachability has to be ASSERTED rather than assumed.
+  for (const e of Object.values(EXERCISE_BANK)) {
+    if (!e || e.unit !== 'sec') continue;
+    d25Checked++;
+    if (!Number.isFinite(e.secs) || e.secs <= 0) {
+      fail('D25', `bank entry "${e.name}" is unit:'sec' but declares no secs — it would receive the UNCITED ${TIMED_HOLD_FALLBACK_SECS}s fallback, which no source prescribes. Declare the hold on the entry.`);
+    }
+    // And the helper must actually return the entry's own number, not the fallback.
+    d25Checked++;
+    if (defaultPrescription(e) !== e.secs) {
+      fail('D25', `defaultPrescription("${e.name}") returned ${defaultPrescription(e)}, not the entry's declared ${e.secs}s`);
+    }
+  }
+
+  // (3) The helper's own contract: weighted work gets the rep placeholder, and a
+  // malformed entry still yields a number rather than undefined/NaN reaching a set row.
+  for (const [input, want] of [[{ unit: 'reps' }, DEFAULT_REPS], [{}, DEFAULT_REPS], [null, DEFAULT_REPS],
+                               [{ unit: 'sec', secs: 30 }, 30], [{ unit: 'sec' }, TIMED_HOLD_FALLBACK_SECS]]) {
+    d25Checked++;
+    const got = defaultPrescription(input);
+    if (got !== want) fail('D25', `defaultPrescription(${JSON.stringify(input)}) = ${got}, expected ${want}`);
+  }
+}
+
+// ── D26 (ACTIVE) — one sex-aware seed-weight owner; no dead lookup keys ────────
+// This number had four copies. Three disagreed, and two of those were keyed by
+// exercise names that do not exist — which is the failure mode the whole block is
+// built around: a lookup MISS IS NOT AN ERROR. `DEFAULT_WEIGHTS['male']['Barbell
+// Squat']` returned undefined, the caller fell through, and no gate could see it,
+// because nothing threw. So the load-bearing assertion here is not "the numbers are
+// right" (D11 replaces them with earned numbers after one set) — it is "every key
+// resolves, every path is sex-aware, and all three engines agree by construction."
+let d26Checked = 0;
+let d26SeedCoverageGaps = [];
+{
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const stripComments = s => s.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const htmlCode = stripComments(tandemHtml);
+  const jsCode = stripComments(code);
+
+  // (1) ONE owner, and the deleted copies stay deleted.
+  d26Checked++;
+  if (typeof seedWeight !== 'function' || typeof bankEntryByName !== 'function') {
+    fail('D26', 'seedWeight()/bankEntryByName() are missing from programs.js — the starting load must have exactly one declared owner, reachable by exercise entry AND by display name');
+  }
+  for (const name of ['SEED_WEIGHTS', 'SEED_BASE_LBS']) {
+    d26Checked++;
+    const decls = (jsCode.match(new RegExp(`\\b(?:const|let|var)\\s+${name}\\b`, 'g')) || []).length
+      + (htmlCode.match(new RegExp(`\\b(?:const|let|var)\\s+${name}\\b`, 'g')) || []).length;
+    if (decls !== 1) fail('D26', `${name} is declared ${decls} time(s) across programs.js + tandem.html — it must be declared exactly once (in programs.js) and USED from tandem.html`);
+  }
+  for (const gone of ['DEFAULT_WEIGHTS', 'NSCA_DEFAULTS']) {
+    d26Checked++;
+    if (new RegExp(`\\b${gone}\\b`).test(htmlCode) || new RegExp(`\\b${gone}\\b`).test(jsCode)) {
+      fail('D26', `"${gone}" is back in live code — it was a divergent copy of the seed-weight matrix (${gone === 'DEFAULT_WEIGHTS' ? '5 of its 25 keys named exercises the bank does not have' : 'the same table inlined inside buildDynamicProgram'}); seedWeight() is the owner`);
+    }
+  }
+  // The exact shape of the three deleted tables — a bare equipment ternary carrying a
+  // hardcoded pound value. Any of them growing back is the silo reopening.
+  d26Checked++;
+  const inlineTable = /equipment\s*===?\s*'barbell'\s*\?\s*\d/;
+  for (const [where, src] of [['programs.js', jsCode], ['tandem.html', htmlCode]]) {
+    if (inlineTable.test(src)) {
+      fail('D26', `${where} contains an inline "equipment === 'barbell' ? <lbs>" starting-weight table — that is the shape all three deleted copies had; call seedWeight() instead`);
+    }
+  }
+
+  // (2) THE LOAD-BEARING ONE: no key may name an exercise that does not exist.
+  for (const sexKey of ['female', 'male']) {
+    for (const name of Object.keys(SEED_WEIGHTS[sexKey] || {})) {
+      d26Checked++;
+      if (!bankEntryByName(name)) {
+        fail('D26', `SEED_WEIGHTS.${sexKey} names "${name}", which is not the name of any EXERCISE_BANK entry — the lookup silently misses and the default is dead. This is exactly how tandem.html's DEFAULT_WEIGHTS lost 'Barbell Squat' / 'Barbell Bench Press' / 'Overhead Press' / 'Leg Curl'.`);
+      }
+    }
+    d26Checked++;
+    if (!SEED_BASE_LBS[sexKey] || !['barbell', 'machine', 'cable', 'dumbbell'].every(eq => Number.isFinite(SEED_BASE_LBS[sexKey][eq]))) {
+      fail('D26', `SEED_BASE_LBS.${sexKey} does not cover every loaded equipment type — a gap here silently returns 0, i.e. prescribes an empty bar as a bodyweight movement`);
+    }
+  }
+
+  // (3) seedWeight's own contract.
+  for (const [entry, opts, want, why] of [
+    [null, {}, 0, 'a missing entry must yield 0, never NaN/undefined on a set row'],
+    [{ equipment: 'bodyweight' }, {}, 0, 'bodyweight carries no load'],
+    [{ equipment: 'band' }, {}, 0, 'bands are not lb-loaded'],
+    [{ name: 'DB Bench Press', equipment: 'dumbbell' }, { sex: 'M', dbCap: 30 }, 30, "the user's dumbbell cap outranks the matrix (50 lb entry, 30 lb rack)"],
+  ]) {
+    d26Checked++;
+    const got = seedWeight(entry, opts);
+    if (got !== want) fail('D26', `seedWeight(${JSON.stringify(entry)}, ${JSON.stringify(opts)}) = ${got}, expected ${want} — ${why}`);
+  }
+  // Sex must actually change the answer, and must do so in the same direction everywhere.
+  d26Checked++;
+  const sexBlind = Object.values(EXERCISE_BANK)
+    .filter(e => e.equipment === 'barbell' || e.equipment === 'machine')
+    .filter(e => seedWeight(e, { sex: 'F' }) === seedWeight(e, { sex: 'M' }));
+  if (sexBlind.length) {
+    fail('D26', `${sexBlind.length} loaded exercise(s) return the same starting weight for both sexes (e.g. "${sexBlind[0].name}") — a sex-blind default is what prescribed a woman 95 lb where her own program prescribed 55`);
+  }
+  // An F>M inversion is only meaningful when BOTH sexes resolve through the SAME branch.
+  // Where one sex has a matrix entry and the other falls through to the generic floor,
+  // the two numbers come from different sources and comparing them proves nothing — so
+  // asserting on it would be a check that fires on a data gap while claiming a data
+  // *edit*, which is worse than no check. Scoped, and the gap surfaced separately below.
+  d26Checked++;
+  const inverted = Object.values(EXERCISE_BANK).filter(e => {
+    const inF = SEED_WEIGHTS.female[e.name] != null, inM = SEED_WEIGHTS.male[e.name] != null;
+    return inF === inM && seedWeight(e, { sex: 'F' }) > seedWeight(e, { sex: 'M' });
+  });
+  if (inverted.length) {
+    fail('D26', `seedWeight starts a woman HEAVIER than a man on ${inverted.length} lift(s) resolved through the same branch (e.g. "${inverted[0].name}") — the matrix has been edited into an inversion`);
+  }
+  // ⚠️ FLAGGED, NOT FILLED (CLAUDE.md rule 3). EPIC-9's two matrices do not cover the
+  // same lifts, so a lift named in one and not the other gets a curated number for one
+  // sex and the generic equipment floor for the other. Inherited verbatim and shipped in
+  // buildDynamicProgram for months. Not failed and not "fixed": inventing the missing
+  // entries is precisely the fabrication this gate exists to prevent. Surfaced so it is
+  // visible and rulable rather than silently asymmetric.
+  d26SeedCoverageGaps = Object.values(EXERCISE_BANK)
+    .filter(e => (SEED_WEIGHTS.female[e.name] != null) !== (SEED_WEIGHTS.male[e.name] != null))
+    .map(e => `${e.name} (${SEED_WEIGHTS.female[e.name] != null ? 'female' : 'male'}-only)`);
+
+  // (4) All three engines agree, PROVED BY RUNNING them — not by grepping for a call.
+  // A caller that forgets to pass `sex` still compiles and still returns a number; the
+  // only way to catch it is to compare what the user actually receives.
+  const bothSexes = ['M', 'F'];
+  for (const focus of Object.keys(FOCUS_SLOTS)) {
+    for (const sex of bothSexes) {
+      d26Checked++;
+      const day = getSingleDay(focus, { tier: 'full_gym', sex });
+      if (!day) continue;
+      for (const ex of day.blocks.flatMap(b => b.exs)) {
+        if (ex.cardioOnly) continue;
+        const entry = bankEntryByName(ex.name);
+        const want = entry ? seedWeight(entry, { sex }) : 0;
+        if (ex.w !== want) {
+          fail('D26', `one-off ${focus}/${sex}: "${ex.name}" starts at ${ex.w} lb but seedWeight says ${want} — the one-off engine is not routed through the owner`);
+        }
+      }
+    }
+  }
+  for (const sex of bothSexes) {
+    d26Checked++;
+    const prog = getProgram('build_muscle', 3, 8, sex, 'full_gym', 'balanced', '', null, { seed: 'D26', week: 1, phase: 0 }, 'intermediate');
+    for (const ex of (prog || []).flatMap(d => d.blocks.flatMap(b => b.exs))) {
+      if (ex.cardioOnly) continue;
+      const entry = bankEntryByName(ex.name);
+      if (!entry) continue;              // static-fallback lifts author their own weight
+      const want = seedWeight(entry, { sex });
+      if (ex.w !== want) {
+        fail('D26', `weekly ${sex}: "${ex.name}" starts at ${ex.w} lb but seedWeight says ${want} — the weekly engine and the one-off would hand the same user two different starting loads for one lift`);
+      }
+    }
+  }
+  // And the same lift, same user, must not differ BETWEEN engines. This is the check
+  // that would have caught the shipped bug on its own: 95 from the one-off, 55 weekly.
+  d26Checked++;
+  const oneOffW = {};
+  for (const focus of Object.keys(FOCUS_SLOTS)) {
+    const day = getSingleDay(focus, { tier: 'full_gym', sex: 'F' });
+    for (const ex of (day ? day.blocks.flatMap(b => b.exs) : [])) if (!ex.cardioOnly) oneOffW[ex.name] = ex.w;
+  }
+  const weekly = getProgram('build_muscle', 5, 8, 'F', 'full_gym', 'balanced', '', null, { seed: 'D26', week: 1, phase: 0 }, 'intermediate');
+  for (const ex of (weekly || []).flatMap(d => d.blocks.flatMap(b => b.exs))) {
+    if (ex.cardioOnly || !(ex.name in oneOffW)) continue;
+    if (oneOffW[ex.name] !== ex.w) {
+      fail('D26', `"${ex.name}" starts at ${oneOffW[ex.name]} lb in the one-off but ${ex.w} lb in the weekly program, for the same user — one number, one owner`);
+    }
+  }
+
+  // (5) Every call site must pass sex. Grepped, because a caller that omits it produces
+  // the MALE default silently — a wrong number, not a crash, for half the userbase.
+  for (const [fn, rx] of [['getSingleDay', /getSingleDay\(\s*focus\s*,\s*\{[\s\S]*?\n\s*\}\)/],
+                          ['materializeTemplate', /materializeTemplate\(\s*tpl\s*,\s*currentWeek\s*,\s*\{[\s\S]*?\n\s*\}\)/]]) {
+    d26Checked++;
+    const m = htmlCode.match(rx);
+    if (!m) fail('D26', `could not locate tandem.html's ${fn}() call site — this invariant greps it, so a rename must update the gate in the same change`);
+    else if (!/\bsex\s*:/.test(m[0])) {
+      fail('D26', `tandem.html's ${fn}() call omits "sex:" — the engine then falls through to the male default for every user, silently`);
+    }
+  }
 }
 
 // ── D4 (ACTIVE) — Deloads per the Part B length table ──────────────────────────
@@ -425,6 +930,52 @@ for (const goal of ['transform', 'fat_burn']) for (const days of [2, 3, 4, 5, 6]
   else if (!ss.some(b => (b.exs || []).some(e => e.supersetGroup))) fail('D5', `${goal}/${days}d/${sex}: superset block has no supersetGroup-tagged exercise`);
   // never-on-primary: the Compound Block must never be a superset
   if ((p || []).some(d => (d.blocks || []).some(b => /compound/i.test(b.label || '') && b.superset))) fail('D5', `${goal}/${days}d/${sex}: a Compound Block was supersetted (primary lifts must never superset)`);
+}
+
+// D5 binds the ONE-OFF path too. D9's exemption is enumerated and finite — D1/D4/D7,
+// the periodization invariants — and D5 is deliberately not in it: a one-off is exempt
+// from the PROGRAM's structure, not from its GOAL's shape. This was a live violation
+// until 2026-08-23: getSingleDay hardcoded `pairIntoSupersets(acc, 45)`, so the one-off
+// supersetted every goal that asked, at a rest value that appears in no table, while the
+// weekly path read SUPERSET_CFG. One rule, two answers, depending on which function
+// built the day. These assertions pin the two paths to the SAME table rather than to
+// each other's current output, so the table stays the only place the rule is written.
+if (typeof getSingleDay === 'function' && SUPERSET_CFG) {
+  for (const focus of ['chest', 'legs', 'pull']) {
+    for (const goal of Object.keys(SUPERSET_CFG)) {
+      d5Checked++;
+      const day = getSingleDay(focus, { tier: 'full_gym', goal, supersets: true });
+      const ss = (day?.blocks || []).filter(b => b.superset);
+      if (!ss.length) { fail('D5', `one-off ${focus}/${goal}: no supersets (goal is superset-driven)`); continue; }
+      // Rest must be SUPERSET_CFG's value, not a literal that merely happens to match.
+      const want = SUPERSET_CFG[goal].rest;
+      for (const b of ss) {
+        if (!new RegExp(`Rest ${want} sec`).test(b.label || '')) fail('D5', `one-off ${focus}/${goal}: superset label "${b.label}" does not carry SUPERSET_CFG rest ${want}s`);
+        if ((b.exs || []).some(e => e.rest !== want)) fail('D5', `one-off ${focus}/${goal}: a supersetted exercise carries rest ${(b.exs || []).map(e => e.rest)}, not SUPERSET_CFG's ${want}`);
+      }
+      if ((day?.blocks || []).some(b => /compound/i.test(b.label || '') && b.superset)) fail('D5', `one-off ${focus}/${goal}: a Compound Block was supersetted`);
+    }
+    // The converse, and the half that actually caught the old bug: a goal with NO
+    // SUPERSET_CFG entry gets no supersets on this path either, rather than getting
+    // them at some third arbitrary rest. Asking is not the same as being eligible.
+    for (const goal of CANONICAL_GOALS.filter(g => !SUPERSET_CFG[g])) {
+      d5Checked++;
+      const day = getSingleDay(focus, { tier: 'full_gym', goal, supersets: true });
+      if ((day?.blocks || []).some(b => b.superset)) fail('D5', `one-off ${focus}/${goal}: supersetted despite having no SUPERSET_CFG entry (the weekly path gives it none)`);
+    }
+  }
+  // And the source-level half: getSingleDay must READ the table, not re-type its values.
+  // Comments are stripped first. A prose mention of SUPERSET_CFG in the very comment
+  // explaining the fix would otherwise satisfy this check while the code below it went
+  // back to a literal — verified by RUNNING that exact regression, which the behavioural
+  // assertions above caught but this one did not until the strip was added.
+  d5Checked++;
+  const gsd = code.match(/function getSingleDay\(focus, opts = \{\}\) \{[\s\S]*?\n\}/);
+  if (!gsd) fail('D5', 'could not locate getSingleDay in programs.js to check its superset rest source');
+  else {
+    const body = gsd[0].replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+    if (!/SUPERSET_CFG\s*\[/.test(body)) fail('D5', 'getSingleDay does not index SUPERSET_CFG in executable code — its superset rest is hardcoded again');
+  }
 }
 
 // ── D10 (ACTIVE) — Rep schemes honor each goal's taxonomy band ─────────────────
@@ -1249,6 +1800,283 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
   console.log('  (note: getSingleDay/FOCUS_SLOTS not available — D20 skipped)');
 }
 
+// ── D21 — the one-off tiered-set ladder ────────────────────────────────────────
+// SCIENCE_DEFAULT, not SAFETY. Ascending-load/descending-rep ("pyramid") sequencing is
+// a real, peer-reviewed technique whose outcomes are COMPARABLE TO, not superior to,
+// straight sets when volume is equated. Honest gap, flagged not filled: NO repo-canonical
+// source names this protocol — `research-report (8).pdf` is silent on pyramid/wave/tiered
+// schemes (0 hits). The corroboration is external (2024 bench-press literature) and the
+// compound-only scoping is convention, not a cited mechanism. It is therefore a
+// load-DISTRIBUTION technique layered on D10's band, never a new physiological claim,
+// and it sits at the same tier as D10/D20 rather than at D11/D12's SAFETY tier.
+//
+// ── D22 (ACTIVE, SAFETY) — the onboarding estimate is a submaximal RM ──────────────
+//
+// Onboarding asks "what can you lift for 8-10 reps?", has persisted the answer since
+// EPIC-9 Step A, and used it in exactly one place: as the raw week-1 working weight.
+// That prescribes an 8-10RM for a 12- or 15-rep week. Its second-order effect was the
+// larger one — nothing ever became a 1RM, so getWeekTarget returned source:'none' for
+// every new user and getRecommendation fell through to its flat pound-step branch,
+// leaving the whole %1RM engine (D11) idle. Same tandem.html-resident, regex-extract
+// contract as D21: the helpers stay top-level, stably named and calcRM-only so this
+// invariant is assertable rather than merely documented.
+let d22Checked = 0;
+{
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const calcMatch = tandemHtml.match(/function calcRM\(w, r\) \{[\s\S]*?\n\}/);
+  const seedMatch = tandemHtml.match(/function seedOneRMFromEstimate\(lbs, reps\) \{[\s\S]*?\n\}\n/);
+  const repsMatch = tandemHtml.match(/const ONBOARDING_ESTIMATE_REPS = (\d+);/);
+  if (!calcMatch || !seedMatch || !repsMatch) {
+    fail('D22', 'could not locate seedOneRMFromEstimate/ONBOARDING_ESTIMATE_REPS/calcRM in tandem.html — the conversion must stay a top-level, stably-named, calcRM-only helper or this invariant becomes unassertable');
+  } else {
+    const { calcRM, seedOneRMFromEstimate, ONBOARDING_ESTIMATE_REPS } = vm.runInNewContext(`(function(){
+      ${calcMatch[0]}
+      const ONBOARDING_ESTIMATE_REPS = ${repsMatch[1]};
+      ${seedMatch[0]}
+      return { calcRM, seedOneRMFromEstimate, ONBOARDING_ESTIMATE_REPS };
+    })()`);
+
+    // (1) CONVERSION IDENTITY — the seeded 1RM is D12's calcRM, not a second model.
+    for (const lbs of [45, 95, 135, 185, 225, 315]) {
+      for (const reps of [6, 8, 10, 12, 15]) {
+        d22Checked++;
+        const got = seedOneRMFromEstimate(lbs, reps);
+        if (got !== Math.round(calcRM(lbs, reps))) {
+          fail('D22', `seedOneRMFromEstimate(${lbs}, ${reps}) = ${got}, but D12's calcRM says ${Math.round(calcRM(lbs, reps))} — the estimate must convert through the app's one 1RM model`);
+        }
+        // And it must be a CONVERSION, not a pass-through: a submaximal RM is strictly
+        // below the 1RM it implies, so prescribing the raw number over-prescribes.
+        d22Checked++;
+        if (got <= lbs) fail('D22', `seedOneRMFromEstimate(${lbs}, ${reps}) = ${got} did not exceed the entered weight — a ${reps}-rep max implies a HIGHER 1RM; returning the raw number is the over-prescription this invariant exists to stop`);
+      }
+    }
+
+    // (2) THE RANGE BOTTOM IS THE CONSERVATIVE CHOICE. The card names 8-10 and stores no
+    // rep count, so a point must be picked. calcRM is monotonic in reps (D12), so the
+    // bottom yields the lowest 1RM the user's own answer supports — it under-prescribes.
+    // Asserted as a PROPERTY (>= no other in-range choice) rather than pinned to 8, so
+    // re-ruling the range does not require re-typing a literal here.
+    d22Checked++;
+    if (ONBOARDING_ESTIMATE_REPS !== 8) {
+      fail('D22', `ONBOARDING_ESTIMATE_REPS is ${ONBOARDING_ESTIMATE_REPS}; the onboarding card asks for 8-10 reps and the conservative (under-prescribing) choice is the range BOTTOM, 8`);
+    }
+    d22Checked++;
+    if (seedOneRMFromEstimate(225, ONBOARDING_ESTIMATE_REPS) > seedOneRMFromEstimate(225, 10)) {
+      fail('D22', 'the chosen rep count yields a HIGHER 1RM than the top of the stated range — that manufactures strength the user never claimed');
+    }
+
+    // (3) NO INVENTED RM. D11 is SAFETY: absent a real entry there is no number, not a
+    // guess. Every non-weight must return null, never 0, NaN or a default.
+    for (const bad of [null, undefined, 0, -5, NaN, 'abc', '']) {
+      d22Checked++;
+      if (seedOneRMFromEstimate(bad, 8) !== null) {
+        fail('D22', `seedOneRMFromEstimate(${JSON.stringify(bad)}, 8) did not return null — an absent or invalid estimate must yield NO 1RM (D11: never synthesize one)`);
+      }
+      d22Checked++;
+      if (seedOneRMFromEstimate(225, bad) !== null) {
+        fail('D22', `seedOneRMFromEstimate(225, ${JSON.stringify(bad)}) did not return null — an unusable rep count must yield NO 1RM`);
+      }
+    }
+
+    // (4) FORMULA SINGLE-SOURCE — same two-copies-drift guard D19/D20/D21 apply. A
+    // private Epley here would silently diverge from D12 exactly on the Mayhew branch.
+    d22Checked++;
+    if (!/\bcalcRM\s*\(/.test(seedMatch[0])) {
+      fail('D22', 'seedOneRMFromEstimate does not call calcRM — the conversion must be D12\'s live formula, not a re-derivation');
+    }
+    for (const lit of ['1 + r / 30', '1 + r/30', '52.2', '41.9', '/ 30', '/30']) {
+      d22Checked++;
+      if (seedMatch[0].includes(lit)) {
+        fail('D22', `seedOneRMFromEstimate contains a hardcoded 1RM coefficient (${lit}) — that is a second copy of D12 that will drift`);
+      }
+    }
+
+    // (5) EARNED ALWAYS WINS. A self-reported guess must never outrank a measured lift,
+    // even a LOW one — otherwise an optimistic estimate sits above real performance and
+    // the user can never earn past it. Asserted on the live resolution order, which is
+    // the single site every prescription path calls.
+    const presMatch = tandemHtml.match(/function prescriptionOneRM\(name, workingRm, prRm\) \{[\s\S]*?\n\}/);
+    d22Checked++;
+    if (!presMatch) {
+      fail('D22', 'could not locate prescriptionOneRM in tandem.html — the earned-then-estimate resolution order must live in exactly one named place');
+    } else {
+      d22Checked++;
+      if (!/earnedOneRM\([\s\S]*?\)\s*\?\?/.test(presMatch[0])) {
+        fail('D22', 'prescriptionOneRM does not resolve earnedOneRM FIRST with ?? — an estimate may only fill a blank, never outrank a measured lift (D11 is SAFETY)');
+      }
+      d22Checked++;
+      if (!/estimatedOneRM\(/.test(presMatch[0])) {
+        fail('D22', 'prescriptionOneRM never consults estimatedOneRM — the estimate would be collected, stored and ignored, which is the defect this invariant closes');
+      }
+    }
+
+    // (6) THE RAW-PREFILL BRANCH IS GONE, not merely bypassed. This is the actual bug:
+    // the onboarding number assigned STRAIGHT to the week-1 working weight.
+    d22Checked++;
+    if (/startW\s*=\s*(cfg\.)?onboardingEstimates/.test(tandemHtml) ||
+        /startW\s*=\s*\(?\s*cfg\s*&&\s*cfg\.onboardingEstimates/.test(tandemHtml)) {
+      fail('D22', 'tandem.html still assigns an onboarding estimate directly to startW — the estimate must enter as a 1RM through prescriptionOneRM, never as a working load');
+    }
+    // And the estimate must never be written into the EARNED stores.
+    d22Checked++;
+    if (/(tandem_prs|tandem_working1rm)[\s\S]{0,200}?onboardingEstimates/.test(tandemHtml)) {
+      fail('D22', 'an onboarding estimate is being written into an EARNED 1RM store (tandem_prs / tandem_working1rm) — a self-reported number must never become an earned one');
+    }
+  }
+}
+
+// The ladder lives in tandem.html because it needs the user's EARNED working RM, which
+// the headless engine cannot see (the boundary D20 drew). "It lives in tandem.html" is
+// NOT an excuse for an unassertable invariant — this block regex-extracts the helper and
+// vm-evals it, the same way D12 tests calcRM and D14 tests effectiveReps.
+let d21Checked = 0;
+{
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+  const calcMatch = tandemHtml.match(/function calcRM\(w, r\) \{[\s\S]*?\n\}/);
+  const bandMatch = tandemHtml.match(/const TIER_REP_BAND = (\[[^\]]*\]);/);
+  const ceilMatch = tandemHtml.match(/const TIER_REP_CEILING = (\d+);/);
+  const tierMatch = tandemHtml.match(/function tierSetsFor\(rm, anchorReps, sets\) \{[\s\S]*?\n\}\n/);
+  // D24: the ladder rounds through programs.js's shared roundToStep. Inject the REAL
+  // source rather than a copy — a hardcoded `Math.round(x/2.5)*2.5` here would be a
+  // second implementation of the rounding rule living inside the gate that exists to
+  // stop exactly that, and it would keep passing after the shipped constant changed.
+  const stepFnMatch = code.match(/function roundToStep\(w\) \{[^}]*\}/);
+  const stepConstMatch = code.match(/const LOAD_STEP_LBS = ([\d.]+);/);
+  if (!calcMatch || !bandMatch || !ceilMatch || !tierMatch || !stepFnMatch || !stepConstMatch) {
+    // Deliberately a FAILURE, not a skip. D9 can legitimately skip when getSingleDay is
+    // not exported; a missing tierSetsFor means the shipped feature has no gate at all.
+    fail('D21', 'could not locate tierSetsFor/TIER_REP_BAND/TIER_REP_CEILING/calcRM in tandem.html, or LOAD_STEP_LBS/roundToStep in programs.js — the ladder must stay a top-level, stably-named helper depending only on calcRM and the shared rounding, or this invariant becomes unassertable');
+  } else {
+    const bundle = `(function(){
+      ${calcMatch[0]}
+      ${stepConstMatch[0]}
+      ${stepFnMatch[0]}
+      const TIER_REP_BAND = ${bandMatch[1]};
+      const TIER_REP_CEILING = ${ceilMatch[1]};
+      ${tierMatch[0]}
+      return { calcRM, tierSetsFor, TIER_REP_BAND, TIER_REP_CEILING };
+    })()`;
+    const { calcRM, tierSetsFor, TIER_REP_BAND, TIER_REP_CEILING } = vm.runInNewContext(bundle);
+
+    // (1) THE BAND IS D10'S BAND, not a second copy that can drift.
+    d21Checked++;
+    const bmBand = REP_BANDS.build_muscle;
+    if (TIER_REP_BAND[0] !== bmBand[0] || TIER_REP_BAND[1] !== bmBand[1]) {
+      fail('D21', `TIER_REP_BAND ${JSON.stringify(TIER_REP_BAND)} != D10's build_muscle band ${JSON.stringify(bmBand)} — the ladder clamps to D10, it does not get its own band`);
+    }
+    // The ceiling is a CONSEQUENCE of D12, not a preference: above it, calcRM is floored
+    // and returns the same value, so the inverse cannot tell two loads apart.
+    d21Checked++;
+    if (calcRM(1, TIER_REP_CEILING) >= calcRM(1, TIER_REP_CEILING + 1)) {
+      // expected — the floor is engaged exactly here
+    } else {
+      fail('D21', `TIER_REP_CEILING ${TIER_REP_CEILING} is not where calcRM stops discriminating loads — it must be the last rep count above which calcRM is flat, or the ladder emits equal weights at different reps`);
+    }
+
+    // (2) APPLIED — a plausible earned RM at the canonical anchor yields the classic cadence.
+    d21Checked++;
+    const ladder = tierSetsFor(225, 9, 4);
+    if (!ladder || ladder.length !== 4) {
+      fail('D21', `tierSetsFor(225, 9, 4) returned ${ladder ? ladder.length + ' rungs' : 'null'} — an anchor of 9 over 4 sets must derive the full 12·10·8·6 cadence`);
+    } else {
+      const reps = ladder.map(t => t.reps);
+      if (reps.join('·') !== '12·10·8·6') fail('D21', `anchor 9 derived ${reps.join('·')}, expected the derived pyramid cadence 12·10·8·6`);
+      for (let i = 1; i < ladder.length; i++) {
+        d21Checked++;
+        if (ladder[i].reps >= ladder[i - 1].reps) fail('D21', `anchor 9 rung ${i}: reps ${ladder[i].reps} not strictly below ${ladder[i - 1].reps} — a tiered ladder descends in reps`);
+        if (ladder[i].weight <= ladder[i - 1].weight) fail('D21', `anchor 9 rung ${i}: weight ${ladder[i].weight} not strictly above ${ladder[i - 1].weight} — at a plausible RM the load must climb as reps fall`);
+      }
+    }
+
+    // (3) EVERY reachable build_muscle anchor: in-band, no duplicate rung, reps strictly
+    // descending, weight NON-DECREASING. Non-decreasing rather than strictly ascending is
+    // deliberate and is not a weakened gate: 2.5 lb is the smallest loadable increment, so
+    // on a light lift two adjacent rungs can honestly round to the same weight. Forcing a
+    // synthetic bump to make the assertion prettier would be fabricating a prescription.
+    for (const anchor of [6, 7, 8, 9, 10, 11, 12]) {
+      for (const rm of [45, 95, 135, 225, 405]) {
+        const l = tierSetsFor(rm, anchor, 4);
+        d21Checked++;
+        if (!l || l.length < 2) { fail('D21', `tierSetsFor(${rm}, ${anchor}, 4) returned ${l ? l.length + ' rungs' : 'null'} — every in-band anchor with an earned RM must yield a real (>=2 rung) ladder`); continue; }
+        const seen = new Set();
+        for (let i = 0; i < l.length; i++) {
+          const { reps, weight } = l[i];
+          if (reps < bmBand[0] || reps > Math.min(bmBand[1], TIER_REP_CEILING)) fail('D21', `anchor ${anchor}/rm ${rm}: rung of ${reps} reps escapes D10's clamped band`);
+          if (seen.has(reps)) fail('D21', `anchor ${anchor}/rm ${rm}: duplicate rung at ${reps} reps — a band-edge clamp collision must be de-duplicated, not emitted twice`);
+          seen.add(reps);
+          if (i > 0 && reps >= l[i - 1].reps) fail('D21', `anchor ${anchor}/rm ${rm}: reps ${reps} not below ${l[i - 1].reps}`);
+          if (i > 0 && weight < l[i - 1].weight) fail('D21', `anchor ${anchor}/rm ${rm}: weight ${weight} DROPS below ${l[i - 1].weight} as reps fall — the ladder must never descend in load`);
+        }
+        // The user-visible claim: heaviest rung is the last one.
+        d21Checked++;
+        if (l[l.length - 1].weight < l[0].weight) fail('D21', `anchor ${anchor}/rm ${rm}: final rung is lighter than the first — this is not an ascending-load ladder`);
+      }
+    }
+
+    // (4) CLAMPED at the band edges — still in-band, still no duplicate (covered above for
+    // anchor 6); an anchor OUTSIDE the band derives nothing rather than being forced.
+    d21Checked++;
+    if (tierSetsFor(225, 3, 4) !== null) {
+      fail('D21', 'tierSetsFor with a realization-week anchor (REALIZATION_REPS = 3) returned a ladder — a max test is not a pyramid, and an out-of-band anchor must be flagged out, not clamped in');
+    }
+    d21Checked++;
+    if (tierSetsFor(225, 16, 4) !== null) fail('D21', 'tierSetsFor accepted an anchor above D10\'s build_muscle band');
+
+    // (5) NO INVENTED RM — D11 is SAFETY and outranks this whole invariant.
+    for (const bad of [null, undefined, 0, -5, NaN, '225']) {
+      d21Checked++;
+      if (tierSetsFor(bad, 9, 4) !== null) {
+        fail('D21', `tierSetsFor(${String(bad)}, 9, 4) returned a ladder — without an EARNED 1RM there is no ladder (D11 is SAFETY: an unearned 1RM is never synthesized)`);
+      }
+    }
+
+    // (6) FORMULA SINGLE-SOURCE — the ladder inverts D12's live calcRM; it must not have
+    // grown a private copy of Epley/Mayhew. Same two-copies-drift guard D19/D20 apply.
+    d21Checked++;
+    if (!/\bcalcRM\s*\(/.test(tierMatch[0])) {
+      fail('D21', 'tierSetsFor does not call calcRM — rung weights must be the exact inverse of D12\'s live formula, not a re-derivation');
+    }
+    for (const lit of [/1\s*\+\s*r\s*\/\s*30/, /\b52\.2\b/, /\b41\.9\b/, /1\s*\+\s*reps\s*\/\s*30/]) {
+      d21Checked++;
+      if (lit.test(tierMatch[0])) {
+        fail('D21', `tierSetsFor contains a hardcoded 1RM coefficient (${lit}) — that is a second copy of D12 that will silently diverge, exactly at the clamped high-rep rungs where the Mayhew branch takes over`);
+      }
+    }
+    // Inversion is EXACT, verified by running both directions — not argued from linearity.
+    for (const rm of [95, 225, 405]) {
+      for (const r of [6, 8, 10, 12]) {
+        d21Checked++;
+        const l = tierSetsFor(rm, 9, 4);
+        const rung = l && l.find(t => t.reps === r);
+        if (rung && rung.weight !== Math.round((rm / calcRM(1, r)) / 2.5) * 2.5) {
+          fail('D21', `rm ${rm} rung ${r}: weight ${rung.weight} != rm / calcRM(1, ${r}) rounded to the 2.5 lb loadable increment`);
+        }
+      }
+    }
+
+    // (7) SCOPED AND INERT ELSEWHERE — the call site, not just the helper. A correct helper
+    // called unconditionally would put a ladder on the entire weekly periodized program and
+    // on isolation work. Both scope tokens must appear in the guard expression itself.
+    const guard = tandemHtml.match(/const tierSets = \(([^)]*)\)/);
+    d21Checked++;
+    if (!guard) {
+      fail('D21', 'could not locate the tierSets guard expression in tandem.html — D21\'s scope is part of the invariant, not an implementation detail (the D16 scope ruling, applied here)');
+    } else {
+      for (const tok of ['ex.compound', "goalKey === 'build_muscle'", 'day.oneOff']) {
+        d21Checked++;
+        if (!guard[1].includes(tok)) {
+          fail('D21', `the tierSets guard \`${guard[1].trim()}\` does not gate on ${tok} — the ladder is scoped to the ONE-OFF build_muscle wizard's COMPOUNDS only; fat_burn, transform, isolation and the weekly program must never acquire one`);
+        }
+      }
+    }
+    // buildSetRows must actually consume the ladder, or the guard gates a no-op.
+    d21Checked++;
+    if (!/function buildSetRows\(id, sets, w, r, unit, tierSets\)/.test(tandemHtml)) {
+      fail('D21', 'buildSetRows does not take a tierSets parameter — the derived per-set prescription never reaches the rendered rows');
+    }
+  }
+}
+
 // ── PENDING invariants — the rest of the law, enforced as each phase ships ─────
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
@@ -1278,6 +2106,15 @@ console.log(`  D15 primary compounds held for a whole primary block (>=8wk, meso
 console.log(`  D18 every slot's candidate pool is non-empty at every tier (BUG-82) — ${d18Checked} call-site×tier checks (0 allowlisted gaps — BUG-88's 4 pre-existing home-tier gaps closed Cycle 55)`);
 console.log(`  D19 muscle-group matching is anchored at '_' — a slot returns what it asked for (BUG-87) — ${d19Checked} token×tag checks against the live compiled rule, both engines`);
 console.log(`  D20 one-off soft-deprioritizes a recently-trained muscle, reuses RECOVERY_PARAMS, inert by default (EPIC-028) — ${d20Checked} assertions over focus×tier×window (no-op + inert permutations + steer-fires, exact-key and anchored-parent + never-empty and byte-identical under saturation + never costs a slot + call site sources the ruled threshold)`);
+console.log(`  D22 onboarding estimate is a submaximal RM — converted via D12's live calcRM, never prescribed raw, never outranks an earned number — ${d22Checked} assertions (conversion identity + conservative range-bottom + no invented RM + no private copy of the formula + earned-always-wins resolution order + the raw-prefill branch is gone)`);
+console.log(`  D23 one rest owner (PHASES; authoredRest is the only deviation channel) + no heading claims a rest it does not own — ${d23Checked} assertions over one-off focus×goal and weekly goal×split (generated days author no rest + supersets surface SUPERSET_CFG where the renderer can see it + heading numbers match their lines + experience cannot move rest)`);
+console.log(`  D24 load progression is a PERCENTAGE of the load actually lifted, from one owner, rounded in one home — ${d24Checked} assertions over goal×phase (dead incComp/incAcc/pctTop/pctInc columns gone + every rate inside ACSM's 2-10% band + accessory rate derived not tabulated + degenerate phase falls back to the floor + the step provably scales with the load + no private copy of the rounding + each granularity declared exactly once + no display advertises pounds)`);
+console.log(`  D25 one owner per generated default; the uncited timed-hold fallback is proved unreachable — ${d25Checked} assertions (both engines route through defaultPrescription + no inline copy survives + every unit:'sec' bank entry declares its own secs + the helper returns the entry's number, never the fallback)`);
+console.log(`  D26 one sex-aware seed-weight owner; no lookup key names an exercise that does not exist — ${d26Checked} assertions (seedWeight/bankEntryByName own it + SEED_WEIGHTS/SEED_BASE_LBS declared once + DEFAULT_WEIGHTS/NSCA_DEFAULTS stay deleted + no inline equipment-ternary table regrows + every matrix key resolves in EXERCISE_BANK + no loaded lift is sex-blind + all three engines hand the same user the same number, proved by running them + every call site passes sex)`);
+if (d26SeedCoverageGaps.length) {
+  console.log(`      ⚠️ D26 flagged gap (not a violation, deliberately unfilled): EPIC-9's two seed matrices cover different lifts, so ${d26SeedCoverageGaps.length} lift(s) get a curated number for one sex and the generic equipment floor for the other — ${d26SeedCoverageGaps.join(', ')}. Filling these means inventing numbers no source states. Needs a ruling + a citation.`);
+}
+console.log(`  D21 one-off tiered-set ladder: compounds only, build_muscle only, weight derived by inverting D12's live calcRM against an EARNED RM — ${d21Checked} assertions (derived cadence + band clamp + no duplicate rung + never-descending load + no invented RM + no private copy of the 1RM formula + call-site scope)`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);
 } else {

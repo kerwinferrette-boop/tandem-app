@@ -495,6 +495,40 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:var(--accent);mix-blend-mode:color;opacity:.4;}
 @media (prefers-reduced-motion:reduce){.hero-band::before{transform:none;}}
 
+/* ═══ ONE-OFF FOCUS PICKER (EPIC-028) — 3x3 of hero-treated photo cards ═══ */
+/* Same duotone recipe as .hero-band (grayscale -> --accent at mix-blend-mode:color),
+   so the 9 stock photos land in the app's palette instead of fighting it. Square
+   cards: at a ~335px modal width each is ~103px, which is a real tap target and
+   still lets all 9 sit on screen at once — the reason for 3x3 over a long scroll. */
+.oneoff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px;}
+.oneoff-card{position:relative;aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;
+  isolation:isolate;border:none;padding:0;cursor:pointer;background:var(--s1);
+  box-shadow:var(--e1);-webkit-tap-highlight-color:transparent;
+  transition:transform .16s ease,box-shadow .16s ease;}
+.oneoff-card::before{content:'';position:absolute;inset:0;z-index:0;
+  background-image:var(--card-url);background-size:cover;background-position:center;
+  filter:grayscale(1) contrast(1.08) brightness(.72);transition:filter .16s ease;}
+.oneoff-card::after{content:'';position:absolute;inset:0;z-index:1;
+  background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
+.oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
+.oneoff-eyebrow{display:block;font-family:var(--font-body);font-size:8px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent2);margin-bottom:1px;}
+.oneoff-name{display:block;font-family:var(--font-display);font-weight:800;font-size:14px;line-height:1.05;color:#fff;}
+.oneoff-card:active{transform:scale(.97);}
+.oneoff-card.active{box-shadow:0 0 0 2px var(--accent),var(--e2);}
+.oneoff-card.active::before{filter:grayscale(0) contrast(1.05) brightness(.92);}
+.oneoff-card.active::after{opacity:.16;}
+@media (prefers-reduced-motion:reduce){.oneoff-card{transition:none;}.oneoff-card:active{transform:none;}}
+/* Wizard chrome. The step caption carries the question the grid answers, so a card
+   grid never appears without saying what picking one means. */
+.oneoff-step-cap{margin-top:14px;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent2);}
+.oneoff-back{margin-top:12px;background:none;border:none;padding:0;cursor:pointer;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);-webkit-tap-highlight-color:transparent;}
+.oneoff-back:active{color:var(--text);}
+
 /* ═══════════════════════════════
    MODALS
 ═══════════════════════════════ */
@@ -1632,8 +1666,18 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <button class="modal-close" onclick="closeModal('oneoff')">✕</button>
     <div class="modal-title">Build Me a Workout</div>
     <div class="modal-sub">A single session, right now. Not part of your periodized program — nothing here changes your plan or your week.</div>
-    <div id="oneoffFocusRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
-    <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
+    <!-- Wizard: goal-type → focus → rendered day. The header above is persistent;
+         exactly one step below is visible at a time (showOneOffStep). -->
+    <button id="oneoffBack" class="oneoff-back" style="display:none" onclick="oneOffBack()">← Back</button>
+    <div id="oneoffStep1">
+      <div class="oneoff-step-cap">What are you training for today?</div>
+      <div id="oneoffGoalRow" class="oneoff-grid"></div>
+    </div>
+    <div id="oneoffStep2" style="display:none">
+      <div class="oneoff-step-cap" id="oneoffFocusCap">What are you hitting?</div>
+      <div id="oneoffFocusRow" class="oneoff-grid"></div>
+      <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
+    </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
   </div>
 </div>
@@ -2072,23 +2116,57 @@ const COMPOUND_PATTERNS = {
   'Romanian Deadlift': /\b(romanian deadlift|rdl)\b/i
 };
 
-const DEFAULT_WEIGHTS = {
-  female: {
-    'Hip Thrust': 45, 'Romanian Deadlift': 35, 'Goblet Squat': 25,
-    'Bulgarian Split Squat': 15, 'DB Bench Press': 20, 'Dumbbell Row': 25,
-    'Lat Pulldown': 40, 'Arnold Press': 15, 'Cable Lateral Raise': 7.5,
-    'Leg Curl': 30, 'Cable Kickback': 15, 'Leg Extension': 30
-  },
-  male: {
-    'Barbell Squat': 135, 'Hack Squat': 135, 'Romanian Deadlift': 135,
-    'Leg Press': 180, 'Barbell Bench Press': 135, 'DB Bench Press': 50,
-    'Barbell Row': 95, 'Dumbbell Row': 50, 'Lat Pulldown': 80,
-    'Overhead Press': 75, 'Cable Lateral Raise': 15, 'Leg Curl': 60,
-    'Leg Extension': 70
-  }
-};
+// DEFAULT_WEIGHTS lived here — a fourth copy of the starting-weight matrix, and the
+// most dangerous kind of copy: one whose keys had drifted out of the exercise bank.
+// It named 'Barbell Squat' / 'Barbell Bench Press' / 'Overhead Press' / 'Leg Curl';
+// EXERCISE_BANK calls them 'Barbell Back Squat' / 'Flat Barbell Press' / 'Barbell
+// Overhead Press' / 'Lying Leg Curl'. 4 of 13 male entries and 1 of 12 female entries
+// therefore resolved to undefined, so getWeekTarget's 'default' branch had been dead
+// for the three heaviest lifts a man is prescribed — silently, because a lookup miss
+// is not an error. Deleted, not reconciled: reconciling would have meant inventing
+// values for names the bank does not have. seedWeight() (programs.js) is the owner.
 
-function roundTo5(w) { return Math.round(w / 5) * 5; }
+// ── Loadable-weight rounding: two granularities, ONE declared home ──
+// PRESCRIPTION_STEP_LBS, LOAD_STEP_LBS and roundToStep() are declared in programs.js
+// and used here. They are NOT redeclared: top-level `const` lives in the shared global
+// lexical environment, so a second `const PRESCRIPTION_STEP_LBS` in this file is a hard
+// SyntaxError that takes the whole app down (verified by running it, not by reading).
+//
+// These are equipment-representability constants, NOT prescriptions. The engine's math
+// produces real numbers; a barbell does not. They differ from each other on purpose:
+//   5   — a %1RM target computed from scratch (roundTo5, below). Barbell plates load in
+//         pairs, so the smallest real change with standard 2.5 lb plates is 5 lb.
+//   2.5 — an ADJUSTMENT to a weight the user is already holding (progression steps, the
+//         D21 ladder, equipment substitution). Micro-plates and low-end dumbbells step in
+//         2.5, and a 5 lb floor would round small accessory changes away to nothing.
+// The bug being fixed is that both numbers were bare literals at six call sites with the
+// reason written down nowhere — not that two granularities exist.
+function roundTo5(w) { return Math.round(w / PRESCRIPTION_STEP_LBS) * PRESCRIPTION_STEP_LBS; }
+
+// How far OVER the rep target a user must go before the load moves up. The same ACSM
+// sentence that sets the 2-10% band also sets this trigger — "when the individual can
+// perform the current workload for one to two repetitions over the desired number" —
+// and NSCA states it as the "2-for-2 rule": two reps over goal on two consecutive
+// sessions. Two is the intersection of both sources, so 2 is what ships.
+//
+// It is also the conservative read, which matters here: Tandem keeps only the single
+// most recent session per lift (`tandem_lastsets` is one entry per exercise name), so
+// the "two consecutive sessions" half of the rule is NOT enforceable today. Taking the
+// stricter end of the rep half partly compensates for the half we cannot check. The
+// consecutive-session requirement is a flagged gap, not an implemented rule.
+const PROGRESSION_REP_SURPLUS = 2;
+
+// progressLoad — apply a PERCENTAGE progression step to a load the user actually lifted.
+// Doctrine D24 / ACSM PMID 19204579: the step is 2-10% of the current load, never a
+// fixed pound increment. The delta is floored at one loadable step, which is load-
+// bearing rather than cosmetic: 2% of an empty 45 lb bar is 0.9 lb, and without the
+// floor the app would round that to zero and tell the user to "add 0 lbs" forever.
+function progressLoad(weight, pct, direction) {
+  const w = Number(weight);
+  if (!Number.isFinite(w) || w <= 0) return null;
+  const delta = Math.max(LOAD_STEP_LBS, roundToStep(w * (Number(pct) || 0) / 100));
+  return direction === 'down' ? Math.max(LOAD_STEP_LBS, w - delta) : w + delta;
+}
 
 // EPIC-9: bank exercise names → the ACCESSORY_FACTORS row they inherit.
 // Explicit name list (not regex) on purpose — a miss falls through to
@@ -2146,9 +2224,17 @@ function getWeekTarget(exerciseName, week, goal, oneRM, sex, compound1RMs, total
   if (acc && compound1RMs && compound1RMs[acc.from]) {
     return { weight: roundTo5(compound1RMs[acc.from] * acc.factor), source: 'derived', from: acc.from, factor: acc.factor };
   }
-  const sexKey = (sex === 'female' || sex === 'F' || sex === 'f') ? 'female' : 'male';
-  const def = DEFAULT_WEIGHTS[sexKey][exerciseName];
-  if (def != null) return { weight: def, source: 'default' };
+  // Sex-aware default, from the single owner in programs.js. Reaching it by bank entry
+  // rather than by a local name table is the whole point: the name can no longer drift
+  // out from under the lookup, and the number here is now provably the same number
+  // getSingleDay/getProgram/materializeTemplate already put on ex.w.
+  const entry = typeof bankEntryByName === 'function' ? bankEntryByName(exerciseName) : null;
+  // resolveMaxDb is a UI-tier reader, and scripts/c7-smoke.mjs extracts this formula layer
+  // on its own — guarded so the extraction still runs. Absent ⇒ uncapped, which is exactly
+  // what this branch was before, since DEFAULT_WEIGHTS never knew about the cap either.
+  const dbCap = typeof resolveMaxDb === 'function' ? resolveMaxDb() : undefined;
+  const def = entry ? seedWeight(entry, { sex, dbCap }) : 0;
+  if (def) return { weight: def, source: 'default' };   // 0 = bodyweight, not a prescription
 
   return { weight: null, source: 'none' };
 }
@@ -2308,7 +2394,11 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // target (ex.r) so core work progresses against ITS prescription, not the
   // lifting phase rep scheme.
   const topRange = repTarget || effectiveReps(phase, currentWeek, cfg.weeks);
-  const inc = compound ? phase.incComp : phase.incAcc;
+  // D24: the progression step is a PERCENTAGE of the load the user actually lifted,
+  // resolved by programs.js's progressionPct() — the single owner. `phase.incComp`/
+  // `incAcc` (flat 2.5/5/10 lb) are gone; they charged the same absolute jump to a
+  // 400 lb squat and a 20 lb lateral raise.
+  const pct = progressionPct(phase, compound);
 
   // EPIC-9 Step C/D: %1RM path for calibrated users. The WORKING 1RM (nudged
   // ±2.5% by session performance) is preferred over the all-time PR so the
@@ -2320,8 +2410,12 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // (this is the same churn class already fixed for tandem_lastsets above). The
   // id is consulted solely when there is no name at all — then it's the only
   // identity available, not a cross-exercise leak.
+  // D22: earned first, then the self-reported onboarding estimate. Before this, a user
+  // with no logged history resolved to no 1RM at all, getWeekTarget returned source:'none',
+  // and the flat phase.incComp/incAcc pound-step branch below ran instead of the %1RM
+  // engine. The estimate does not outrank anything earned — it only fills a blank.
   const oneRM = exName
-    ? earnedOneRM(working[exName]?.rm, prs[exName])
+    ? prescriptionOneRM(exName, working[exName]?.rm, prs[exName])
     : prs[exId];
 
   // EPIC-9 Step E: canonical compound 1RM map (working-first) so accessories
@@ -2330,6 +2424,12 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   const compound1RMs = {};
   const rmSource = { ...prs };
   for (const [nm, w] of Object.entries(working)) if (w?.rm) rmSource[nm] = w.rm;
+  // D22: estimates seed the same map so accessories can DERIVE in week 1. Written first-
+  // wins-loses — only where nothing earned already stands — so a real lift is never
+  // overwritten by a self-reported guess.
+  for (const nm of Object.keys((cfg && cfg.onboardingEstimates) || {})) {
+    if (!rmSource[nm]) { const e = estimatedOneRM(nm); if (e) rmSource[nm] = e; }
+  }
   for (const [nm, rm] of Object.entries(rmSource)) {
     if (!rm || typeof rm !== 'number') continue;
     for (const [canon, rx] of Object.entries(COMPOUND_PATTERNS)) {
@@ -2363,18 +2463,18 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   const { minReps, weight } = entry;
   let rec, arrow, reason;
 
-  if (minReps >= topRange) {
-    rec = weight + inc;
+  if (minReps >= topRange + PROGRESSION_REP_SURPLUS) {
+    rec = progressLoad(weight, pct, 'up');
     arrow = 'up';
-    reason = `${minReps} reps hit — add ${inc} lbs`;
+    reason = `${minReps} reps — ${PROGRESSION_REP_SURPLUS} over target, add ${pct}% (${rec - weight} lbs)`;
   } else if (minReps >= topRange - 3) {
     rec = weight;
     arrow = 'same';
     reason = `${minReps} reps — stay, hit full range first`;
   } else {
-    rec = Math.max(weight - inc, inc);
+    rec = progressLoad(weight, pct, 'down');
     arrow = 'down';
-    reason = `Only ${minReps} reps — drop ${inc} lbs`;
+    reason = `Only ${minReps} reps — drop ${pct}% (${weight - rec} lbs)`;
   }
 
   return { weight: rec, arrow, label: `${rec} lbs`, reason };
@@ -2467,6 +2567,11 @@ function getActiveProgram() {
         const p = materializeTemplate(tpl, currentWeek, {
           tier: resolveEquipmentTier(),
           injuries: cfg.injuries,
+          // Same reason as the one-off: an authored template's slots are filled from the
+          // bank, so their starting load is the generated engine's problem, not the
+          // author's. Omitting these gave an adopted program the male defaults.
+          sex: cfg.sex,
+          maxDb: resolveMaxDb(),
         });
         if (Array.isArray(p) && p.length) return p;
       }
@@ -3200,8 +3305,8 @@ function renderTracker() {
     <strong style="color:var(--text)">This week's reps:</strong> ${effectiveReps(phase, currentWeek, cfg.weeks)} (Phase range: ${phase.reps})<br>
     <strong style="color:var(--text)">Compound rest:</strong> ${phase.restComp} sec<br>
     <strong style="color:var(--text)">Accessory rest:</strong> ${phase.restAcc} sec<br>
-    <strong style="color:var(--text)">Weight increment (compounds):</strong> +${phase.incComp} lbs<br>
-    <strong style="color:var(--text)">Weight increment (accessories):</strong> +${phase.incAcc} lbs
+    <strong style="color:var(--text)">Load progression (compounds):</strong> +${progressionPct(phase, true)}%<br>
+    <strong style="color:var(--text)">Load progression (accessories):</strong> +${progressionPct(phase, false)}%
     ${(() => {
       // "Days out of 7" schedule (Kerwin 2026-07-23) — render the 7-day cycle so the
       // user SEES which days are training vs rest (e.g. 4-day = Days 1,2,4,5 of 7).
@@ -3290,7 +3395,11 @@ function renderProgramViews() {
   }
 }
 
-function buildDayHTML(day, phase) {
+// goalKey defaults to cfg.goal, so every pre-existing caller is unchanged. The
+// one-off wizard passes its transient picked goal instead, which keeps the starting
+// weights (getWeekTarget) on the SAME goal as the reps (phase) — passing only the
+// phase would silently split them between the picked and the onboarding goal.
+function buildDayHTML(day, phase, goalKey = cfg.goal) {
   // EPIC-9: build a name→1RM map across this day's exercises so the formula
   // layer can derive accessory targets from calibrated compound 1RMs.
   const _dayPrs = LS.get('tandem_prs') || {};
@@ -3299,7 +3408,7 @@ function buildDayHTML(day, phase) {
   day.blocks.forEach(b => (b.exs || []).forEach(e => {
     // EPIC-9: working 1RM first (living number), then C7 name PR. C7/BUG-45:
     // name-only when named — a recycled slot-id can hold another movement's 1RM.
-    const _rm = e && (e.name ? earnedOneRM(_dayWorking[e.name]?.rm, _dayPrs[e.name]) : _dayPrs[e.id]);
+    const _rm = e && (e.name ? prescriptionOneRM(e.name, _dayWorking[e.name]?.rm, _dayPrs[e.name]) : _dayPrs[e.id]);
     if (!_rm) return;
     dayCompound1RMs[e.name] = _rm;
     // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
@@ -3310,6 +3419,20 @@ function buildDayHTML(day, phase) {
       }
     }
   }));
+  // D22: register EVERY estimated lift, not just the ones in today's day. The onboarding
+  // card collects five compounds and this map is what ACCESSORY_FACTORS derives from — so
+  // a Squat estimate has to reach leg day's Leg Curl even on a day that programs no squat.
+  // Restricting the map to today's exercises would leave the 'derived' source (and its
+  // "30% of your Squat 1RM" explanation) unreachable in week 1, which is the only week the
+  // estimate exists to serve. Max, so a real earned number registered above always wins.
+  for (const estName of Object.keys((typeof cfg !== 'undefined' && cfg && cfg.onboardingEstimates) || {})) {
+    const _est = prescriptionOneRM(estName, _dayWorking[estName]?.rm, _dayPrs[estName]);
+    if (!_est) continue;
+    dayCompound1RMs[estName] = Math.max(dayCompound1RMs[estName] || 0, _est);
+    for (const [canon, rx] of Object.entries(COMPOUND_PATTERNS)) {
+      if (rx.test(estName)) dayCompound1RMs[canon] = Math.max(dayCompound1RMs[canon] || 0, _est);
+    }
+  }
 
   let html = `
     <div class="day-header" style="--dhc:${day.color}">
@@ -3371,7 +3494,7 @@ function buildDayHTML(day, phase) {
         // EPIC-031: authored (template) exercises carry their own rep target
         // (ex.repRange low bound in ex.r) — progression measures against THAT,
         // not the generated phase rep. Generated path (no repRange) unchanged.
-        : getRecommendation(ex.id, ex.compound, cfg.goal, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null);
+        : getRecommendation(ex.id, ex.compound, goalKey, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null);
       const _prStore = LS.get('tandem_prs') || {};
       // EPIC-9: effective 1RM = working (living) number first, then all-time PR.
       // C7/BUG-45: name-only when named — the id fallback was serving another
@@ -3382,37 +3505,52 @@ function buildDayHTML(day, phase) {
       // stale local working number outranked a higher synced PR and this card showed the
       // lower one. This is the site the USER actually looks at. Missed in the first pass
       // (0bca806 fixed 2 of 4 call sites); caught by the backlog workflow's adversarial triage.
-      const pr1rm = ex.name ? earnedOneRM(_dayWorking[ex.name]?.rm, _prStore[ex.name]) : _prStore[ex.id];
+      // D22: same resolution order as getRecommendation — earned, else the self-reported
+      // onboarding estimate. This is the site the user actually reads a weight off.
+      const pr1rm = ex.name ? prescriptionOneRM(ex.name, _dayWorking[ex.name]?.rm, _prStore[ex.name]) : _prStore[ex.id];
       let startW = rec.weight || ex.w;
       // EPIC-9 Step D: when there's no logged history yet (rec.weight null),
       // compute a starting weight from the user's calibrated 1RM instead of
       // the static program value. Only trust calibrated/derived sources —
       // keep the curated ex.w default otherwise. Skip core/timed exercises.
       if (rec.weight == null && !ex.isCore) {
-        const tgt = getWeekTarget(ex.name, currentWeek, cfg.goal, pr1rm || null, cfg.sex, dayCompound1RMs, cfg.weeks);
+        const tgt = getWeekTarget(ex.name, currentWeek, goalKey, pr1rm || null, cfg.sex, dayCompound1RMs, cfg.weeks);
         if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
           startW = tgt.weight;
-        } else {
-          // EPIC-9 Step A: no calibrated/derived target yet (typically W1) —
-          // if the user gave an onboarding estimate for this exact exercise, use it.
-          const obEst = (cfg.onboardingEstimates || {})[ex.name];
-          if (obEst > 0) startW = obEst;
         }
+        // D22 removed the raw-estimate branch that used to sit here. It assigned the
+        // onboarding number STRAIGHT to startW, i.e. prescribed an 8-10 rep max as the
+        // week-1 working load. The estimate now enters through pr1rm as a 1RM instead, so
+        // this path resolves 'calibrated' and the raw assignment is both wrong and
+        // unreachable — an exercise with an estimate can no longer arrive here at all.
         // Phase-substituted exercise with no history: scale by oneRmFactor relative to the
         // original exercise's projected weight (fallback only — history supersedes this).
         if (_ex.id !== ex.id && typeof EXERCISE_BANK !== 'undefined') {
           const bankEntry = Object.values(EXERCISE_BANK).find(e => e.name === ex.name);
           if (bankEntry?.oneRmFactor != null) {
-            const origTgt = getWeekTarget(_ex.name, currentWeek, cfg.goal,
+            const origTgt = getWeekTarget(_ex.name, currentWeek, goalKey,
               // C7/BUG-45: name-only when named — no cross-exercise id fallback.
               // BUG-91 pt3: same earnedOneRM rule as the primary site above.
               (_ex.name ? earnedOneRM(_dayWorking[_ex.name]?.rm, _prStore[_ex.name]) : _prStore[_ex.id]) || null,
               cfg.sex, dayCompound1RMs, cfg.weeks);
             const origW = origTgt.weight ?? _ex.w;
-            if (origW) startW = Math.round((origW * bankEntry.oneRmFactor) / 2.5) * 2.5;
+            if (origW) startW = roundToStep(origW * bankEntry.oneRmFactor);
           }
         }
       }
+
+      // D21 tiered-set ladder. Scoped to the ONE-OFF wizard's build_muscle goal and to
+      // compounds only — isolation has no reliable RM to ladder load against, and the
+      // weekly periodized program is untouched because day.oneOff gates it out.
+      // A null ladder means uniform rendering, byte-identical to before this change.
+      const anchorReps = (ex.isCore || ex.repRange) ? ex.r : effectiveReps(phase, currentWeek, cfg.weeks);
+      const tierSets = (day.oneOff && goalKey === 'build_muscle' && ex.compound && !ex.isCore)
+        ? tierSetsFor(pr1rm, Number(anchorReps), ex.sets) : null;
+      // Rows always number ex.sets. A band-edge clamp can shorten the ladder below the
+      // set count, and the final rung then repeats rather than snapping back to the anchor.
+      const tierRows = tierSets && tierSets.length
+        ? Array.from({ length: ex.sets }, (_, i) => tierSets[Math.min(i, tierSets.length - 1)])
+        : null;
 
       const arrowIcon = rec.arrow === 'up' ? '↑' : rec.arrow === 'down' ? '↓' : rec.arrow === 'new' ? '★' : '→';
       const videoId = VIDEO_IDS[ex.name];
@@ -3426,7 +3564,7 @@ function buildDayHTML(day, phase) {
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.repRange || ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${ex.authoredRest ?? phase.restAcc}s rest`
-                : `${ex.sets} × ${ex.repRange || effectiveReps(phase, currentWeek, cfg.weeks)} reps · ${ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc)}s rest`}
+                : `${ex.sets} × ${tierRows ? tierRows.map(t => t.reps).join('·') : (ex.repRange || anchorReps)} reps · ${ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc)}s rest`}
               </div>
               <div class="po-chip ${rec.arrow}" style="margin-top:4px;">${arrowIcon} ${rec.label}</div>
               <div class="po-reason">${rec.reason}</div>
@@ -3448,9 +3586,9 @@ function buildDayHTML(day, phase) {
               <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
               <div class="set-hdr-cell">✓</div>
             </div>
-            ${buildSetRows(ex.id, ex.sets, startW, (ex.isCore || ex.repRange) ? ex.r : effectiveReps(phase, currentWeek, cfg.weeks), inputMode)}
+            ${buildSetRows(ex.id, ex.sets, startW, anchorReps, inputMode, tierRows)}
             <div class="set-actions">
-              <div class="set-act" onclick="addSet('${ex.id}',${startW},${ex.r},'${inputMode}')">+ Set</div>
+              <div class="set-act" onclick="addSet('${ex.id}',${tierRows ? tierRows[tierRows.length - 1].weight : startW},${tierRows ? tierRows[tierRows.length - 1].reps : ex.r},'${inputMode}')">+ Set</div>
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
               <div class="set-act" onclick="event.stopPropagation();openSwapPicker('${ex.id}')">${svgIcon('swap')} Swap</div>
@@ -3483,7 +3621,7 @@ function buildDayHTML(day, phase) {
   });
 
   // Mobility
-  const mobItems = getMobility(day.key, cfg.goal);
+  const mobItems = getMobility(day.key, goalKey);
   if (mobItems.length) {
     html += `<div class="block-label">Mobility · 10 min</div>`;
     mobItems.forEach(m => {
@@ -3495,9 +3633,15 @@ function buildDayHTML(day, phase) {
   return html;
 }
 
-function buildSetRows(id, sets, w, r, unit) {
+function buildSetRows(id, sets, w, r, unit, tierSets) {
   let html = '';
-  for (let i = 0; i < sets; i++) html += setRowHTML(id, i, w, r, unit);
+  for (let i = 0; i < sets; i++) {
+    // D21: with a tiered ladder supplied, each row carries its OWN weight and rep
+    // prescription. Absent it, every row is the uniform w/r exactly as before —
+    // setRowHTML already took per-row values, so it needs no signature change.
+    const t = tierSets ? tierSets[i] : null;
+    html += setRowHTML(id, i, t ? t.weight : w, t ? t.reps : r, unit);
+  }
   return html;
 }
 
@@ -3959,7 +4103,7 @@ function applySwap(id, newName) {
     let i = 0, wInput;
     while ((wInput = document.getElementById(`${id}-w${i}`))) {
       const w = parseFloat(wInput.value);
-      if (Number.isFinite(w) && w > 0) wInput.value = Math.round((w * ratio) / 2.5) * 2.5;
+      if (Number.isFinite(w) && w > 0) wInput.value = roundToStep(w * ratio);
       onSetInput(id, i);
       i++;
     }
@@ -4041,6 +4185,105 @@ function calcRM(w, r) {
   // monotonic-non-decreasing in reps at a fixed weight — never invented science,
   // just the engineering constraint this app's whole 1RM overhaul exists to enforce.
   return Math.max(100 * w / (52.2 + 41.9 * Math.exp(-0.055 * r)), w * (1 + 12 / 30));
+}
+
+// ── D22 · the onboarding estimate is a SUBMAXIMAL RM, so convert it like one ──────
+//
+// Onboarding has asked "WHAT CAN YOU LIFT FOR 8-10 REPS?" since EPIC-9 Step A, saves the
+// answer, syncs it to users.onboarding_estimates and restores it on re-login — and then
+// used it in exactly ONE place: as the raw week-1 working weight. That is a rep-max being
+// prescribed as a working load, which is a real over-prescription, not a rounding quibble:
+// a user who enters 225 was being told to do the week-1 target of 12 reps at 225 when 225
+// is the weight they can move 9 times. Verified by running it, not inferred.
+//
+// It also meant getWeekTarget returned source:'none' for every new user, so the whole
+// %1RM engine (D11) sat idle and getRecommendation fell through to its flat
+// phase.incComp/incAcc pound-step fallback — the hardcoded 2.5/5/10 lb increments. One
+// unconverted number was keeping the app off its own load model.
+//
+// The conversion is D12's live calcRM, the same function the logged-set path and D21's
+// ladder use, so there is exactly one 1RM model in the app.
+//
+// CHOICE, STATED NOT BURIED: the card names a RANGE (8-10) and stores no rep count, so
+// some rep number must be chosen to convert. We take the BOTTOM of the range. Epley is
+// monotonic increasing in reps, so 8 yields the LOWEST 1RM the user's own answer can
+// support — it under-estimates, and an under-estimate under-prescribes. Taking 10 (or the
+// midpoint) would manufacture strength the user never claimed. If the card is ever changed
+// to capture the actual rep count, this constant is the single line that retires.
+const ONBOARDING_ESTIMATE_REPS = 8;
+
+// Top-level, stably named, dependent on nothing but calcRM — so scripts/doctrine.mjs can
+// regex-extract and vm-eval it, the same contract tierSetsFor keeps. Returns null rather
+// than a guess for any input that isn't a real weight.
+function seedOneRMFromEstimate(lbs, reps) {
+  const w = Number(lbs), r = Number(reps);
+  if (!Number.isFinite(w) || w <= 0) return null;
+  if (!Number.isFinite(r) || r < 1) return null;
+  return Math.round(calcRM(w, r));
+}
+
+// D11 is SAFETY and outranks this: an estimate is SELF-REPORTED, not measured, so it is
+// never allowed to become an earned number. It is therefore deliberately NOT written into
+// tandem_prs (the all-time PR, a running max of real lifts) or tandem_working1rm (which
+// reconcileWorking1RMs reads as `prior` — seeding it would let an optimistic guess sit
+// above a real lift and silently block the user from ever EARNING that 1RM). It stays in
+// cfg, is resolved only when no earned number exists at all, and stops being consulted the
+// moment one does. Earned always wins; the estimate only replaces a blank.
+function estimatedOneRM(name) {
+  if (!name || typeof cfg === 'undefined' || !cfg) return undefined;
+  const rm = seedOneRMFromEstimate((cfg.onboardingEstimates || {})[name], ONBOARDING_ESTIMATE_REPS);
+  return rm == null ? undefined : rm;
+}
+
+// The single resolution order for any load PRESCRIPTION: earned, else self-reported, else
+// nothing. Every prescription site calls this rather than repeating the `?? estimate`
+// fallback, so "what counts as this lift's 1RM" has one answer in one place.
+function prescriptionOneRM(name, workingRm, prRm) {
+  return earnedOneRM(workingRm, prRm) ?? estimatedOneRM(name);
+}
+
+// D21 — the one-off tiered-set ladder (SCIENCE_DEFAULT). Lives in tandem.html rather
+// than programs.js because it needs the user's EARNED working RM, which is app state and
+// not available to the headless engine — the same boundary D20 drew. Kept top-level,
+// stably named, and dependent on nothing but calcRM so scripts/doctrine.mjs can
+// regex-extract and vm-eval it: an invariant that cannot be asserted is not an invariant.
+const TIER_REP_BAND = [6, 15];   // D10's build_muscle band; doctrine.mjs asserts the two agree.
+// D12's calcRM floors the Mayhew branch at the r=12 Epley value, so calcRM(1,13) ===
+// calcRM(1,14) === calcRM(1,15). Above 12 reps the 1RM model carries NO load information
+// and its inverse returns the same weight for every rung — found by RUNNING it, not by
+// reading it. A ladder therefore cannot extend past the point where the model can still
+// tell two loads apart. This ceiling is a consequence of D12, not a new science claim.
+const TIER_REP_CEILING = 12;
+
+function tierSetsFor(rm, anchorReps, sets) {
+  // D11 is SAFETY — an unearned 1RM is never synthesized. No earned RM ⇒ no ladder, and
+  // the card renders uniformly rather than inventing an anchor to ladder against.
+  if (!Number.isFinite(rm) || rm <= 0) return null;
+  if (!Number.isFinite(anchorReps) || !Number.isFinite(sets) || sets < 2) return null;
+  const [lo, bandHi] = TIER_REP_BAND;
+  // Outside the hypertrophy band there is nothing to derive a ladder from. A realization
+  // week (REALIZATION_REPS = 3) is a max test, not a pyramid — flagged out, not fudged in.
+  if (anchorReps < lo || anchorReps > bandHi) return null;
+  const hi = Math.min(bandHi, TIER_REP_CEILING);
+  const rungs = [];
+  for (let i = 0; i < sets; i++) {
+    // Classic pyramid cadence, DERIVED from the exercise's own rep target rather than
+    // tabulated: offsets step down by 2 and straddle the anchor (sets=4 → +3,+1,-1,-3,
+    // so an anchor of 9 yields 12·10·8·6).
+    const reps = Math.min(hi, Math.max(lo, anchorReps + (sets - 1 - 2 * i)));
+    if (rungs.some(x => x.reps === reps)) continue; // clamp collision at a band edge
+    // The EXACT inverse of D12's calcRM, not a second copy of Epley/Mayhew: calcRM is
+    // linear in w on both branches (and across the max-floor), so w = rm / calcRM(1, r).
+    // Calling D12's live function is what keeps this from becoming a second, silently
+    // diverging copy of the formula. Weight climbs as reps fall because calcRM is
+    // monotonic in reps — the behaviour falls out of real math, not a percentage table.
+    // LOAD_STEP_LBS is the smallest loadable adjustment, so on a LIGHT lift two adjacent
+    // rungs can legitimately land on the same weight; that is rounding, not a flat ladder,
+    // and it is not papered over with a synthetic bump.
+    rungs.push({ reps, weight: roundToStep(rm / calcRM(1, reps)) });
+  }
+  // Fewer than two distinct rungs is not a ladder — fall back to uniform rendering.
+  return rungs.length >= 2 ? rungs : null;
 }
 
 function calcORM() {
@@ -5067,54 +5310,191 @@ function recentSetsFor(exerciseName, sets) {
 // not part of the periodized program (D9 exempts it from D1/D4/D7 by design).
 let _oneoffSets = null; // recent-sets read, cached for the life of the open modal
 
-// Goal key for RECOVERY_PARAMS. 'burn_fat' is the onboarding pill's value and
-// 'fat_burn' is the canonical key — same alias weekFactor() already applies.
+// Wizard state. TRANSIENT BY DESIGN: `goal` is the goal-type picked for THIS
+// generated day only and is never written back to cfg.goal — a one-off must not
+// mutate the periodized program or the onboarding profile (the same "writes
+// nothing" rule the block comment above states for the day itself).
+const oneOffState = { goal: null, focus: null };
+
+// Goal key for RECOVERY_PARAMS, PHASES and the goal-shaped opts below. The wizard's
+// pick wins; with no pick (or a stale/unknown one) this falls back to exactly the
+// previous behavior. 'burn_fat' is the onboarding pill's value and 'fat_burn' is the
+// canonical key — same alias weekFactor() already applies.
 function oneOffGoalKey() {
-  const g = cfg.goal === 'burn_fat' ? 'fat_burn' : cfg.goal;
+  const raw = oneOffState.goal || cfg.goal;
+  const g = raw === 'burn_fat' ? 'fat_burn' : raw;
   return RECOVERY_PARAMS[g] ? g : 'build_muscle';
 }
 
-async function openOneOff() {
-  openModal('oneoff');
-  const row = document.getElementById('oneoffFocusRow');
-  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
-  row.innerHTML = focuses.map(f =>
-    `<button class="profile-pill" data-oneoff="${f}" onclick="renderOneOff('${f}')">${f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</button>`
-  ).join('');
-  document.getElementById('oneoffDay').innerHTML = '';
-  document.getElementById('oneoffRecency').textContent = 'Reading your recent training…';
-  // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
-  // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
-  _oneoffSets = await fetchRecentSets(7);
+// Card face for each focus. PRESENTATION ONLY — deliberately not in programs.js,
+// which must stay renderer-agnostic (it also runs headless under doctrine.mjs's vm
+// sandbox). The eyebrow names the muscles the focus actually trains, so the card
+// says something the title doesn't already say. Photos are LOCAL in public/ — the
+// app makes no remote image requests, and netlify.toml's `cp -r public _site/`
+// already ships the whole directory.
+const ONEOFF_FACE = {
+  chest:     { eyebrow: 'PECS · TRIS',  title: 'Chest' },
+  back:      { eyebrow: 'LATS · BIS',   title: 'Back' },
+  legs:      { eyebrow: 'QUADS · HAMS', title: 'Legs' },
+  shoulders: { eyebrow: 'DELTS',        title: 'Shoulders' },
+  arms:      { eyebrow: 'BIS · TRIS',   title: 'Arms' },
+  push:      { eyebrow: 'PRESSING',     title: 'Push' },
+  pull:      { eyebrow: 'PULLING',      title: 'Pull' },
+  hinge:     { eyebrow: 'POSTERIOR',    title: 'Hinge' },
+  full_body: { eyebrow: 'ALL OF IT',    title: 'Full Body' },
+};
+// A focus added to FOCUS_SLOTS without a face here still renders — title-cased name,
+// no eyebrow, and a missing photo just leaves the accent-tinted card. Degrades, never
+// breaks: ONEOFF_FOCUSES is the engine's list and this map must never gate it.
+function oneOffFace(f) {
+  return ONEOFF_FACE[f] || { eyebrow: '', title: f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) };
+}
+
+// Goal-type step. Same presentation-only rule as ONEOFF_FACE: the goal KEYS are the
+// engine's (PHASES/RECOVERY_PARAMS/SUPERSET_CFG all key off them), the labels are
+// Kerwin's. The eyebrow names what actually changes in the generated day, so the
+// three cards are distinguishable by their structure and not just their names.
+const ONEOFF_GOALS = [
+  { key: 'fat_burn',     eyebrow: 'HIGH REP · SHORT REST', title: 'Feel the Burn' },
+  { key: 'transform',    eyebrow: 'SUPERSETS · MIXED REP', title: 'Tone' },
+  { key: 'build_muscle', eyebrow: 'TIERED SETS · HEAVY',   title: 'Gains Season' },
+];
+
+// Exactly one step visible. Step 3 (the rendered day) keeps step 2 on screen so the
+// focus grid stays available to re-roll a different focus without re-picking a goal.
+function showOneOffStep(n) {
+  document.getElementById('oneoffStep1').style.display = n === 1 ? '' : 'none';
+  document.getElementById('oneoffStep2').style.display = n >= 2 ? '' : 'none';
+  document.getElementById('oneoffBack').style.display  = n === 1 ? 'none' : '';
+  if (n < 3) document.getElementById('oneoffDay').innerHTML = '';
+}
+
+function oneOffBack() {
+  // From the rendered day, back means "pick a different focus"; from the focus grid
+  // it means "pick a different goal". One step at a time, never straight to the top.
+  if (document.getElementById('oneoffDay').innerHTML) { showOneOffStep(2); return; }
+  oneOffState.goal = null;
+  oneOffState.focus = null;
+  document.querySelectorAll('#oneoffGoalRow .oneoff-card, #oneoffFocusRow .oneoff-card')
+    .forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+  showOneOffStep(1);
+}
+
+// Card markup is identical between the two grids — same classes, same scrim/caption
+// structure, same --card-url convention. Only the photo prefix and handler differ.
+function oneOffCardHTML(slug, face, prefix, handler, dataAttr, label) {
+  return `<button class="oneoff-card" ${dataAttr}="${slug}" aria-pressed="false"
+      aria-label="${label}"
+      style="--card-url:url('public/${prefix}-${slug.replace(/_/g, '-')}.jpg')"
+      onclick="${handler}">
+      <span class="oneoff-scrim"></span>
+      <span class="oneoff-cap">
+        ${face.eyebrow ? `<span class="oneoff-eyebrow">${face.eyebrow}</span>` : ''}
+        <span class="oneoff-name">${face.title}</span>
+      </span>
+    </button>`;
+}
+
+// Step 1 → 2. The recency banner is computed HERE, not at modal open, because its
+// window is RECOVERY_PARAMS[goal].sameGroupHours — goal-keyed, so it is not knowable
+// until the goal is picked.
+function pickOneOffGoal(goal) {
+  oneOffState.goal = goal;
+  document.querySelectorAll('#oneoffGoalRow .oneoff-card').forEach(b => {
+    const on = b.dataset.oneoffGoal === goal;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  showOneOffStep(2);
+  renderRecencyBanner();
+}
+
+function renderRecencyBanner() {
+  const el = document.getElementById('oneoffRecency');
+  if (!el) return;
+  if (_oneoffSets === null) { el.textContent = 'Reading your recent training…'; return; }
   const winHrs = (RECOVERY_PARAMS[oneOffGoalKey()] || RECOVERY_PARAMS.build_muscle).sameGroupHours;
   const inWindow = Object.entries(recentMuscleLoad(_oneoffSets)).filter(([, h]) => h < winHrs);
-  document.getElementById('oneoffRecency').textContent = inWindow.length
+  el.textContent = inWindow.length
     ? `Still inside your ${winHrs}h recovery window: ${inWindow.map(([t]) => t.replace(/_/g, ' ')).join(', ')}. These get de-prioritized, not blocked.`
     : `Nothing trained in the last ${winHrs}h — picking straight from the bank.`;
 }
 
+async function openOneOff() {
+  openModal('oneoff');
+  oneOffState.goal = null;
+  oneOffState.focus = null;
+  _oneoffSets = null;
+  document.getElementById('oneoffGoalRow').innerHTML = ONEOFF_GOALS.map(g =>
+    oneOffCardHTML(g.key, g, 'goal', `pickOneOffGoal('${g.key}')`, 'data-oneoff-goal',
+      `Build a ${g.title} workout`)).join('');
+  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
+  document.getElementById('oneoffFocusRow').innerHTML = focuses.map(f =>
+    oneOffCardHTML(f, oneOffFace(f), 'oneoff', `renderOneOff('${f}')`, 'data-oneoff',
+      `Build a ${oneOffFace(f).title} workout`)).join('');
+  showOneOffStep(1);
+  renderRecencyBanner();
+  // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
+  // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
+  // Fetched at open (goal-independent) but RENDERED per goal — see renderRecencyBanner.
+  _oneoffSets = await fetchRecentSets(7);
+  if (oneOffState.goal) renderRecencyBanner();
+}
+
 function renderOneOff(focus) {
-  document.querySelectorAll('#oneoffFocusRow .profile-pill').forEach(b =>
-    b.classList.toggle('active', b.dataset.oneoff === focus));
+  document.querySelectorAll('#oneoffFocusRow .oneoff-card').forEach(b => {
+    const on = b.dataset.oneoff === focus;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  oneOffState.focus = focus;
   const goalKey = oneOffGoalKey();
   const day = getSingleDay(focus, {
     // BUG-59: tier + injuries are SAFETY invariants binding EVERY path.
     tier: resolveEquipmentTier(),
     injuries: cfg.injuries,
+    // Experience drives drop-set flagging and the advanced RPE cue. It deliberately
+    // does NOT drive rest — see the rest-ownership ruling in programs.js; PHASES owns
+    // that, keyed by goal and phase, because that is how every source keys it.
+    experience: cfg.experience,
+    // Starting load is sex- and equipment-dependent (seedWeight, programs.js). The
+    // one-off never passed either, so it fell through to the male barbell default for
+    // everyone. Same two values getProgram() has always received.
+    sex: cfg.sex,
+    maxDb: resolveMaxDb(),
     recentExposure: recentMuscleLoad(_oneoffSets || []),
     // D20 (SCIENCE_DEFAULT, EPIC-028) — the ruled threshold. RECOVERY_PARAMS is the
     // single source of it; programs.js takes it as a parameter and never copies the
     // table. Kerwin ruling 2026-08-21; Notion 3c3ca37f935b8189ac8ff6f9c3311da2.
+    // (D20's gate greps this RHS to its line end for the token RECOVERY_PARAMS —
+    // hoisting the number to a variable above would pass review and fail the build.)
     recencyThresholdHours: (RECOVERY_PARAMS[goalKey] || RECOVERY_PARAMS.build_muscle).sameGroupHours,
+    // The goal's SHAPE. Both opts have existed in getSingleDay since D9 and were
+    // never passed by any caller, so every goal produced a structurally identical
+    // day. Per the 5-Goal Taxonomy (D5): Transform is antagonist-superset driven and
+    // Fat Burn is short-rest circuits + Zone 2.
+    //
+    // `supersets: true` asserts only that a one-off PERMITS supersets — they suit it
+    // (time-crunched, no progression to protect) and pairIntoSupersets already refuses
+    // the compounds. WHICH goals actually take them, and at what rest, is SUPERSET_CFG's
+    // call alone; re-listing the goals here would be a second copy of that rule, free
+    // to drift from the table it is supposed to be following. The cardio finisher is
+    // Fat Burn ONLY. Build Muscle takes neither: its differentiator is the D21 ladder.
+    goal: goalKey,
+    supersets: true,
+    cardio: goalKey === 'fat_burn',
   });
   const host = document.getElementById('oneoffDay');
   if (!day) { host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
   // buildDayHTML needs a phase — it drives the rep display through effectiveReps().
-  // Use the user's CURRENT phase, the same getPhase(currentWeek, goal, weeks) every
-  // other call site uses. A one-off is exempt from the program's STRUCTURE (D9: no
-  // D1/D4/D7), not from its goal's rep band — inventing a phase here, or passing
-  // null, would put the reps outside D10's taxonomy band for that goal.
-  host.innerHTML = buildDayHTML(day, getPhase(currentWeek, cfg.goal, cfg.weeks));
+  // Use the user's CURRENT phase at the PICKED goal, the same
+  // getPhase(currentWeek, goal, weeks) every other call site uses. A one-off is exempt
+  // from the program's STRUCTURE (D9: no D1/D4/D7), not from its goal's rep band —
+  // inventing a phase here, or passing null, would put the reps outside D10's taxonomy
+  // band for that goal. goalKey is threaded on so the starting weights come from the
+  // same goal as the reps, instead of silently staying on the onboarding goal.
+  host.innerHTML = buildDayHTML(day, getPhase(currentWeek, goalKey, cfg.weeks), goalKey);
+  showOneOffStep(3);
   if (typeof renderIcons === 'function') renderIcons();
 }
 

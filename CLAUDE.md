@@ -22,6 +22,21 @@ program-logic decision:
    a confident fabrication is the failure mode we are eliminating.
 4. **Invoke the `exercise-science-research` skill** for any program-engine change. It is not
    optional and does not relax when no one is watching.
+5. **When you are confused, stuck, or about to guess — escalate to a skill, do not escalate to
+   Kerwin and do not quietly pick.** Kerwin's job is to set direction and flag where the product
+   is wrong; it is not to arbitrate implementation questions that a source could answer. Two
+   escalation paths, and one of them is almost always right:
+   - **`exercise-science-research`** — for anything the body does: rest intervals, load
+     prescription, rep bands, volume, frequency, progression, starting loads. Use it *first*,
+     before writing code and before asking a question.
+   - **`llm-council`** — for a genuine judgment call the science does not decide: which of two
+     conflicting internal sources should own a rule, whether a doctrine invariant should be
+     amended, an architecture fork with no clear winner. Its output is a citable artifact
+     (`council-*-<date>-<topic>.*`), which is how D16's 2026-08-15 scope ruling was made.
+
+   "The sources conflict" is not a reason to ask — it is a reason to run the council and come
+   back with a recommendation. Only escalate to Kerwin when the decision is genuinely his:
+   product direction, priority, or a value judgment about what the app should feel like.
 
 ## The should / could / did audit (required artifact for program-logic changes)
 
@@ -46,10 +61,21 @@ for — run it *before* shipping, not after he catches it.
   the program won't crash, NOT that it's scientifically correct. Always run the doctrine gate too.
 - **Verify by running, not by reading.** Syntactically valid ≠ behaviorally correct. Extract the
   actual generated output and check it against the research.
+- **"Wired" is not "working." Verify at the surface the USER sees, not the layer you edited.**
+  A value the engine computes correctly and the render layer then discards has shipped nothing —
+  and a green gate asserting that dead value is worse than no gate, because it manufactures
+  confidence. This is not hypothetical: EPIC-8a's per-experience `REST_SECONDS` table has been
+  computed-and-discarded since it shipped (`ex.rest` is read nowhere in `tandem.html`), and D17
+  exists because a live doctrine violation sat in Postgres while `verify` reported 9/9 green.
+  Trace every new value end-to-end to a pixel, or say plainly that you did not.
+- **One rule, one home.** If a named table encodes a rule (`SUPERSET_CFG`, `REST_SECONDS`,
+  `RECOVERY_PARAMS`, `PHASES`, `REP_BANDS`), every path reads that table. A literal that merely
+  happens to match today is a silo, and silos drift. When two tables both claim the same rule,
+  that is a doctrine question — run `llm-council`, do not pick.
 - **No shortcuts.** If you're about to say "this is standard" or "typically," stop and cite the
   source instead. If you can't cite it, flag it as unverified.
 
 ## Standing test gate (run before every commit that touches the engine)
-`npm run verify` (6 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
+`npm run verify` (9 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law
 directive.
