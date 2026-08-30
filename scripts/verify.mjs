@@ -49,6 +49,7 @@ const CHECKS = [
   { name: 'cadence smoke (BUG-30 weekday spread — no consecutive/phantom days regression)', run: () => execFileSync('node', [join(scriptsDir, 'cadence-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'materializer smoke (EPIC-031 authored-program render contract)', run: () => execFileSync('node', [join(scriptsDir, 'materializer-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'authored-path safety (BUG-59 — injury + equipment tier bind adopted templates)', run: () => execFileSync('node', [join(scriptsDir, 'authored-safety-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'slot reachability (EPIC-026 Wave 2 — no bank entry ships dead, no new orphan tags)', run: () => execFileSync('node', [join(scriptsDir, 'reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'doctrine conformance (Notion law — see /DOCTRINE.md)', run: () => execFileSync('node', [join(scriptsDir, 'doctrine.mjs')], { stdio: 'inherit' }) },
 ];
 

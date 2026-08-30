@@ -730,7 +730,7 @@ const EXERCISE_BANK = {
     cues:['Lie under a sturdy table, hands gripping the edge, body straight','Pull chest toward the table edge, squeezing shoulder blades together','Keep the body rigid — no hip sag','Lower under control; walk feet further out to increase difficulty']},
   'straight-arm-pulldown':{
     name:'Straight-Arm Pulldown', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['long_head_tricep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['tricep_long_head','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The only movement that isolates the lat without any bicep contribution — the arm stays straight throughout. Trains the lat-to-hip-drive pattern that makes deadlifts and rows stronger.',
     cues:['Cable overhead, arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
@@ -743,7 +743,7 @@ const EXERCISE_BANK = {
     // produces comparable muscle activation/hypertrophy to free weights/cable when volume and
     // intensity are matched, the citation already used for every other band-* entry in this bank.
     name:'Band Straight-Arm Pulldown', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['long_head_tricep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['tricep_long_head','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The only home-tier movement that isolates the lat without any bicep contribution — the arm stays straight throughout, same pattern as the cable version. Trains the lat-to-hip-drive pattern that makes deadlifts and rows stronger, needing only a band anchored overhead.',
     cues:['Anchor the band overhead (door anchor or high point), arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
@@ -823,7 +823,7 @@ const EXERCISE_BANK = {
     cues:['Set an incline bench to ~30°, chest on the pad, dumbbells hanging','Row both dumbbells by driving the elbows up and back','Squeeze the shoulder blades together at the top','Lower to a full stretch; keep the chest glued to the pad throughout']},
   'db-pullover':{
     name:'DB Pullover', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['pec_major_sternal','long_head_tricep']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['pec_major_sternal','tricep_long_head']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'The overhead arc loads the lats in a deep stretched position that no row or pulldown reaches, while also hitting the sternal pec and serratus — a classic rib-cage expander and lat-stretch builder needing only one dumbbell and a bench.',
     cues:['Lie across or along a bench, both hands cupping one dumbbell','Lower the weight back over the head with soft, fixed elbows','Feel a deep stretch across the lats and ribs at the bottom','Pull it back over the chest by driving with the lats — not the arms']},
