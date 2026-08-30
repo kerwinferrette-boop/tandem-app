@@ -136,6 +136,61 @@ catalog:
       when: "Ad hoc today — promote to a standing script the same way persona_matrix was built,
              next time a session does one of these audits by hand."
 
+wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why every Epic bigger
+                      # than a one-file change was parking in Needs Human instead of getting
+                      # built. See .claude/skills/feature-loop/agents/plan.md for the mechanism
+                      # and .claude/skills/feature-loop/SKILL.md Stage 1.5 for where it's wired in.
+  wave_file_pattern: "docs/waves/<EPIC-ID>-WAVE-STATE.md"   # one file per Epic, checked into git.
+                      # This IS the checkpoint. A slice's status flips to done in this file, and
+                      # the file is committed, the moment the slice's story goes Resolved — not
+                      # batched to end-of-cycle. There is no other resume mechanism: the daily
+                      # cron firing is what "resumes" a Wave, by reading this file and continuing
+                      # from the first unchecked step. Do not build anything that waits for a
+                      # credit-refresh signal — that primitive does not exist and promising it
+                      # would be the same failure shape as the REST_SECONDS silently-discarded
+                      # value CLAUDE.md already warns about.
+  epic_priority_weight:   # Kerwin's product-vision call (2026-08-30), not the loop's to infer.
+                      # A multiplier applied when Plan/project-goal chooses which eligible Epic to
+                      # Wave next, several being otherwise equally ready. Adjust the list, not the
+                      # mechanism, when priorities change.
+    - tags: ["on-demand-workout-generation", "personal-trainer"]
+      weight: 2
+    - tags: ["competition", "gamification", "head-to-head"]
+      weight: 2
+    - tags: []   # everything else
+      weight: 1
+  first_run_validation: "REQUIRED before any Wave this stage produces is trusted to run
+                      unattended. Dry-run agents/plan.md against an Epic whose decomposition a
+                      human already wrote by hand (or a fresh Epic held back for this purpose),
+                      diff the output against the real one, and record the review inline in the
+                      Wave file before Fix is allowed to execute from it. Until that review has
+                      happened at least once, every Wave this stage writes is a draft — seed the
+                      slice stories, write the file, but do not let Fix start executing."
+
+escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
+                      # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
+                      # this ("they should be your go-to anyway") and reserved himself for real
+                      # product/business calls, not implementation judgment calls.
+  default_for_forks: "llm-council"   # An implementation fork the Epic's own spec doesn't resolve
+                      # (which of two reasonable slice boundaries, which of two sources should
+                      # govern a rule) gets a council verdict + citation recorded in the Wave/story,
+                      # not a Needs-Human row. This does NOT relax doctrine_is_law or
+                      # source_first_rigor below — a council verdict is not a substitute for a
+                      # citation, it's how a genuine judgment call the science doesn't decide gets
+                      # made instead of guessed.
+  still_needs_kerwin:  # The guardrail is mechanical (this list), never "how big is this decision."
+    - "everything already in safety.forbidden below, including the 2026-08-30
+       scoring/matchmaking/biometric-layer addition"
+    - "a genuine product/business call — which Epic to build at all, what a feature should feel
+       like, a pricing or competitive decision — as opposed to an implementation fork inside an
+       Epic Kerwin already greenlit"
+    - "anything the council itself declines to resolve, or where two council runs on the same
+       question would plausibly disagree (i.e. the split isn't converging)"
+  visibility: "Every council-decided-and-self-executed decision gets one line in the Goal Record's
+       '## Cycle log' entry for that cycle, tagged [COUNCIL] — decision + one-line citation/verdict
+       + what it unblocked. This is the morning digest: Kerwin should be able to scan one cycle-log
+       entry and know what was decided autonomously that day, not have to ask."
+
 notion:
   feature_tracker_db: "fcfd09db-695c-4e01-93a2-90bed2abacdc"  # Tandem User Story Coverage — EXISTS, already linked to Bug Log + Epics
   bug_log_db: "caaf2179-c4e4-4ce1-9a32-eb46ffdbd6a0"      # existing Bug & QA Log, reused as-is
@@ -228,6 +283,14 @@ safety:
     - "any DELETE outside the allowlisted ghost-session cleanup rule already defined in
        tandem-data-integrity-audit — that skill's attended/unattended distinction still
        applies and is NOT overridden by feature-loop's full-autonomy fix setting"
+    - "ADDED 2026-08-30, per the llm-council verdict on autonomous Wave-building: any change
+       touching SCORING, MATCHMAKING (head-to-head competition logic), or the BIOMETRIC/1RM
+       CALCULATION LAYER requires Kerwin, full stop, regardless of council verdict. Not because
+       it's hard — because a plausible-but-wrong architectural call in exactly these areas does
+       silent damage nobody catches for weeks, which is this project's single most repeated
+       failure pattern (see docs/2026-08-17-why-56-cycles-missed-it.md). Plan (agents/plan.md)
+       must carve any such piece of an Epic out as its own Needs-Human line item rather than
+       decomposing it; Fix must never touch it even as a small, in-scope-looking slice."
 ```
 
 ## Resolved — the tracker DB already exists
