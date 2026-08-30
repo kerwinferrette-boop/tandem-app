@@ -159,13 +159,21 @@ wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why eve
       weight: 2
     - tags: []   # everything else
       weight: 1
-  first_run_validation: "REQUIRED before any Wave this stage produces is trusted to run
-                      unattended. Dry-run agents/plan.md against an Epic whose decomposition a
-                      human already wrote by hand (or a fresh Epic held back for this purpose),
-                      diff the output against the real one, and record the review inline in the
-                      Wave file before Fix is allowed to execute from it. Until that review has
-                      happened at least once, every Wave this stage writes is a draft — seed the
-                      slice stories, write the file, but do not let Fix start executing."
+  first_run_validation: "PASSED 2026-08-30 — dry-run of agents/plan.md against EPIC-8 (blind to
+                      the real 2026-07-21 EPIC-8a/8b/8c/8d decomposition), diffed by a human-
+                      informed reviewer against that ground truth. Full review:
+                      docs/waves/EPIC-8-VALIDATION-DRY-RUN-WAVE-STATE.md. Result: 3 of 4 real
+                      sub-epic boundaries reproduced (one more safely than the original build —
+                      it independently avoided re-adding the experience-keyed rest table that
+                      EPIC-8a actually built and later had to delete, D23/D4b), plus one
+                      previously-unnamed live bug found (barbell_rack collapses into full_gym,
+                      tandem.html:2500) and two correct forbidden-ops carve-outs fired on a real
+                      case. One miss (EPIC-8d/BUG-44) traced to the dry run's own withheld
+                      linked-Bug context, not a mechanism defect — SPOT-CHECK on the first LIVE
+                      Wave: confirm Plan actually reads and folds in the Epic's Linked Bugs
+                      relation (agents/plan.md §1) before trusting that path further. Waves this
+                      stage produces are no longer gated to draft-only; Fix may execute from a
+                      live Wave once it exists."
 
 escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
                       # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
