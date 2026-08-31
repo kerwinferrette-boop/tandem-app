@@ -6,14 +6,10 @@
 // rules for core/cardio presence, injury-leak safety, and
 // equipment-tier safety.
 //
-// Scope note: age, height, weight, and experience level are
-// captured at onboarding but NOT passed into getProgram() by
-// any call site in tandem.html (verified 2026-07-13) — that
-// wiring is EPIC-8, still unstarted. So this harness does not
-// vary those axes; doing so today would just re-run the same
-// combo N times for no signal. See loop-config.md for the
-// standing recommendation to unblock EPIC-8 so those axes
-// become meaningful.
+// The combo matrix itself lives in scripts/lib/persona-combos.mjs
+// (extracted 2026-08-30) because scripts/program-snapshot.mjs must
+// sweep the SAME inputs this validator does. See that file for the
+// EPIC-8 scope note on the axes deliberately not varied.
 //
 // Run: npm run validate:personas
 // Exit 0 = all rules pass. Exit 1 = one or more failures.
@@ -31,27 +27,10 @@ const { getProgram, EXERCISE_BANK, makeInjuryBlocked } = vm.runInNewContext(
   { console }
 );
 
-// ── Test matrix ──────────────────────────────────────────
-const GOALS      = ['fat_burn', 'build_muscle', 'transform'];
-const DAY_COUNTS = [2, 3, 4, 5, 6];
-const SEXES      = ['male', 'female'];
-const TIERS      = ['full_gym', 'hotel_gym', 'home'];
-const WEEKS      = 12; // fixed — see validate-programs.mjs R5 for week-length coverage
-
-// One representative phrase per makeInjuryBlocked() keyword rule, plus a
-// clean baseline. Not exhaustive of every synonym — enough to exercise
-// every ban regex at least once.
-const INJURY_PROFILES = [
-  { label: 'none',      value: '' },
-  { label: 'knee',      value: 'knee pain' },
-  { label: 'lowerback', value: 'lower back injury' },
-  { label: 'shoulder',  value: 'shoulder impingement' },
-  { label: 'elbow',     value: 'tennis elbow' },
-  { label: 'wrist',     value: 'wrist pain' },
-  { label: 'hip',       value: 'hip pain' },
-];
-
-const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
+// ── Test matrix (shared — see scripts/lib/persona-combos.mjs) ──
+import {
+  GOALS, DAY_COUNTS, SEXES, TIERS, INJURY_PROFILES, TIER_ORDER, combos,
+} from './lib/persona-combos.mjs';
 
 // Name → tier lookup from the raw bank, for the equipment-tier-safety rule.
 // makeEx() strips `tier` off the output object, so this is the only way to
@@ -139,34 +118,25 @@ function checkR9(days, tier) {
 // ── Run the matrix ────────────────────────────────────────
 const results = [];
 
-for (const goal of GOALS) {
-  for (const days of DAY_COUNTS) {
-    for (const sex of SEXES) {
-      for (const tier of TIERS) {
-        for (const inj of INJURY_PROFILES) {
-          const combo = `${goal}/${days}d/${sex}/${tier}/${inj.label}`;
-          let program;
-          try {
-            program = getProgram(goal, days, WEEKS, sex, tier, 'balanced', inj.value, null, null);
-          } catch (e) {
-            results.push({ combo, error: String(e) });
-            continue;
-          }
-          if (!program || !Array.isArray(program)) {
-            results.push({ combo, error: 'getProgram returned non-array' });
-            continue;
-          }
-          results.push({
-            combo, goal, days, sex, tier, injury: inj.label,
-            r6: checkR6(program),
-            r7: checkR7(program),
-            r8: checkR8(program, inj.value),
-            r9: checkR9(program, tier),
-          });
-        }
-      }
-    }
+for (const { combo, goal, days, sex, tier, injury, args } of combos()) {
+  let program;
+  try {
+    program = getProgram(...args);
+  } catch (e) {
+    results.push({ combo, error: String(e) });
+    continue;
   }
+  if (!program || !Array.isArray(program)) {
+    results.push({ combo, error: 'getProgram returned non-array' });
+    continue;
+  }
+  results.push({
+    combo, goal, days, sex, tier, injury: injury.label,
+    r6: checkR6(program),
+    r7: checkR7(program),
+    r8: checkR8(program, injury.value),
+    r9: checkR9(program, tier),
+  });
 }
 
 // ── Summary ──────────────────────────────────────────────
