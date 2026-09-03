@@ -2148,11 +2148,11 @@ const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 
 // ═══════════════════════════════════════════════════════
 // DYNAMIC PROGRAM GENERATOR
-// buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience)
+// buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory)
 //   → returns a 4-day base array (same shape as static programs)
 //     or null on failure (callers fall back to static)
 // ═══════════════════════════════════════════════════════
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience) {
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory) {
   const exp = normalizeExperience(experience);
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
@@ -2247,6 +2247,48 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (role === 'primary' || role === 'secondary') block = primaryBlockIndex(rotWeek, weeks);
     else if (role === 'acc1') block = Math.floor(rotPhase / 2);
     else block = rotPhase;
+
+    // ── D27 — CONTINUITY ACROSS PROGRAM REGENERATIONS ────────────────────────
+    // The defect (measured, 2026-09-03): D15 holds primary/secondary compounds for
+    // >=8 weeks, and the code honours that WITHIN one program object — same day_type
+    // returned the same lift every time (Kerwin's day3 -> Arnold Press twice, day1 ->
+    // Z-Press twice). But `liftHistory` did not exist, so every REGENERATION started
+    // from zero knowledge of what the lifter had been training. Across three program
+    // instances (wk1 on Jun 3, Jul 1, Aug 4) his day1 lateral-delt slot walked
+    // Cable Lateral Raise -> Z-Press -> DB Lateral Raise. Only 17 of 44 tracked
+    // lifts ever got a second session, so D11's earned-1RM curve had nothing to
+    // measure — progression is structurally impossible on a lift you do once.
+    //
+    // D15's clock is the LIFTER'S wall-clock, not a program object's lifetime.
+    // Rebuilding after 4 weeks resets a cadence the doctrine sets a >=8-week floor on.
+    //
+    // Deliberately SOFT and deliberately NARROW, in the shape D20 established:
+    //   * Reorders only. `pool` is already tier-legal, injury-filtered and
+    //     priority-sorted; this cannot empty it and cannot admit an illegal lift.
+    //   * primary/secondary ONLY — exactly the roles D15 governs. Accessories are
+    //     left alone because D1 rotates them every 2-3 weeks BY DESIGN; applying
+    //     continuity there would fight an ACTIVE invariant, not serve it.
+    //   * No history supplied => behaviour is bit-identical to before (the caller
+    //     is optional, and every existing call site omits it).
+    //
+    // NOT claimed as an exercise-science finding. research-report(8) is explicitly
+    // silent — "the research provides no specific guidance on accessory exercise
+    // selection... requires specialized exercise science literature (biomechanics,
+    // EMG studies, exercise variation research) beyond the current scope" — and the
+    // only place it mentions exercise variation is as a PLATEAU-BREAKING tool, never
+    // a default. So this rule is grounded in D15 + D11, which are already ACTIVE,
+    // and NOT in an invented claim that repeating a lift builds more muscle.
+    if ((role === 'primary' || role === 'secondary') && liftHistory) {
+      const seen = pool.filter(e => (liftHistory[e.name] | 0) > 0);
+      if (seen.length) {
+        // Most-trained wins; ties break by the pool's existing priority order, so
+        // the choice stays deterministic and explainable.
+        const rank = new Map(pool.map((e, i) => [e.name, i]));
+        seen.sort((x, y) => ((liftHistory[y.name] | 0) - (liftHistory[x.name] | 0))
+                         || (rank.get(x.name) - rank.get(y.name)));
+        return seen[0];
+      }
+    }
     return pool[((block % pool.length) + pool.length) % pool.length];
   };
 
@@ -2823,7 +2865,7 @@ function materializeTemplate(tpl, week, opts) {
   return applyDeload(days, { week: wk }, T);
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
@@ -4077,7 +4119,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
   // helpers above are initialized — calling them from the top of getProgram hit
   // their temporal dead zone (TDZ).
-  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience);
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory);
   if (generated) {
     // EPIC-8a: applied AFTER the 2/3/5-day wrappers + injury prune, on the
     // final day array — the wrappers recombine exercises from multiple base

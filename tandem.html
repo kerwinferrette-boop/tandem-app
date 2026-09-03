@@ -2580,7 +2580,7 @@ function getActiveProgram() {
       console.warn('[getActiveProgram] adopted-template materialization failed — using generated engine', e);
     }
   }
-  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience);
+  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience, _liftHistory);
 }
 
 // ═══ EPIC-031 — PROGRAM LIBRARY (browse / adopt / revert) ═══
@@ -5269,6 +5269,46 @@ async function fetchRecentSets(days = 7) {
   return data || [];
 }
 
+// Projection C (D27) — { exerciseName: distinctTrainingDayCount }.
+// Keyed on the BANK ENTRY's display name, resolved through bankIndexByName() so a
+// legacy slug-keyed row and its display name collapse to one lift rather than
+// counting as two — the same resolution recentSetsFor() does, and the same mistake
+// the outcome gate made when it read a missing NAME as a missing LIFT.
+// Distinct DAYS, not set rows: five sets of bench in one session is one exposure.
+function liftSessionCounts(sets) {
+  const idx = bankIndexByName();
+  const days = {};
+  for (const st of sets || []) {
+    const e = idx[String(st.exercise_name || '').toLowerCase()];
+    if (!e || !e.name) continue;
+    const d = String(st.created_at || '').slice(0, 10);
+    if (!d) continue;
+    (days[e.name] ||= new Set()).add(d);
+  }
+  const out = {};
+  for (const [name, set] of Object.entries(days)) out[name] = set.size;
+  return out;
+}
+
+// D27's read cache. Synchronous by the time getActiveProgram() needs it: the init
+// IIFE awaits refreshLiftHistory() as soon as currentUser is known, which is before
+// its first getActiveProgram() call. Null until then, and getProgram() treats null
+// as "no history" — so a cold start degrades to the pre-D27 behaviour rather than
+// throwing or blocking the render.
+let _liftHistory = null;
+
+// 56 days = D15's primary-block floor. Asking for a shorter window would let a lift
+// the doctrine still considers current fall out of the history and get re-rolled,
+// which is the exact defect D27 exists to close.
+async function refreshLiftHistory() {
+  try {
+    _liftHistory = liftSessionCounts(await fetchRecentSets(56));
+  } catch (e) {
+    console.warn('[D27] lift-history read failed — generating without continuity', e);
+    _liftHistory = null;
+  }
+}
+
 // Projection A (EPIC-028 / D20) — { muscleTag: hoursSinceLastTrained }.
 // PRIMARY tags only: secondary involvement at accessory volume is not what a
 // recovery window describes, and weighting it would stretch RECOVERY_PARAMS past
@@ -6470,6 +6510,7 @@ function refreshAvatarPreview(){
       currentUser = session.user;
       setSyncStatus('synced');
       updateSyncUserInfo();
+      await refreshLiftHistory();   // D27 — must precede the first getActiveProgram()
     }
     const savedCfg = LS.get('tandem_cfg');
     if (savedCfg?.goal) {

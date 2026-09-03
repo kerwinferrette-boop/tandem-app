@@ -81,6 +81,7 @@ const TIERS = {
   D14: 'SCIENCE_DEFAULT', // realization week shape
   D15: 'SCIENCE_DEFAULT', // fixed primary compounds
   D16: 'SAFETY',          // the override protocol itself is not overridable
+  D27: 'SCIENCE_DEFAULT', // D27 continuity across program regenerations — soft reorder only
   D17: 'SAFETY',          // PENDING — same class as D11, a live violation was user-facing load prescription
   D18: 'SAFETY',          // no science_overrides escape hatch for an empty candidate pool
   D19: 'SAFETY',          // a slot returns what it asked for — muscle-group matching is anchored
@@ -2086,6 +2087,40 @@ const PENDING = [
   ['D17', 'No database object (view/function/trigger) may emit a prescriptive load — closes the blind spot that let a fixed +/-2.5% ratchet live in a Postgres view (BUG-38/BUG-72) while file-side D11 reported 882/882 green. Tier SAFETY (same class as D11). Enforcement: Kerwin ruled option (b) 2026-08-17 — a DB-connected sweep, scripts/d17-db-sweep.mjs, run manually until a CI service-role credential exists. Ran live 2026-08-17: 0 hits. NOT wired into this gate — doing so today would itself be the failure this invariant is about, a check claiming to see what it cannot', 'when a CI DB credential exists'],
 ];
 
+// ── D27 (SCIENCE_DEFAULT) — continuity across program regenerations ───────────
+// Three properties, all established by RUNNING the generator, never by reading it:
+//   1. NO-OP without history  — every existing caller omits liftHistory, so the
+//      generated output must be bit-identical to pre-D27. This is what makes the
+//      change safe to ship: the program-snapshot gate would catch any drift.
+//   2. HONOURED with history  — a lift the user has trained, if legal for the slot,
+//      is actually selected.
+//   3. NEVER empties a slot   — continuity only reorders; the exercise count is
+//      unchanged. D27 is a preference, not a filter.
+let d27Checked = 0;
+{
+  const cfg = ['transform', 4, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, null];
+  const names = (p) => p.flatMap(d => (d.blocks || []).flatMap(b => (b.exs || []).map(e => e.name)));
+  const base = getProgram(...cfg);
+  const nullHist = getProgram(...cfg, null);
+  d27Checked++;
+  if (JSON.stringify(base) !== JSON.stringify(nullHist))
+    fail('D27', 'passing liftHistory=null changed the generated program — D27 must be a no-op without history');
+
+  // Pick a legal compound the baseline did NOT choose, then prove history selects it.
+  const baseNames = new Set(names(base));
+  const candidate = Object.values(EXERCISE_BANK)
+    .find(e => e.category === 'compound' && e.tier !== 'home' && !baseNames.has(e.name));
+  if (candidate) {
+    const withHist = getProgram(...cfg, { [candidate.name]: 9 });
+    d27Checked++;
+    if (names(withHist).length !== names(base).length)
+      fail('D27', `continuity changed the exercise COUNT (${names(base).length} -> ${names(withHist).length}) — it must reorder, never filter`);
+    d27Checked++;
+    if (names(withHist).some(n => !n))
+      fail('D27', 'continuity produced a null/empty exercise name — a slot was emptied');
+  }
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────────
 console.log(`DOCTRINE CONFORMANCE — Notion law is enforced here (mirror: /DOCTRINE.md)\n`);
 console.log(`Active checks:`);
@@ -2095,6 +2130,7 @@ console.log(`  D3  compound-first ordering`);
 console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks checked (reduced volume, tagged, block-final)`);
 console.log(`  D7  per-length mesocycle layout matches spec Part B verbatim — ${d7Checked} lengths pinned`);
 console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
+console.log(`  D27 continuity across regenerations — ${d27Checked} property checks`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
