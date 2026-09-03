@@ -48,8 +48,17 @@ can still flip every one to `status='resolved'`, which silently empties the QA f
   or applying `0005` breaks them *and* Kerwin's own QA-feed resolve button
   (`tandem.html:5703`), which is today carried solely by the blanket policy.
 
-The answer is not determinable from this repo, which is why it was flagged rather than guessed.
-Applying the migration is human-only regardless (`apply_migration` is on the forbidden-ops list).
+**RESOLVED 2026-09-03 (Cycle 68).** The answer was previously flagged as "not determinable
+from this repo" because the Edge Function source lives in Supabase, not git, and was never
+read. It has now been read directly via `mcp__Supabase__get_edge_function` (project
+`zsvktcvqmppsshtpeljt`): both `qa-session-validator/index.ts` and
+`expand-and-log-bug/index.ts` construct their client with
+`Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`. **Both use `service_role`.** Per the table
+above, `migrations/0005_bug78_scope_write_policies.sql` ships as-is with zero behavioural
+change to either function. Applying the migration is still human-only regardless
+(`apply_migration` is on the forbidden-ops list) — the only remaining step is Kerwin (or a
+session with migration-apply authority) running the migration and its 5 post-fix assertions
+already written into the file. See the BUG-78 Notion row for the full quote.
 
 ---
 
