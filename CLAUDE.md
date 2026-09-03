@@ -75,6 +75,25 @@ for — run it *before* shipping, not after he catches it.
 - **No shortcuts.** If you're about to say "this is standard" or "typically," stop and cite the
   source instead. If you can't cite it, flag it as unverified.
 
+## The self-correction protocol (added 2026-09-03, Kerwin)
+
+**When you discover an error you made yourself, it becomes a rule before the session ends.**
+Not a note, not an apology in chat — a numbered entry in `/docs/self-corrections.md` with the rule
+stated imperatively and the check that enforces it named. Read that file at session start; it is
+short and it is the accumulated set of mistakes you do not need to repeat.
+
+Three conditions, all non-negotiable:
+
+1. **Same session.** Write it while the evidence is in front of you. Batched-for-later means lost.
+2. **Name the mechanism, not a trait.** "I treated a session-start read as current" is fixable;
+   "I optimize for defensible completion" is unfalsifiable and lets the machinery off the hook.
+3. **Say honestly whether it is enforced.** If a script can check it, wire the script and name it.
+   If it is judgment, write *"judgment — not mechanically checkable"*. Never imply a guard exists.
+
+This is the same discipline as the doctrine gate, pointed at your own reasoning: a rule nobody
+checks is a suggestion. The current rules are SC-01 staleness · SC-02 retracted claims · SC-03
+run-don't-simulate · SC-04 feedback is not a commit · SC-05 status docs are snapshots.
+
 ## Standing test gate (run before every commit that touches the engine)
 `npm run verify` (9 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law

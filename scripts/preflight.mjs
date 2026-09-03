@@ -115,6 +115,22 @@ if (!upstream && branch !== '(detached)') {
 }
 
 // ── 5. Branches other sessions left on the remote ──────────────────────────────
+// ── SC-01: is HEAD stale relative to origin/main? ────────────────────────────
+// The error this catches: a session-start `git log` treated as current for the whole
+// session. In the 2026-09-03 session `main` advanced 38 commits mid-flight and an
+// entire gate was rebuilt that already existed upstream, in a stronger form. See
+// docs/self-corrections.md SC-01. This is the executable half of that rule.
+git('fetch', 'origin', 'main');
+const behind = git('rev-list', '--count', 'HEAD..origin/main');
+const behindN = Number(behind || 0);
+checked('staleness vs origin/main', behindN ? `${behindN} commit(s) BEHIND` : 'up to date');
+if (behindN > 0) {
+  flag(`SC-01 — HEAD is ${behindN} commit(s) behind origin/main. Rebase or reset BEFORE writing ` +
+       `any code, and re-check what already landed: another session may have shipped this work. ` +
+       `\n      git log --oneline HEAD..origin/main` +
+       `\n      (docs/self-corrections.md SC-01)`);
+}
+
 const remote = git('ls-remote', '--heads', 'origin');
 const remoteBranches = remote
   ? remote.split('\n').filter(Boolean).map(l => l.split('\t')[1].replace('refs/heads/', ''))
