@@ -8,7 +8,8 @@
     "validate:personas": "node scripts/persona-matrix.mjs",
     "walkthrough:onboarding": "node scripts/onboarding-lifecycle-walkthrough.mjs",
     "walkthrough:render": "node scripts/program-render-fidelity-walkthrough.mjs",
-    "outcome": "node scripts/outcome.mjs"
+    "outcome": "node scripts/outcome.mjs",
+    "integration": "node scripts/prod-integration.mjs"
   },
   "devDependencies": {
     "playwright": "1.56.1"

@@ -1,0 +1,75 @@
+name: Production Gates
+
+# Two gates that need a live database, deliberately kept OUT of doctrine.yml.
+#
+# WHY A SEPARATE FILE: doctrine.yml runs on `pull_request`, including from forks,
+# and GitHub does not expose secrets to fork PRs. A credentialed step there would
+# fail for every outside contributor — or worse, be "fixed" by making it skip,
+# which is the BUG-79 failure this whole layer exists to prevent. So the code gate
+# stays credential-free and universal, and everything needing prod lives here.
+#
+# WHY TWO JOBS: they answer different questions and must be able to disagree.
+#
+#   integration — "does the BACKEND work end to end?"   BLOCKING.
+#       Runs against the two authorised test accounts. Nothing a human does or
+#       fails to do in a gym can affect it, so it is safe to gate on.
+#
+#   outcome     — "is a real human getting stronger?"   NON-BLOCKING.
+#       Only training can turn it green. Gating merges on it would block unrelated
+#       bug fixes indefinitely, which is how a gate gets switched off. It fails
+#       loudly in its own check and notifies; it does not fail the run.
+#       continue-on-error is NOT a softening of the gate — outcome.mjs still exits
+#       non-zero and still refuses to skip when blind. Only the merge consequence
+#       differs, because no code change can satisfy it.
+#
+# Kerwin, 2026-09-03: "I get it, I haven't worked out. How does that stop what's
+# going on in the backend? ... I give you permission to utilize the two test
+# accounts that were created to run mock programs & tests."
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 13 * * *'   # 13:00 UTC daily — reports even when nobody pushes
+  workflow_dispatch:
+
+# Never run two prod-writing jobs at once: the integration gate inserts and then
+# deletes a row on a test account, and overlapping runs could race the cleanup.
+concurrency:
+  group: production-gates
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    name: Backend integration (test accounts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Production integration gate
+        run: npm run integration
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: D17 — no DB object may emit a prescriptive load
+        run: node scripts/d17-db-sweep.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  outcome:
+    name: Outcome (real users — reports, does not block)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Is a real person measurably getting stronger?
+        run: npm run outcome
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
