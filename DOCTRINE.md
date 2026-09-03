@@ -88,6 +88,20 @@ NOT wired into `scripts/doctrine.mjs`: that gate is credential-free by design so
 pull requests, and calling a DB sweep from it would either break there or fake a pass. Enforcement
 lives where the credential lives; `doctrine.mjs` keeps only the tier entry.
 
+**Correction (2026-09-03, same day).** The line above — "runs `scripts/d17-db-sweep.mjs` against
+production" — was written before the workflow's first live run, and that run proved it wrong: the
+script called a `rest/v1/rpc/exec_sql` endpoint this Supabase project has never had. Every prior
+"clean sweep" (2026-08-17 in Notion, and this session's manual re-check) went through the Supabase
+MCP `execute_sql` tool — reachable by a human/attached session, not by CI's REST + service-role
+credential alone. BUG-104. Filed `migrations/0012_bug104_d17_sweep_rpc.sql` — a narrowly-scoped,
+read-only, service-role-only RPC — as the real fix; it is a DRAFT file, not yet applied
+(`apply_migration` is human-only). Until Kerwin applies it, the `d17-sweep` job in
+`production.yml` (split out from `integration` the same day, so a pending migration doesn't mask
+whether the backend itself is healthy) fails honestly rather than reporting a pass it cannot back.
+D17 stays ACTIVE — the invariant and the file-side tier entry are both still correct — but its
+DB-connected enforcement mechanism is PENDING ON THAT MIGRATION, and this note says so plainly
+rather than repeating the overclaim.
+
 **D7 promotion note (2026-07-30):** researched before promoting, not assumed. The only recoverable
 Part B content (Notion "Periodization & Structured Program Engine Spec — Parts A–C, residue
 transcription") is the deload-week table itself, already implemented as D4/D14; Parts D–H are

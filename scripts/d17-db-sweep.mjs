@@ -44,22 +44,34 @@ const KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // matched anything is not evidence" warning on the BUG-79 row.
 const PATTERN = String.raw`1\.025|0\.95|1\.05|0\.975|increase weight|reduce weight`;
 
-async function sql(query) {
-  const res = await fetch(`${URL_}/rest/v1/rpc/exec_sql`, {
+// BUG-104 (2026-09-03): production.yml's first live run proved this project has no
+// exec_sql RPC — every prior "clean sweep" result (2026-08-17 in Notion, and this
+// session's manual re-check) went through the Supabase MCP execute_sql tool, which
+// CI cannot reach. migrations/0012_bug104_d17_sweep_rpc.sql adds a narrowly-scoped
+// d17_sweep(pattern) RPC — read-only over pg_class/pg_proc definitions, service_role
+// only, no arbitrary-SQL surface — as the actual fix. That migration is a DRAFT file;
+// apply_migration is human-only, so this script keeps failing (correctly — a blind
+// gate reporting success is the BUG-79 failure) until Kerwin applies it.
+async function sql(pattern) {
+  const res = await fetch(`${URL_}/rest/v1/rpc/d17_sweep`, {
     method: 'POST',
     headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ pattern }),
   });
   if (res.ok) return res.json();
-  // Fallback for projects without an exec_sql RPC: the two source columns read
-  // directly via PostgREST's information_schema views where exposed. Most Supabase
-  // projects do not expose pg_catalog over REST, so exec_sql (or an MCP SQL runner)
-  // is the primary path; this project has Supabase MCP execute_sql available, which
-  // is what actually ran this sweep for the 2026-08-17 result recorded in Notion.
-  throw new Error(`exec_sql RPC unavailable (${res.status}) — run the query via the ` +
+  if (res.status === 404) {
+    throw new Error(`d17_sweep RPC not found (404) — migrations/0012_bug104_d17_sweep_rpc.sql ` +
+      `has not been applied yet. That migration is human-only (apply_migration); Kerwin applies ` +
+      `it via the Supabase dashboard. Until then, run the SWEEP query in this file directly via ` +
+      `the Supabase MCP execute_sql tool or psql.`);
+  }
+  throw new Error(`d17_sweep RPC call failed (${res.status}) — run the query via the ` +
     `Supabase MCP execute_sql tool or psql instead: see the query in this file's SWEEP const.`);
 }
 
+// Kept for the manual fallback path (Supabase MCP execute_sql / psql) referenced in
+// the error messages above — the live path now runs this same query server-side
+// inside d17_sweep(), parameterized on PATTERN (migrations/0012_bug104_d17_sweep_rpc.sql).
 const SWEEP = `
   select 'view' as kind, c.relname as name from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
@@ -88,7 +100,7 @@ async function main() {
 
   let hits;
   try {
-    hits = await sql(SWEEP);
+    hits = await sql(PATTERN);
   } catch (e) {
     console.error(`\n  ✗ D17 SWEEP ERRORED: ${e.message}\n`);
     process.exit(1);

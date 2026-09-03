@@ -8,11 +8,21 @@ name: Production Gates
 # which is the BUG-79 failure this whole layer exists to prevent. So the code gate
 # stays credential-free and universal, and everything needing prod lives here.
 #
-# WHY TWO JOBS: they answer different questions and must be able to disagree.
+# WHY THREE JOBS: they answer different questions and must be able to disagree.
 #
 #   integration — "does the BACKEND work end to end?"   BLOCKING.
 #       Runs against the two authorised test accounts. Nothing a human does or
 #       fails to do in a gym can affect it, so it is safe to gate on.
+#
+#   d17-sweep   — "does any live DB object emit a prescriptive load?"   BLOCKING.
+#       Split out from `integration` on 2026-09-03 after the first live run showed
+#       why: it depends on migrations/0012_bug104_d17_sweep_rpc.sql, a DRAFT
+#       migration file Kerwin has not yet applied (apply_migration is human-only).
+#       Bundled into the same job as `integration`, a pending-migration D17 failure
+#       would mask whether the backend itself is actually healthy — exactly the
+#       kind of conflated signal this workflow's two-gate split (see git history)
+#       already exists to avoid. Separate job, separate question, allowed to be red
+#       for a reason that has nothing to do with A1-A5 passing.
 #
 #   outcome     — "is a real human getting stronger?"   NON-BLOCKING.
 #       Only training can turn it green. Gating merges on it would block unrelated
@@ -53,6 +63,15 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  d17-sweep:
+    name: D17 sweep (no DB object may emit a prescriptive load)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: D17 — no DB object may emit a prescriptive load
         run: node scripts/d17-db-sweep.mjs
         env:
