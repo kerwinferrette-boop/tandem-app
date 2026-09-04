@@ -157,14 +157,34 @@ catalog:
              test features'). Conflating the two would quietly reopen the exact hole the
              2026-08-17 OUTCOME RULE postmortem closed: synthetic/test activity being cheap to
              generate and mistaken for evidence a real person is training."
-      how: "Log in as the test account against the real app (not the stubbed harness
-             onboarding_lifecycle_walkthrough uses) and real Supabase, exercise the specific
-             story's flow, read back the actual resulting rows/UI state via Supabase MCP and the
-             app itself. Where the check is objective (a number updated correctly, a row got
-             written, a page loaded without error), that alone can move a story from Untested to
-             Passing/Failing per feature-loop's normal Verify discipline — this is functional
-             verification, nothing new about that. Where the check is NOT objective — 'does this
-             look/feel right' — do not decide it unilaterally: capture what the run produced
+      how: "CORRECTION, found by dry-running this exact source 2026-09-04: this is not a green-field
+             build. `scripts/prod-integration.mjs` (`npm run integration`) ALREADY EXISTS — built
+             2026-09-03, one day before this config section, quoting Kerwin's own words from that
+             date almost verbatim ('this was the point of the user matrix & user stories, was to
+             have infinite test runs'). It already does exactly this: writes/reads against the two
+             allowlisted test-account UUIDs on REAL production Supabase (A2 bank-vs-db drift, A3
+             write round-trip incl. 1RM-trigger agreement + no-spurious-PR, A4 lift-history
+             projection), with verified cleanup in a finally block. Use IT as the mechanism, don't
+             re-describe it — 'one rule, one home'. Log in as the test account against the real app
+             for anything this script doesn't already cover (a new flow like Lift Log once built),
+             using the same allowlist-and-verified-cleanup discipline it models.
+             KNOWN GAP, confirmed by actually running it 2026-09-04: it fails closed with
+             'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required' — neither is set as an env
+             var in this container, same long-standing gap as outcome.mjs. It is not wired into
+             `npm run verify`'s CHECKS array either (deliberately — it needs live credentials and
+             network egress the other 11 checks don't). FALLBACK, proved working 2026-09-04 by
+             literally doing it: replicate its checks via Supabase MCP execute_sql directly (which
+             carries its own auth, no env var needed) — same allowlisted UUID, same non-PR-beating
+             load, same read-back-and-verify-cleanup discipline. Confirmed live 2026-09-04: inserted
+             a 45x5 set against Test Kerwin's 'Low Incline Barbell Press' (existing PR 196 lbs),
+             trigger computed 52.5 1RM correctly, is_pr correctly false, personal_records untouched,
+             delete-then-reread confirmed the row gone. If SUPABASE_SERVICE_ROLE_KEY ever gets
+             provisioned in the scheduled container, prefer `npm run integration` directly — it
+             checks more (bank/db drift, D27 projection) than a one-off MCP query will by hand.
+             Where the check is objective (a number updated correctly, a row got written, a page
+             loaded without error), that alone can move a story from Untested to Passing/Failing
+             per feature-loop's normal Verify discipline. Where the check is NOT objective — 'does
+             this look/feel right' — do not decide it unilaterally: capture what the run produced
              (screenshot via the run skill, or a plain description of what rendered) and surface it
              to Kerwin directly (see escalation.direct_ask below, 'populate here in preview mode so
              I can see if it's what I want it to look like or not') rather than marking the story
