@@ -149,6 +149,32 @@ wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why eve
                       # credit-refresh signal — that primitive does not exist and promising it
                       # would be the same failure shape as the REST_SECONDS silently-discarded
                       # value CLAUDE.md already warns about.
+  conglomeration:       # Added 2026-09-04, per Kerwin, in-session: a Wave is not limited to one
+                      # Epic. Conglomerate Epics + Bug & QA Log rows + Untested/Failing stories
+                      # into ONE wave whenever they touch the same area, share a dependency, or
+                      # can plausibly ship in the same PR — the goal is the fewest prompts/PRs
+                      # that clear the most tracked rows, not one row per prompt.
+    file_pattern: "docs/waves/WAVE-<N>-<slug>-STATE.md"   # for a multi-item conglomerate wave
+                      # that isn't anchored to one Epic. Same checkpoint discipline as the
+                      # per-Epic file above: check off a step and commit the file the moment
+                      # that step's story goes Resolved, never batched to end-of-cycle.
+    batch_cap_override: "safety.max_items_per_cycle (5) caps an ORDINARY per-story cycle. It does
+                      NOT cap what a single conglomerated wave may bundle — a wave's own natural
+                      scope (what genuinely ships and verifies together) is the batching unit, not
+                      a fixed count. Do not split one coherent, independently-shippable wave into
+                      artificial 5-item chunks just to satisfy the ordinary cap; do not, in the
+                      other direction, cram unrelated rows into one wave just to inflate the count
+                      the cap would otherwise limit — the cap exists so a batch stays reviewable
+                      and independently verifiable, and that reason still applies inside a wave."
+    verification_gate: "A wave step counts as VERIFIED — eligible to flip its story to Resolved —
+                      once EITHER (a) Kerwin explicitly confirms it, OR (b) llm-council reaches a
+                      verdict on it, IN ADDITION TO the standing mechanical prerequisites (green
+                      ship gates, independent fresh-subagent re-run per feature-loop's Verify
+                      stage). Neither (a) nor (b) waives the gates or the fresh-agent re-run —
+                      they are the answer to 'whose judgment call does this rest on', not a
+                      substitute for 'does the code actually work'. This is Kerwin's own framing,
+                      2026-09-04: 'as long as the wave has been verified by either myself or the
+                      LLM council, either one.'"
   epic_priority_weight:   # Kerwin's product-vision call (2026-08-30), not the loop's to infer.
                       # A multiplier applied when Plan/project-goal chooses which eligible Epic to
                       # Wave next, several being otherwise equally ready. Adjust the list, not the
@@ -194,10 +220,37 @@ escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces 
        Epic Kerwin already greenlit"
     - "anything the council itself declines to resolve, or where two council runs on the same
        question would plausibly disagree (i.e. the split isn't converging)"
+    - "the outcome gate itself (npm run outcome / .claude/loop-config.md's OUTCOME RULE) — it turns
+       green only when a real person trains a lift more than once and gets stronger, which is
+       structurally outside what a wave, a prompt, or a council verdict can produce. This is NOT
+       a 'still needs Kerwin to rule on a fork' item like the two above it — it is a metric, not a
+       backlog row, and stays reported as its own line, never merged into the row count below."
   visibility: "Every council-decided-and-self-executed decision gets one line in the Goal Record's
        '## Cycle log' entry for that cycle, tagged [COUNCIL] — decision + one-line citation/verdict
        + what it unblocked. This is the morning digest: Kerwin should be able to scan one cycle-log
        entry and know what was decided autonomously that day, not have to ask."
+  exhaust_before_parking: "Added 2026-09-04, per Kerwin, in-session: 'there are always more things
+       that can be pushed, written, or condensed into fewer prompts' — a cycle does not get to write
+       a tracked row to Needs Human until it has tried, in order: (1) does an already-cited source
+       resolve this outright — ship it, no escalation needed; (2) is this row conglomerable into an
+       existing or new wave with other open rows that share a dependency or an area — fold it in
+       rather than triaging it alone; (3) is this genuinely on the still_needs_kerwin list above —
+       if yes, Needs Human, full stop, no further attempt; (4) otherwise, run llm-council on the
+       fork and act on its verdict per wave_decomposition.conglomeration.verification_gate. A row
+       may reach Needs Human only after step (4) fails to converge or step (3) applies — never as
+       the first thing tried on a fork that isn't a genuine product/business call or a
+       safety.forbidden item."
+  reporting: "'GOAL NOT MET' is a Definition-of-Done statement (Goal Record §Definition of Done),
+       not a verdict on whether the cycle did anything. Report backlog status and the outcome gate
+       as two SEPARATE lines, never conflated: backlog status is 'N rows Untested/Failing, M rows
+       genuinely Needs Human (each citing which still_needs_kerwin item applies), K resolved this
+       cycle via wave/council' — and per exhaust_before_parking above, a cycle that reports M rows
+       Needs Human without showing the (1)-(4) attempt sequence for each one is incomplete, not
+       honestly conservative. The outcome gate is reported as its own number (see OUTCOME RULE)
+       and is allowed to stay red indefinitely without that being read as the cycle having failed
+       to do its job — it is the one thing on this page this loop cannot self-satisfy by writing
+       more code, and pretending otherwise (fabricating backlog busywork to avoid an honest 'red')
+       would be exactly the D18/BUG-79 fabrication failure mode CLAUDE.md forbids."
 
 notion:
   feature_tracker_db: "fcfd09db-695c-4e01-93a2-90bed2abacdc"  # Tandem User Story Coverage — EXISTS, already linked to Bug Log + Epics
