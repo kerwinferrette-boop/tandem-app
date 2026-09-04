@@ -10,48 +10,21 @@ regenerate the outcome numbers with `node scripts/outcome.mjs` (needs `SUPABASE_
 > blocked behind one of the five rulings below"* — was false. See `docs/self-corrections.md`
 > SC-05. Re-derive from Notion and `git log` before acting.
 
-## The one ruling still open
-
-### BUG-78 (P1, status *In Fix*) — which key do the two Edge Functions use?
-
-The only genuine blocker in this file. Everything else below is engineering, not a decision.
-
-Two policies are named for `service_role` but declared `TO public`:
-
-| table | policy | grant |
-|---|---|---|
-| `user_bug_reports` | "Service role updates bug reports" | `UPDATE TO public USING (true)` |
-| `agent_log` | "Service role inserts agent_log" | `INSERT TO public WITH CHECK (true)` |
-
-`service_role` has `rolbypassrls = true`, so neither policy does anything *for* `service_role`.
-The only thing they do is grant the capability to `public` — `anon` plus every authenticated user.
-Measured on prod in rolled-back transactions: as `anon` with no JWT, `UPDATE user_bug_reports`
-touches all 30 rows and `INSERT agent_log` is accepted. A caller who cannot read a single bug
-report can still flip every one to `status='resolved'`, silently emptying the QA feed
-(`tandem.html:5649` filters `.neq('status','resolved')`).
-
-Fix is drafted at `migrations/0005_bug78_scope_write_policies.sql`, **written and deliberately not
-applied**. Audit landed in `39f4880`.
-
-> **THE RULING — one factual question:**
-> **Do `qa-session-validator` and `expand-and-log-bug` talk to Postgres with `service_role`, or
-> with the anon/publishable key?**
-
-- **`service_role`** → `0005` is a no-op for them and ships as-is.
-- **publishable key** → move those functions to `service_role` first, or `0005` breaks them *and*
-  Kerwin's own QA-feed resolve button (`tandem.html:5703`), today carried solely by the blanket
-  policy.
-
-Not determinable from this repo — the functions' source is not here. Applying the migration is
-human-only regardless.
-
 ## Rulings that were open and are now MADE — do not re-ask
 
 | was | ruled | outcome |
 |---|---|---|
-| **BUG-79 / D17** — how to enforce a DB-side doctrine gate, and at what tier | 2026-08-17 | Option **(b)**, a DB-connected sweep. D17 is in `DOCTRINE.md`, tier SAFETY, enforcement PENDING until CI has a credential. `scripts/d17-db-sweep.mjs` exists |
+| **BUG-78** — which key do `qa-session-validator` and `expand-and-log-bug` use? | 2026-09-03 (Cycle 68) | Read both Edge Functions directly (`mcp__Supabase__get_edge_function`, project `zsvktcvqmppsshtpeljt`): both construct their client with `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')`. **Both use `service_role`.** `migrations/0005_bug78_scope_write_policies.sql` is a no-op for them and ships as-is with zero behavioural change. Independently re-verified 2026-09-03 by a second read of both function bodies — confirmed. Applying the migration is still human-only (`apply_migration` is forbidden-ops); the only remaining step is Kerwin running it and its 5 post-fix assertions already written into the file |
+| **BUG-79 / D17** — how to enforce a DB-side doctrine gate, and at what tier | 2026-08-17 | Option **(b)**, a DB-connected sweep. D17 is in `DOCTRINE.md`, tier SAFETY. Its file-side tier entry is ACTIVE; the DB-connected sweep itself is now PENDING ON `migrations/0012_bug104_d17_sweep_rpc.sql` — the sweep's first live CI run (2026-09-03) found it depended on an `exec_sql` RPC this project never had, so `0012` proposes the real fix (a narrow, read-only, service-role-only RPC). Still human-only to apply |
 | **The v0.5 schema conflict** — widen the schema, or pull the 50-term vocabulary back | 2026-08-18 (`8c966d8`) | Ruled; closed **BUG-84** and **BUG-86**. `MOVEMENT_FAMILIES` + **D19** landed (`0694308`), anchoring `groupsMatch` at the `_` separator |
 | **BUG-87** — the `quad` / `quadratus_lumborum` prefix collision | fixed `4191df6` | The unanchored `startsWith` fallback is gone; D19 now forbids it |
+| **BUG-102** — `long_head_tricep`/`tricep_long_head` drift between `EXERCISE_BANK` and the live `exercises` table | 2026-09-03 | Fixed live (3 rows: `straight-arm-pulldown`, `band-straight-arm-pulldown`, `db-pullover`); re-verified zero drift across all 179 rows programmatically after the fix |
+
+## No open rulings remain in this file as of 2026-09-03
+
+Every item that was genuinely a decision, not engineering, is now resolved above. Re-derive from
+Notion and `git log` before trusting this claim on a later date — see the warning at the top of
+this file.
 
 ## Not blocked on a ruling — this is engineering, and there is a lot of it
 
@@ -97,8 +70,11 @@ closing a Notion row or passing a synthetic matrix — the only thing that turns
 training. BUG-100 already tracks the zero-activity case for Dani; it now applies to Kerwin too.
 
 Two things that *are* actionable:
-1. **Give CI a credential** so the gate can run unattended, or accept that it is a manual check.
-   Until then every "all gates green" claim silently excludes the only gate that measures a body.
+1. **CI now has the credential** (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` provisioned
+   2026-09-03) — `production.yml`'s `outcome` job runs this gate daily and on every push to
+   `main`, `continue-on-error: true` so it reports red without blocking merges. Every "all gates
+   green" claim must still separately check that job's own result — a passing `verify` says
+   nothing about it, by design.
 2. **Fragmentation is a real engine defect** and is worth fixing regardless of training frequency —
    a muscle trained repeatedly under a different lift name each time can never accumulate a load
    history, so progression is invisible even when it happens.
