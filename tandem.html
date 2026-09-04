@@ -556,6 +556,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   border-radius:11px;padding:14px;text-align:center;margin-bottom:14px;}
 .calc-result-val{font-family:var(--font-display);font-size:58px;color:var(--accent2);line-height:1;}
 .calc-result-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
+
+/* Session summary (EPIC-13 Step 3) */
+.summary-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.summary-stat{background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:14px;text-align:center;}
+.summary-stat-val{font-family:var(--font-display);font-size:28px;color:var(--accent2);line-height:1;}
+.summary-stat-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+
+/* Persistent streak badge (EPIC-13 Step 4) */
+.dash-streak-chip{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:12px;color:var(--muted2);background:var(--s2);border:1px solid var(--border2);border-radius:20px;padding:5px 10px;flex-shrink:0;}
 .pct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .pct-card{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:9px 6px;
   text-align:center;transition:all .15s;}
@@ -1301,6 +1310,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="dash-header">
       <div class="dash-title">Today</div>
       <span class="dash-date" id="dashDate"></span>
+      <div class="dash-streak-chip" id="dashStreakChip" title="Current streak"><span data-icon="flame"></span> <span id="dashStreakVal">—</span></div>
       <button id="dashRefreshBtn" class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh health data">
         <span>↻</span>
       </button>
@@ -1575,6 +1585,23 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Plates per side →</div>
     <div class="plate-display" id="plateDisplay"><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Enter weight above</span></div>
     <div id="plateBreakdown" style="font-family:var(--font-mono);font-size:11px;color:var(--muted2);line-height:1.8;"></div>
+  </div>
+</div>
+
+<!-- SESSION SUMMARY (EPIC-13 Step 3) -->
+<div class="modal-overlay" id="modal-summary" onclick="if(event.target===this)closeModal('summary')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('summary')">✕</button>
+    <div class="modal-title">Session Complete <span data-icon="flame"></span></div>
+    <div class="modal-sub">Nice work. Here's how it went.</div>
+    <div class="summary-stat-grid">
+      <div class="summary-stat"><div class="summary-stat-val" id="sumVolume">—</div><div class="summary-stat-lbl">Volume (lbs)</div></div>
+      <div class="summary-stat"><div class="summary-stat-val" id="sumDuration">—</div><div class="summary-stat-lbl">Duration (min)</div></div>
+      <div class="summary-stat"><div class="summary-stat-val" id="sumPRs">—</div><div class="summary-stat-lbl">PRs</div></div>
+      <div class="summary-stat"><div class="summary-stat-val" id="sumStreak">—</div><div class="summary-stat-lbl">Day Streak</div></div>
+    </div>
+    <button class="set-act green" style="width:100%;justify-content:center;margin-top:14px;" onclick="closeModal('summary')">Nice! →</button>
   </div>
 </div>
 
@@ -4812,6 +4839,7 @@ function finishSession() {
           .select('*')
           .eq('user_id', currentUser.id)
           .maybeSingle();
+        let finalStreak = 1; // EPIC-13 Step 4/Step 3: fed into the completion summary card below
 
         if (!existing) {
           const { error: sErr } = await sb.from('streaks').insert({
@@ -4844,6 +4872,7 @@ function finishSession() {
             updated_at: new Date().toISOString()
           }).eq('user_id', currentUser.id);
           if (sErr) throw sErr;
+          finalStreak = newStreak;
         }
 
         // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
@@ -4852,6 +4881,9 @@ function finishSession() {
         } catch(calErr) {
           console.warn('Calibration 1RM write skipped:', calErr);
         }
+
+        // EPIC-13 Step 3: completion celebration card (volume, duration, PR count, streak)
+        showSessionSummary(totalVolume, duration, prCount || 0, finalStreak);
 
         showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
       } catch(e) {
@@ -4948,6 +4980,18 @@ function showToast(msg) {
   t.innerHTML = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// EPIC-13 Step 3: session-completion celebration card — volume, duration, PR count, streak.
+// Dismissible with one tap (Nice!/✕/tap-outside all route through closeModal, same as every other modal).
+function showSessionSummary(volume, duration, prCount, streak) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('sumVolume', Number.isFinite(volume) ? Math.round(volume).toLocaleString() : '—');
+  set('sumDuration', duration != null ? duration : '—');
+  set('sumPRs', prCount != null ? prCount : 0);
+  set('sumStreak', streak != null ? streak : '—');
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  document.getElementById('modal-summary')?.classList.add('open');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5925,7 +5969,8 @@ const dashboardData = {
   partnerTargets: null,// users row for partner (theme_color + display_name)
   leaderboard: [],     // competition_leaderboard rows (up to 2)
   dailyWins: {},       // { 'YYYY-MM-DD': 'mine' | 'theirs' | 'both' }
-  medals: []
+  medals: [],
+  streak: null          // EPIC-13 Step 4: own current_streak_days, independent of partner pairing
 };
 
 function applyColorTakeover() {
@@ -5961,6 +6006,12 @@ async function loadDashboard() {
       .select('partner_id, name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g')
       .eq('id', uid).maybeSingle();
     dashboardData.userTargets = userRow || null;
+
+    // 2b. Own streak — EPIC-13 Step 4: persistent badge, independent of partner pairing
+    // (the competition-scoreboard streak stat below only populates when partnered).
+    const { data: streakRow } = await sb.from('streaks')
+      .select('current_streak_days').eq('user_id', uid).maybeSingle();
+    dashboardData.streak = streakRow?.current_streak_days ?? 0;
 
     if (userRow?.partner_id) {
       const pid = userRow.partner_id;
@@ -6054,6 +6105,10 @@ function renderDashboard() {
   // Activity label — sync pending state
   const actLabel = document.getElementById('dashActivityLabel');
   if (actLabel) actLabel.textContent = h ? 'Activity' : 'Activity — Sync pending';
+
+  // Persistent streak badge (EPIC-13 Step 4) — always visible, not gated on partner pairing
+  const streakValEl = document.getElementById('dashStreakVal');
+  if (streakValEl) streakValEl.textContent = dashboardData.streak != null ? dashboardData.streak : '—';
 
   // 7 Rings
   const ringDefs = [
