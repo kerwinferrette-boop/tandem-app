@@ -136,6 +136,51 @@ catalog:
       when: "Ad hoc today — promote to a standing script the same way persona_matrix was built,
              next time a session does one of these audits by hand."
 
+    - name: "live_test_account_verification"
+      what: "Added 2026-09-04, per Kerwin, in-session: the two test accounts
+             (kerwinferrette+test@gmail.com, kerwinferrette+testdani@gmail.com) exist specifically
+             to be exercised — Kerwin's words: 'that sounds like you're building out exactly what
+             the persona matrix & user stories is supposed to be doing.' persona_matrix and
+             onboarding_lifecycle_walkthrough above already do this synthetically (630 invented
+             personas; a Playwright walkthrough against a STUBBED Supabase, zero network egress).
+             This source is the missing third leg: drive the REAL live app against the REAL
+             production Supabase, logged in as a real (test) account, for anything a story needs
+             an actual end-to-end pass to answer — does the feature load, does a logged set
+             actually update that lift's latest-set/1RM the way the UI shows it, does a new flow
+             (e.g. Lift Log once built) survive a real round trip through Supabase and back.
+             SCOPE, drawn narrowly on purpose: this answers 'does the app do what it's supposed to
+             do' (a feature-loop Verify-stage question), never 'what should the rule be' (a
+             genuine judgment call — see escalation.direct_ask below) and never 'is a real person
+             getting stronger' (the OUTCOME RULE's job). Test-account activity is EXPLICITLY
+             excluded from npm run outcome and from the outcome gate's reported numbers — Kerwin
+             confirmed this reading directly ('you are correct... just that - test accounts, to
+             test features'). Conflating the two would quietly reopen the exact hole the
+             2026-08-17 OUTCOME RULE postmortem closed: synthetic/test activity being cheap to
+             generate and mistaken for evidence a real person is training."
+      how: "Log in as the test account against the real app (not the stubbed harness
+             onboarding_lifecycle_walkthrough uses) and real Supabase, exercise the specific
+             story's flow, read back the actual resulting rows/UI state via Supabase MCP and the
+             app itself. Where the check is objective (a number updated correctly, a row got
+             written, a page loaded without error), that alone can move a story from Untested to
+             Passing/Failing per feature-loop's normal Verify discipline — this is functional
+             verification, nothing new about that. Where the check is NOT objective — 'does this
+             look/feel right' — do not decide it unilaterally: capture what the run produced
+             (screenshot via the run skill, or a plain description of what rendered) and surface it
+             to Kerwin directly (see escalation.direct_ask below, 'populate here in preview mode so
+             I can see if it's what I want it to look like or not') rather than marking the story
+             Resolved on the agent's own aesthetic judgment."
+      cleanup: "Rows this source writes under the two test accounts (sets, sessions, etc.) are
+             real Supabase writes, not mocks. Route their cleanup through the
+             tandem-data-integrity-audit skill's existing allowlisted cleanup scope so they don't
+             quietly accumulate or skew any real reporting — extend that skill's allowlist to name
+             the test-account rows this source generates the next time that skill runs, rather than
+             leaving them to pile up undocumented."
+      when: "Run per-story, whenever a story is otherwise stuck at Needs Human specifically for
+             lack of a real end-to-end check (not for a citation gap or a genuine rule-setting
+             question — route those through escalation.direct_ask instead). Not a standing
+             every-cycle sweep like persona_matrix/onboarding_lifecycle_walkthrough above; it's
+             pulled in on demand by whichever story needs it."
+
 wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why every Epic bigger
                       # than a one-file change was parking in Needs Human instead of getting
                       # built. See .claude/skills/feature-loop/agents/plan.md for the mechanism
@@ -235,11 +280,30 @@ escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces 
        resolve this outright — ship it, no escalation needed; (2) is this row conglomerable into an
        existing or new wave with other open rows that share a dependency or an area — fold it in
        rather than triaging it alone; (3) is this genuinely on the still_needs_kerwin list above —
-       if yes, Needs Human, full stop, no further attempt; (4) otherwise, run llm-council on the
-       fork and act on its verdict per wave_decomposition.conglomeration.verification_gate. A row
-       may reach Needs Human only after step (4) fails to converge or step (3) applies — never as
-       the first thing tried on a fork that isn't a genuine product/business call or a
-       safety.forbidden item."
+       if yes, route it through direct_ask below instead of just filing it, full stop, no further
+       fix attempt; (4) otherwise, run llm-council on the fork and act on its verdict per
+       wave_decomposition.conglomeration.verification_gate. A row may reach Needs Human only after
+       step (4) fails to converge or step (3) applies — never as the first thing tried on a fork
+       that isn't a genuine product/business call or a safety.forbidden item."
+  direct_ask: "Added 2026-09-04, per Kerwin, in-session, correcting how still_needs_kerwin items
+       get resolved: a row that is genuinely 'what should the rule be' (BUG-56's skip-day
+       decision, BUG-84-87's science-conflict rulings, BUG-60's rename — the kind of thing that
+       has sat as an open Notion row for a week or more, per Cycle 61-68's unanswered decision
+       request) does NOT just get written to Notion and left to wait. Notion stays the durable
+       record (doctrine_is_law and the durability rules below still require it), but the ACTIVE
+       channel for getting it answered is direct: in an ATTENDED session (Kerwin present, like
+       this one) ask him the specific question directly in chat — with an interactive
+       question-asking tool if this session has one (e.g. AskUserQuestion), or plainly in text if
+       not — rather than deferring to a tracker row he has to go find. In an UNATTENDED /
+       scheduled cycle, PushNotification the literal question (not 'something needs your input,
+       check Notion' — the actual question, with enough context to answer from the notification
+       alone), so it can be answered the moment Kerwin next looks at his phone instead of sitting
+       for a week. Whichever channel resolves it, write the answer back onto the Notion row
+       immediately (citation/verdict + what it unblocked) so the durable record and the live
+       answer never diverge. This also covers the non-objective half of
+       live_test_account_verification above: 'does this look/feel right' gets the same
+       treatment — surface what the run produced (screenshot/description) and ask, don't decide it
+       unilaterally and call it Resolved."
   reporting: "'GOAL NOT MET' is a Definition-of-Done statement (Goal Record §Definition of Done),
        not a verdict on whether the cycle did anything. Report backlog status and the outcome gate
        as two SEPARATE lines, never conflated: backlog status is 'N rows Untested/Failing, M rows
