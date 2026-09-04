@@ -1,7 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- BUG-78 — the write-side twin of BUG-74
 --
--- ███ NOT APPLIED. Blocked on ONE question only — see "BLOCKING QUESTION".  ███
+-- ███ APPLIED 2026-09-04. Kerwin ruled: both Edge Functions confirmed on      ███
+-- ███ service_role (read directly via mcp__Supabase__get_edge_function,      ███
+-- ███ independently re-verified). All 4 applicable post-migration assertions ███
+-- ███ passed against production; get_advisors(security) unchanged (6-item   ███
+-- ███ baseline, none touching user_bug_reports/agent_log). See               ███
+-- ███ docs/needs-human-rulings.md's BUG-78 row.                              ███
 --
 -- Wave 1.1 (BUG-74, migration 0004) narrowed eight permissive SELECT policies.
 -- It did NOT audit the write side. This file records that audit and its fix.

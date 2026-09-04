@@ -1,7 +1,10 @@
 -- ═══════════════════════════════════════════════════════
 -- BUG-104: give scripts/d17-db-sweep.mjs a real RPC to call from CI.
--- STATUS: DRAFT. NOT APPLIED to Supabase (zsvktcvqmppsshtpeljt).
--- apply_migration is human-only (loop-config forbidden-ops). Kerwin applies.
+-- STATUS: APPLIED 2026-09-04 to Supabase (zsvktcvqmppsshtpeljt). Kerwin ruled.
+-- Both post-migration assertions passed: d17_sweep() with the known-clean
+-- pattern returns 0 rows, and anon/authenticated are absent from
+-- routine_privileges (only service_role + the owning role, which is not
+-- PostgREST-reachable). See docs/needs-human-rulings.md's D17 row.
 -- ═══════════════════════════════════════════════════════
 --
 -- WHY THIS EXISTS
@@ -70,10 +73,14 @@ grant execute on function public.d17_sweep(text) to service_role;
 --   select * from d17_sweep('1\.025|0\.95|1\.05|0\.975|increase weight|reduce weight');
 --   -- expect 0 rows
 --
---   -- grants are exactly service_role, nothing wider
+--   -- grants: service_role, plus the owning role (postgres or whoever ran this
+--   -- migration) which Postgres always grants implicitly to the function owner —
+--   -- that row is NOT a security gap, since only anon/authenticated/service_role
+--   -- map to PostgREST-reachable API credentials; the owner role is never one of
+--   -- them. anon and authenticated must NOT appear.
 --   select grantee, privilege_type from information_schema.routine_privileges
 --    where routine_name = 'd17_sweep';
---   -- expect exactly one row: service_role / EXECUTE
+--   -- expect: service_role/EXECUTE + the owner's row. No anon, no authenticated.
 --
 -- After applying, re-run `node scripts/d17-db-sweep.mjs` locally (or let the next
 -- `production.yml` run do it) — it now calls `rpc/d17_sweep` instead of the
