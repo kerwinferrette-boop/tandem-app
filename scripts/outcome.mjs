@@ -286,7 +286,10 @@ async function main() {
     else ok(`${progressing} lift(s) progressing vs ${regressing} regressing`);
   }
 
-  if (JSON_OUT) { console.log(JSON.stringify(report, null, 2)); process.exit(0); }
+  // BUG-104: this used to hardcode exit(0), ignoring allPass -- inert only because
+  // production.yml never calls --json, but any future --json caller checking the
+  // exit code instead of parsing JSON would see a false pass. Match the non-JSON path.
+  if (JSON_OUT) { console.log(JSON.stringify(report, null, 2)); process.exit(allPass ? 0 : 1); }
 
   console.log(`\n═══ OUTCOME GATE: ${allPass ? 'PASS' : 'FAIL'} ═══`);
   if (!allPass) console.log(`
