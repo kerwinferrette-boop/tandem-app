@@ -160,7 +160,16 @@ async function main() {
     process.exit(1);
   }
 
-  const users = await rest('users?select=id,name&limit=50');
+  // Test accounts (kerwinferrette+test@gmail.com, +testdani@) are EXPLICITLY excluded
+  // from this gate — .claude/loop-config.md's live_test_account_verification section,
+  // confirmed directly by Kerwin: "just that - test accounts, to test features." They
+  // exist to be exercised constantly and idle for long stretches by design, which is
+  // not evidence about a real person's training. Filtering by email here (previously
+  // absent) is what actually enforces that exclusion; before this fix a test account
+  // stayed silently out of the report only by the coincidence of also having zero sets
+  // in the window and hitting the old skip-continue path, which BUG-100 removes below.
+  const allUsers = await rest('users?select=id,name,email&limit=50');
+  const users = allUsers.filter(u => !/\+test/i.test(u.email || ''));
   if (!users.length) return void (fail('no users in production'), process.exit(1));
 
   // muscle_primary comes from the exercises table — the ONLY way to ask "is this
@@ -178,7 +187,20 @@ async function main() {
       `sets?select=exercise_name,created_at,weight_lbs,reps,estimated_1rm_lbs` +
       `&user_id=eq.${u.id}&created_at=gte.${since}&limit=5000`
     );
-    if (!sets.length) continue;
+    // BUG-100: a user with ZERO sets in the window is the single clearest outcome
+    // failure this gate can see — silently `continue`-ing past them (the original
+    // bug) let a real user go dark with no visible signal, which is the exact
+    // blind-green failure mode this file exists to prevent. Report and fail loud.
+    if (!sets.length) {
+      report.push({ user: u.name || u.id, muscles: [], lifts: [], progressing: 0, regressing: 0, zeroActivity: true });
+      if (!JSON_OUT) {
+        console.log(`\n═══ ${u.name || u.id} — last ${WINDOW_DAYS} days ═══\n`);
+        allPass = fail(`${u.name || u.id}: ZERO logged sets in the last ${WINDOW_DAYS} days — no training activity at all.`);
+      } else {
+        allPass = false;
+      }
+      continue;
+    }
 
     // ── Layer 1: MUSCLE exposure — "is this being trained at all?" ───────────
     const byMuscle = {};
