@@ -1682,6 +1682,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <button class="clear-btn" style="color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);margin-top:14px;" onclick="resetProgram()">← Rebuild Program</button>
     <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openProgramLibrary()">📚 Browse Program Library</button>
     <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openOneOff()">⚡ Build Me a Workout</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openTemplateBuilder()">🛠️ Build Custom Template</button>
     <div id="goalSyncInfo" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
   </div>
 </div>
@@ -1719,6 +1720,22 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="modal-sub">Authored, periodized programs. Adopting one replaces your generated plan — you can switch back anytime.</div>
     <div id="libraryList" style="display:flex;flex-direction:column;gap:10px;"><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Loading…</span></div>
     <div id="libraryCurrent" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
+  </div>
+</div>
+
+<!-- CUSTOM TEMPLATE BUILDER (EPIC-27 Slice 2) -->
+<div class="modal-overlay" id="modal-builder" onclick="if(event.target===this)closeModal('builder')">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('builder')">✕</button>
+    <div class="modal-title">Build Custom Template</div>
+    <div class="modal-sub">A from-scratch program made of your own picks — 2 to 6 days, each exercise chosen from the exercise bank. Replaces your generated plan; you can switch back anytime from the Library.</div>
+    <input type="text" id="builderName" class="modal-input" placeholder="Template name (e.g. My Push/Pull/Legs)" style="margin-bottom:12px;">
+    <div id="builderStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
+    <div id="builderDays"></div>
+    <button class="clear-btn" style="margin-bottom:10px;" onclick="addBuilderDay()">+ Add Day</button>
+    <button class="tool-btn" id="builderSaveBtn" style="width:100%;padding:10px;" onclick="saveCustomTemplate(this)">Build Template</button>
+    <datalist id="builderExerciseList"></datalist>
   </div>
 </div>
 
@@ -2921,6 +2938,142 @@ async function createCustomTemplate(input) {
   currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
   await syncToCloud();
   return tpl.id;
+}
+
+// ═══ EPIC-27 Slice 2 — CUSTOM TEMPLATE BUILDER UI ═══
+// docs/waves/EPIC-27-WAVE-STATE.md Slice 2. The only caller of Slice 1's
+// createCustomTemplate() — until this ships, that function is dead code by
+// design (per the Wave file). Minimal-but-correct first increment: day
+// add/remove (2-6, mirrors workout_templates_days_per_week_check), per-day
+// exercise rows with a search-as-you-type autocomplete input against the
+// live `exercises` table (Kerwin's 2026-08-21 resolved UI shape — a text
+// input with a browser <datalist>, not a dropdown or drag-card — do not
+// reopen that decision). Superset grouping (the Wave file's other Slice-2
+// item) is NOT built in this increment — sets/reps/rest/role per exercise is
+// the smallest unit that lets createCustomTemplate() receive a real,
+// concretely-valued input rather than an invented one, and superset
+// grouping is additive on top of this shape, not a precondition for it. Left
+// as an explicit next step, not silently dropped — see the Wave file update
+// this commit makes.
+let builderState = null;      // { days: [ { label, exercises: [ {name, exercise_id, sets, reps, rest, role} ] } ] }
+let builderExerciseIndex = null; // Map<lowercased name, {id, name}> — built once per session from the live exercises table
+
+async function openTemplateBuilder() {
+  if (!currentUser) { showToast('Sign in to build a custom template'); return; }
+  openModal('builder');
+  const nameInput = document.getElementById('builderName');
+  if (nameInput) nameInput.value = '';
+  builderState = { days: [
+    { label: 'Day 1', exercises: [] },
+    { label: 'Day 2', exercises: [] },
+  ] };
+  const status = document.getElementById('builderStatus');
+  if (status) status.textContent = '';
+  if (!builderExerciseIndex) {
+    if (!sb) {
+      if (status) status.textContent = "Exercise search needs a connection — try again online.";
+    } else {
+      try {
+        const { data, error } = await sb.from('exercises').select('id, name').order('name');
+        if (error) throw error;
+        builderExerciseIndex = new Map((data || []).map(e => [e.name.trim().toLowerCase(), e]));
+        const dl = document.getElementById('builderExerciseList');
+        if (dl) dl.innerHTML = (data || []).map(e => `<option value="${String(e.name).replace(/"/g, '&quot;')}">`).join('');
+      } catch (e) {
+        console.warn('[builder] exercise list load failed', e);
+        if (status) status.textContent = "Couldn't load the exercise list — see console.";
+      }
+    }
+  }
+  renderBuilderDays();
+}
+
+const BUILDER_ROLE_LABEL = { primary_compound: 'Primary compound', secondary_compound: 'Secondary compound', accessory: 'Accessory', core: 'Core', cardio: 'Cardio' };
+function renderBuilderDays() {
+  const wrap = document.getElementById('builderDays');
+  if (!wrap || !builderState) return;
+  wrap.innerHTML = builderState.days.map((d, di) => `
+    <div style="border:1px solid var(--line, var(--border2));border-radius:12px;padding:12px;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" class="modal-input" value="${String(d.label || '').replace(/"/g, '&quot;')}" placeholder="Day label (e.g. Push)" style="flex:1;" oninput="builderState.days[${di}].label=this.value">
+        ${builderState.days.length > 2 ? `<button class="clear-btn" style="width:auto;padding:6px 10px;" onclick="removeBuilderDay(${di})">✕</button>` : ''}
+      </div>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+        ${d.exercises.map((x, xi) => `
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--line, var(--border2));padding-top:8px;">
+            <input type="text" class="modal-input" list="builderExerciseList" placeholder="Search exercise…" value="${String(x.name || '').replace(/"/g, '&quot;')}" style="flex:2;min-width:140px;width:auto;" oninput="builderSetExercise(${di},${xi},this.value)">
+            <select class="modal-input" style="flex:1;min-width:120px;width:auto;" onchange="builderState.days[${di}].exercises[${xi}].role=this.value">
+              ${Object.entries(BUILDER_ROLE_LABEL).map(([v, l]) => `<option value="${v}" ${x.role === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+            <input type="number" class="modal-input" min="1" max="10" value="${x.sets}" style="width:52px;" title="Sets" oninput="builderState.days[${di}].exercises[${xi}].sets=parseInt(this.value)||0">
+            <input type="text" class="modal-input" value="${String(x.reps || '').replace(/"/g, '&quot;')}" placeholder="Reps" style="width:70px;" title="Reps (e.g. 8-10)" oninput="builderState.days[${di}].exercises[${xi}].reps=this.value">
+            <input type="number" class="modal-input" min="0" value="${x.rest}" style="width:60px;" title="Rest (sec)" oninput="builderState.days[${di}].exercises[${xi}].rest=parseInt(this.value)||0">
+            <button class="clear-btn" style="width:auto;padding:6px 8px;" onclick="removeBuilderExercise(${di},${xi})">✕</button>
+          </div>`).join('')}
+      </div>
+      <button class="clear-btn" style="width:auto;margin-top:8px;padding:6px 10px;" onclick="addBuilderExercise(${di})">+ Add Exercise</button>
+    </div>`).join('');
+}
+
+function builderSetExercise(di, xi, val) {
+  const hit = builderExerciseIndex?.get(String(val).trim().toLowerCase());
+  const ex = builderState.days[di].exercises[xi];
+  ex.name = val;
+  ex.exercise_id = hit ? hit.id : null; // null = not a recognized exercise yet; saveCustomTemplate blocks on this, never invents an id
+}
+
+function addBuilderDay() {
+  if (!builderState) return;
+  if (builderState.days.length >= 6) { showToast('Custom templates max out at 6 days'); return; }
+  builderState.days.push({ label: `Day ${builderState.days.length + 1}`, exercises: [] });
+  renderBuilderDays();
+}
+function removeBuilderDay(i) {
+  if (!builderState) return;
+  if (builderState.days.length <= 2) { showToast('Custom templates need at least 2 days'); return; }
+  builderState.days.splice(i, 1);
+  renderBuilderDays();
+}
+function addBuilderExercise(di) {
+  if (!builderState) return;
+  builderState.days[di].exercises.push({ name: '', exercise_id: null, sets: 3, reps: '8-10', rest: 90, role: 'accessory' });
+  renderBuilderDays();
+}
+function removeBuilderExercise(di, xi) {
+  if (!builderState) return;
+  builderState.days[di].exercises.splice(xi, 1);
+  renderBuilderDays();
+}
+
+async function saveCustomTemplate(btn) {
+  if (!builderState) return;
+  const nameInput = document.getElementById('builderName');
+  const name = (nameInput?.value || '').trim();
+  if (!name) { showToast('Name your template first'); return; }
+  for (const d of builderState.days) {
+    if (!d.exercises.length) { showToast(`"${d.label}" needs at least one exercise`); return; }
+    for (const x of d.exercises) {
+      if (!x.exercise_id) { showToast(`"${x.name || '(blank)'}" in "${d.label}" isn't a recognized exercise — pick one from the list`); return; }
+    }
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Building…'; }
+  try {
+    await createCustomTemplate({
+      name,
+      days: builderState.days.map(d => ({
+        label: d.label,
+        exercises: d.exercises.map(x => ({ exercise_id: x.exercise_id, sets: x.sets, reps: x.reps, rest: x.rest, role: x.role })),
+      })),
+    });
+    closeModal('builder');
+    renderTracker();
+    showToast(`${name} built — starting at Week 1`);
+  } catch (e) {
+    console.warn('[builder] save failed', e);
+    showToast(e.message || 'Build failed — see console');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Build Template'; }
+  }
 }
 
 function revertToGenerated() {
