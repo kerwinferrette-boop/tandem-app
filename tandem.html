@@ -2802,6 +2802,127 @@ async function adoptTemplate(templateId, btn) {
   }
 }
 
+// ═══ EPIC-27 Slice 1 — CUSTOM TEMPLATE WRITE PATH ═══
+// docs/waves/EPIC-27-WAVE-STATE.md Slice 1. Builds a from-scratch, never-
+// published, owner-authored program in the SAME shape adoptTemplate() writes
+// for a cloned library program, so getActiveProgram()'s existing
+// program_source==='template' branch (tandem.html:2564-2611, dormant since
+// EPIC-033/BUG-69) renders it with zero further code change there.
+//
+// CORRECTION vs. the Wave file's recorded council verdict, found by checking
+// the LIVE CHECK constraints (pg_constraint) before writing, not by trusting
+// the prior cycle's "verified inert" note at face value: parent_goal /
+// code_goal_mapping / difficulty CANNOT be the literal 'custom' sentinel the
+// Wave file names — workout_templates_parent_goal_check /
+// _code_goal_mapping_check / _difficulty_check only allow the same canonical
+// vocabulary getProgram() already uses. "Inert for display" (verified true —
+// openProgramLibrary() only reads these columns for is_published=true rows)
+// is a different claim than "legal to write", and the Wave file conflated
+// them. Fixed here by using the user's OWN already-canonical cfg.goal /
+// cfg.experience (D2: only canonical goals ever reach cfg.goal) — not a
+// fabricated value, it is the real value already governing every other
+// program this same user runs, so it satisfies the CHECK constraint honestly
+// instead of inventing a sentinel that cannot be inserted at all.
+//
+// Input contract — Slice 2's future builder UI is the intended caller; this
+// slice ships the write path only, independently verified via direct calls
+// under an allowlisted test account (no UI wires to this yet, per the Wave
+// file's own verification note for this slice):
+//   { name: string,
+//     days: [ { label: string,
+//               exercises: [ { exercise_id, sets, reps, rest, role } ] } ] }
+// sets/reps/rest/role always come from the caller (Slice 3's suggestion or
+// Slice 4's manual entry) — never invented here. role must be one of the five
+// DB-legal values; anything else is rejected rather than silently coerced.
+const TEMPLATE_EXERCISE_ROLES = ['primary_compound', 'secondary_compound', 'accessory', 'core', 'cardio'];
+async function createCustomTemplate(input) {
+  if (!currentUser) throw new Error('Sign in to build a custom template');
+  if (!sb) throw new Error('No Supabase connection');
+  const name = (input?.name || '').trim();
+  if (!name) throw new Error('Template needs a name');
+  const days = Array.isArray(input?.days) ? input.days : [];
+  // workout_templates_days_per_week_check: CHECK (days_per_week >= 2 AND <= 6).
+  if (days.length < 2 || days.length > 6) throw new Error('Custom templates need 2-6 days');
+  for (const d of days) {
+    if (!d.label || !String(d.label).trim()) throw new Error('Every day needs a label');
+    if (!Array.isArray(d.exercises) || !d.exercises.length) throw new Error(`Day "${d.label}" needs at least one exercise`);
+    for (const x of d.exercises) {
+      if (!x.exercise_id) throw new Error(`Day "${d.label}" has an exercise with no exercise_id`);
+      if (!(x.sets >= 1 && x.sets <= 10)) throw new Error(`${d.label}: sets must be 1-10 (got ${x.sets})`);
+      if (!x.reps || !String(x.reps).trim()) throw new Error(`${d.label}: reps must be concrete, never blank`);
+      if (!(Number.isFinite(x.rest) && x.rest >= 0)) throw new Error(`${d.label}: rest must be a concrete number of seconds`);
+      if (!TEMPLATE_EXERCISE_ROLES.includes(x.role)) throw new Error(`${d.label}: role "${x.role}" is not one of ${TEMPLATE_EXERCISE_ROLES.join('/')}`);
+    }
+  }
+  const uid = currentUser.id;
+  const CODE_GOALS = ['build_muscle', 'fat_burn', 'transform']; // == doctrine.mjs CANONICAL_GOALS
+  const goal = CODE_GOALS.includes(cfg.goal) ? cfg.goal : 'build_muscle';
+  const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'];
+  const difficulty = EXPERIENCE_LEVELS.includes(cfg.experience) ? cfg.experience : 'intermediate';
+  const slug = `custom-${uid.slice(0, 8)}-${Date.now().toString(36)}`;
+
+  // 1. Template row — 12wk single block, per docs/waves/EPIC-27-WAVE-STATE.md's
+  // council-cited verdict (D15's 8-12wk block-length doctrine).
+  const { data: tpl, error: te } = await sb.from('workout_templates').insert({
+    name, slug, author_id: uid, is_published: false,
+    parent_goal: goal, code_goal_mapping: goal,
+    duration_weeks: 12, days_per_week: days.length,
+    equipment_tier: resolveEquipmentTier(), difficulty,
+    science_overrides: {},
+  }).select('id').single();
+  if (te) throw te;
+  try {
+    // 2. One non-periodized block spanning the whole 12 weeks — empty
+    // rep_scheme_by_week/technique_by_week is the column's own existing
+    // default and already means "no periodization", zero new schema behavior.
+    const { data: block, error: be } = await sb.from('template_blocks').insert({
+      template_id: tpl.id, block_order: 1, week_start: 1, week_end: 12,
+      name: 'Block 1',
+    }).select('id').single();
+    if (be) throw be;
+
+    // muscle_targets is derived from the exercises table's own muscle_primary
+    // tags — the same source the generator itself reads — never invented.
+    const allIds = [...new Set(days.flatMap(d => d.exercises.map(x => x.exercise_id)))];
+    const { data: exRows, error: exErr } = await sb.from('exercises').select('id, muscle_primary').in('id', allIds);
+    if (exErr) throw exErr;
+    const muscleOf = Object.fromEntries((exRows || []).map(r => [r.id, r.muscle_primary || []]));
+
+    let dayOrder = 1;
+    for (const d of days) {
+      const targets = [...new Set(d.exercises.flatMap(x => muscleOf[x.exercise_id] || []))];
+      const { data: dayRow, error: de } = await sb.from('template_days').insert({
+        template_id: tpl.id, block_id: block.id, day_order: dayOrder++,
+        label: String(d.label).trim(), muscle_targets: targets,
+      }).select('id').single();
+      if (de) throw de;
+      const rows = d.exercises.map((x, i) => ({
+        day_id: dayRow.id, exercise_id: x.exercise_id, ex_order: i + 1,
+        sets: x.sets, reps: String(x.reps), rest: Math.round(x.rest), role: x.role,
+      }));
+      const { error: xe } = await sb.from('template_exercises').insert(rows);
+      if (xe) throw xe;
+    }
+  } catch (e) {
+    // Partial-write cleanup: FKs from template_blocks/days/exercises back to
+    // workout_templates are all ON DELETE CASCADE, so deleting the template
+    // row alone is sufficient to leave zero residue on a failed build.
+    await sb.from('workout_templates').delete().eq('id', tpl.id);
+    throw e;
+  }
+
+  // 3. Cache the identical bundle shape adoptTemplate() caches, so
+  // getActiveProgram()'s existing 'template' branch renders it with zero
+  // further code change there.
+  const bundle = await fetchTemplateBundle(tpl.id);
+  LS.set('tandem_adopted_program', bundle);
+  cfg.programSource = 'template';
+  LS.set('tandem_cfg', cfg);
+  currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
+  await syncToCloud();
+  return tpl.id;
+}
+
 function revertToGenerated() {
   cfg.programSource = 'generated';
   // Drop the adopted bundle too. Leaving it behind meant a later re-adopt (or a
