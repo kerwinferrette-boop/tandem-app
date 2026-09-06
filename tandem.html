@@ -4634,6 +4634,64 @@ function skipAhead() {
   renderTracker();
   showToast('Workout skipped — next session moved up');
   if (typeof syncToCloud === 'function') syncToCloud();
+
+  // BUG-56 (direct_ask ruling, 2026-09-04, Kerwin): a skip must be queryable
+  // server-side, not purely client-side ("whatever makes it easier for the
+  // backend to understand it was a skip — a status/flag, not a zero-volume
+  // completed session"). No schema change needed: workout_sessions.session_type
+  // is an existing, unconstrained free-text column (default 'strength', written
+  // today only by finishSession()'s completion path, read nowhere) — reusing it
+  // for 'skipped' is the single-owner-per-column move, not a private new field.
+  // completed stays false (never volume, per completedSessionCount()/getOverdueDays()
+  // — same rule the local tandem_history copy already follows above).
+  // No sets/personal_records/lastsets row is written, so prescriptionOneRM()'s
+  // earned-1RM resolution (D11/D22) is untouched by a skip — the next suggested
+  // weight is already based on the last REAL logged session, not a phantom zero,
+  // by construction. Exercise-science-research pass (2026-09-06, Cycle 71): none
+  // of research-report(8).pdf, the Exercise Science Framework docx, the v0.5
+  // schema, or the Periodization spec residue mention missed-session catch-up —
+  // all four are silent, so no computed "catch-up" adjustment is invented here;
+  // silence is reported, not filled.
+  if (currentUser) {
+    (async () => {
+      try {
+        const today = localDateStr(); // BUG-018/027: local day, not UTC
+        const { data: openRow } = await sb.from('workout_sessions')
+          .select('id')
+          .eq('user_id', currentUser.id)
+          .eq('session_date', today)
+          .eq('completed', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (openRow?.id) {
+          await sb.from('workout_sessions')
+            .update({ session_type: 'skipped' })
+            .eq('id', openRow.id)
+            .eq('user_id', currentUser.id);
+        } else {
+          const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
+          await sb.from('workout_sessions').insert({
+            user_id: currentUser.id,
+            session_date: today,
+            week_number: currentWeek,
+            day_type: currentDay,
+            program_goal: cfg.goal,
+            phase_name: phase?.name || null,
+            completed: false,
+            session_type: 'skipped'
+          });
+        }
+        // Never let a future real session resume INTO the row we just marked
+        // skipped — the same cleanup finishSession() does on real completion.
+        localStorage.removeItem('tandem_active_session_id');
+        localStorage.removeItem('tandem_session_start_time');
+        localStorage.removeItem('tandem_c11_first_session_id');
+      } catch (skipSyncErr) {
+        console.warn('BUG-56 skip cloud sync failed (local history unaffected):', skipSyncErr);
+      }
+    })();
+  }
 }
 
 // Push today's day to the back of the week; pull the next one forward. Nothing forfeit.
