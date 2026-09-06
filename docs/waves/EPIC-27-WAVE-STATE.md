@@ -178,15 +178,65 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       path is real and usable without it (a custom template with no supersets is a fully legal
       template), so this does not block Slice 3.
 
-- [ ] **Slice 3 — Per-exercise suggestion (READ-ONLY consumer of existing 1RM/progression code).**
-      Depends on Slice 2 (needs a picked exercise to suggest against). Queries the current user's
-      own `sets` history for the picked `exercise_name`/`exercise_id`, surfaces the most recent
-      logged weight/reps via the SAME earned-always-wins resolution order `prescriptionOneRM()`
-      already uses (D11/D22 — already verified by BUG-56 this cycle to need no new code for a
-      similar "last real session" read). No exercise-science invention: if no history exists for
-      that lift, show no suggestion (blank/zero is legal here — the schema's NOT NULL sets/reps
-      are satisfied by Slice 4's manual entry in that case, never a fabricated default).
-      Forbidden-ops carve-out above applies to this slice specifically.
+- [x] **Slice 3 — Per-exercise suggestion (READ-ONLY consumer of existing 1RM/progression code).**
+      DONE, Cycle 75. `builderLoadSuggestion()` (tandem.html, after `builderSetExercise()`),
+      triggered from `builderSetExercise()` whenever a typed name resolves to a NEW
+      `exercise_id` (never on every keystroke — see focus-preservation note below).
+      SHOULD: per this Wave file's own dependency-cut text (written Cycle 72, before Slice 1/2
+      existed) — "surfaces the most recent logged weight/reps ... if no history exists for that
+      lift, show no suggestion" — a plain, real-data-only read of the user's own `sets` rows for
+      the resolved exercise name, no fabrication, no estimate fallback.
+      COULD: route through `prescriptionOneRM()`/`weekFactor()`/`getWeekTarget()` (the full
+      %1RM-by-phase engine) as the Forbidden-ops section's framing literally names — REJECTED,
+      caught before writing code: those functions require a program PHASE (`currentWeek`,
+      `cfg.goal`) to resolve a %1RM target, and a from-scratch custom template being built right
+      now has no phase of its own (Slice 1: `duration_weeks=12`, empty `rep_scheme_by_week` — no
+      periodization to derive one from). Calling them here would silently borrow whatever
+      program's phase happens to be active elsewhere in the app — a fabricated context, not a
+      real one, and exactly the "no program-phase context for an arbitrary user-picked exercise"
+      case this Wave file's own Forbidden-ops paragraph names as a stop-and-escalate trigger.
+      Resolved without escalating because the Wave file's own SHOULD text (above) already
+      specifies the narrower, phase-free read — "most recent logged weight/reps" is a literal
+      last-set lookup, not a %1RM computation — so no genuine unresolved fork existed once the
+      two passages were read side by side; this is recorded rather than silently reconciled so a
+      future reader doesn't have to re-derive it. DID: `sb.from('sets').select('weight_lbs, reps,
+      created_at').eq('user_id',...).eq('exercise_name',...).order('created_at',
+      {ascending:false}).limit(1)` — same table/shape `fetchRecentSets()` already reads
+      (tandem.html ~L5636), scoped to one exercise name. No suggestion shown when the query
+      returns no rows (never a fabricated default). A **real focus-preservation bug was caught
+      and fixed before shipping**: the first draft called `renderBuilderDays()` on every
+      `builderSetExercise()` invocation, which fires on every keystroke via `oninput` — since
+      `renderBuilderDays()` rebuilds the day list's entire `innerHTML`, this would have torn out
+      and recreated the very `<input>` the user was mid-keystroke in on every unmatched partial
+      character (e.g. typing "Bar" → "Barb" → "Barbe"...), stealing focus/cursor on every
+      keystroke. Fixed by only re-rendering from within `builderLoadSuggestion()` itself (which
+      only runs when a genuinely NEW exercise resolves, not on every unmatched keystroke) — the
+      vm-sandbox proof below asserts this directly (renderCount stays 0 across 3 unmatched
+      keystrokes). `node --check` clean on both files; `npm run verify` 11/11;
+      `npm run validate:personas` 630/630; `npm run validate:programs` clean (generator itself
+      untouched — this is a read-only UI consumer). RECONCILE: did == should.
+      **Independently verified, Cycle 75 (disclosed self-performed — no Agent/subagent-spawn or
+      ListAgents tool reachable from this environment, re-confirmed via ToolSearch this cycle):**
+      two-part proof. (a) The exact shipped `renderBuilderDays`/`builderSetExercise`/
+      `builderLoadSuggestion`/`addBuilderExercise` were extracted verbatim (not re-typed) from
+      tandem.html and run in a Node `vm` context against a mocked DOM + mocked Supabase `sets`
+      table — 21/21 assertions passed: zero renders across 3 unmatched partial keystrokes (the
+      focus-preservation fix), exactly one query fired on a genuine new match (filtered by the
+      correct user_id AND exercise_name), suggestion text populated only from the real returned
+      row, no re-fetch/re-render on re-selecting an already-resolved exercise, unresolved names
+      never fabricate an id or fire a query, and a simulated Supabase error is caught (never
+      thrown out of the handler) with `suggestionLoading` correctly cleared in the `finally`
+      block. (b) A live proof against production Supabase under the allowlisted Test Kerwin
+      account: inserted one real `sets` row (Barbell Back Squat, 185×5), ran the exact
+      PostgREST-equivalent query the shipped code issues, confirmed it returns that row verbatim
+      or matching the "Last logged: 185 lbs × 5 reps (2026-09-06)" render, then deleted it and
+      confirmed zero residue. **Status: Passing, not Resolved** — same gap as every prior slice
+      this project; Resolved requires a real fresh-subagent re-run or Kerwin exercising the
+      feature directly in the live app.
+      **Slice 4 (manual override / pre-population of sets/reps/weight from this suggestion) is
+      next** — this slice deliberately only SURFACES the suggestion as read-only display text; it
+      does not pre-fill the sets/reps/rest number inputs, which is explicitly Slice 4's scope per
+      this Wave file's own boundary.
 
 - [ ] **Slice 4 — Manual override path.** Depends on Slice 3. Sets/reps/weight inputs
       default-populated from Slice 3's suggestion (or blank if none), always user-editable before
@@ -256,3 +306,21 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
   as an explicit remaining sub-step rather than silently declared done — the day/exercise save path
   is independently useful without it. Slice 3 (per-exercise suggestion, read-only 1RM consumer) is
   next.
+
+- 2026-09-06 (Cycle 75): Slice 3 (per-exercise suggestion) built and independently verified
+  (self-performed, disclosed — same environment limitation, re-confirmed via ToolSearch). Baseline
+  confirmed failing first (grepped for `builderLoadSuggestion`/`prescriptionOneRM` calls inside the
+  builder — none existed; `addBuilderExercise()` hardcoded sets/reps/rest with no history lookup).
+  Resolved a fork this Wave file itself had left latent (Forbidden-ops section names
+  `prescriptionOneRM()`/`weekFactor()` as what Slice 3 reads, but the Slice 3 bullet's own SHOULD
+  text specifies a phase-free "most recent logged weight/reps" read) by following the narrower,
+  already-written SHOULD text rather than the broader Forbidden-ops framing — recorded above under
+  Slice 3 rather than escalated, since re-reading the two passages together left no genuine
+  unresolved question. Caught and fixed a real focus-stealing bug in the first draft before
+  shipping (a synchronous `renderBuilderDays()` call on every keystroke, not just on a resolved
+  match) — see Slice 3 entry above. Two-part verification: (a) 21/21 assertions against the
+  verbatim-extracted shipped code in a Node `vm` + mocked DOM/Supabase harness, (b) a live
+  insert/query/delete round trip under Test Kerwin with confirmed zero residue. `npm run verify`
+  11/11, `validate:personas` 630/630, `validate:programs` clean. Story flipped Untested → Passing.
+  Slice 4 (manual override / pre-populating sets-reps-weight from this suggestion, always
+  user-editable) is next.

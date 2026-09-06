@@ -3009,6 +3009,11 @@ function renderBuilderDays() {
             <input type="text" class="modal-input" value="${String(x.reps || '').replace(/"/g, '&quot;')}" placeholder="Reps" style="width:70px;" title="Reps (e.g. 8-10)" oninput="builderState.days[${di}].exercises[${xi}].reps=this.value">
             <input type="number" class="modal-input" min="0" value="${x.rest}" style="width:60px;" title="Rest (sec)" oninput="builderState.days[${di}].exercises[${xi}].rest=parseInt(this.value)||0">
             <button class="clear-btn" style="width:auto;padding:6px 8px;" onclick="removeBuilderExercise(${di},${xi})">✕</button>
+            ${x.exercise_id ? (x.suggestion
+              ? `<div style="width:100%;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-left:2px;">Last logged: ${x.suggestion}</div>`
+              : x.suggestionLoading
+                ? `<div style="width:100%;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-left:2px;">Checking your history…</div>`
+                : '') : ''}
           </div>`).join('')}
       </div>
       <button class="clear-btn" style="width:auto;margin-top:8px;padding:6px 10px;" onclick="addBuilderExercise(${di})">+ Add Exercise</button>
@@ -3018,8 +3023,62 @@ function renderBuilderDays() {
 function builderSetExercise(di, xi, val) {
   const hit = builderExerciseIndex?.get(String(val).trim().toLowerCase());
   const ex = builderState.days[di].exercises[xi];
+  const prevId = ex.exercise_id;
   ex.name = val;
   ex.exercise_id = hit ? hit.id : null; // null = not a recognized exercise yet; saveCustomTemplate blocks on this, never invents an id
+  if (hit && hit.id === prevId) return; // same resolved exercise as before — keep any
+    // suggestion already shown, no re-fetch, no render (avoids re-rendering on a no-op).
+  // Slice 3 (EPIC-27-slice3-history-based-suggestion): the resolved exercise actually
+  // changed (to a different one, or to unresolved) — a previously-shown suggestion no
+  // longer applies to what's in the field now, so it's cleared here. Deliberately NOT
+  // followed by a synchronous renderBuilderDays() call: this function fires on every
+  // keystroke via oninput, including every partial, not-yet-matching character the user
+  // types before `hit` resolves at all — rebuilding the day list's innerHTML on each of
+  // those would tear out and recreate the very <input> the user is mid-keystroke in,
+  // stealing focus/cursor. Only render once there is something new to actually show,
+  // which is exactly what builderLoadSuggestion below does (and only runs when `hit` is
+  // a genuinely new match, not on every unmatched keystroke).
+  ex.suggestion = null;
+  ex.suggestionLoading = false;
+  if (hit) builderLoadSuggestion(di, xi, hit.name);
+}
+
+// Slice 3 — READ-ONLY consumer of the user's own logged `sets` history (same table/shape
+// fetchRecentSets() already reads, ~L5636). Deliberately does NOT call prescriptionOneRM()/
+// weekFactor()/getWeekTarget(): those need a program PHASE (currentWeek, cfg.goal) to resolve
+// a %1RM target, and a from-scratch custom template being built right now has no phase of its
+// own yet (Slice 1: duration_weeks=12, empty rep_scheme_by_week — no periodization exists to
+// derive one from) — reusing them would silently borrow whatever program's phase happens to be
+// active elsewhere in the app, which is a fabricated context, not a real one. Per the Wave
+// file's own resolution: surface the MOST RECENT LOGGED weight/reps for this exact exercise
+// name (same "last real session" read BUG-56 already established this cycle), nothing derived,
+// and no self-reported-estimate fallback either — real logged history or no suggestion at all.
+async function builderLoadSuggestion(di, xi, exerciseName) {
+  const ex = builderState?.days[di]?.exercises[xi];
+  if (!ex || !sb || !currentUser?.id) return;
+  ex.suggestionLoading = true;
+  renderBuilderDays();
+  try {
+    const { data, error } = await sb.from('sets')
+      .select('weight_lbs, reps, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('exercise_name', exerciseName)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    // The field may have been retyped to a different exercise while this query was in
+    // flight — only apply the result if it's still pointed at the name we queried for.
+    const stillCurrent = builderState?.days[di]?.exercises[xi];
+    if (!stillCurrent || stillCurrent.name !== ex.name) return;
+    const row = (data || [])[0];
+    stillCurrent.suggestion = row ? `${row.weight_lbs} lbs × ${row.reps} reps (${String(row.created_at).slice(0, 10)})` : null;
+  } catch (e) {
+    console.warn('[builder] suggestion lookup failed', e);
+  } finally {
+    const stillCurrent = builderState?.days[di]?.exercises[xi];
+    if (stillCurrent) stillCurrent.suggestionLoading = false;
+    renderBuilderDays();
+  }
 }
 
 function addBuilderDay() {
