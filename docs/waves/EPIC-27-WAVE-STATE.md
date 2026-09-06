@@ -238,11 +238,81 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       does not pre-fill the sets/reps/rest number inputs, which is explicitly Slice 4's scope per
       this Wave file's own boundary.
 
-- [ ] **Slice 4 — Manual override path.** Depends on Slice 3. Sets/reps/weight inputs
-      default-populated from Slice 3's suggestion (or blank if none), always user-editable before
-      Slice 1 commits the row — satisfies Expected Behavior item 3 verbatim and is what keeps
-      `template_exercises.sets`/`reps` NOT NULL honestly satisfied (a concrete value always exists
-      by the time Slice 1 writes, sourced from suggestion-or-override, never invented server-side).
+- [x] **Slice 4 — Manual override path.** DONE, Cycle 76. `builderEditReps()` added
+      (tandem.html, after `addBuilderExercise()`); `builderLoadSuggestion()` extended to
+      default-populate `reps` from the resolved suggestion, guarded by a new
+      `repsTouched` flag on each exercise row.
+      **CORRECTION vs. this bullet's own prior wording ("Sets/reps/weight inputs
+      default-populated"), found by checking the LIVE schema and the actual suggestion
+      payload before writing code, not by trusting the prior phrasing:** only `reps` gets
+      default-populated. `sets` does not, because `builderLoadSuggestion()`'s own query
+      (`select weight_lbs, reps, created_at`) fetches a single most-recent SET row, which
+      has no `sets` COUNT to derive a default from — inventing one would violate
+      CLAUDE.md's "real data or nothing." `weight` is not written anywhere at all: a live
+      `information_schema.columns` check on `template_exercises` (this cycle, before
+      writing code) confirms it has no weight column whatsoever — only
+      `sets/reps/rest/role/technique`. A template stores a prescription, not a fixed
+      weight; every other program type (generated/library) resolves the actual weight at
+      runtime via the calibration/1RM layer, which is forbidden scope for this Wave (see
+      Forbidden-ops carve-out above) — adding a template-level weight field would either
+      dead-end with nowhere legitimate to persist it, or require touching that forbidden
+      layer for no schema-backed benefit. The suggestion TEXT (Slice 3, unchanged) already
+      surfaces the weight for the user to read and apply manually, which is what the
+      Epic's Expected Behavior item 3 ("manual override... own weight") reduces to at the
+      template-authoring layer specifically — this is a narrower, corrected scope than
+      this bullet's own original wording claimed, disclosed here rather than silently
+      built around.
+      SHOULD (EPIC-27's own Expected Behavior items 2+3, re-read fresh this cycle): a
+      suggestion should default-populate what it actually has real data for, and the
+      user must always be able to override it — a later-arriving suggestion must never
+      clobber something the user already typed. COULD have made the pre-fill unconditional
+      (always overwrite reps when a suggestion resolves) — REJECTED: an async suggestion
+      fetch can resolve after the user has already started typing their own reps for that
+      exact row (the fetch and a keystroke race in real time), and clobbering a typed value
+      is a worse violation of "always user-editable" than under-filling would be. DID: a
+      `repsTouched` flag seeded `false` in `addBuilderExercise()`, flipped `true` only by
+      `builderEditReps()` (the reps field's new named oninput handler, replacing the prior
+      inline `this.value` setter so it can also flip the flag) — never flipped
+      automatically. `builderLoadSuggestion()` writes `reps` from the real fetched row only
+      when `!repsTouched`. TEST baseline confirmed failing first: reading the code before
+      this change showed `ex.sets`/`ex.reps`/`ex.rest` were only ever set once at row
+      creation (a generic `3`/`'8-10'`/`90`) and never touched again by
+      `builderLoadSuggestion()`, which only ever wrote the display-only `.suggestion`
+      string — so a suggestion of "185 lbs × 5 reps" left the reps field showing "8-10"
+      regardless. `node --check` clean on both files; `npm run verify` 11/11;
+      `npm run validate:personas` 630/630; `npm run validate:programs` clean (this touches
+      no generator code — UI-only). RECONCILE: did == should, with the sets/weight scope
+      correction disclosed above rather than silently narrowed.
+      **Independently verified, Cycle 76 (disclosed self-performed — no Agent/subagent-spawn
+      or ListAgents tool reachable from this environment, re-confirmed via ToolSearch this
+      cycle; only SendMessage/TaskStop/Monitor exist, none a spawn primitive):** two-part
+      proof. (a) The exact shipped `renderBuilderDays`/`builderSetExercise`/
+      `builderLoadSuggestion`/`addBuilderExercise`/`builderEditReps` (verbatim-extracted,
+      not re-typed, from tandem.html:2992-3141) were run in a Node `vm` context against a
+      mocked DOM + mocked Supabase `sets` table — **15/15 assertions passed**: an untouched
+      reps field is correctly default-populated from a real suggestion (`"5"`, not
+      invented); `sets` is left alone (no source data for it); a user-typed reps value
+      typed BEFORE the suggestion resolves is never clobbered, and `repsTouched` flips
+      correctly; zero history never invents a reps value or a suggestion string; a
+      simulated Supabase error is caught (never thrown) and never touches `reps`; a
+      suggestion-filled value can still be overridden by the user afterward, and that
+      override sticks. (b) A live round trip against production Supabase under the
+      allowlisted Test Kerwin account (`e5074b4c-3808-4338-aeb7-b9db59d61f49`): inserted
+      1 template / 1 block / 1 `template_days` / 1 `template_exercises` row with
+      `reps='5'` (the exact bare single-number string this slice's payload now produces,
+      not the generic `'8-10'` range) against the live CHECK constraints — succeeded —
+      then deleted the template and confirmed zero residue (`tpl_left=0`, `ex_left=0`
+      via cascade). **Status: Passing, not Resolved** — same fresh-subagent gap as every
+      prior slice this project; Resolved requires a real fresh-subagent re-run or Kerwin
+      exercising the feature directly in the live app.
+      **EPIC-27 parent story status:** stays **Untested/tracking**, not Resolved — Slice 5
+      (deferred week-13 renewal, below) is explicitly out of this Wave's build scope, but
+      per this Wave file's own standing convention (Slices 1-3's identical note), the
+      parent story only flips once every slice — including a disposition on Slice 5 — is
+      settled, not merely "the slices we chose to build are done." Slice 5 needs no further
+      code this cycle; it needs a decision on whether it's in-scope-deferred or genuinely
+      out-of-MVP-scope, which is a product call, not an implementation fork — flagging it
+      here rather than silently closing the parent.
 
 - [ ] **Slice 5 — DEFERRED, not scheduled, flagged so it isn't silently dropped.** "Week 13"
       behavior for a custom template that outlives its nominal 12-week block (renew the same
@@ -324,3 +394,34 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
   11/11, `validate:personas` 630/630, `validate:programs` clean. Story flipped Untested → Passing.
   Slice 4 (manual override / pre-populating sets-reps-weight from this suggestion, always
   user-editable) is next.
+
+- 2026-09-06 (Cycle 76): Slice 4 (manual override) built and independently verified
+  (self-performed, disclosed — same environment limitation, re-confirmed via ToolSearch).
+  Baseline confirmed failing first: read `builderLoadSuggestion()`/`addBuilderExercise()`
+  before writing any code — the suggestion was display-only, `ex.sets`/`ex.reps`/`ex.rest`
+  were only ever set once at row creation and never touched again. Found and corrected this
+  bullet's own prior wording before building against it: checked the LIVE
+  `information_schema.columns` for `template_exercises` and found no `weight` column exists
+  at all (sets/reps/rest/role/technique only), and re-read `builderLoadSuggestion()`'s own
+  query and found it fetches a single most-recent SET row with no `sets` COUNT — so only
+  `reps` has real source data to default-populate from; `sets`/`weight` do not, and building
+  them anyway would have meant either inventing a number or reaching into the
+  forbidden-scope calibration/1RM layer for a value with nowhere legitimate to be persisted.
+  Shipped `builderEditReps()` (new named oninput handler replacing the prior inline setter,
+  so it can flip a new `repsTouched` guard flag) and extended `builderLoadSuggestion()` to
+  write `reps` from the real fetched value only when the user hasn't already typed their
+  own — the actual mechanism behind "always user-editable": a suggestion may pre-fill, it
+  must never clobber a typed value, which matters because the suggestion fetch is async and
+  can resolve after the user has already started customizing the row. Two-part verification:
+  (a) 15/15 assertions against the verbatim-extracted shipped code in a Node `vm` + mocked
+  DOM/Supabase harness (untouched-field pre-fill, no-sets-invention, typed-value survives a
+  later suggestion, zero-history invents nothing, error path never throws and never touches
+  reps, post-suggestion manual override still sticks), (b) a live insert of a real
+  `template_exercises` row with `reps='5'` (the slice's actual new single-number payload
+  shape, not the old `'8-10'` range) under Test Kerwin, succeeding against live CHECK
+  constraints, then deleted with confirmed zero residue. `npm run verify` 11/11,
+  `validate:personas` 630/630, `validate:programs` clean. Story
+  `EPIC-27-slice4-manual-override` flipped Untested → Passing. EPIC-27's parent story stays
+  Untested/tracking, not Resolved — Slice 5 (deferred week-13 renewal) still needs an
+  explicit in-scope-deferred-vs-out-of-MVP disposition, which is a product call flagged
+  above, not code this cycle picked up.

@@ -3006,7 +3006,7 @@ function renderBuilderDays() {
               ${Object.entries(BUILDER_ROLE_LABEL).map(([v, l]) => `<option value="${v}" ${x.role === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
             <input type="number" class="modal-input" min="1" max="10" value="${x.sets}" style="width:52px;" title="Sets" oninput="builderState.days[${di}].exercises[${xi}].sets=parseInt(this.value)||0">
-            <input type="text" class="modal-input" value="${String(x.reps || '').replace(/"/g, '&quot;')}" placeholder="Reps" style="width:70px;" title="Reps (e.g. 8-10)" oninput="builderState.days[${di}].exercises[${xi}].reps=this.value">
+            <input type="text" class="modal-input" value="${String(x.reps || '').replace(/"/g, '&quot;')}" placeholder="Reps" style="width:70px;" title="Reps (e.g. 8-10)" oninput="builderEditReps(${di},${xi},this.value)">
             <input type="number" class="modal-input" min="0" value="${x.rest}" style="width:60px;" title="Rest (sec)" oninput="builderState.days[${di}].exercises[${xi}].rest=parseInt(this.value)||0">
             <button class="clear-btn" style="width:auto;padding:6px 8px;" onclick="removeBuilderExercise(${di},${xi})">✕</button>
             ${x.exercise_id ? (x.suggestion
@@ -3072,6 +3072,25 @@ async function builderLoadSuggestion(di, xi, exerciseName) {
     if (!stillCurrent || stillCurrent.name !== ex.name) return;
     const row = (data || [])[0];
     stillCurrent.suggestion = row ? `${row.weight_lbs} lbs × ${row.reps} reps (${String(row.created_at).slice(0, 10)})` : null;
+    // Slice 4 (manual override) — default-populate `reps` from this real logged value,
+    // but ONLY when the user hasn't already typed their own (repsTouched). This is the
+    // one field this suggestion has real data for: the query above returns a single most-
+    // recent `sets` row's weight_lbs+reps, never a sets COUNT, so `sets` is deliberately
+    // left alone here (its existing addBuilderExercise() default is already a concrete,
+    // non-invented value, just not history-derived). `weight` is not written anywhere:
+    // template_exercises has no weight column at all (verified live via
+    // information_schema.columns — sets/reps/rest/role/technique only), because a
+    // template stores a prescription, not a fixed weight; every other program type
+    // (generated/library) resolves the actual weight at runtime via the calibration/1RM
+    // layer, which stays forbidden scope for this Wave — inventing a template-level
+    // weight field here would either dead-end (nowhere legitimate to persist it) or
+    // require touching that forbidden layer for no schema-backed benefit. The suggestion
+    // TEXT above already surfaces the weight for the user to reference manually, which is
+    // what the Epic's Expected Behavior item 3 ("manual override... own weight") reduces
+    // to at the template-authoring layer.
+    if (row && row.reps != null && !stillCurrent.repsTouched) {
+      stillCurrent.reps = String(row.reps);
+    }
   } catch (e) {
     console.warn('[builder] suggestion lookup failed', e);
   } finally {
@@ -3095,8 +3114,24 @@ function removeBuilderDay(i) {
 }
 function addBuilderExercise(di) {
   if (!builderState) return;
-  builderState.days[di].exercises.push({ name: '', exercise_id: null, sets: 3, reps: '8-10', rest: 90, role: 'accessory' });
+  // repsTouched: false — Slice 4 (manual override) reads this to know whether it may
+  // still default-populate `reps` from a Slice 3 suggestion once one resolves. It flips
+  // true the moment the user types into the reps field themselves (builderEditReps),
+  // never automatically — this is the actual "always user-editable" contract: a
+  // suggestion may pre-fill an untouched field, it must never clobber a typed one.
+  builderState.days[di].exercises.push({ name: '', exercise_id: null, sets: 3, reps: '8-10', rest: 90, role: 'accessory', repsTouched: false });
   renderBuilderDays();
+}
+// Slice 4 (EPIC-27-slice4-manual-override) — the reps field's own edit handler. Kept as
+// a named function (rather than the plain inline `this.value` assignment every other
+// builder field still uses) purely so it can also flip `repsTouched`; it does not
+// re-render, matching every other per-keystroke field here (see builderSetExercise's
+// own comment on why a synchronous renderBuilderDays() on every keystroke steals focus).
+function builderEditReps(di, xi, val) {
+  const ex = builderState?.days[di]?.exercises[xi];
+  if (!ex) return;
+  ex.reps = val;
+  ex.repsTouched = true;
 }
 function removeBuilderExercise(di, xi) {
   if (!builderState) return;
