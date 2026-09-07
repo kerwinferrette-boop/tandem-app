@@ -122,9 +122,12 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       matching exactly what `fetchTemplateBundle()`'s joins would produce — the shape
       `materializeTemplate()`/`getActiveProgram()`'s already-proven dormant branch consumes, so no
       further render-path verification was needed), then deleted the template row and confirmed
-      zero residue across all four tables via cascade. **Status: Passing, not Resolved** — same gap
-      as BUG-56/BUG-88 this project cycle; Resolved requires either a real fresh-subagent re-run or
-      Kerwin exercising the (still UI-less) feature directly once Slice 2 ships.
+      zero residue across all four tables via cascade. **Status: Resolved (Cycle 78, 2026-09-07)** —
+      a genuinely independent fresh subagent (the Agent tool was confirmed reachable this cycle,
+      closing the "no subagent-spawn tool" gap noted in every prior cycle) re-derived the live code
+      and re-ran the full write sequence under real RLS (as the `authenticated` role, not a
+      superuser-bypass connection) with zero discrepancies found. Full detail in the Cycle 78 Goal
+      Record entry and the story's own Evidence field.
       **Not yet wired to any UI** — Slice 2 is the builder screen that will call this function;
       until then it is dead code by design (disclosed, not silent), matching this Wave's own
       dependency order.
@@ -170,9 +173,10 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       rectus/transverse_abdominis for the plank day), 2 `template_exercises` — 1/1/2/2 shape
       confirmed matching what `fetchTemplateBundle()`/`materializeTemplate()` already consumes
       (proved for this exact shape in Cycle 73), then deleted and confirmed zero residue across
-      all four tables. **Status: Passing, not Resolved** — same gap as every prior slice this
-      project; Resolved requires a real fresh-subagent re-run or Kerwin exercising the feature
-      directly in the live app.
+      all four tables. **Status: Resolved (Cycle 78, 2026-09-07)** — a genuinely independent fresh
+      subagent re-ran the 19/19 vm-sandbox assertions plus a fresh live-DB round trip and found no
+      discrepancies. Full detail in the Cycle 78 Goal Record entry and the story's own Evidence
+      field.
       **Remaining Slice 2 sub-step, not yet built:** superset-grouping input on top of this same
       modal. Tracked here rather than silently folded into "Slice 2 done" — the day/exercise save
       path is real and usable without it (a custom template with no supersets is a fully legal
@@ -230,9 +234,11 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       account: inserted one real `sets` row (Barbell Back Squat, 185×5), ran the exact
       PostgREST-equivalent query the shipped code issues, confirmed it returns that row verbatim
       or matching the "Last logged: 185 lbs × 5 reps (2026-09-06)" render, then deleted it and
-      confirmed zero residue. **Status: Passing, not Resolved** — same gap as every prior slice
-      this project; Resolved requires a real fresh-subagent re-run or Kerwin exercising the
-      feature directly in the live app.
+      confirmed zero residue. **Status: Resolved (Cycle 78, 2026-09-07)** — a genuinely independent
+      fresh subagent re-derived the new-id-only guard and the read-only sets query, confirmed zero
+      calls into the forbidden %1RM/phase engine, and reproduced the live-DB round trip with no
+      discrepancies. Full detail in the Cycle 78 Goal Record entry and the story's own Evidence
+      field.
       **Slice 4 (manual override / pre-population of sets/reps/weight from this suggestion) is
       next** — this slice deliberately only SURFACES the suggestion as read-only display text; it
       does not pre-fill the sets/reps/rest number inputs, which is explicitly Slice 4's scope per
@@ -302,9 +308,11 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       `reps='5'` (the exact bare single-number string this slice's payload now produces,
       not the generic `'8-10'` range) against the live CHECK constraints — succeeded —
       then deleted the template and confirmed zero residue (`tpl_left=0`, `ex_left=0`
-      via cascade). **Status: Passing, not Resolved** — same fresh-subagent gap as every
-      prior slice this project; Resolved requires a real fresh-subagent re-run or Kerwin
-      exercising the feature directly in the live app.
+      via cascade). **Status: Resolved (Cycle 78, 2026-09-07)** — a genuinely independent fresh
+      subagent re-ran 28/28 vm-sandbox assertions (including the decisive repsTouched-survives-a
+      -refire case) and independently re-confirmed template_exercises has no weight column, with
+      no discrepancies. Full detail in the Cycle 78 Goal Record entry and the story's own Evidence
+      field.
       **EPIC-27 parent story status:** stays **Untested/tracking**, not Resolved — Slice 5
       (deferred week-13 renewal, below) is explicitly out of this Wave's build scope, but
       per this Wave file's own standing convention (Slices 1-3's identical note), the
