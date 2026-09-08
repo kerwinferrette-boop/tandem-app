@@ -322,11 +322,47 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
       out-of-MVP-scope, which is a product call, not an implementation fork — flagging it
       here rather than silently closing the parent.
 
-- [ ] **Slice 5 — DEFERRED, not scheduled, flagged so it isn't silently dropped.** "Week 13"
-      behavior for a custom template that outlives its nominal 12-week block (renew the same
-      block forward vs. prompt the user to open the builder again vs. something else). No
-      Expected Behavior text requires this for EPIC-27's MVP; recorded here per the council verdict
-      so a future cycle doesn't have to rediscover the gap from scratch.
+- [ ] **Slice 5 — SCOPED 2026-09-07 (Cycle 78, live session), not yet built.** Kerwin's ruling: at
+      "week 13" (12-week block end), suggest a next-wave program that shifts emphasis toward
+      whichever muscles underperformed relative to their peers in the outgoing block, and adds
+      supporting/synergist work for those lagging muscles so the region gets a fully rounded
+      stimulus — not just more direct volume on the weak muscle alone. Routed through
+      `exercise-science-research` then `llm-council` (Kerwin's explicit direction: "I want the
+      science to prevail... push you in that direction, or the council's") before scoping, since
+      the mechanics weren't fully settled by citation alone. Full verdict:
+      [council-transcript-2026-09-07-epic27-slice5-plateau-prevention.md](http://council-transcript-2026-09-07-epic27-slice5-plateau-prevention.md)
+      (report: [council-report-2026-09-07-epic27-slice5-plateau-prevention.html](http://council-report-2026-09-07-epic27-slice5-plateau-prevention.html)).
+
+      **Concrete scope from the verdict, ready for a Plan-stage decomposition:**
+      1. **Lagging-muscle metric:** direct-set count (`muscle_primary`-tagged sets), ranked relative
+         to sibling muscles trained in the outgoing block. NOT 1RM-growth-rate (too noisy at n=1
+         block, no reliable per-muscle trend tracking exists), NOT MEV-floor-relative (adds a
+         dependency for no clear gain here).
+      2. **Explicitly OUT of this slice's scope:** resolving `FINDING-4` (Notion Bug & QA Log,
+         created this cycle — indirect/secondary-mover volume never counted toward per-muscle MEV,
+         originally flagged 2026-07-22, never ruled on). Use `muscle_primary`-only counts. Document
+         the known approximation this creates (arms/delts may be somewhat over-flagged as lagging)
+         rather than silently presenting primary-only as if the 7-week-old gap doesn't exist. Do
+         NOT invent a local fractional-volume-credit formula inside this slice — that's
+         `FINDING-4`'s decision to make, with its own wider blast radius across every goal's MEV
+         floor math ("one rule, one home").
+      3. **Mechanism:** extend D20's existing soft-steering approach (`programs.js` `getSingleDay`)
+         to run at block-generation/renewal time rather than building a second mechanism. Selection
+         of "supporting" exercises for a lagging muscle comes from the exercise bank's existing
+         `muscle_secondary` tags — NOT the Transform-goal antagonist-superset machinery (built for a
+         different job).
+      4. **Doctrine interaction:** no conflict with D1/D15/D27, but sequence, don't merge —
+         rebalancing runs once at renewal to set the new block's region/slot emphasis; D1/D15/D27
+         continue to govern which specific lift fills each slot *inside* that block, unchanged.
+         Rebalancing must not re-run mid-block.
+      5. Carried forward, not required for this build: framing the muscle-comparison as a visible,
+         user-facing "your program just got smarter about you" moment (the Expansionist lens), and
+         a couples-competitive muscle-balance angle as a separate future opportunity — not this
+         ticket.
+
+      **Not yet done:** Plan-stage slice decomposition of the above into buildable increments (this
+      is scope, not an implementation plan); FINDING-4's own ruling remains outstanding and
+      unblocked by this scope decision.
 
 ## Invariants for whoever resumes (copied from `.claude/loop-config.md`, not restated from memory)
 

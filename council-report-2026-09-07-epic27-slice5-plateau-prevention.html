@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Council — EPIC-27 Slice 5 · block-renewal rebalancing</title>
+<style>
+  :root{
+    --ink:#16181d; --muted:#5f6672; --line:#e3e6ec; --bg:#fff; --soft:#f7f8fa;
+    --accent:#2f5fd0; --warn:#b0552b; --good:#1f7a4d; --bad:#b03030;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:56px 28px 80px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 34px;font-size:15px}
+  h2{font-size:20px;margin:38px 0 12px;letter-spacing:-.01em}
+  h3{font-size:15px;margin:24px 0 8px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  p{margin:0 0 14px}
+  code{background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:13.5px;
+       font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  blockquote{margin:0 0 16px;padding:2px 0 2px 16px;border-left:3px solid var(--line);color:var(--muted)}
+
+  .q{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 8px}
+  .q p{margin:0}
+  .q strong{font-weight:650}
+
+  .verdict{border:2px solid var(--ink);border-radius:12px;padding:26px 26px 10px;margin:26px 0 8px}
+  .verdict .tag{display:inline-block;background:var(--ink);color:#fff;font-size:11px;letter-spacing:.14em;
+                text-transform:uppercase;padding:4px 10px;border-radius:4px;margin-bottom:14px}
+  .ruling{font-size:18px;line-height:1.5;font-weight:600;margin:0 0 16px}
+  ol,ul{margin:0 0 16px;padding-left:22px}
+  li{margin-bottom:8px}
+
+  .spectrum{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 22px}
+  .spectrum .row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+  .spectrum .row:last-child{border-bottom:none}
+  .spectrum .lbl{flex:0 0 210px;background:var(--soft);padding:11px 14px;font-size:13.5px;font-weight:600;
+                 border-right:1px solid var(--line)}
+  .spectrum .val{padding:11px 14px;font-size:13.5px;color:var(--muted)}
+  .spectrum .val.agree{color:var(--good)}
+  .spectrum .val.clash{color:var(--warn)}
+
+  details{border:1px solid var(--line);border-radius:9px;margin:0 0 10px;background:var(--bg)}
+  details[open]{background:var(--soft)}
+  summary{cursor:pointer;padding:13px 16px;font-weight:600;font-size:15px;list-style:none;display:flex;
+          justify-content:space-between;align-items:center;gap:12px}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";color:var(--muted);font-weight:400;font-size:19px;line-height:1}
+  details[open] summary::after{content:"–"}
+  summary .who{color:var(--muted);font-weight:400;font-size:13px}
+  .body{padding:0 16px 16px;font-size:14.5px}
+  .disclosure{background:#fdf6ee;border:1px solid #ecd9bd;border-radius:9px;padding:14px 16px;font-size:13.5px;color:#7a5324;margin:0 0 28px}
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e7e9ee; --muted:#9aa2b1; --line:#2a2e3a; --bg:#12141a; --soft:#181b23;
+      --accent:#7fa4ff; --warn:#e0925c; --good:#4fbf85; --bad:#e2685f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e7e9ee; --muted:#9aa2b1; --line:#2a2e3a; --bg:#12141a; --soft:#181b23;
+    --accent:#7fa4ff; --warn:#e0925c; --good:#4fbf85; --bad:#e2685f;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">LLM Council</p>
+  <h1>EPIC-27 Slice 5 — block-renewal muscle-rebalancing mechanism</h1>
+  <p class="sub">2026-09-07 · Cycle 78, live attended session · convened per Kerwin's explicit direction</p>
+
+  <div class="disclosure">
+    <strong>Process disclosure:</strong> all 5 advisor lenses below are real, independent, parallel
+    subagents (confirmed working this session). The formal anonymized 5-reviewer peer-review round
+    was skipped — the raw responses already exposed a clear, legible disagreement without needing
+    anonymized cross-grading to surface it — so the chairman synthesis was performed directly
+    against the five raw responses. Flagged rather than silently skipped.
+  </div>
+
+  <div class="q">
+    <p><strong>Kerwin's direction:</strong> when a custom template's 12-week block ends, suggest a
+    next-wave program that (a) shifts emphasis toward whichever muscles underperformed relative to
+    their peers, and (b) adds supporting/synergist work for those lagging muscles so the region gets
+    a fully rounded stimulus — not just more direct volume on the weak muscle alone.</p>
+  </div>
+  <p>Cited: Exercise Science Research Reference §1 (volume/muscle/week drives hypertrophy) · D20
+  (ACTIVE, soft muscle-recency steering) · 2026-07-22 Science Audit Finding 4 (indirect volume never
+  credited, 7wk stale) · research-report(8) §6 (plateau-breaking = same-lift variation, silent on
+  synergist reinforcement).</p>
+
+  <div class="verdict">
+    <span class="tag">Chairman's Verdict</span>
+    <p class="ruling">Extend D20's existing soft-steering mechanism to block-generation time. Rank
+    "lagging" by direct-set count relative to sibling muscles. Leave Finding 4 (indirect-volume
+    credit) explicitly open — do not resolve it inside this ticket.</p>
+    <p>The mechanism is soft (reorders emphasis, never empties a slot), so a slightly miscalibrated
+    "how lagging" costs very little — that asymmetry is what resolves the council's one real clash.</p>
+  </div>
+
+  <h2>Where the five landed</h2>
+  <div class="spectrum">
+    <div class="row"><div class="lbl">Reuse D20, don't invent new machinery</div><div class="val agree">All 5 agree</div></div>
+    <div class="row"><div class="lbl">Lagging = sibling-relative direct-set count</div><div class="val agree">4 of 5 land here; Outsider concurs once framed</div></div>
+    <div class="row"><div class="lbl">Resolve Finding 4 before/with this ticket?</div><div class="val clash">Contrarian + Outsider: yes, sequence it &nbsp;·&nbsp; First Principles + Executor: no, decouple</div></div>
+    <div class="row"><div class="lbl">Block-level rebalance vs. D1/D15/D27 continuity</div><div class="val agree">No conflict — different layers, sequenced</div></div>
+  </div>
+
+  <h2>The recommendation</h2>
+  <ol>
+    <li><strong>Lagging muscle</strong> = direct-set count (<code>muscle_primary</code>), ranked
+    relative to sibling muscles trained in the outgoing block. No 1RM-growth-rate, no MEV-floor
+    lookup for this slice.</li>
+    <li><strong>Do not touch Finding 4.</strong> Use primary-tagged sets only. Document the
+    approximation explicitly in the Wave file — arms/delts may be somewhat over-flagged as lagging
+    because indirect volume isn't counted. Accepted because the steering is soft, not because the
+    gap is invisible. Finding 4 stays open, tracked separately.</li>
+    <li><strong>Supporting-exercise selection</strong> comes from the bank's existing
+    <code>muscle_secondary</code> tags — not the Transform-goal antagonist-superset machinery,
+    which is a different tool built for a different job.</li>
+    <li><strong>Sequence, don't merge:</strong> rebalancing sets next-block emphasis once, at
+    renewal. D1/D15/D27 keep governing per-slot lift selection inside that block, unchanged.</li>
+  </ol>
+  <p>Carried forward but not required for this build: the Expansionist's framing of this as a
+  visible, narratable "the app got smarter about you" moment, and a couples-competitive
+  muscle-balance angle as a separate future opportunity.</p>
+
+  <h2>One thing to do first</h2>
+  <p>Write this verdict into a proper EPIC-27 Slice 5 scope naming D20-extension as the mechanism,
+  and file Finding 4 as its own still-open, explicitly-separate Bug &amp; QA Log decision so a
+  future cycle can't silently treat it as closed by implication.</p>
+
+  <h2>Full advisor responses</h2>
+
+  <details>
+    <summary>The Contrarian <span class="who">sequencing risk</span></summary>
+    <div class="body">
+      <p>This proposal has a dependency ordering problem it's trying to walk past: (b) can't be
+      answered in isolation from (a), and the recommended answer to (a) makes the feature ship on
+      top of a known-broken metric.</p>
+      <p>Finding 4 already told us direct-set counting is wrong for exactly triceps/biceps/delts.
+      Ranking muscles as "lagging" off that same broken metric could flag delts as lagging because
+      of a measurement blind spot, not real undertraining — then prescribe synergist volume to
+      backfill an error nobody quantified. If the eventual answer to (b) is "count secondary volume
+      with fractional credit," that retroactively changes what "lagging" meant in every prior block,
+      touching the same effective-volume table D20 and Finding 4 both use — a "one rule, one home"
+      violation waiting to happen if this epic invents its own formula independently.</p>
+      <p><strong>Recommendation:</strong> sequencing, not scope, is the real risk — decide (b) before
+      (a), not in parallel.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The First Principles Thinker <span class="who">is this even a new feature?</span></summary>
+    <div class="body">
+      <p>Why does this need a new mechanism at all, when D20 already is this mechanism? D20 softly
+      steers toward under-trained muscles, never hard-excludes, always falls back. Slice 5 is asking
+      D20's question at a different timescale. If D20's steering logic already has an operational
+      definition of "under-trained," that's the one to reuse — not because it's scientifically
+      superior, but because a second, differently-defined "lagging" concept at the block layer is
+      exactly the "one rule, one home" violation the project's own doctrine forbids.</p>
+      <p>Separately: (b) is being smuggled in but isn't required by what Kerwin asked for.
+      Supporting-lift <em>selection</em> is solvable entirely off <code>muscle_secondary</code> tags
+      without ever crediting a fractional set value toward anyone's weekly total. Resolving Finding
+      4 is a separate, 7-week-stale decision with its own blast radius across every goal's floor
+      math. Bolting it on because the data is adjacent is scope creep dressed as thoroughness.</p>
+      <p><strong>Real question:</strong> is this a new feature, or is it D20 asked to run once more,
+      later, at a bigger grain?</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Expansionist <span class="who">this is the moat, lean in</span></summary>
+    <div class="body">
+      <p>This isn't a rebalancing algorithm, it's the first mechanism where the app visibly,
+      provably gets smarter about the user specifically, at a natural narrative beat (week 13). Ship
+      the comparison as a <em>visible artifact</em>: "your chest grew 40% slower than your shoulders
+      this block, here's your rebalanced wave" is screenshot-worthy.</p>
+      <p>Use direct-set-count now — cheapest, easiest to narrate. Bank 1RM-growth-rate as v2 once
+      multi-block history exists; that longitudinal model is the actual switching-cost moat.
+      Whatever the ruling on Finding 4, use this as the forcing function to finally close the
+      7-week-stale audit rather than let it ship as a workaround. Extend D20 — "the same
+      intelligence that picks your workout today also plans your next 12 weeks" is a stronger pitch
+      than the feature alone.</p>
+      <p>Biggest miss in the brief: this data is the seed of a couples-competitive muscle-balance
+      leaderboard nobody's building yet.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Outsider <span class="who">name what "lagging" actually means</span></summary>
+    <div class="body">
+      <p>Item (a) isn't four options, it's a fork the ticket is dodging: sibling-relative,
+      MEV-floor-relative, and 1RM-growth-rate measure three different things (relative
+      underperformance, absolute deficiency, trend). A muscle can be dead last among siblings while
+      sitting comfortably above MEV — is that "lagging"? Pick the one that matches what the product
+      ask literally says: relative, sibling-normalized.</p>
+      <p>Item (b) is the one nobody should skip: you can't answer (a) without knowing whether
+      secondary volume counts, because "relative to peers" needs a volume number, and Finding 4
+      already says the current number is wrong. Escalate that specifically — don't quietly inherit
+      "primary-only" as a default just because it's easier to code.</p>
+      <p>On (c) vs (d): reusing D20 at block-level is the only option that doesn't invent new
+      machinery, which matters more to me than resolving (a)/(b) with perfect precision.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Executor <span class="who">build order, straight through</span></summary>
+    <div class="body">
+      <p><strong>(a)</strong> Direct-set count vs. sibling muscles — buildable Monday with data
+      already logged. 1RM-growth-rate needs reliable per-muscle trend tracking that doesn't exist,
+      and Kerwin already backed off it. MEV-floor comparison adds a second dependency for no clear
+      gain here.</p>
+      <p><strong>(b)</strong> Don't touch Finding 4 in this slice — it's a 7-week-old open question
+      with real design work of its own. Use <code>muscle_primary</code> only. Flag Finding 4 as
+      still-open, not resolved-by-implication.</p>
+      <p><strong>(c)</strong> Extend D20 — it already does exactly this shape. Don't reuse
+      antagonist-superset pairing; that was built for Transform-goal supersets, wrong tool.</p>
+      <p><strong>(d)</strong> Different layers, no conflict, but sequence matters: rebalancing
+      decides emphasis first, D27 continuity then picks the specific lift per slot. Don't let
+      rebalancing re-run mid-block.</p>
+      <p>Judgment calls being made, not cited: (a)'s definition choice and (b)'s scope cut.</p>
+    </div>
+  </details>
+
+  <footer>Generated 2026-09-07 · Council convened on EPIC-27 Slice 5 (Tandem Custom Template
+  Builder, week-13 block renewal) · full transcript: council-transcript-2026-09-07-epic27-slice5-plateau-prevention.md</footer>
+</div>
+</body>
+</html>
