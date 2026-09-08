@@ -231,6 +231,17 @@ not decomposed, because neither 8b/8c/8d's Expected Behavior text mentions them:
   match already excludes from supersetting regardless of goal, so it was already structurally
   separate; a future slice can extend duration-gating there if wanted. Committed + pushed to this
   session's branch per loop-config's "commit and push on green" standing policy.
+  **Independent verification (fresh subagent, 2026-09-08): PASS**, with two honest observations
+  neither of which is a failure: (1) the Shoulders+Arms 5-day bonus day is structurally stable
+  (slot/block count never changes) but NOT byte-identical full-vs-short — `isShortSession` frees
+  up `acc3` candidates for reuse elsewhere, which can shift which specific exercise `fillSlots`'s
+  shared `excl:[...used]` set lands on for that day; no slot is added/dropped, no duration logic
+  runs on that path directly, but the doc's "untouched" framing above is true for structure only,
+  not output-identity — corrected here rather than left overstated. (2) the onboarding UI's 4
+  duration buttons are 30/45/60/90 — since the cutoff is strict `<45`, only the **30-min** choice
+  ever triggers branching today; 45/60/90 are all byte-identical to no-preference. Matches the
+  Epic's literal "<45min" wording, but worth naming plainly: the feature currently reaches 1 of 4
+  onboarding options, not a continuous range. Neither observation blocks Resolved status.
 
 - **2026-09-07/08 (Kerwin-ruling session, Group 3I):** File created. Audited EPIC-8's live Notion
   state before decomposing (per this session's standing audit-first instruction) and found the
