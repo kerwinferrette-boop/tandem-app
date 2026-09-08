@@ -126,6 +126,38 @@ catalog:
              ordinary scope-locked EXERCISE_BANK work, not speculative discovery. No rows were
              Approved as of this writing — first real run TBD."
 
+    - name: "pending_doctrine_sweep"
+      what: "Added 2026-09-08, per Kerwin, in-session, correcting a real gap: 'The fact 6b has
+             been sitting there, knowingly as a great feature, and this routine kept saying it
+             had nothing to do.' `catalog.mode: tracker_seeded` (above) deliberately seeds work
+             ONLY from the Bug & QA Log and open Epics, so the loop never invents speculative
+             product opinions — correct for THAT purpose, but it also meant a PENDING doctrine
+             invariant (DOCTRINE.md, status column '⏳') was invisible to every cycle's catalog
+             pass, even one already carrying a real citation and blocked on nothing but nobody
+             building it (D6b: '⏳ per-length meso', cites 'v0.5 volume table; Findings
+             3-remainder, 4' — not a decision gate, just unbuilt work). `npm run sweep:doctrine`
+             (scripts/pending-doctrine-sweep.mjs) closes this: it greps every PENDING row's own
+             STATUS cell for decision/prerequisite language ('when ruled', 'ruling', 'when
+             added') and reports each row as BUILDABLE (no such language — seed it) or BLOCKED
+             (language present — correctly stays PENDING, e.g. D4b needs Kerwin's ruling + a
+             cited per-experience source; D8 needs the Strength/Maintenance goal to exist
+             first). This is the same shape as persona_matrix/onboarding_lifecycle_walkthrough
+             above: a deterministic, objective structural check — not the loop guessing at
+             product opinions — that happens to live in a file `catalog.mode` doesn't read."
+      when: "Run once per cycle, even when the tracker shows 0 Untested + 0 Failing — same
+             standing-source rule as persona_matrix. Any row this sweep reports BUILDABLE that
+             has no linked Untested story yet gets one seeded immediately (Expected Behavior =
+             the invariant's own cited text, Source = the DOCTRINE.md row + its citation) —
+             never left as 'nothing to do' just because it isn't a Bug/Epic row. A cycle that
+             sees a BUILDABLE row here and reports no buildable work is the exact failure this
+             source exists to prevent — treat it as gate-worthy as persona_matrix's own findings."
+      first_run_finding: "2026-09-08 — first run found exactly 1 buildable row: D6b. Seeded as
+             the foundational slice of a new Epic (Per-Muscle Volume Engine + Hard
+             Block-Boundary Rebalancing, subsumes EPIC-27 Slice 5) rather than a bare tracker
+             row, since it was already mid-scoping in the same live session. D4b and D8 correctly
+             classified BLOCKED (both genuinely need a ruling/prerequisite, not just a builder) —
+             confirms the classifier discriminates rather than seeding everything indiscriminately."
+
     - name: "code_contradiction_audit"
       what: "A periodic read-only sweep for two-code-paths-disagree issues (the kind of thing
              '38fca37f935b8142808af5e9c16c9894' — Code Contradictions & Stale-Code Audit —
@@ -370,6 +402,12 @@ verification:
                                 # pinned to match this environment's pre-fetched browser —
                                 # see package.json; a different environment may need
                                 # `npx playwright install chromium` if the pin mismatches).
+  pending_doctrine_sweep_command: "npm run sweep:doctrine"  # scripts/pending-doctrine-sweep.mjs —
+                                # see catalog.self_generated_sources above (pending_doctrine_sweep);
+                                # run every cycle, same standing cadence as persona_matrix. Always
+                                # exits 0 (a discovery sweep, not a pass/fail gate) — read its
+                                # output: any row printed 🟢 BUILDABLE with no linked Untested
+                                # story yet must get one seeded this cycle, never deferred.
   ship_gate_command: "npm run verify"   # full gate: syntax + validate:programs + C7 smoke
                                 # (calibrated/derived weight override) + lastsets churn smoke
                                 # + DOCTRINE conformance (Notion law — scripts/doctrine.mjs)

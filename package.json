@@ -9,7 +9,8 @@
     "walkthrough:onboarding": "node scripts/onboarding-lifecycle-walkthrough.mjs",
     "walkthrough:render": "node scripts/program-render-fidelity-walkthrough.mjs",
     "outcome": "node scripts/outcome.mjs",
-    "integration": "node scripts/prod-integration.mjs"
+    "integration": "node scripts/prod-integration.mjs",
+    "sweep:doctrine": "node scripts/pending-doctrine-sweep.mjs"
   },
   "devDependencies": {
     "playwright": "1.56.1"
