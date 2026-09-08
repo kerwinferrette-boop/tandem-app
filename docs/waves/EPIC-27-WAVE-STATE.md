@@ -71,6 +71,68 @@ reach this field) for `parent_goal`/`code_goal_mapping`, and `cfg.experience` (a
 beginner/intermediate/advanced vocabulary) for `difficulty` — the real value already governing
 every other program this user runs, CHECK-legal and not fabricated.
 
+## CORRECTION, 2026-09-07 (Kerwin-ruling session) — the Cycle 72 council verdict miscited its own doctrine
+
+Asked Kerwin whether to ship EPIC-27 as MVP without Slice 5, or build Slice 5 as real week-13
+renewal logic. His answer rejected both options and reframed the premise itself:
+
+> "What if someone wanted to build a 6 week program? an 8 week program? It shouldn't be predicated
+> on doing 12 weeks, you have to get over that block"
+
+Audited source-first rather than treating this as a fresh doctrine question (per CLAUDE.md's
+directive), and found the fixed-12 premise was **never actually required by doctrine — the Cycle
+72 council verdict cited the wrong invariant**:
+
+- Line 49 above cites "D15's 8-12 week block-length doctrine" as the justification for
+  `duration_weeks = 12`. Checked `/DOCTRINE.md` directly: **D15 is not a block-length rule at all**
+  — its real title is "Primary-compound refresh cadence for T>12" (`scripts/doctrine.mjs` line 82:
+  `D15: 'SCIENCE_DEFAULT', // fixed primary compounds`). It governs how often primary lifts rotate
+  in long programs, nothing about legal program lengths.
+- The invariant that actually governs block length is **D7**: "Per-length mesocycle layout
+  (**4–12 wk**) matches the spec Part B table verbatim" — `✅ ACTIVE`, sourced from the
+  Periodization spec Part B, `scripts/doctrine.mjs` line 74 (`D7: 'SCIENCE_DEFAULT'`).
+- **This doctrine is already fully implemented for the whole 4-12wk range, not just 12**:
+  `programs.js:2533` — `DELOAD_TABLE = { 4:[4], 5:[5], 6:[6], 7:[7], 8:[4,8], 9:[5,9], 10:[5,10],
+  11:[5,10], 12:[4,8,12] }` — reproduces spec Part B verbatim for every one of those lengths
+  (comment at `programs.js:2538`, written EPIC-033). `deloadWeeks()`, `primaryBlockStarts()`, and
+  every other T-dependent function in `programs.js` already take `weeks` as a generic parameter —
+  none of them assume 12. Onboarding's own week-count input already accepts **4-24**
+  (`programs.js:2534` comment: "onboarding accepts 4-24; tandem.html ob-weeks min=4 max=24").
+- **Conclusion: Kerwin's 6-week and 8-week examples are not a doctrine conflict to research or
+  council — they are already-legal, already-implemented lengths that every OTHER program type in
+  this app (generated, library) already serves correctly.** The only place that doesn't serve them
+  is `createCustomTemplate()` (Slice 1), which hardcodes `duration_weeks=12` unconditionally
+  instead of reading the caller's chosen week count. That is a Slice-1 scope gap traceable to the
+  council's miscitation, not a new product decision and not a science question — no
+  `exercise-science-research` or `llm-council` re-run needed.
+- **What this does NOT resolve:** whether the Builder UI (Slice 2) should expose a week-count input
+  at all — Slice 2's original build had no such field because Slice 1 never read one. That is real,
+  scoped code work (a `tandem.html` change), out of this Notion/docs-only session's scope — flagged
+  as Slice 6 below for a Fix pass, not built here.
+
+This supersedes Slice 5's framing as written (below): "week 13 renewal for a nominal 12-week block"
+assumed every custom template IS 12 weeks. Once duration is user-selectable within D7's proven
+4-12wk range, Slice 5's actual question narrows to "what happens when a user-chosen block of ANY
+legal length ends" — the same question, correctly scoped, not a new one.
+
+- [ ] **Slice 6 — user-selectable program duration, 4-12wk (supersedes the Slice-1 hardcode).**
+      **Depends on:** nothing new — D7 + `DELOAD_TABLE` already cover the full range; this is a
+      plumbing fix, not new science.
+      **File/region:** `createCustomTemplate()` (tandem.html) — replace the hardcoded
+      `duration_weeks=12` write with the caller-supplied week count; `template_blocks`'
+      `week_start=1, week_end=T` must track the same value. Builder UI (Slice 2's modal) needs a new
+      week-count input (2-6-day-list already has a working precedent for a bounded numeric control
+      to copy). Validate 4-12 inclusive at both the UI and the pre-write validation
+      `createCustomTemplate()` already runs (mirroring the existing days.length 2-6 check).
+      **Independent verification:** confirm a 6-week and an 8-week custom template both write
+      correct `template_blocks` rows (`week_end` matching the chosen length) and that
+      `deloadWeeks()`/`primaryBlockStarts()` produce the same deload placement as an equivalent
+      generated program of that length (cross-check against `DELOAD_TABLE`).
+      **should/could/did stub:** SHOULD — D7 (4-12wk), already `✅ ACTIVE` and already implemented
+      engine-wide; no new citation needed. COULD — extend beyond 12wk (onboarding's 4-24 range
+      technically supports it via `deloadWeeks()`'s generic fallback) — deferred, Kerwin's stated
+      examples (6, 8) are both ≤12; revisit only if asked. DID / RECONCILE — blank, for Fix.
+
 ## Forbidden-ops carve-out (per `.claude/loop-config.md` safety.forbidden, 2026-08-30 council addition)
 
 Slice 3 (suggested weight/reps) reads the existing 1RM/progression machinery
@@ -384,6 +446,18 @@ Human via `still_needs_kerwin`, not an inline patch to the biometric layer.
   as an explicit remaining sub-step rather than silently declared done — the day/exercise save path
   is independently useful without it. Slice 3 (per-exercise suggestion, read-only 1RM consumer) is
   next.
+
+- 2026-09-07 (Kerwin-ruling session): Asked Kerwin the Slice 5 MVP-vs-build scope question; he
+  rejected both options and challenged the underlying fixed-12-week premise (6wk/8wk examples).
+  Audited `/DOCTRINE.md` + `scripts/doctrine.mjs` + `programs.js` source-first rather than treating
+  this as a new science question, and found the Cycle 72 council verdict had **miscited D15**
+  (primary-compound refresh cadence) as the block-length doctrine — the real one is **D7** (4-12wk,
+  ACTIVE), already fully implemented engine-wide via `DELOAD_TABLE`/`deloadWeeks()`/
+  `primaryBlockStarts()`. Kerwin's ask requires no research and no council — it's a Slice-1 scope
+  gap (`createCustomTemplate()` hardcodes 12 instead of reading a caller-supplied week count), not
+  a doctrine conflict. Added Slice 6 (user-selectable 4-12wk duration) as the real successor to
+  Slice 5's narrower "week 13 renewal" framing. No code written this session (Notion/docs-only
+  scope) — Slice 6 is the next Fix pass's entry point.
 
 - 2026-09-06 (Cycle 75): Slice 3 (per-exercise suggestion) built and independently verified
   (self-performed, disclosed — same environment limitation, re-confirmed via ToolSearch). Baseline
