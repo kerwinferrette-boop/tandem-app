@@ -2624,7 +2624,10 @@ function getActiveProgram() {
       console.warn('[getActiveProgram] adopted-template materialization failed — using generated engine', e);
     }
   }
-  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience, _liftHistory);
+  // EPIC-8b (docs/waves/EPIC-8-WAVE-STATE.md Slice 1): thread the already-captured
+  // onboarding duration preference (selectDuration(), ob-card-3) through so short
+  // sessions drop the isolation block. Undefined/null is byte-identical to before.
+  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience, _liftHistory, cfg.workout_duration_minutes);
 }
 
 // ═══ EPIC-031 — PROGRAM LIBRARY (browse / adopt / revert) ═══

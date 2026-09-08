@@ -82,6 +82,7 @@ const TIERS = {
   D15: 'SCIENCE_DEFAULT', // fixed primary compounds
   D16: 'SAFETY',          // the override protocol itself is not overridable
   D27: 'SCIENCE_DEFAULT', // D27 continuity across program regenerations — soft reorder only
+  D28: 'SCIENCE_DEFAULT', // duration-gated isolation drop — shape cited, cutoff PENDING a ruling
   D17: 'SAFETY',          // ACTIVE 2026-09-03 — enforced by scripts/d17-db-sweep.mjs in the
                           // credentialed production workflow, NOT here: this gate is deliberately
                           // credential-free (it runs on fork PRs), and a file-side check claiming
@@ -2087,6 +2088,7 @@ const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
   ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
+  ['D28', 'Time-constrained session drops the isolation block\'s 3rd accessory slot (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
 ];
 
 // ── D27 (SCIENCE_DEFAULT) — continuity across program regenerations ───────────

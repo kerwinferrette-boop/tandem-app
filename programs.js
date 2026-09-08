@@ -2152,8 +2152,28 @@ const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 //   → returns a 4-day base array (same shape as static programs)
 //     or null on failure (callers fall back to static)
 // ═══════════════════════════════════════════════════════
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory) {
+// EPIC-8b (docs/waves/EPIC-8-WAVE-STATE.md Slice 1) — duration-gated isolation drop.
+// SHAPE is cited: NSCA "Time-Efficient Training Approach" (nsca.com/education/
+// articles/ptq/time-efficient-training/) — time-constrained resistance sessions
+// prioritize compound, multi-joint work and cut isolation/single-joint work first.
+// This is a direct extension of this engine's own ACTIVE D3 invariant (compound
+// precedes isolation), not a new claim.
+// THE EXACT CUTOFF IS NOT SOURCED ANYWHERE — checked DOCTRINE.md, the Notion
+// Programming Architecture Reference / 5-Goal Taxonomy / Exercise Science Schema
+// v0.5, research-report(8).pdf, the Exercise Science Framework docx/csv, and the
+// NSCA source itself: none specify a minute threshold. Ships as a named,
+// deliberately-flagged ENGINEERING DEFAULT (DOCTRINE.md D28, PENDING — needs a
+// ruling + citation before promotion to ACTIVE), never as an invented number
+// presented as law. See scripts/duration-smoke.mjs for the regression guard.
+const SHORT_SESSION_MAX_MINUTES = 45; // UNSOURCED engineering default — see D28 above.
+
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes) {
   const exp = normalizeExperience(experience);
+  // Short session ⇒ drop the isolation block's 3rd slot (acc3), same mechanism
+  // EPIC-8a already proved for beginner tier. `undefined`/`null`/non-finite stays
+  // false, so every existing caller (none of which passes durationMinutes today)
+  // is byte-identical to pre-Slice-1 behavior — regression-safe by construction.
+  const isShortSession = Number.isFinite(durationMinutes) && durationMinutes < SHORT_SESSION_MAX_MINUTES;
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
   // Rotation context drives variety over time: week rotates accessories; phase
@@ -2406,7 +2426,13 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         // EPIC-8a: beginner tier drops the Accessory Block's 3rd exercise slot
         // (2 accessories instead of 3) — skip selection entirely so acc3's
         // exercise stays available (excl:[...used]) for other days.
-        if (exp === 'beginner' && s.role === 'acc3') return;
+        // EPIC-8b: a short session (<SHORT_SESSION_MAX_MINUTES) does the same —
+        // 2 accessory slots survive (acc1+acc2), which applySupersets() then
+        // pairs into exactly ONE superset block for transform/fat_burn (the
+        // Epic's "1 superset finisher") or leaves as a small plain Accessory
+        // Block for build_muscle (D5: build_muscle never supersets — an honest
+        // consequence of existing doctrine, not a gap).
+        if ((exp === 'beginner' || isShortSession) && s.role === 'acc3') return;
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
         const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
@@ -2865,7 +2891,7 @@ function materializeTemplate(tpl, week, opts) {
   return applyDeload(days, { week: wk }, T);
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
@@ -4119,7 +4145,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
   // helpers above are initialized — calling them from the top of getProgram hit
   // their temporal dead zone (TDZ).
-  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory);
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, durationMinutes);
   if (generated) {
     // EPIC-8a: applied AFTER the 2/3/5-day wrappers + injury prune, on the
     // final day array — the wrappers recombine exercises from multiple base

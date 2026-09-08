@@ -64,7 +64,7 @@ not decomposed, because neither 8b/8c/8d's Expected Behavior text mentions them:
 
 ## Step status
 
-- [ ] **1. EPIC-8b — Duration branching**
+- [x] **1. EPIC-8b — Duration branching** — DONE 2026-09-08.
       **Depends on:** plumbing to thread `users.workout_duration_minutes` into `getProgram()` (not
       threaded today — confirmed by grep, zero reads in `programs.js` outside the unrelated cardio-
       block `duration` key).
@@ -197,6 +197,40 @@ not decomposed, because neither 8b/8c/8d's Expected Behavior text mentions them:
   Slice 2a, which stays Needs Human and off this path until ruled on.
 
 ## Progress log
+
+- **2026-09-08 (Slice 1 built):** Before coding, re-audited the Epic's own Notion "Dependency
+  Gate" (`WAVE 8... do not build before EPIC-18 settles where session length is captured`) rather
+  than trusting the earlier same-day session's framing that Slice 1 was immediately buildable —
+  found it stale, the same shape as EPIC-16/EPIC-10's stale blockers: `selectDuration()` (onboarding
+  `ob-card-3`) already captures `cfg.workout_duration_minutes` live today, independent of EPIC-18's
+  Step-4 restructure. Ran `exercise-science-research`: DOCTRINE.md, the Notion Programming
+  Architecture Reference / 5-Goal Taxonomy / Exercise Science Schema v0.5, `research-report (8).pdf`,
+  and the Exercise Science Framework docx/csv are all silent on session-duration thresholds
+  (confirmed by direct text search, not memory); external corroboration (NSCA "Time-Efficient
+  Training Approach") cites the SHAPE — compound work is prioritized, isolation is cut first, under
+  time pressure — extending this engine's own ACTIVE D3. The exact 45-minute cutoff has no citation
+  anywhere, including NSCA's own article. **SHOULD:** ship the cited shape, flag the cutoff as an
+  unsourced engineering default (new DOCTRINE.md/doctrine.mjs invariant **D28**, PENDING — needs
+  Kerwin's ruling + a citation to promote the number itself). **COULD:** invent a 3rd 45-59min tier
+  (rejected — no source, Epic only names two bands); scope the drop to superset-goals only (rejected
+  — D3 is goal-agnostic, and build_muscle correctly getting a smaller plain accessory block is the
+  honest D5 consequence, not a special case). **DID:** added `durationMinutes` as a new trailing,
+  append-only param on `getProgram()`/`buildDynamicProgram()` (programs.js); short sessions
+  (`<SHORT_SESSION_MAX_MINUTES`) skip the `acc3` slot via the same mechanism EPIC-8a already proved
+  for beginner tier; wired `tandem.html`'s `getActiveProgram()` to pass `cfg.workout_duration_minutes`
+  through. Ran the engine directly (not just read it): `undefined`/`null`/`60min` byte-identical to
+  baseline for build_muscle/transform/fat_burn; `30min` shrinks build_muscle's Accessory Block 3→2
+  exercises with zero invented superset; `30min` on transform/fat_burn leaves exactly one
+  `Superset A` block and **zero** leftover plain Accessory Block — literally "2 compounds + 1
+  superset finisher." **RECONCILE:** did === should for the cited shape; the cutoff stays an honest
+  PENDING gap, not silently promoted. New regression guard `scripts/duration-smoke.mjs` (21
+  assertions) wired into `npm run verify` (now 12/12). All ship gates green: `verify` 12/12,
+  `validate:personas` 630/630, `walkthrough:onboarding` 0 findings. Scope boundary, flagged not
+  silently dropped: the 5-day-split Shoulders+Arms bonus day (`SHOULDER_TEMPLATE`) is untouched —
+  its blocks are labeled "Shoulder Block"/"Arms Block", which `applySupersets`' `/accessor/i` label
+  match already excludes from supersetting regardless of goal, so it was already structurally
+  separate; a future slice can extend duration-gating there if wanted. Committed + pushed to this
+  session's branch per loop-config's "commit and push on green" standing policy.
 
 - **2026-09-07/08 (Kerwin-ruling session, Group 3I):** File created. Audited EPIC-8's live Notion
   state before decomposing (per this session's standing audit-first instruction) and found the
