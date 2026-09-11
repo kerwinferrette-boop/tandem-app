@@ -72,6 +72,30 @@ for — run it *before* shipping, not after he catches it.
   `RECOVERY_PARAMS`, `PHASES`, `REP_BANDS`), every path reads that table. A literal that merely
   happens to match today is a silo, and silos drift. When two tables both claim the same rule,
   that is a doctrine question — run `llm-council`, do not pick.
+- **Fix the mechanism, not the instance (added 2026-09-11, Kerwin).** A bug report names ONE
+  symptom (one label, one goal, one day-count, one exercise) but the defect almost always lives in
+  a function/table shared across the whole app. Ship the fix at the level the defect actually lives
+  at — every goal, every day-count, every label the same code path can see — never scoped to just
+  the reported case. Kerwin's words: *"I'm tired of these bugs being fixed for one particular day...
+  There's no reason why it should just be chest, just be transform, just be this."*
+  **The worked example that forced this rule:** BUG-73 (2026-08-05) fixed `muscleGroupFromLabel()`
+  so leg-day labels ("Quad Focus", "Glutes + Hamstrings") stopped falling through to the
+  gap-exempt `'full'` default. The fix was correct but scoped to leg vocabulary only. BUG-114
+  (2026-09-10) was the *identical* defect recurring for chest/back vocabulary
+  ("Chest + Triceps", "Back + Biceps + Abs") — the same function, the same silent hole, just a
+  different label the first fix never generalized past. Same shape as `one_rule_one_home` above,
+  aimed at fix SCOPE instead of rule OWNERSHIP.
+  **Enforced by:** before shipping any bug fix to a function/table that branches on goal, day-count,
+  label text, or any other enumerable axis, the should/could/did audit's COULD section must name
+  which other values of that same axis were checked against the fix (not just the reported one),
+  and DID must state the fix applies at the shared-function level, not a per-case patch. Where the
+  axis is one `validate:personas`/`validate:programs` already sweeps (goal × days × sex × tier ×
+  injury), that gate re-run IS the check — a fix that only makes ITS OWN reported combo pass while
+  others stay silently exposed to the same bug is not done. Where the axis is something the
+  standing sweeps don't cover (arbitrary label text, as both BUG-73 and BUG-114 were), the audit
+  must enumerate the other real values that axis takes across the codebase/production data (grep
+  the templates, query the table) and confirm the fix covers them, the way BUG-114's fix was
+  checked against BOTH live `workout_templates` rows before shipping, not assumed from one example.
 - **No shortcuts.** If you're about to say "this is standard" or "typically," stop and cite the
   source instead. If you can't cite it, flag it as unverified.
 

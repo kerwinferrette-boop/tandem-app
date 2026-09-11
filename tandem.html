@@ -529,6 +529,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
 .oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
+.oneoff-recency-badge{position:absolute;top:6px;right:6px;z-index:3;display:flex;align-items:center;gap:3px;
+  padding:2px 6px;border-radius:5px;background:rgba(232,163,61,.92);color:#1a1305;
+  font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.oneoff-recency-badge svg{width:9px;height:9px;}
 .oneoff-eyebrow{display:block;font-family:var(--font-body);font-size:8px;font-weight:600;letter-spacing:.14em;
   text-transform:uppercase;color:var(--accent2);margin-bottom:1px;}
 .oneoff-name{display:block;font-family:var(--font-display);font-weight:800;font-size:14px;line-height:1.05;color:#fff;}
@@ -5996,17 +6000,52 @@ function oneOffBack() {
 // photo arrives as a finished URL rather than a filename fragment this has to assemble:
 // the goal cards are sex-specific and the focus cards are not, and a function that took
 // a "prefix" could only express one of those two shapes.
-function oneOffCardHTML(slug, face, photo, handler, dataAttr, label) {
+function oneOffCardHTML(slug, face, photo, handler, dataAttr, label, badge) {
   return `<button class="oneoff-card" ${dataAttr}="${slug}" aria-pressed="false"
-      aria-label="${label}"
+      aria-label="${label}${badge ? ' — recently trained' : ''}"
       style="--card-url:url('${photo}')"
       onclick="${handler}">
       <span class="oneoff-scrim"></span>
+      ${badge ? `<span class="oneoff-recency-badge" title="${badge}">${svgIcon('clock')} recent</span>` : ''}
       <span class="oneoff-cap">
         ${face.eyebrow ? `<span class="oneoff-eyebrow">${face.eyebrow}</span>` : ''}
         <span class="oneoff-name">${face.title}</span>
       </span>
     </button>`;
+}
+
+// FEAT (2026-09-11, Kerwin, direct product decision — "Option A"): the one-off
+// generator stays fully unconstrained by design ("if I want to do back and
+// biceps before travel, I should be able to" — it deliberately doesn't pertain
+// to the rest of the program, same as D20's own "inert by default" framing) —
+// but the choice should be an INFORMED one, not a blind one. This surfaces
+// D20's existing recent-training read (recentMuscleLoad/RECOVERY_PARAMS,
+// already computed for the goal-step banner) at the exact decision point: the
+// specific focus card the user is about to tap. Warn, never block — the badge
+// changes nothing about what getSingleDay() selects or whether the card is
+// clickable.
+function oneOffFocusRecentHours(focus) {
+  const slots = FOCUS_SLOTS[focus];
+  if (!slots || !_oneoffSets) return Infinity;
+  const load = recentMuscleLoad(_oneoffSets);
+  let min = Infinity;
+  for (const [primary] of slots) {
+    if (primary && load[primary] != null && load[primary] < min) min = load[primary];
+  }
+  return min;
+}
+
+function renderOneOffFocusRow() {
+  const row = document.getElementById('oneoffFocusRow');
+  if (!row) return;
+  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
+  const winHrs = (RECOVERY_PARAMS[oneOffGoalKey()] || RECOVERY_PARAMS.build_muscle).sameGroupHours;
+  row.innerHTML = focuses.map(f => {
+    const hrs = oneOffFocusRecentHours(f);
+    const badge = hrs < winHrs ? `Trained ${Math.round(hrs)}h ago — still inside your ${winHrs}h recovery window` : null;
+    return oneOffCardHTML(f, oneOffFace(f), `public/oneoff-${f.replace(/_/g, '-')}.jpg`, `renderOneOff('${f}')`, 'data-oneoff',
+      `Build a ${oneOffFace(f).title} workout`, badge);
+  }).join('');
 }
 
 // The goal cards show a lifter of the user's own sex. userSexKey() is the app's ONE
@@ -6030,6 +6069,7 @@ function pickOneOffGoal(goal) {
   });
   showOneOffStep(2);
   renderRecencyBanner();
+  renderOneOffFocusRow(); // the recovery window is goal-keyed, so badges must re-derive per pick
 }
 
 function renderRecencyBanner() {
@@ -6053,16 +6093,14 @@ async function openOneOff() {
   document.getElementById('oneoffGoalRow').innerHTML = ONEOFF_GOALS.map(g =>
     oneOffCardHTML(g.key, g, oneOffGoalPhoto(g.key), `pickOneOffGoal('${g.key}')`, 'data-oneoff-goal',
       `Build a ${g.title} workout`)).join('');
-  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
-  document.getElementById('oneoffFocusRow').innerHTML = focuses.map(f =>
-    oneOffCardHTML(f, oneOffFace(f), `public/oneoff-${f.replace(/_/g, '-')}.jpg`, `renderOneOff('${f}')`, 'data-oneoff',
-      `Build a ${oneOffFace(f).title} workout`)).join('');
+  renderOneOffFocusRow(); // no _oneoffSets yet — renders with no badges until the fetch below resolves
   showOneOffStep(1);
   renderRecencyBanner();
   // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
   // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
   // Fetched at open (goal-independent) but RENDERED per goal — see renderRecencyBanner.
   _oneoffSets = await fetchRecentSets(7);
+  renderOneOffFocusRow();
   if (oneOffState.goal) renderRecencyBanner();
 }
 
