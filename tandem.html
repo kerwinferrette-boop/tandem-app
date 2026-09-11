@@ -6129,12 +6129,22 @@ function renderOneOff(focus) {
 // never splits it further, and research-report(8) treats "Upper/Lower" as one split unit,
 // same as quad- vs. hinge-dominant days) — so any quad/glute/hamstring/hip-emphasis label,
 // however phrased, must land in 'lower', not fall through to the gap-exempt 'full' default.
+// BUG-114 fix (same class as BUG-73, found recurring on real-world body-part labels):
+// authored library templates (see the materializer that renders adopted programs)
+// label days with plain gym vocabulary — "Chest + Triceps", "Back + Biceps + Abs"
+// (confirmed live in prod: workout_templates "Brick by Brick"/"Redline Recomp")
+// — that contained none of push/pull/upper/lower/
+// shoulder/arm and fell through to the gap-EXEMPT 'full' default, same silent hole BUG-73
+// closed for leg-day labels. Chest/triceps are the horizontal-push chain; back/biceps are
+// the pulling chain — routing them into the EXISTING push/pull buckets is not a new
+// science claim, it reuses RECOVERY_PARAMS/D1 exactly as already cited for BUG-73, just
+// widening which labels reach it.
 function muscleGroupFromLabel(label) {
   const l = (label || '').toLowerCase();
   if (/full.body|full body/.test(l)) return 'full';
   if (/lower|legs|quad|glute|hamstring|hip/.test(l)) return 'lower';
-  if (/pull/.test(l) && !/push/.test(l)) return 'pull';
-  if (/push/.test(l) && !/pull/.test(l)) return 'push';
+  if (/pull|back|bicep/.test(l) && !/push|chest|tricep/.test(l)) return 'pull';
+  if (/push|chest|tricep/.test(l) && !/pull|back|bicep/.test(l)) return 'push';
   if (/upper|shoulder|arm/.test(l)) return 'upper';
   return 'full';
 }
