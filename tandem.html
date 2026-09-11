@@ -230,6 +230,22 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);}
 
 /* ═══════════════════════════════
+   SESSION TIMER (FEAT: persistent workout session state + running timer,
+   in-app report 14f6baca, 2026-07-03 — "a start button... continuous timer
+   that goes until finish is hit... doesnt lose my spot")
+═══════════════════════════════ */
+.session-timer-row{padding:8px 16px 0;display:flex;justify-content:center;}
+.session-timer-start{width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(24,194,106,.35);
+  background:var(--accent-dim);color:var(--accent);font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.07em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:6px;transition:all .15s;}
+.session-timer-start:hover{background:rgba(24,194,106,.28);}
+.session-timer-live{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--s1);
+  color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
+.session-timer-live svg{color:var(--accent);width:14px;height:14px;}
+
+/* ═══════════════════════════════
    PROGRESS BAR
 ═══════════════════════════════ */
 .session-prog{padding:8px 16px 0;}
@@ -1506,6 +1522,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <button class="wn-btn" onclick="changeWeek(1)">›</button>
     <button class="wn-reset" onclick="resetWeek()">Today</button>
   </div>
+
+  <!-- Session Timer: Start button until a session is active, then a continuous
+       running timer until Finish is hit. Survives navigating away and back
+       (driven off the persisted tandem_session_start_time, not page state). -->
+  <div class="session-timer-row" id="sessionTimerRow"></div>
 
   <!-- Progress -->
   <div class="session-prog">
@@ -3658,6 +3679,71 @@ function goHome() {
 // ═══════════════════════════════════════════════════════
 // RENDER TRACKER
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// SESSION TIMER — FEAT: persistent workout session state + running timer
+// (in-app report 14f6baca, 2026-07-03, Kerwin, verbatim: "a start button
+// should be at the top with a continuous timer, that goes until the finish
+// button is hit... if I happen to click out of the workout or go to the
+// next week, it doesnt lose my spot of what workout Im doing").
+//
+// tandem_session_start_time (localStorage) already survives navigation and
+// reload — startOrResumeSession()/finishSession() already read/write it for
+// duration bookkeeping. What was missing: a VISIBLE, ticking timer and an
+// explicit Start affordance, so the running session is legible rather than
+// invisible until the first set is logged. This adds only the display layer;
+// it reuses the existing persisted timestamp as the single source of truth
+// rather than tracking a second, competing notion of "when did this start".
+// ═══════════════════════════════════════════════════════
+let _sessionTimerInterval = null;
+
+function fmtSessionElapsed(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+// Re-syncs the timer row from the persisted start time. Safe to call on every
+// renderTracker() (view load / navigation back) and after Start/Finish/Skip —
+// it always reflects localStorage, never a value cached from a prior render.
+function renderSessionTimer() {
+  const row = document.getElementById('sessionTimerRow');
+  if (!row) return;
+  if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
+  const startTime = localStorage.getItem('tandem_session_start_time');
+  if (startTime) {
+    const start = Number(startTime);
+    const tick = () => {
+      const el = document.getElementById('sessionTimerDisplay');
+      if (el) el.textContent = fmtSessionElapsed(Date.now() - start);
+    };
+    row.innerHTML = `<div class="session-timer-live">${svgIcon('clock')}<span id="sessionTimerDisplay"></span></div>`;
+    tick();
+    _sessionTimerInterval = setInterval(tick, 1000);
+  } else {
+    row.innerHTML = `<button class="session-timer-start" onclick="startWorkoutTimer()">${svgIcon('clock')} Start Workout</button>`;
+  }
+}
+
+// Explicit Start tap. Reuses startOrResumeSession() (idempotent — resumes a
+// still-open cloud session rather than minting a duplicate) so this is the
+// same session-creation path logSet() already lazily triggers; the only new
+// behavior is making the start visible and intentional instead of implicit.
+async function startWorkoutTimer() {
+  try {
+    if (currentUser) await startOrResumeSession();
+    else if (!localStorage.getItem('tandem_session_start_time')) {
+      localStorage.setItem('tandem_session_start_time', String(Date.now()));
+    }
+  } catch (e) {
+    console.warn('startWorkoutTimer failed:', e);
+    showToast('Could not start session — try again');
+  }
+  renderSessionTimer();
+}
+
 function renderTracker() {
   const _phases = scaledPhases(cfg.goal, cfg.weeks);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
@@ -3736,6 +3822,7 @@ function renderTracker() {
   if (currentUser) setSyncStatus('synced');
   document.getElementById('bottomNav').style.display = 'flex';
 
+  renderSessionTimer();
   updateProgress();
 
   const _eTier = sessionStorage.getItem('eq_tier');
@@ -5058,6 +5145,7 @@ function skipAhead() {
         localStorage.removeItem('tandem_active_session_id');
         localStorage.removeItem('tandem_session_start_time');
         localStorage.removeItem('tandem_c11_first_session_id');
+        renderSessionTimer(); // FEAT persistent-session-timer: back to "Start Workout"
       } catch (skipSyncErr) {
         console.warn('BUG-56 skip cloud sync failed (local history unaffected):', skipSyncErr);
       }
@@ -5080,6 +5168,10 @@ function reorderWeek() {
 }
 
 function finishSession() {
+  // Freeze the visible timer immediately on tap; localStorage's
+  // tandem_session_start_time is still read below (duration calc) and cleared
+  // at the end of this function, which flips the row back to "Start Workout".
+  if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
@@ -5328,6 +5420,12 @@ function finishSession() {
     sessionStartTime = null;
     Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
   }
+  // FEAT persistent-session-timer: clear unconditionally, not only in the
+  // currentUser branch above — a signed-out/local-only session must also stop
+  // showing a running timer once Finish is tapped, otherwise the previous
+  // session's clock silently keeps counting into the next one.
+  localStorage.removeItem('tandem_session_start_time');
+  renderSessionTimer();
 }
 
 // ═══════════════════════════════════════════════════════
