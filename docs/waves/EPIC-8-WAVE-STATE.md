@@ -90,7 +90,18 @@ not decomposed, because neither 8b/8c/8d's Expected Behavior text mentions them:
       literally `duration`; flag as an alternative worth a citation check, not adopted by default).
       DID / RECONCILE — blank, for Fix/Verify.
 
-- [ ] **2. EPIC-8c — Weight-delta cardio scaling, structural half only**
+- [ ] **2. EPIC-8c — Weight-delta cardio scaling, structural half only** — **STALE PREMISE FOUND,
+      RE-SCOPE NEEDED, escalated to Needs Human (Cycle 83, 2026-09-12).** Do not implement this
+      slice as written below without re-reading the Cycle 83 progress-log entry at the bottom of
+      this file first — the "today goal-keyed, fat_burn gets cardio by default, build_muscle/
+      transform don't" premise the slice below was written against is FALSE, confirmed by running
+      `getProgram('build_muscle', ...)` directly: every goal already gets an unconditional cardio
+      finisher on every day. The real cited rule (Programming Architecture Reference, re-read from
+      this Epic's own 2026-08-01 Agent Context Notes, never carried into this Wave file until now)
+      is sex-differentiated and doesn't match this row's own "every day" scope text. See the
+      Progress log entry for the full chain and the Needs-Human tracker Evidence for the exact
+      escalation. The slice text immediately below is PRESERVED AS ORIGINALLY WRITTEN for record —
+      treat it as superseded, not as instructions to follow.
       **Excludes starting-load changes — see Slice 2a (Needs Human, not decomposed).**
       **Depends on:** plumbing to thread `goalWeight - currentWeight` into `getProgram()` (client-
       computed, `tandem.html:5109-5111` already stores both raw fields; no new schema).
@@ -197,6 +208,52 @@ not decomposed, because neither 8b/8c/8d's Expected Behavior text mentions them:
   Slice 2a, which stays Needs Human and off this path until ruled on.
 
 ## Progress log
+
+- **2026-09-12 (Cycle 83, scheduled /loop run — Slice 2 audited, NOT built, escalated):** Before
+  writing any code, ran `exercise-science-research` on Slice 2's own "SHOULD" stub. Found DOCTRINE.md
+  and the 5-Goal Taxonomy silent on a weight-delta-magnitude cardio threshold; research-report(8).pdf's
+  concurrent-training section caps aerobic training frequency at ≤2x/week for fat-free-mass
+  preservation during a deficit, which reads as a direct conflict with this slice's "required Zone-2
+  finisher every training day" text. Escalated to `llm-council` rather than picking a side (per
+  loop-config's "sources conflict → run council" rule). Unanimous peer-review verdict (5/5 reviewers):
+  every advisor except the First Principles Thinker silently assumed a "finisher" (minutes appended to
+  an existing lift day) and a standalone "aerobic session" (what the ≤2x/week research actually
+  measures) are the same unit; the council's "one thing to do first" was to check Exercise Science
+  Schema v0.5 before shipping. Did that: Schema v0.5's `template_exercises.exercise_role` includes
+  `finisher` as a **session-embedded structural role**, distinct from an independently-programmed
+  aerobic session — this resolves the apparent research conflict (the ≤2x/week ceiling governs
+  standalone sessions, not a finisher appended to a day that's happening anyway), and Schema v0.5's
+  own Circuits/MRT design for the fat-loss goal already builds EPOC-style conditioning into every
+  session for exactly this fat-free-mass-preservation reason.
+  **That would have cleared the way to build Slice 2 as written — except two further findings
+  surfaced by RUNNING the code and RE-READING this Epic's own Notion row, neither previously carried
+  into this Wave file:**
+  1. **This slice's premise is false.** `node -e` against live `programs.js` (`vm`, same pattern as
+     `scripts/doctrine.mjs`) showed `getProgram('build_muscle', 4, 8, 'M', 'full_gym', ...)` returns a
+     `Zone 2 · 22 min` cardio block on **every** day — cardio is already unconditional for **every**
+     goal today, not "fat_burn gets it by default, build_muscle/transform don't" as this slice's
+     opening line claims. Grep confirms no skip/toggle/optional mechanism exists anywhere in the code.
+     There is no "optional" state to promote to "required."
+  2. **The real citation this Epic's own Agent Context Notes already surfaced (2026-08-01, predates
+     this Wave file, never carried forward into it) is narrower and sex-differentiated:** Programming
+     Architecture Reference, "Men's fat burn note" — *"Cardio is supplementary to resistance training.
+     Zone 2 finishers are optional unless weight delta > 20 lbs"* — real, cited, **men only**, and an
+     optional/required **toggle**, not an "every day" volume add. The same doc's "Women's fat burn
+     note" states Zone 2 finishers **3-4x/week as a structural baseline for women regardless of
+     weight delta** — not gated by delta at all. This slice's own text ("every day," applied uniformly)
+     contradicts the very source it would need to cite.
+  **RECONCILE: did not ship.** Implementing the actually-cited rule would require (a) a NEW skip/
+  optional mechanism for men ≤20lb delta (doesn't exist today — cardio is unconditional for
+  everyone), and (b) REDUCING women's cardio from today's unconditional every-day default down to
+  the cited 3-4x/week baseline — a behavior change for every existing female fat_burn user, not an
+  additive append-only slice matching this Wave's own scope-lock discipline. Both read as product/
+  feel calls (removing something current users already get), not a pure implementation fork this
+  loop is authorized to just pick. Tracker row `EPIC-8c-weight-delta-cardio-scaling` flipped
+  Untested → Needs Human; PushNotification sent to Kerwin with the direct question (keep today's
+  default and treat >20lb as already-structurally-satisfied, vs. build the two behavior changes
+  above). Full citation chain in the tracker row's Evidence field and the Goal Record Cycle 83 log
+  entry. No file in this repo was changed by code this cycle — this progress-log entry and the
+  annotation on Slice 2 above are the only edits.
 
 - **2026-09-08 (Slice 1 built):** Before coding, re-audited the Epic's own Notion "Dependency
   Gate" (`WAVE 8... do not build before EPIC-18 settles where session length is captured`) rather
