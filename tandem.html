@@ -1732,6 +1732,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
     </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
+    <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="finishOneOff()">Finish — Save This Workout</button>
   </div>
 </div>
 
@@ -4303,6 +4304,14 @@ function logSet(id, i) {
     }
     startRest(id);
 
+    // EPIC-036: a one-off exercise id (see getSingleDay()'s `oneoff-${focus}-${i}`
+    // ids in programs.js) must NEVER flow through startOrResumeSession() — that
+    // resumes/creates the REGULAR day's session (keyed on currentDay/currentWeek),
+    // and a one-off set has nothing to do with that day. sessionSetsMap[id] above
+    // already tracked this set; finishOneOff() batch-writes it under its own
+    // session_type='oneoff' row when the user taps Finish.
+    if (id.startsWith('oneoff-')) return;
+
     // Fire-and-forget real-time set sync to Supabase
     if (currentUser) {
       (async () => {
@@ -5118,11 +5127,15 @@ function skipAhead() {
     (async () => {
       try {
         const today = localDateStr(); // BUG-018/027: local day, not UTC
+        // EPIC-036: exclude one-off rows — after migrations/0015, a still-open
+        // one-off session can share today's date with the regular day, and
+        // this lookup must find the REGULAR day's row to skip, never a one-off.
         const { data: openRow } = await sb.from('workout_sessions')
           .select('id')
           .eq('user_id', currentUser.id)
           .eq('session_date', today)
           .eq('completed', false)
+          .neq('session_type', 'oneoff')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -5231,11 +5244,13 @@ function finishSession() {
       let resolvedId = sessionUUID;
       if (!resolvedId) {
         try {
+          // EPIC-036: exclude one-off rows — see the identical guard in skipAhead().
           const { data: rec } = await sb.from('workout_sessions')
             .select('id')
             .eq('user_id', currentUser.id)
             .eq('session_date', localDateStr())
             .eq('completed', false)
+            .neq('session_type', 'oneoff')
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -6088,6 +6103,8 @@ async function openOneOff() {
   oneOffState.goal = null;
   oneOffState.focus = null;
   _oneoffSets = null;
+  const finishBtn = document.getElementById('oneoffFinishBtn');
+  if (finishBtn) finishBtn.style.display = 'none';
   // Built on every open, so a sex changed in the profile modal is reflected the next
   // time the wizard is opened — same lifecycle as applyHeroImages, no extra machinery.
   document.getElementById('oneoffGoalRow').innerHTML = ONEOFF_GOALS.map(g =>
@@ -6159,6 +6176,61 @@ function renderOneOff(focus) {
   host.innerHTML = buildDayHTML(day, getPhase(currentWeek, goalKey, cfg.weeks), goalKey);
   showOneOffStep(3);
   if (typeof renderIcons === 'function') renderIcons();
+  const finishBtn = document.getElementById('oneoffFinishBtn');
+  if (finishBtn) finishBtn.style.display = 'block';
+}
+
+// EPIC-036 — the Finish/save path a one-off never had. Batches everything
+// logged under this modal's oneoff-* ids (see logSet()'s early-return for
+// that prefix — a one-off set is tracked in sessionSetsMap but deliberately
+// never touches startOrResumeSession()/the regular day's session) into its
+// own workout_sessions row, session_type='oneoff'. migrations/0015 is what
+// makes this row able to coexist with today's regular program session —
+// before that, this insert would have violated the old UNIQUE(user_id,
+// session_date) constraint outright, which is the literal reason this
+// button never existed until Kerwin authorized the migration (2026-09-12).
+async function finishOneOff() {
+  const oneOffIds = Object.keys(sessionSetsMap).filter(id => id.startsWith('oneoff-'));
+  const allSets = oneOffIds.flatMap(id => sessionSetsMap[id] || []);
+  if (!allSets.length) { showToast('Log at least one set first'); return; }
+  if (!currentUser) { showToast('Sign in to save a one-off workout'); return; }
+
+  const totalVolume = allSets.reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
+  const btn = document.getElementById('oneoffFinishBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const { data: session, error: sessErr } = await sb.from('workout_sessions').insert({
+      user_id: currentUser.id,
+      session_date: localDateStr(), // BUG-018/027: local day, not UTC
+      day_type: oneOffState.focus || 'oneoff',
+      program_goal: oneOffGoalKey(),
+      session_type: 'oneoff', // the whole point of migrations/0015's partial index
+      completed: true,
+      total_volume_lbs: Math.round(totalVolume),
+    }).select('id').single();
+    if (sessErr) throw sessErr;
+
+    const rows = allSets.map(s => ({
+      session_id: session.id,
+      user_id: currentUser.id,
+      exercise_name: s.name,
+      set_number: s.set,
+      weight_lbs: s.w,
+      reps: s.r,
+      estimated_1rm_lbs: s.est1rm > 0 ? s.est1rm : null,
+    }));
+    const { error: setsErr } = await sb.from('sets').insert(rows);
+    if (setsErr) throw setsErr;
+
+    oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
+    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved`);
+    closeModal('oneoff');
+  } catch (e) {
+    console.error('finishOneOff failed:', e);
+    showToast('Could not save — try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Finish — Save This Workout'; }
+  }
 }
 
 // Classify a day label into a muscle group for conflict detection.
