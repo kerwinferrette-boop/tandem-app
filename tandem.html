@@ -1467,7 +1467,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
 
     <!-- Today's Workout CTA -->
-    <button class="dash-cta" onclick="showView('tracker')">Today's Workout →</button>
+    <button class="dash-cta" onclick="openModal('todaychoice')">Today's Workout →</button>
 
   </div>
 </div>
@@ -1733,6 +1733,51 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
     <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="finishOneOff()">Finish — Save This Workout</button>
+  </div>
+</div>
+
+<!-- TODAY'S WORKOUT — entry-point choice (Kerwin, attended session 2026-09-12):
+     "after clicking Today's workout... there should be three buttons: Continue
+     plan / Generate me a workout... / Journal." The dashboard above (steps,
+     calories, MFP/Apple Health rings) is explicitly UNCHANGED — this is only
+     what happens next, once the CTA is tapped. -->
+<div class="modal-overlay" id="modal-todaychoice" onclick="if(event.target===this)closeModal('todaychoice')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('todaychoice')">✕</button>
+    <div class="modal-title">Today's Workout</div>
+    <div class="modal-sub">What are you doing right now?</div>
+    <button id="todayChoiceContinueBtn" class="clear-btn" style="margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="closeModal('todaychoice');showView('tracker')">Continue Plan</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('todaychoice');openOneOff()">Generate Me a Workout (chest, legs, hinge, and so on)</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('todaychoice');openJournal()">Journal</button>
+  </div>
+</div>
+
+<!-- JOURNAL (EPIC-16 manual nutrition log, rebuilt 2026-09-12 as the "Today's
+     Workout" flow's Journal entry rather than a standalone dashboard side-quest
+     — Kerwin: "not worth a nutrition log at all whatsoever [on its own] ...
+     Journal" as one of the three Today's-Workout buttons. No calorie/macro math
+     — self-reported meals/protein/notes only, per EPIC-16's own Agent Context
+     Notes and the nutrition_logs schema (migrations/0014, already live). -->
+<div class="modal-overlay" id="modal-journal" onclick="if(event.target===this)closeModal('journal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('journal')">✕</button>
+    <div class="modal-title">Journal</div>
+    <div class="modal-sub" id="journalDateLabel">Today</div>
+    <div style="margin-top:14px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Meals logged today</label>
+      <input type="number" id="journalMeals" min="0" max="12" step="1" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;">
+    </div>
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+      <label class="profile-input-label" for="journalProtein">Hit my protein target</label>
+      <input type="checkbox" id="journalProtein" style="width:20px;height:20px;">
+    </div>
+    <div style="margin-top:14px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Notes</label>
+      <textarea id="journalNotes" rows="3" placeholder="However you want to remember today — no macros required." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <button class="profile-save-btn" style="margin-top:14px;" onclick="saveJournal()">Save</button>
   </div>
 </div>
 
@@ -6230,6 +6275,65 @@ async function finishOneOff() {
     showToast('Could not save — try again');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Finish — Save This Workout'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// JOURNAL — EPIC-16 manual nutrition log (rebuilt 2026-09-12 as the "Today's
+// Workout" flow's Journal button, per Kerwin's direct restructure request).
+// nutrition_logs (migrations/0014) is already live in prod: one row per user
+// per day, self-reported only — meals_logged/protein_hit/notes, no calorie or
+// macro math, per the table's own EPIC-16 comment. This is the missing UI;
+// the schema was never the gap.
+// ═══════════════════════════════════════════════════════
+async function openJournal() {
+  openModal('journal');
+  const dateLabel = document.getElementById('journalDateLabel');
+  const mealsEl = document.getElementById('journalMeals');
+  const proteinEl = document.getElementById('journalProtein');
+  const notesEl = document.getElementById('journalNotes');
+  const today = localDateStr(); // BUG-018/027: local day, not UTC
+  if (dateLabel) dateLabel.textContent = new Date(today + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  if (mealsEl) mealsEl.value = '';
+  if (proteinEl) proteinEl.checked = false;
+  if (notesEl) notesEl.value = '';
+  if (!currentUser) return; // local-only session: form stays blank, Save will explain why it can't persist
+  try {
+    const { data } = await sb.from('nutrition_logs')
+      .select('meals_logged, protein_hit, notes')
+      .eq('user_id', currentUser.id)
+      .eq('log_date', today)
+      .maybeSingle();
+    if (data) {
+      if (mealsEl) mealsEl.value = data.meals_logged ?? '';
+      if (proteinEl) proteinEl.checked = !!data.protein_hit;
+      if (notesEl) notesEl.value = data.notes || '';
+    }
+  } catch (e) {
+    console.warn('Journal load failed:', e);
+  }
+}
+
+async function saveJournal() {
+  if (!currentUser) { showToast('Sign in to save your journal'); return; }
+  const meals = document.getElementById('journalMeals')?.value;
+  const protein = document.getElementById('journalProtein')?.checked || false;
+  const notes = document.getElementById('journalNotes')?.value || null;
+  const today = localDateStr(); // BUG-018/027: local day, not UTC
+  try {
+    const { error } = await sb.from('nutrition_logs').upsert({
+      user_id: currentUser.id,
+      log_date: today,
+      meals_logged: meals === '' || meals == null ? null : parseInt(meals, 10),
+      protein_hit: protein,
+      notes: notes || null,
+    }, { onConflict: 'user_id,log_date' });
+    if (error) throw error;
+    showToast('Journal saved ✓');
+    closeModal('journal');
+  } catch (e) {
+    console.error('saveJournal failed:', e);
+    showToast('Could not save — try again');
   }
 }
 
