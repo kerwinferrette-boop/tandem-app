@@ -558,6 +558,25 @@ Two aggravating facts, both verified in code, not assumed:
    was explicit: *"Run the exercise science skill then on moments like that, instead of just
    saying to do it."* A `discovery_handling: file_to_bug_log` entry is for things genuinely out
    of scope, never for work the current session could do.
+7. **CLARIFICATION, 2026-09-13, Kerwin, in-session — logging is not the same as notifying.**
+   Rules 1-2 above (run every cycle, lead the Goal Record's cycle log with the numbers) stand
+   exactly as written — that durable record is what stopped 56 cycles from being blind. What
+   changes: a scheduled/unattended cycle must NOT `PushNotification` the outcome-gate numbers
+   just because they're still red, unless something about them is actually new or actionable
+   (a real behavior change, a code-side cause worth investigating, a threshold newly crossed).
+   Kerwin's words: *"That just means she's not using the app. It means nothing. It just means
+   this app has to get better in order to use it... it doesn't pertain to what this particular
+   loop is trying to do."* Restating "still zero, still idle" every cycle to his phone is noise,
+   not signal — the gate staying red in the exact same way it was red last cycle is not news.
+   This does NOT loosen rule 4 (never tune the thresholds down, never quietly stop reporting it
+   in the durable record) — it only scopes the *push-notification* channel, not the *ledger*
+   channel. A genuinely new outcome-gate finding (a real regression, a new stale lift, a threshold
+   crossed for the first time) is still notify-worthy; an unchanged red is not.
+   **Separately, noted as a real product idea, out of THIS loop's scope**, per the same
+   conversation: a proactive re-engagement nudge ("hey, you haven't worked out in a while — want
+   to get back into it?") sent to an idle user is a feature worth building, tracked as its own
+   Epic (see Epics & Feature Roadmap) — not something this bug-fixing loop implements or
+   substitutes for by nagging Kerwin instead of the actual idle user.
 
 ### Where the existing skills actively enabled this
 
