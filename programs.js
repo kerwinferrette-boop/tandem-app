@@ -115,7 +115,7 @@ const PROGRESSION_PCT_MAX = 10;  // ACSM position stand, PMID 19204579
 // It is kept rather than deleted (unlike D23's REST_SECONDS) for one reason, and the
 // reason is what makes it defensible: it is provably UNREACHABLE. Every `unit:'sec'`
 // entry in EXERCISE_BANK declares its own `secs` (Plank 60 / Side Plank 45 / Hollow
-// Body Hold 30 / Copenhagen Plank 30), and D25 asserts that, so this branch is a guard
+// Body Hold 30 / Copenhagen Plank 30 / McGill Curl-Up 10), and D25 asserts that, so this branch is a guard
 // against a malformed future bank entry, not a prescription anyone receives. The day it
 // CAN fire, the gate fails first and the bank gets fixed — which is the point.
 //

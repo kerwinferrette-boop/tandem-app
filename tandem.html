@@ -1494,6 +1494,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <button class="eq-btn" data-tier="hotel_full" onclick="selectEquipmentTier(this)">Hotel · Full DB</button>
         <button class="eq-btn" data-tier="hotel_small" onclick="selectEquipmentTier(this)">Hotel · Small DB</button>
         <button class="eq-btn" data-tier="dumbbells" onclick="selectEquipmentTier(this)">DBs Only</button>
+        <button class="eq-btn" data-tier="bodyweight" onclick="selectEquipmentTier(this)">Bodyweight Only</button>
       </div>
       <div class="eq-db-row" id="eqDbRow">
         <span class="eq-db-label">Max DB weight</span>
@@ -2604,7 +2605,8 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
 const EQ_NEEDS_DB = ['hotel_full','hotel_small','dumbbells'];
 const EQ_LABELS = {
   full_gym:'Full Gym', standard_gym:'Standard Gym',
-  hotel_full:'Hotel – Full DB', hotel_small:'Hotel – Small DB', dumbbells:'DBs Only'
+  hotel_full:'Hotel – Full DB', hotel_small:'Hotel – Small DB', dumbbells:'DBs Only',
+  bodyweight:'Bodyweight Only'
 };
 
 // ── Canonical tier mapping: 5 UI tiers / onboarding equipment → bank filter ──
@@ -2613,7 +2615,8 @@ const EQ_LABELS = {
 // onboarding cfg.equipment vocabulary both collapse into these.
 const EQ_TIER_TO_BANK = {
   full_gym:'full_gym', standard_gym:'full_gym',
-  hotel_full:'hotel_gym', hotel_small:'hotel_gym', dumbbells:'hotel_gym'
+  hotel_full:'hotel_gym', hotel_small:'hotel_gym', dumbbells:'hotel_gym',
+  bodyweight:'home'
 };
 const CFG_EQ_TO_BANK = {
   full_gym:'full_gym', barbell_rack:'full_gym',
