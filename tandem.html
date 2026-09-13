@@ -440,6 +440,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* Cardio block */
 .cardio-block{background:linear-gradient(135deg,rgba(154,154,172,.07) 0%,var(--s1) 60%);
   border:1px solid rgba(154,154,172,.2);border-radius:12px;padding:14px;margin-bottom:8px;}
+.cardio-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cardio-block.skipped{opacity:.6;}
+.cardio-block.skipped .cardio-content{display:none;}
 .cardio-title{font-family:var(--font-display);font-size:19px;color:var(--blue);margin-bottom:4px;letter-spacing:.04em;}
 .cardio-body{font-size:12px;color:var(--muted2);line-height:1.65;}
 .zone-tag{display:inline-block;font-family:var(--font-mono);font-size:10px;
@@ -3849,15 +3852,27 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
     if (block.cardio) {
       const ex = block.exs[0];
       if (!ex) return;
+      // Kerwin, 2026-09-13, live: "all cardio should have a skip button." Cardio
+      // carries no sets/weight/PR — skipping it is display-only, so this is local
+      // UI state (LS), not a Supabase write. Keyed per program-week + day + exercise
+      // so a skip doesn't leak into next week's (now-rotating — see programs.js
+      // pick()-based cardio fix, same report) different cardio pick.
+      const cardioKey = `${currentWeek}-${day.key}-${ex.id}`;
+      const cardioSkipped = !!((LS.get('tandem_skipped_cardio') || {})[cardioKey]);
       html += `
         <div class="block-label">${block.label}</div>
-        <div class="cardio-block">
-          <div class="cardio-title">${ex.name}</div>
-          <div class="cardio-body">${ex.cardioDesc}</div>
-          <div class="zone-tag">${ex.zone}</div>
-          <div class="stopwatch">
-            <div class="sw-disp" id="sw-${day.key}${ex.id}">${fmtTime(ex.duration * 60)}</div>
-            <button class="sw-btn go" id="swBtn-${day.key}${ex.id}" onclick="toggleSW('${day.key}${ex.id}',${ex.duration * 60})">Start</button>
+        <div class="cardio-block${cardioSkipped ? ' skipped' : ''}" id="cardio-${cardioKey}">
+          <div class="cardio-head">
+            <div class="cardio-title">${ex.name}</div>
+            <button class="rest-skip" onclick="toggleCardioSkip('${cardioKey}')">${cardioSkipped ? 'Add back' : 'Skip'}</button>
+          </div>
+          <div class="cardio-content">
+            <div class="cardio-body">${ex.cardioDesc}</div>
+            <div class="zone-tag">${ex.zone}</div>
+            <div class="stopwatch">
+              <div class="sw-disp" id="sw-${day.key}${ex.id}">${fmtTime(ex.duration * 60)}</div>
+              <button class="sw-btn go" id="swBtn-${day.key}${ex.id}" onclick="toggleSW('${day.key}${ex.id}',${ex.duration * 60})">Start</button>
+            </div>
           </div>
         </div>
       `;
@@ -4445,6 +4460,21 @@ function startRest(id) {
 function skipRest(id) {
   if (S.restTimers[id]) clearInterval(S.restTimers[id]);
   document.getElementById('rt-' + id)?.classList.remove('on');
+}
+
+// Kerwin, 2026-09-13, live: "all cardio should have a skip button." Cardio has
+// no sets/weight/PR, so this is display-only local state — no Supabase write,
+// no session/streak effect. Toggled directly on the DOM (same shape as
+// skipRest above) rather than re-rendering the whole day.
+function toggleCardioSkip(cardioKey) {
+  const skips = LS.get('tandem_skipped_cardio') || {};
+  if (skips[cardioKey]) delete skips[cardioKey]; else skips[cardioKey] = true;
+  LS.set('tandem_skipped_cardio', skips);
+  const el = document.getElementById('cardio-' + cardioKey);
+  if (!el) return;
+  const nowSkipped = el.classList.toggle('skipped');
+  const btn = el.querySelector('.cardio-head .rest-skip');
+  if (btn) btn.textContent = nowSkipped ? 'Add back' : 'Skip';
 }
 
 // ═══════════════════════════════════════════════════════

@@ -2440,8 +2440,20 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       // GEN-fix: if every group-matched cardio candidate is excluded, allow
       // reuse rather than silently dropping the finisher (cardio repeats
       // across days are fine — Zone 2 is a modality, not a lift).
+      // BUG (Kerwin, 2026-09-13, live report — "I've seen a lot of elliptical
+      // lately, wtf is that about?"): this used to take cardioPool[0] directly.
+      // bank()'s sort has no oneRmFactor to rank cardio on, so it falls through
+      // to alphabetical — meaning index 0 was the SAME exercise every single
+      // week, every phase, for a given tier/group (verified by running
+      // getProgram() across 12 weeks: 100% Elliptical for full_gym/hotel_gym,
+      // 100% High Knees for home). Every other non-primary category (core,
+      // acc2/acc3 isolation) already rotates through pick()'s existing
+      // block=rotPhase path (D15's ~2-3wk cadence, ACTIVE) — cardio was the one
+      // category that bypassed it. Fix: route cardio through the same pick(),
+      // same cadence, no new rule invented.
       const cardioPool = bank({groups:tmpl.cardioGroups, cat:'cardio', excl:[...used]});
-      const cardioEx = cardioPool[0] || bank({groups:tmpl.cardioGroups, cat:'cardio'})[0] || null;
+      const cardioCands = cardioPool.length ? cardioPool : bank({groups:tmpl.cardioGroups, cat:'cardio'});
+      const cardioEx = pick(cardioCands, {role:'cardio'}, tmpl);
 
       const compExs = [exs.primary, exs.secondary].filter(Boolean)
         .map((e,i) => makeEx(e, tmpl.key+'-c'+i));
@@ -2502,8 +2514,10 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     }).filter(Boolean);
     // GEN-fix (persona-matrix R7): shoulders day is a training day — it needs
     // a cardio finisher too, same as every other generated day.
+    // Same rotation fix as the base-day cardio above — see that comment.
     const saCardioPool = bank({groups:sa.cardioGroups, cat:'cardio', excl:[...used]});
-    const saCardioEx = saCardioPool[0] || bank({groups:sa.cardioGroups, cat:'cardio'})[0] || null;
+    const saCardioCands = saCardioPool.length ? saCardioPool : bank({groups:sa.cardioGroups, cat:'cardio'});
+    const saCardioEx = pick(saCardioCands, {role:'cardio'}, sa);
     const saBlocks = [];
     // Rest numbers removed from all three headings. These were 90/75/30 regardless
     // of goal or phase, while the lines beneath them rendered from PHASES — e.g. a
