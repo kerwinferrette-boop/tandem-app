@@ -175,10 +175,21 @@ async function runTrackerSmoke(page, findings) {
     return;
   }
   await page.click('.dash-cta');
+  await page.waitForTimeout(200);
+  // 2026-09-12 (Kerwin): tapping the CTA now opens a Today's-Workout choice
+  // (Continue Plan / Generate Workout / Journal) instead of navigating
+  // straight to the tracker. Take the Continue Plan branch — that's the one
+  // this smoke's own job is to keep exercising end to end.
+  const choiceVisible = await page.isVisible('#modal-todaychoice.open').catch(() => false);
+  if (!choiceVisible) {
+    findings.push({ area: 'dashboard', order: 'n/a', detail: '"Today\'s Workout →" did not open the Continue Plan / Generate Workout / Journal choice.' });
+    return;
+  }
+  await page.click('#todayChoiceContinueBtn');
   await page.waitForTimeout(300);
   const trackerActive = await page.evaluate(() => document.getElementById('view-tracker')?.classList.contains('active'));
   if (!trackerActive) {
-    findings.push({ area: 'tracker-entry', order: 'n/a', detail: '"Today\'s Workout →" did not land on the tracker view.' });
+    findings.push({ area: 'tracker-entry', order: 'n/a', detail: '"Continue Plan" did not land on the tracker view.' });
     return;
   }
   // Exercise cards render collapsed (.ex-card without .open hides .set-logger via CSS) —

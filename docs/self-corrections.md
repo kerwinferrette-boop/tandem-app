@@ -189,3 +189,35 @@ read in this same session (`migrations/0011_...sql`) and I did not check it befo
 **Enforced by** judgment — not mechanically checkable. `.claude/loop-config.md`'s forbidden-ops list
 already names `apply_migration` specifically; this entry is the reminder that the same boundary
 applies to a hand-run `execute_sql` write against production, not just the named MCP tool.
+
+---
+
+## SC-07 — a code comment is not exempt from a regex-based gate
+
+**What I believed.** That documenting a fix to `muscleGroupFromLabel()` with a comment mentioning
+"authored library templates (materializeTemplate())" was purely descriptive prose with no runtime
+effect, so it couldn't affect `npm run verify`.
+
+**What was true.** `scripts/authored-safety-smoke.mjs`'s R12 check scans `tandem.html`'s raw text
+for `/materializeTemplate\s*\(/g` to find call sites and verify each one passes `tier`/`injuries` —
+it has one hand-written exclusion (`typeof materializeTemplate`) and no other awareness of comments
+vs. code. My comment's `materializeTemplate()` matched the same regex as a real call, with no
+`tier`/`injuries` nearby, and the gate reported a false call-site failure: `ALL 12 CHECKS PASS`
+would have read `1/12 CHECK(S) FAILED` had I not re-run `npm run verify` after the edit and read the
+output.
+
+**The gap.** I treated "this edit only touches a comment" as proof the change was gate-inert,
+without checking whether any standing gate does a textual (not AST-based) scan over the exact file
+region I was editing. A regex-based safety scanner cannot distinguish a mentioned name from a called
+one.
+
+> **THE RULE — SC-07.** Before writing a comment that names a function this codebase has a
+> call-site/reachability-style gate for (grep the `scripts/` directory for the function's name to
+> check), phrase it so the bare `functionName(` pattern doesn't appear literally — e.g. "the
+> materializer" instead of "materializeTemplate()". More generally: after ANY edit, including a
+> comment-only one, re-run the full standing gate before calling the change safe — "it's just a
+> comment" is a claim about intent, not about what a regex-based checker will match.
+
+**Enforced by** `npm run verify` itself, if and only if it is actually re-run after every edit —
+this entry exists because that discipline (already stated in CLAUDE.md's "verify by running")
+needs to explicitly include comment-only edits, which are the ones most tempting to skip.

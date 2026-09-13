@@ -230,6 +230,22 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);}
 
 /* ═══════════════════════════════
+   SESSION TIMER (FEAT: persistent workout session state + running timer,
+   in-app report 14f6baca, 2026-07-03 — "a start button... continuous timer
+   that goes until finish is hit... doesnt lose my spot")
+═══════════════════════════════ */
+.session-timer-row{padding:8px 16px 0;display:flex;justify-content:center;}
+.session-timer-start{width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(24,194,106,.35);
+  background:var(--accent-dim);color:var(--accent);font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.07em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:6px;transition:all .15s;}
+.session-timer-start:hover{background:rgba(24,194,106,.28);}
+.session-timer-live{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--s1);
+  color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
+.session-timer-live svg{color:var(--accent);width:14px;height:14px;}
+
+/* ═══════════════════════════════
    PROGRESS BAR
 ═══════════════════════════════ */
 .session-prog{padding:8px 16px 0;}
@@ -516,6 +532,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
 .oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
+.oneoff-recency-badge{position:absolute;top:6px;right:6px;z-index:3;display:flex;align-items:center;gap:3px;
+  padding:2px 6px;border-radius:5px;background:rgba(232,163,61,.92);color:#1a1305;
+  font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.oneoff-recency-badge svg{width:9px;height:9px;}
 .oneoff-eyebrow{display:block;font-family:var(--font-body);font-size:8px;font-weight:600;letter-spacing:.14em;
   text-transform:uppercase;color:var(--accent2);margin-bottom:1px;}
 .oneoff-name{display:block;font-family:var(--font-display);font-weight:800;font-size:14px;line-height:1.05;color:#fff;}
@@ -1450,7 +1470,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
 
     <!-- Today's Workout CTA -->
-    <button class="dash-cta" onclick="showView('tracker')">Today's Workout →</button>
+    <button class="dash-cta" onclick="openModal('todaychoice')">Today's Workout →</button>
 
   </div>
 </div>
@@ -1509,6 +1529,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <button class="wn-btn" onclick="changeWeek(1)">›</button>
     <button class="wn-reset" onclick="resetWeek()">Today</button>
   </div>
+
+  <!-- Session Timer: Start button until a session is active, then a continuous
+       running timer until Finish is hit. Survives navigating away and back
+       (driven off the persisted tandem_session_start_time, not page state). -->
+  <div class="session-timer-row" id="sessionTimerRow"></div>
 
   <!-- Progress -->
   <div class="session-prog">
@@ -1710,6 +1735,52 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
     </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
+    <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="finishOneOff()">Finish — Save This Workout</button>
+  </div>
+</div>
+
+<!-- TODAY'S WORKOUT — entry-point choice (Kerwin, attended session 2026-09-12):
+     "after clicking Today's workout... there should be three buttons: Continue
+     plan / Generate me a workout... / Journal." The dashboard above (steps,
+     calories, MFP/Apple Health rings) is explicitly UNCHANGED — this is only
+     what happens next, once the CTA is tapped. -->
+<div class="modal-overlay" id="modal-todaychoice" onclick="if(event.target===this)closeModal('todaychoice')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('todaychoice')">✕</button>
+    <div class="modal-title">Today's Workout</div>
+    <div class="modal-sub">What are you doing right now?</div>
+    <button id="todayChoiceContinueBtn" class="clear-btn" style="margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="closeModal('todaychoice');showView('tracker')">Continue Plan</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('todaychoice');openOneOff()">Generate Me a Workout (chest, legs, hinge, and so on)</button>
+    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('todaychoice');openJournal()">Journal</button>
+  </div>
+</div>
+
+<!-- JOURNAL (EPIC-16 manual nutrition log, rebuilt 2026-09-12 as the "Today's
+     Workout" flow's Journal entry rather than a standalone dashboard side-quest
+     — Kerwin: "not worth a nutrition log at all whatsoever [on its own] ...
+     Journal" as one of the three Today's-Workout buttons. No calorie/macro math
+     — self-reported meals/protein/notes only, per EPIC-16's own Agent Context
+     Notes and the nutrition_logs schema (migrations/0014, already live). -->
+<div class="modal-overlay" id="modal-journal" onclick="if(event.target===this)closeModal('journal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('journal')">✕</button>
+    <div class="modal-title">Journal</div>
+    <div class="modal-sub" id="journalDateLabel">Today</div>
+    <div style="margin-top:14px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Meals logged today</label>
+      <input type="number" id="journalMeals" min="0" max="12" step="1" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;">
+    </div>
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+      <label class="profile-input-label" for="journalProtein">Hit my protein target</label>
+      <input type="checkbox" id="journalProtein" style="width:20px;height:20px;">
+    </div>
+    <div style="margin-top:14px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Notes</label>
+      <textarea id="journalNotes" rows="3" placeholder="However you want to remember today — no macros required." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <button class="profile-save-btn" style="margin-top:14px;" onclick="saveJournal()">Save</button>
   </div>
 </div>
 
@@ -3661,6 +3732,71 @@ function goHome() {
 // ═══════════════════════════════════════════════════════
 // RENDER TRACKER
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// SESSION TIMER — FEAT: persistent workout session state + running timer
+// (in-app report 14f6baca, 2026-07-03, Kerwin, verbatim: "a start button
+// should be at the top with a continuous timer, that goes until the finish
+// button is hit... if I happen to click out of the workout or go to the
+// next week, it doesnt lose my spot of what workout Im doing").
+//
+// tandem_session_start_time (localStorage) already survives navigation and
+// reload — startOrResumeSession()/finishSession() already read/write it for
+// duration bookkeeping. What was missing: a VISIBLE, ticking timer and an
+// explicit Start affordance, so the running session is legible rather than
+// invisible until the first set is logged. This adds only the display layer;
+// it reuses the existing persisted timestamp as the single source of truth
+// rather than tracking a second, competing notion of "when did this start".
+// ═══════════════════════════════════════════════════════
+let _sessionTimerInterval = null;
+
+function fmtSessionElapsed(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+// Re-syncs the timer row from the persisted start time. Safe to call on every
+// renderTracker() (view load / navigation back) and after Start/Finish/Skip —
+// it always reflects localStorage, never a value cached from a prior render.
+function renderSessionTimer() {
+  const row = document.getElementById('sessionTimerRow');
+  if (!row) return;
+  if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
+  const startTime = localStorage.getItem('tandem_session_start_time');
+  if (startTime) {
+    const start = Number(startTime);
+    const tick = () => {
+      const el = document.getElementById('sessionTimerDisplay');
+      if (el) el.textContent = fmtSessionElapsed(Date.now() - start);
+    };
+    row.innerHTML = `<div class="session-timer-live">${svgIcon('clock')}<span id="sessionTimerDisplay"></span></div>`;
+    tick();
+    _sessionTimerInterval = setInterval(tick, 1000);
+  } else {
+    row.innerHTML = `<button class="session-timer-start" onclick="startWorkoutTimer()">${svgIcon('clock')} Start Workout</button>`;
+  }
+}
+
+// Explicit Start tap. Reuses startOrResumeSession() (idempotent — resumes a
+// still-open cloud session rather than minting a duplicate) so this is the
+// same session-creation path logSet() already lazily triggers; the only new
+// behavior is making the start visible and intentional instead of implicit.
+async function startWorkoutTimer() {
+  try {
+    if (currentUser) await startOrResumeSession();
+    else if (!localStorage.getItem('tandem_session_start_time')) {
+      localStorage.setItem('tandem_session_start_time', String(Date.now()));
+    }
+  } catch (e) {
+    console.warn('startWorkoutTimer failed:', e);
+    showToast('Could not start session — try again');
+  }
+  renderSessionTimer();
+}
+
 function renderTracker() {
   const _phases = scaledPhases(cfg.goal, cfg.weeks);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
@@ -3739,6 +3875,7 @@ function renderTracker() {
   if (currentUser) setSyncStatus('synced');
   document.getElementById('bottomNav').style.display = 'flex';
 
+  renderSessionTimer();
   updateProgress();
 
   const _eTier = sessionStorage.getItem('eq_tier');
@@ -4226,6 +4363,14 @@ function logSet(id, i) {
       wEl.classList.add('done'); rEl.classList.add('done');
     }
     startRest(id);
+
+    // EPIC-036: a one-off exercise id (see getSingleDay()'s `oneoff-${focus}-${i}`
+    // ids in programs.js) must NEVER flow through startOrResumeSession() — that
+    // resumes/creates the REGULAR day's session (keyed on currentDay/currentWeek),
+    // and a one-off set has nothing to do with that day. sessionSetsMap[id] above
+    // already tracked this set; finishOneOff() batch-writes it under its own
+    // session_type='oneoff' row when the user taps Finish.
+    if (id.startsWith('oneoff-')) return;
 
     // Fire-and-forget real-time set sync to Supabase
     if (currentUser) {
@@ -5057,11 +5202,15 @@ function skipAhead() {
     (async () => {
       try {
         const today = localDateStr(); // BUG-018/027: local day, not UTC
+        // EPIC-036: exclude one-off rows — after migrations/0015, a still-open
+        // one-off session can share today's date with the regular day, and
+        // this lookup must find the REGULAR day's row to skip, never a one-off.
         const { data: openRow } = await sb.from('workout_sessions')
           .select('id')
           .eq('user_id', currentUser.id)
           .eq('session_date', today)
           .eq('completed', false)
+          .neq('session_type', 'oneoff')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -5088,6 +5237,7 @@ function skipAhead() {
         localStorage.removeItem('tandem_active_session_id');
         localStorage.removeItem('tandem_session_start_time');
         localStorage.removeItem('tandem_c11_first_session_id');
+        renderSessionTimer(); // FEAT persistent-session-timer: back to "Start Workout"
       } catch (skipSyncErr) {
         console.warn('BUG-56 skip cloud sync failed (local history unaffected):', skipSyncErr);
       }
@@ -5110,6 +5260,10 @@ function reorderWeek() {
 }
 
 function finishSession() {
+  // Freeze the visible timer immediately on tap; localStorage's
+  // tandem_session_start_time is still read below (duration calc) and cleared
+  // at the end of this function, which flips the row back to "Start Workout".
+  if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
@@ -5165,11 +5319,13 @@ function finishSession() {
       let resolvedId = sessionUUID;
       if (!resolvedId) {
         try {
+          // EPIC-036: exclude one-off rows — see the identical guard in skipAhead().
           const { data: rec } = await sb.from('workout_sessions')
             .select('id')
             .eq('user_id', currentUser.id)
             .eq('session_date', localDateStr())
             .eq('completed', false)
+            .neq('session_type', 'oneoff')
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -5358,6 +5514,12 @@ function finishSession() {
     sessionStartTime = null;
     Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
   }
+  // FEAT persistent-session-timer: clear unconditionally, not only in the
+  // currentUser branch above — a signed-out/local-only session must also stop
+  // showing a running timer once Finish is tapped, otherwise the previous
+  // session's clock silently keeps counting into the next one.
+  localStorage.removeItem('tandem_session_start_time');
+  renderSessionTimer();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5928,17 +6090,52 @@ function oneOffBack() {
 // photo arrives as a finished URL rather than a filename fragment this has to assemble:
 // the goal cards are sex-specific and the focus cards are not, and a function that took
 // a "prefix" could only express one of those two shapes.
-function oneOffCardHTML(slug, face, photo, handler, dataAttr, label) {
+function oneOffCardHTML(slug, face, photo, handler, dataAttr, label, badge) {
   return `<button class="oneoff-card" ${dataAttr}="${slug}" aria-pressed="false"
-      aria-label="${label}"
+      aria-label="${label}${badge ? ' — recently trained' : ''}"
       style="--card-url:url('${photo}')"
       onclick="${handler}">
       <span class="oneoff-scrim"></span>
+      ${badge ? `<span class="oneoff-recency-badge" title="${badge}">${svgIcon('clock')} recent</span>` : ''}
       <span class="oneoff-cap">
         ${face.eyebrow ? `<span class="oneoff-eyebrow">${face.eyebrow}</span>` : ''}
         <span class="oneoff-name">${face.title}</span>
       </span>
     </button>`;
+}
+
+// FEAT (2026-09-11, Kerwin, direct product decision — "Option A"): the one-off
+// generator stays fully unconstrained by design ("if I want to do back and
+// biceps before travel, I should be able to" — it deliberately doesn't pertain
+// to the rest of the program, same as D20's own "inert by default" framing) —
+// but the choice should be an INFORMED one, not a blind one. This surfaces
+// D20's existing recent-training read (recentMuscleLoad/RECOVERY_PARAMS,
+// already computed for the goal-step banner) at the exact decision point: the
+// specific focus card the user is about to tap. Warn, never block — the badge
+// changes nothing about what getSingleDay() selects or whether the card is
+// clickable.
+function oneOffFocusRecentHours(focus) {
+  const slots = FOCUS_SLOTS[focus];
+  if (!slots || !_oneoffSets) return Infinity;
+  const load = recentMuscleLoad(_oneoffSets);
+  let min = Infinity;
+  for (const [primary] of slots) {
+    if (primary && load[primary] != null && load[primary] < min) min = load[primary];
+  }
+  return min;
+}
+
+function renderOneOffFocusRow() {
+  const row = document.getElementById('oneoffFocusRow');
+  if (!row) return;
+  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
+  const winHrs = (RECOVERY_PARAMS[oneOffGoalKey()] || RECOVERY_PARAMS.build_muscle).sameGroupHours;
+  row.innerHTML = focuses.map(f => {
+    const hrs = oneOffFocusRecentHours(f);
+    const badge = hrs < winHrs ? `Trained ${Math.round(hrs)}h ago — still inside your ${winHrs}h recovery window` : null;
+    return oneOffCardHTML(f, oneOffFace(f), `public/oneoff-${f.replace(/_/g, '-')}.jpg`, `renderOneOff('${f}')`, 'data-oneoff',
+      `Build a ${oneOffFace(f).title} workout`, badge);
+  }).join('');
 }
 
 // The goal cards show a lifter of the user's own sex. userSexKey() is the app's ONE
@@ -5962,6 +6159,7 @@ function pickOneOffGoal(goal) {
   });
   showOneOffStep(2);
   renderRecencyBanner();
+  renderOneOffFocusRow(); // the recovery window is goal-keyed, so badges must re-derive per pick
 }
 
 function renderRecencyBanner() {
@@ -5980,21 +6178,21 @@ async function openOneOff() {
   oneOffState.goal = null;
   oneOffState.focus = null;
   _oneoffSets = null;
+  const finishBtn = document.getElementById('oneoffFinishBtn');
+  if (finishBtn) finishBtn.style.display = 'none';
   // Built on every open, so a sex changed in the profile modal is reflected the next
   // time the wizard is opened — same lifecycle as applyHeroImages, no extra machinery.
   document.getElementById('oneoffGoalRow').innerHTML = ONEOFF_GOALS.map(g =>
     oneOffCardHTML(g.key, g, oneOffGoalPhoto(g.key), `pickOneOffGoal('${g.key}')`, 'data-oneoff-goal',
       `Build a ${g.title} workout`)).join('');
-  const focuses = (typeof ONEOFF_FOCUSES !== 'undefined' && Array.isArray(ONEOFF_FOCUSES)) ? ONEOFF_FOCUSES : [];
-  document.getElementById('oneoffFocusRow').innerHTML = focuses.map(f =>
-    oneOffCardHTML(f, oneOffFace(f), `public/oneoff-${f.replace(/_/g, '-')}.jpg`, `renderOneOff('${f}')`, 'data-oneoff',
-      `Build a ${oneOffFace(f).title} workout`)).join('');
+  renderOneOffFocusRow(); // no _oneoffSets yet — renders with no badges until the fetch below resolves
   showOneOffStep(1);
   renderRecencyBanner();
   // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
   // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
   // Fetched at open (goal-independent) but RENDERED per goal — see renderRecencyBanner.
   _oneoffSets = await fetchRecentSets(7);
+  renderOneOffFocusRow();
   if (oneOffState.goal) renderRecencyBanner();
 }
 
@@ -6053,6 +6251,120 @@ function renderOneOff(focus) {
   host.innerHTML = buildDayHTML(day, getPhase(currentWeek, goalKey, cfg.weeks), goalKey);
   showOneOffStep(3);
   if (typeof renderIcons === 'function') renderIcons();
+  const finishBtn = document.getElementById('oneoffFinishBtn');
+  if (finishBtn) finishBtn.style.display = 'block';
+}
+
+// EPIC-036 — the Finish/save path a one-off never had. Batches everything
+// logged under this modal's oneoff-* ids (see logSet()'s early-return for
+// that prefix — a one-off set is tracked in sessionSetsMap but deliberately
+// never touches startOrResumeSession()/the regular day's session) into its
+// own workout_sessions row, session_type='oneoff'. migrations/0015 is what
+// makes this row able to coexist with today's regular program session —
+// before that, this insert would have violated the old UNIQUE(user_id,
+// session_date) constraint outright, which is the literal reason this
+// button never existed until Kerwin authorized the migration (2026-09-12).
+async function finishOneOff() {
+  const oneOffIds = Object.keys(sessionSetsMap).filter(id => id.startsWith('oneoff-'));
+  const allSets = oneOffIds.flatMap(id => sessionSetsMap[id] || []);
+  if (!allSets.length) { showToast('Log at least one set first'); return; }
+  if (!currentUser) { showToast('Sign in to save a one-off workout'); return; }
+
+  const totalVolume = allSets.reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
+  const btn = document.getElementById('oneoffFinishBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const { data: session, error: sessErr } = await sb.from('workout_sessions').insert({
+      user_id: currentUser.id,
+      session_date: localDateStr(), // BUG-018/027: local day, not UTC
+      day_type: oneOffState.focus || 'oneoff',
+      program_goal: oneOffGoalKey(),
+      session_type: 'oneoff', // the whole point of migrations/0015's partial index
+      completed: true,
+      total_volume_lbs: Math.round(totalVolume),
+    }).select('id').single();
+    if (sessErr) throw sessErr;
+
+    const rows = allSets.map(s => ({
+      session_id: session.id,
+      user_id: currentUser.id,
+      exercise_name: s.name,
+      set_number: s.set,
+      weight_lbs: s.w,
+      reps: s.r,
+      estimated_1rm_lbs: s.est1rm > 0 ? s.est1rm : null,
+    }));
+    const { error: setsErr } = await sb.from('sets').insert(rows);
+    if (setsErr) throw setsErr;
+
+    oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
+    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved`);
+    closeModal('oneoff');
+  } catch (e) {
+    console.error('finishOneOff failed:', e);
+    showToast('Could not save — try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Finish — Save This Workout'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// JOURNAL — EPIC-16 manual nutrition log (rebuilt 2026-09-12 as the "Today's
+// Workout" flow's Journal button, per Kerwin's direct restructure request).
+// nutrition_logs (migrations/0014) is already live in prod: one row per user
+// per day, self-reported only — meals_logged/protein_hit/notes, no calorie or
+// macro math, per the table's own EPIC-16 comment. This is the missing UI;
+// the schema was never the gap.
+// ═══════════════════════════════════════════════════════
+async function openJournal() {
+  openModal('journal');
+  const dateLabel = document.getElementById('journalDateLabel');
+  const mealsEl = document.getElementById('journalMeals');
+  const proteinEl = document.getElementById('journalProtein');
+  const notesEl = document.getElementById('journalNotes');
+  const today = localDateStr(); // BUG-018/027: local day, not UTC
+  if (dateLabel) dateLabel.textContent = new Date(today + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  if (mealsEl) mealsEl.value = '';
+  if (proteinEl) proteinEl.checked = false;
+  if (notesEl) notesEl.value = '';
+  if (!currentUser) return; // local-only session: form stays blank, Save will explain why it can't persist
+  try {
+    const { data } = await sb.from('nutrition_logs')
+      .select('meals_logged, protein_hit, notes')
+      .eq('user_id', currentUser.id)
+      .eq('log_date', today)
+      .maybeSingle();
+    if (data) {
+      if (mealsEl) mealsEl.value = data.meals_logged ?? '';
+      if (proteinEl) proteinEl.checked = !!data.protein_hit;
+      if (notesEl) notesEl.value = data.notes || '';
+    }
+  } catch (e) {
+    console.warn('Journal load failed:', e);
+  }
+}
+
+async function saveJournal() {
+  if (!currentUser) { showToast('Sign in to save your journal'); return; }
+  const meals = document.getElementById('journalMeals')?.value;
+  const protein = document.getElementById('journalProtein')?.checked || false;
+  const notes = document.getElementById('journalNotes')?.value || null;
+  const today = localDateStr(); // BUG-018/027: local day, not UTC
+  try {
+    const { error } = await sb.from('nutrition_logs').upsert({
+      user_id: currentUser.id,
+      log_date: today,
+      meals_logged: meals === '' || meals == null ? null : parseInt(meals, 10),
+      protein_hit: protein,
+      notes: notes || null,
+    }, { onConflict: 'user_id,log_date' });
+    if (error) throw error;
+    showToast('Journal saved ✓');
+    closeModal('journal');
+  } catch (e) {
+    console.error('saveJournal failed:', e);
+    showToast('Could not save — try again');
+  }
 }
 
 // Classify a day label into a muscle group for conflict detection.
@@ -6061,12 +6373,22 @@ function renderOneOff(focus) {
 // never splits it further, and research-report(8) treats "Upper/Lower" as one split unit,
 // same as quad- vs. hinge-dominant days) — so any quad/glute/hamstring/hip-emphasis label,
 // however phrased, must land in 'lower', not fall through to the gap-exempt 'full' default.
+// BUG-114 fix (same class as BUG-73, found recurring on real-world body-part labels):
+// authored library templates (see the materializer that renders adopted programs)
+// label days with plain gym vocabulary — "Chest + Triceps", "Back + Biceps + Abs"
+// (confirmed live in prod: workout_templates "Brick by Brick"/"Redline Recomp")
+// — that contained none of push/pull/upper/lower/
+// shoulder/arm and fell through to the gap-EXEMPT 'full' default, same silent hole BUG-73
+// closed for leg-day labels. Chest/triceps are the horizontal-push chain; back/biceps are
+// the pulling chain — routing them into the EXISTING push/pull buckets is not a new
+// science claim, it reuses RECOVERY_PARAMS/D1 exactly as already cited for BUG-73, just
+// widening which labels reach it.
 function muscleGroupFromLabel(label) {
   const l = (label || '').toLowerCase();
   if (/full.body|full body/.test(l)) return 'full';
   if (/lower|legs|quad|glute|hamstring|hip/.test(l)) return 'lower';
-  if (/pull/.test(l) && !/push/.test(l)) return 'pull';
-  if (/push/.test(l) && !/pull/.test(l)) return 'push';
+  if (/pull|back|bicep/.test(l) && !/push|chest|tricep/.test(l)) return 'pull';
+  if (/push|chest|tricep/.test(l) && !/pull|back|bicep/.test(l)) return 'push';
   if (/upper|shoulder|arm/.test(l)) return 'upper';
   return 'full';
 }
