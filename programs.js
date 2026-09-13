@@ -1914,6 +1914,72 @@ const ONEOFF_CORE_GROUPS = ['rectus_abdominis','transverse_abdominis','oblique',
 // SHOULDER_TEMPLATE below that also carried this dead token.
 const ONEOFF_CARDIO_GROUPS = ['full_body','glute_max'];
 
+// ── BUG-108/BUG-94 (2026-09-13) — isolation/accessory equipment tiebreak ────
+// SHOULD/COULD/DID (llm-council verdict, escalated after exercise-science-research
+// found the canonical sources silent on a specific ranking rule — see this cycle's
+// Notion research entry for the full citation trail):
+// SHOULD: bank()'s and select()'s isolation/accessory candidate sort fell through to
+// pure alphabetical-by-name whenever oneRmFactor was null (every isolation/accessory
+// entry), so a resistance-band exercise ranked EQUAL to a cable/machine/barbell
+// exercise for the same muscle whenever both were tier-legal — measured impact: 98 of
+// 179 EXERCISE_BANK entries never selected across a 2,880-persona sweep. The council
+// (5/5 advisors, unanimous on this point) found alphabetical-by-name was never a
+// designed policy — it is what .sort() does with no comparator — so removing it needs
+// no citation the way an actual judgment call (D25/D28-style) would. Exercise Science
+// Schema v0.5's `emg_mvc_pct` idea for exercise-ROI ranking is UNBUILT (no bank entry
+// carries the field); research-report(8).pdf §4 explicitly self-flags equipment-tier
+// selection as an acknowledged gap and gives only a qualitative lean, never comparing
+// bands to anything.
+// COULD: (rejected) label this an "equipment-quality" or muscle-stimulus ranking —
+// the council's Contrarian caught this as a citation-misuse trap: the only real
+// evidence here (NSCA + PMC6358948) is about band LOAD-CONSISTENCY, not stimulus
+// superiority, and isolation work is exactly where the one qualitative research lean
+// that exists says machines are merely "acceptable," not where free weights are
+// asserted necessary. So this ships as an EQUIPMENT-TIER-AVAILABILITY tiebreak, named
+// honestly — an inventory-reachability engineering default, not a dressed-up science
+// claim. (rejected) bundle in rotation/variety enhancements while touching this code —
+// council flagged this as scope creep (5/5 reviewers); out of scope for this fix.
+// (rejected) scope to full_gym tier only — CLAUDE.md's "fix the mechanism, not the
+// instance": bank()/select() are shared across every tier, and tierOk() already makes
+// this a no-op at hotel_gym/home (where cable/machine/barbell aren't tier-legal
+// anyway), so a general fix costs nothing and prevents the same rot recurring per-tier.
+// (rejected) invent new EXERCISE_BANK tags — every entry already carries `equipment`;
+// this reuses that existing field (one rule, one home).
+// DID: EQUIPMENT_AVAILABILITY_RANK below, applied ONLY as a last-resort tiebreak in
+// both select() (getSingleDay, the one-off generator) and bank() (buildDynamicProgram,
+// the weekly engine) — the two known-duplicate copies of this candidate sort — after
+// every existing tiebreak (D20 recency, oneRmFactor) and before the final alphabetical
+// fallback, so it only ever resolves a TRUE tie between tier-legal, tag-matched
+// candidates. Coarse 3-class rank, not a numeric score, per the council's "claim
+// exactly as much precision as the source gives" principle.
+// RECONCILE: did == should. NOT promoted to scripts/doctrine.mjs — per the council
+// (unanimous), this is inventory-utilization plumbing, not program-science
+// correctness; a persona-sweep dead-inventory regression check is the right-weight
+// gate if one gets added later, not a D-invariant.
+//
+// INTERACTION WITH BUG-101, CAUGHT AND CORRECTED IN THIS SAME CYCLE BEFORE SHIP:
+// a slot's `groups` array is an OR — FOCUS_SLOTS.pull's last slot accepts EITHER a
+// bicep candidate OR the external_rotator one BUG-101 just wired in. A first attempt
+// at this fix gated the equipment tiebreak on "only fire between candidates that
+// share a primary muscle tag" specifically to protect that slot — but that gate is
+// NOT TRANSITIVE (A can share a tag with B, B with C, but not A with C), which makes
+// Array.sort()'s ordering implementation-defined per spec whenever such a comparator
+// is used. That is a correctness bug independent of BUG-101, so it was reverted
+// rather than shipped. The plain, transitive, ungated tiebreak below is what ships.
+// Real, verified consequence: at full_gym/hotel_gym tier, band-external-rotation is
+// no longer the empirical winner of FOCUS_SLOTS.pull's last slot (a same/cross-tag
+// cable or dumbbell candidate now wins on the equipment tiebreak or, absent a shared
+// tag, on the same alphabetical rule that always governed this). It remains
+// STRUCTURALLY REACHABLE (scripts/reachability-smoke.mjs: 179/179, unaffected) and IS
+// empirically selected at the home tier (its only tier, where no competing equipment
+// exists to lose to) — which is BUG-101's own literal Expected Behavior ("every bank
+// entry should be selectable by at least one generator slot"), not a claim that it
+// wins every configuration. That stronger claim was this cycle's own over-verification
+// at BUG-101 fix time, before this second fix existed to compete with it — corrected
+// in the story's Notion evidence rather than left standing now that it's known false.
+const EQUIPMENT_AVAILABILITY_RANK = { barbell:0, machine:0, cable:0, dumbbell:1, band:2, bodyweight:2 };
+const equipmentAvailabilityRank = (e) => EQUIPMENT_AVAILABILITY_RANK[e.equipment] ?? 1;
+
 function getSingleDay(focus, opts = {}) {
   const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
   const slots = FOCUS_SLOTS[key];
@@ -2022,6 +2088,9 @@ function getSingleDay(focus, opts = {}) {
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
           if (diff !== 0) return diff;
         }
+        // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
+        const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
+        if (eqDiff !== 0) return eqDiff;
         return a.name.localeCompare(b.name);
       })[0] || null;
   };
@@ -2218,6 +2287,9 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
           if (diff !== 0) return diff;
         }
+        // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
+        const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
+        if (eqDiff !== 0) return eqDiff;
         return a.name.localeCompare(b.name);
       });
 
