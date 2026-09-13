@@ -53,14 +53,7 @@ const src = readFileSync(join(root, 'programs.js'), 'utf8');
 //    rotation / rotator cuff / serratus / trapezius / adductor / hip flexor /
 //    clavicular. Inventing a hierarchy to close these would be fabrication.
 const OPEN_GAPS = {
-  exercises: {
-    'band-external-rotation':
-      'primary [external_rotator] is requested by no slot. EPIC-026 Phase 1 §6 rejected ' +
-      '`external_rotator` as "not a muscle; no ER exercise in the bank" — that rationale is ' +
-      'now STALE (this entry is a dedicated ER exercise, merged 64938b6 2026-08-24 with its ' +
-      'intake-gated mapping verbatim). Closing needs a ruling on whether a program slot may ' +
-      'request dedicated glenohumeral external rotation. Repo research is silent.',
-  },
+  exercises: {},
   // Orphan tags are NOT all defects. Three distinct kinds, kept separate on purpose:
   orphanTags: {
     // (i) secondary-only — correct by design. audit-muscle-tags.mjs:132 states the rule:
@@ -79,7 +72,6 @@ const OPEN_GAPS = {
     adductor:          'all 3 carriers reachable via glute/quad/oblique tags; EPIC-026 §7.5 open question for Kerwin (split magnus vs longus/brevis?)',
     // (iii) blocked on a citation that does not exist.
     upper_pec:         'BUG-85 — landmine-press is reachable via anterior_delt/tricep, but `upper_pec` is a §4 duplicate of `pec_major_clavicular`. Retagging asserts a regional pec bias that is UNVERIFIED (no landmine-press EMG study found). Blocked on a citation.',
-    external_rotator:  'see OPEN_GAPS.exercises["band-external-rotation"] — same blocking ruling',
   },
 };
 

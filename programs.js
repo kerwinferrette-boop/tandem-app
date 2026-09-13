@@ -1900,7 +1900,7 @@ const FOCUS_SLOTS = {
   shoulders: [['anterior_delt','lateral_delt','compound'],['lateral_delt','','isolation'],['posterior_delt','rhomboid','isolation'],['anterior_delt','','isolation'],['upper_trap','','isolation']],
   arms:      [['bicep','','isolation'],['tricep','','isolation'],['bicep','','isolation'],['tricep','','isolation'],['brachialis','brachioradialis','isolation']],
   push:      [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['lateral_delt','','isolation']],
-  pull:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation'],['bicep','','isolation']],
+  pull:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation'],['bicep','external_rotator','isolation']],
   hinge:     [['hamstring','glute_max','compound'],['glute_max','','compound'],['hamstring','','isolation'],['glute_max','glute_medius','isolation'],['gastrocnemius','calf','isolation']],
   full_body: [['pec_major','pec','compound'],['lat_dorsi','','compound'],['quad','','compound'],['hamstring','glute_max','compound'],['anterior_delt','lateral_delt','isolation']],
 };
