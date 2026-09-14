@@ -86,15 +86,27 @@ check('calibrated weight = roundTo5(200 × 0.68)', cal.weight, roundTo5(200 * PR
 // Verify the variant names actually exist in the generated bank output.
 // getProgram(goal, days, weeks, sex) returns an ARRAY of days (validate-programs.mjs L140-148).
 // build_muscle/5d generates BOTH bench variants — lets us test Math.max registration.
+//
+// FIXTURE REPOINTED 2026-09-14 (primary-match rank). These two names are a FIXTURE —
+// the subject under test is dayCompound1RMs canonicalization, not which lift the engine
+// programs — but the fixture is only valid if the bank really generates both, which is
+// what the two checks below assert. The primary-match rank stopped 'Flat Barbell Press'
+// from winning the anterior_delt+lateral_delt SHOULDER slot (a chest press was filling a
+// shoulder slot), and that slot was its only route into the weekly engine, so Flat and
+// Low Incline both dropped to 0 appearances across all 40 goal x days x sex combos.
+// Decline Barbell Press (50) and High Incline Barbell Press (50) are what 5d/male now
+// generates. Both match COMPOUND_PATTERNS['Bench Press'] — Decline only since the
+// `decline` enumeration miss was fixed in the same change.
+// NOT a weakening: still two real generated variants, still a Math.max over both.
 const prog = getProgram('build_muscle', 5, 12, 'male');
 const allNames = new Set();
 prog.forEach(d => d.blocks.forEach(b => (b.exs || []).forEach(e => e && allNames.add(e.name))));
-check("bank generates 'Flat Barbell Press' (build_muscle/5d/male)", allNames.has('Flat Barbell Press'), true);
-check("bank generates 'Low Incline Barbell Press'", allNames.has('Low Incline Barbell Press'), true);
+check("bank generates 'Decline Barbell Press' (build_muscle/5d/male)", allNames.has('Decline Barbell Press'), true);
+check("bank generates 'High Incline Barbell Press'", allNames.has('High Incline Barbell Press'), true);
 
 // Replicate buildDayHTML's dayCompound1RMs registration verbatim (L2841-2854).
 // Two variants of the same pattern seeded — canonical key must take the MAX.
-const _dayWorking = { 'Flat Barbell Press': { rm: 150 }, 'Low Incline Barbell Press': { rm: 130 } };
+const _dayWorking = { 'Decline Barbell Press': { rm: 150 }, 'High Incline Barbell Press': { rm: 130 } };
 const _dayPrs = {};
 const dayCompound1RMs = {};
 prog.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
@@ -105,7 +117,7 @@ prog.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
     if (rx.test(e.name)) dayCompound1RMs[canon] = Math.max(dayCompound1RMs[canon] || 0, _rm);
   }
 })));
-check("C7: canonical 'Bench Press' = max(Flat 150, Low Incline 130)", dayCompound1RMs['Bench Press'], 150);
+check("C7: canonical 'Bench Press' = max(Decline 150, High Incline 130)", dayCompound1RMs['Bench Press'], 150);
 
 const der = getWeekTarget('Tricep Rope Pushdown', 3, 'build_muscle', null, 'male', dayCompound1RMs, 8);
 check('derived source (via ACCESSORY_ALIASES → Tricep Pushdown)', der.source, 'derived');

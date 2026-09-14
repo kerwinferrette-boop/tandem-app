@@ -1980,6 +1980,44 @@ const ONEOFF_CARDIO_GROUPS = ['full_body','glute_max'];
 const EQUIPMENT_AVAILABILITY_RANK = { barbell:0, machine:0, cable:0, dumbbell:1, band:2, bodyweight:2 };
 const equipmentAvailabilityRank = (e) => EQUIPMENT_AVAILABILITY_RANK[e.equipment] ?? 1;
 
+// ── PRIMARY-MATCH RANK — a slot should be won by an exercise that TRAINS the muscle ──
+// groupsMatch (D19, SAFETY, untouched) flattens primary + secondary into one
+// unweighted list to decide ELIGIBILITY, which is correct: a synergist match is a
+// legal match, and narrowing it would empty slots. But the comparator then had no way
+// to tell the two apart, so the next rank down — oneRmFactor — decided the slot.
+//
+// oneRmFactor is a LOAD-ESTIMATION COEFFICIENT, not a relevance signal. It answers
+// "what fraction of this implement's baseline 1RM does this lift move?", which says
+// nothing about whether the lift trains the muscle the slot asked for. Letting it
+// outrank primary-match is exactly what put a Barbell Back Squat (quad-PRIMARY,
+// glute_max only SECONDARY, oneRmFactor 1.00) into FOCUS_SLOTS.hinge's `glute_max`
+// slot while a Barbell Hip Thrust sat unchosen in the same pool. Measured: 11 of 45
+// one-off slots at full_gym were won by a synergist-only match, and every one had a
+// primary-match alternative already in its pool.
+//
+// It ranks ABOVE the equipment tiebreak for the same reason: WHICH MUSCLE IS TRAINED
+// dominates WHICH IMPLEMENT TRAINS IT. It ranks BELOW D20's recency/fresh-set ranks,
+// which are about recovery (SAFETY-adjacent) rather than relevance.
+//
+// REORDER, NEVER A FILTER. Eligibility is still 100% groupsMatch's call — a slot whose
+// pool contains only synergist matches still fills, identically to before, because
+// every candidate simply scores 1 and the rank is a no-op. Same house pattern as D20
+// and D27: soft, can never empty a pool, so D18's empty-pool gate stays safe.
+//
+// TRANSITIVE BY CONSTRUCTION. A pure per-candidate score against the SLOT's groups —
+// never a pairwise relation between the two candidates being compared. BUG-94's first
+// attempt shipped an "only fire between candidates sharing a primary tag" gate, which
+// is NOT transitive (A~B, B~C, A≁C) and makes Array.sort implementation-defined per
+// spec; it had to be reverted. Verified here by brute force over real pools, not by
+// reasoning (SC-03).
+//
+// Uses the same anchored prefix rule as D19's groupsMatch (parameters deliberately
+// named tag/grp, not a/g, so this does NOT count as a third groupsMatch copy to the
+// D18/D19/reachability source scanners that match on that exact text).
+// 0 = the candidate's own PRIMARY trains a requested group; 1 = synergist-only.
+const primaryMatchRank = (e, groups) =>
+  (e.muscleGroups?.primary || []).some(tag => groups.some(grp => tag === grp || tag.startsWith(grp + '_'))) ? 0 : 1;
+
 function getSingleDay(focus, opts = {}) {
   const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
   const slots = FOCUS_SLOTS[key];
@@ -2063,6 +2101,10 @@ function getSingleDay(focus, opts = {}) {
   // exposure the sort is unchanged from the pre-D20 comparator.
   const select = (groups, cat, used, freshGroups = []) => {
     const freshSet = freshGroups.length ? new Set(freshGroups) : null;
+    // The EFFECTIVE slot request — identical to what groupsMatch filters on below, so
+    // the primary-match rank and eligibility can never disagree about what was asked
+    // for (D20's widening is part of the request once it fires).
+    const reqGroups = freshSet ? [...groups, ...freshGroups] : groups;
     // PRIMARY tags only, deliberately — the same scope recentMuscleLoad() uses
     // (tandem.html comment ~5015). Most isolation lifts co-tag a synergist as
     // SECONDARY (e.g. every curl variant secondarily hits brachialis/
@@ -2072,7 +2114,7 @@ function getSingleDay(focus, opts = {}) {
     // functional-proof check below before this was fixed).
     const isFresh = (e) => freshSet && (e.muscleGroups.primary || []).some(a => freshSet.has(a));
     return Object.values(EXERCISE_BANK)
-      .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, freshSet ? [...groups, ...freshGroups] : groups) && !injuryBlocked(e.name) && !used.has(e.name))
+      .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, reqGroups) && !injuryBlocked(e.name) && !used.has(e.name))
       .sort((a, b) => {
         // WITHIN-token demotion first: it is the direct measure of "this exact
         // candidate trains a muscle you just trained." A fresh alternate-group
@@ -2084,6 +2126,11 @@ function getSingleDay(focus, opts = {}) {
           const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
           if (diff !== 0) return diff;
         }
+        // PRIMARY-MATCH before oneRmFactor — see primaryMatchRank's declaration.
+        // A load-estimation coefficient must not outrank "does this train the muscle
+        // the slot asked for". Reorder only: never removes a candidate.
+        const pm = primaryMatchRank(a, reqGroups) - primaryMatchRank(b, reqGroups);
+        if (pm !== 0) return pm;
         if (a.oneRmFactor != null || b.oneRmFactor != null) {
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
           if (diff !== 0) return diff;
@@ -2283,6 +2330,14 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     Object.values(EXERCISE_BANK).filter(e =>
       tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name))
       .sort((a, b) => {
+        // PRIMARY-MATCH before oneRmFactor — rule-identical to select()'s copy above,
+        // via the SHARED primaryMatchRank helper (no second copy to drift, which is
+        // the hazard D19 had to police for groupsMatch). See its declaration for the
+        // rationale: oneRmFactor is a load-estimation coefficient, not a relevance
+        // signal. Reorder only: never removes a candidate, so a synergist-only pool
+        // still fills exactly as before.
+        const pm = primaryMatchRank(a, groups) - primaryMatchRank(b, groups);
+        if (pm !== 0) return pm;
         if (a.oneRmFactor != null || b.oneRmFactor != null) {
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
           if (diff !== 0) return diff;
