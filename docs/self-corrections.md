@@ -221,3 +221,40 @@ one.
 **Enforced by** `npm run verify` itself, if and only if it is actually re-run after every edit —
 this entry exists because that discipline (already stated in CLAUDE.md's "verify by running")
 needs to explicitly include comment-only edits, which are the ones most tempting to skip.
+
+---
+
+## SC-08 — a measurement's scope must be stated next to its number, or the number overstates itself
+
+**What I wrote.** In `docs/muscle-tag-convention.md` §2, to establish the compound-vs-isolation tag
+convention, I published a conformance table ending in the sentence *"50 of 50 tricep/bicep
+secondaries conform."* Every digit of that was correct. I derived it by running the bank, not by
+reading it, so SC-03 was satisfied.
+
+**What was true.** The bank carries **303** secondary tag instances. My table covered the two
+top-level parents `tricep` and `bicep` and therefore examined 50 of them — about one in six. Worse,
+the denominator was doing rhetorical work I had not checked: only **7** of the 49 vocabulary tags
+have a sub-head at all, so a secondary like `anterior_delt` is a leaf because the vocabulary offers
+nothing finer, not because it conforms to a convention. And a whole-bank run showed **8** isolations
+carrying a bare-parent secondary, not the 3 I had named — I had missed 5 `bicep_brachii` cases
+entirely, because `bicep_brachii` is a *second-level* parent and my query only asked about
+first-level ones.
+
+**The gap.** I measured a well-chosen sample and then wrote the result as though it described the
+population. The failure is not arithmetic and not fabrication — it is that **I reported the
+numerator and denominator without reporting what the denominator was drawn from**, so a correct
+statistic read as a stronger claim than the evidence supported. This is the plausibility-first
+failure CLAUDE.md names, wearing a lab coat: a measured number feels like proof, which is exactly
+why an unstated scope is more dangerous in a measurement than in prose.
+
+> **THE RULE — SC-08.** When a document cites a count as evidence for a general rule, the same
+> sentence must say what was counted and what was excluded, and the total population must be stated
+> alongside the sample. Before publishing the number, run the query **once more against the entire
+> population** and reconcile the two — if the whole-bank answer differs from the sample's, the
+> difference is the finding. Never let a scoped measurement stand unqualified next to an
+> unscoped conclusion.
+
+**Enforced by** *judgment — not mechanically checkable.* No script can know which population a
+prose claim intends. The one mechanical aid that exists: prefer deriving such counts with a query
+that iterates the full bank and buckets, rather than one that filters to the interesting cases
+first — the full-iteration form makes the excluded bucket visible instead of invisible.
