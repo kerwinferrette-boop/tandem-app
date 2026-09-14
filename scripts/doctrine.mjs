@@ -71,7 +71,9 @@ const TIERS = {
   D4b: 'SCIENCE_DEFAULT', // training-age cadence scaling (PENDING)
   D5: 'SPLIT',            // never-on-primary = SAFETY; superset-required = SCIENCE_DEFAULT
   D6: 'SCIENCE_DEFAULT',  // goal volume MEV order
-  D6b: 'SCIENCE_DEFAULT', D7: 'SCIENCE_DEFAULT',
+  D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor (PENDING — measured gap, needs Kerwin's ruling on how to close it)
+  D6c: 'SCIENCE_DEFAULT', // within-block MEV->MRV ramp cadence (PENDING — needs numeric ruling, depends on D6b)
+  D7: 'SCIENCE_DEFAULT',
   D8: 'SPLIT',            // zero-supersets-on-strength-primaries = SAFETY; Maintenance MAV cap = SCIENCE_DEFAULT
   D9: 'SAFETY',           // one-off structural law (compound-first, tier-legal, dup-free)
   D10: 'SCIENCE_DEFAULT', // rep bands (overridable via cited principle, e.g. rep_floor)
@@ -1400,7 +1402,10 @@ if (existsSync(seedsDir)) {
 // invariant. This is what makes the F8 fix permanent rather than a one-time edit.
 try {
   const doctrineMd = readFileSync(join(root, 'DOCTRINE.md'), 'utf8');
-  const declared = [...doctrineMd.matchAll(/^\|\s*\*\*(D\d+b?)\*\*\s*\|/gm)].map(m => m[1]);
+  // [a-z]? not the earlier hardcoded 'b?' — D4b/D6b established the digit+letter
+  // sub-invariant convention, and D6c (2026-09-14) is the first ID past 'b', so the
+  // pattern must match the convention, not one letter that happened to be first.
+  const declared = [...doctrineMd.matchAll(/^\|\s*\*\*(D\d+[a-z]?)\*\*\s*\|/gm)].map(m => m[1]);
   if (declared.length === 0) fail('D16', 'could not parse the invariant table out of DOCTRINE.md');
   for (const id of declared) {
     d16Checked++;
@@ -2086,7 +2091,8 @@ let d21Checked = 0;
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
-  ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
+  ['D6b', 'Per-muscle weekly volume must meet the goal MEV floor (numbers sourced, secondary volume counts at 0.5 credit per Kerwin 2026-09-14). MEASURED against real output 2026-09-14: 90/216 checks below MEV, cleanly by day-count (3d 44/54, 4d 32/54, 5d 14/54, 6d 0/54) — needs Kerwin\'s ruling on how to close the gap (more sets/exercise, more slots, a day-count-scoped floor, or an accepted limitation) before promoting', 'needs Kerwin\'s ruling on closing the measured gap'],
+  ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b resolving first', 'needs numeric ramp cadence + D6b resolved first'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops the isolation block\'s 3rd accessory slot (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
 ];

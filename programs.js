@@ -2674,6 +2674,66 @@ function applyGoalVolume(program, goal) {
 }
 
 // ═══════════════════════════════════════════════════════
+// D6b — per-muscle weekly volume (MEV floor), doctrine D6b
+// Exercise Science Research Canonical Reference §1 (Notion
+// 399ca37f935b8172acaafc541b703726 — the project's stated single source of truth,
+// superseding the v0.5 schema draft's different Part 2 figures where they disagree,
+// per that page's own header). MEV is a closed lower bound in the source; MAV/MRV
+// are given as open-ended ranges ("20+", "15+", "18+") so only MEV is gated —
+// asserting a precise ceiling the source doesn't state would be fabrication.
+// ═══════════════════════════════════════════════════════
+const VOLUME_LANDMARKS = {
+  build_muscle: { mev: 10 }, // Hypertrophy: MEV 10 sets/muscle/wk (MAV 12-15, MRV 20+ — documented, not gated)
+  fat_burn:     { mev: 8 },  // Fat Loss: MEV 8 (MAV 10-12, MRV 15+ — documented, not gated)
+  transform:    { mev: 10 }, // Concurrent: MEV 10-12, low end taken conservatively (MAV 12-16, MRV 18+ — documented, not gated)
+};
+// The muscle groups the day templates actually target directly (both engines'
+// compound slots), derived from FOCUS_SLOTS itself rather than a second hand-typed
+// list that could drift — TEMPLATES (buildDynamicProgram's local copy) and
+// FOCUS_SLOTS encode the same day-split design (D19's own assumption), so their
+// compound-slot muscle groups are the same set.
+const MAJOR_MUSCLE_GROUP_TOKENS = [...new Set(
+  Object.values(FOCUS_SLOTS).flatMap(slots =>
+    slots.filter(s => s[2] === 'compound').flatMap(s => [s[0], s[1]].filter(Boolean)))
+)];
+// Kerwin's ruling, 2026-09-14 (BUG-105/FINDING-4), live: "I feel like secondary
+// [mover] volume should count towards the muscle's MEV. Is that muscle not worked
+// out just because it's secondary? I feel like that would be contradictory."
+// Fractional credit sourced per CLAUDE.md's external-corroboration escalation (the
+// internal sources above are silent on a specific fraction): Renaissance
+// Periodization's own published direct/indirect volume convention, corroborated
+// across multiple reputable training-volume sources — a set counts 1.0 toward its
+// PRIMARY-tagged muscle(s) and 0.5 toward each SECONDARY/synergist-tagged muscle.
+// RP's own MEV/MRV numbers are calibrated assuming this half-credit accounting, so
+// full credit would double-count and zero credit (the pre-2026-09-14 state)
+// undercounts — exactly Kerwin's objection. Scoped to compound/isolation exercises
+// (core/cardio excluded — these landmarks govern hypertrophy-target muscle volume,
+// not the app's separate Core Block treatment). Kept top-level, dependent on
+// nothing but its arguments, so scripts/doctrine.mjs's vm sandbox can call it
+// directly — ONE function, consumed by D6b's assertion AND (per "one rule, one
+// home") the Synergy-Aware Exercise Selection Epic's Phase 1 ledger, not two
+// competing implementations.
+function computeMuscleWeeklyVolume(days, bank) {
+  const byName = {};
+  for (const e of Object.values(bank || {})) if (e && e.name) byName[e.name] = e;
+  const totals = {};
+  for (const day of days || []) {
+    for (const block of day.blocks || []) {
+      if (block.cardio) continue;
+      for (const ex of block.exs || []) {
+        if (!ex || ex.isCore || ex.cardioOnly) continue;
+        const entry = byName[ex.name];
+        if (!entry) continue;
+        const sets = Number(ex.sets) || 0;
+        for (const m of entry.muscleGroups.primary || []) totals[m] = (totals[m] || 0) + sets;
+        for (const m of entry.muscleGroups.secondary || []) totals[m] = (totals[m] || 0) + sets * 0.5;
+      }
+    }
+  }
+  return totals;
+}
+
+// ═══════════════════════════════════════════════════════
 // DELOADS — Periodization spec Part B + doctrine D4
 // Every mesocycle ends in a deload (every 4-6 wk, block-final): volume cut ~50%,
 // load held. Recovery IS the stimulus that week. deloadWeeks() encodes the Part B
