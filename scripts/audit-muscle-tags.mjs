@@ -19,6 +19,11 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// The DECLARED tag set (EPIC-026 Phase 4). Shared, not re-listed: this audit
+// REPORTS drift between the bank and the declaration, and
+// scripts/muscle-vocabulary-smoke.mjs FAILS THE BUILD on the same drift. One
+// list, two consumers — a second copy here is exactly the hazard D19 polices.
+import { MUSCLE_VOCABULARY } from './lib/muscle-vocabulary.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(root, 'programs.js');
@@ -158,7 +163,12 @@ const orphans = VOCAB.filter(t => !REQUESTED.some(g => matches(t, g)));
 const json = {
   bankEntries: slugs.length,
   categories: slugs.reduce((a, s) => (a[bank[s].category] = (a[bank[s].category] || 0) + 1, a), {}),
-  vocabulary: { primary: Object.keys(PRIMARY).length, secondary: Object.keys(SECONDARY).length, union: VOCAB.length },
+  vocabulary: {
+    primary: Object.keys(PRIMARY).length, secondary: Object.keys(SECONDARY).length, union: VOCAB.length,
+    declared: MUSCLE_VOCABULARY.length,
+    undeclared: VOCAB.filter(t => !MUSCLE_VOCABULARY.includes(t)),
+    unused: MUSCLE_VOCABULARY.filter(t => !VOCAB.includes(t)),
+  },
   buckets, requested: REQUESTED.length, callSites: callSites.length,
   deadTerms: deadTerms.map(d => d.group),
   collisions: collisions.map(c => ({ group: c.group, alsoCatches: c.collisions })),
@@ -180,6 +190,12 @@ console.log(`  categories: ${Object.entries(json.categories).map(([k, v]) => `${
 
 rule('vocabulary');
 console.log(`  distinct primary ${json.vocabulary.primary} · secondary ${json.vocabulary.secondary} · union ${json.vocabulary.union}`);
+console.log(`  declared in scripts/lib/muscle-vocabulary.mjs: ${MUSCLE_VOCABULARY.length}` +
+  (json.vocabulary.undeclared.length || json.vocabulary.unused.length
+    ? ` — DRIFT: ${json.vocabulary.undeclared.length} used-but-undeclared [${json.vocabulary.undeclared.join(', ')}]` +
+      ` · ${json.vocabulary.unused.length} declared-but-unused [${json.vocabulary.unused.join(', ')}]` +
+      ` (muscle-vocabulary-smoke.mjs fails the build on this)`
+    : ' — no drift'));
 console.log('  primary terms by exercise count:');
 for (const [t, n] of Object.entries(PRIMARY).sort((a, b) => b[1] - a[1]))
   console.log(`    ${String(n).padStart(3)}  ${t.padEnd(28)} ${kindOf(t)}`);

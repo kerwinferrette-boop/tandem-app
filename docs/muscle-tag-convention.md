@@ -115,13 +115,25 @@ Zero entries have an empty `primary`. That is a hard rule with no exemptions.
 
 ## 6. What is enforced, and what is judgment
 
-Enforced by `scripts/verify.mjs` (vocabulary check) and `scripts/reachability-smoke.mjs`:
+Two gates, split so neither duplicates the other (`CLAUDE.md` "one rule, one home" — and the
+cautionary precedent is D19, which exists *because* one rule got copied into two places):
 
-- non-empty `primary` on every entry — no exemptions
-- non-empty `secondary` except the six in §5
-- every tag drawn from the exported vocabulary constant, so a typo like
-  `hamstring_bicep_femoris` fails the build instead of silently becoming an orphan
-- every entry reachable by ≥1 slot; no new orphan tags; no stale allowlist entries
+`scripts/muscle-vocabulary-smoke.mjs` owns **shape + spelling**. The declared set and the
+exemptions live in `scripts/lib/muscle-vocabulary.mjs`, exported and imported by
+`scripts/audit-muscle-tags.mjs` so the read-only audit reports the same drift the gate fails on.
+
+- **[A]** non-empty `primary` on every entry — no exemptions
+- **[B]** non-empty `secondary` except `category: 'cardio'` (§4) and the two named entries (§5)
+- **[C]** every tag drawn from `MUSCLE_VOCABULARY`, so a typo like `hamstring_bicep_femoris` fails
+  the build instead of silently becoming an orphan
+- **[D]** no stale exemption — an exempted entry that has since acquired a secondary fails
+- **[E]** no stale vocabulary — a declared tag no entry uses fails
+
+`scripts/reachability-smoke.mjs` owns **reachability**, unchanged: every entry selectable by ≥1
+slot; no new orphan tags; no stale `OPEN_GAPS` entries; D19's two `groupsMatch` copies intact.
+
+All five vocabulary rules were negative-tested by mutating the bank, confirming exit 1, and
+restoring — a gate that has only ever passed has not been shown to work.
 
 **Not mechanically checkable — judgment:** whether a given tag is anatomically *correct*, whether
 a compound-vs-isolation call is right, and whether a head bias is real. Those are exercise-science
