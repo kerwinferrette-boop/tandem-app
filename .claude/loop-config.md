@@ -313,6 +313,48 @@ wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why eve
                       stage produces are no longer gated to draft-only; Fix may execute from a
                       live Wave once it exists."
 
+batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a real, named gap:
+                      # "catalogued is not the same as prioritized." Worked example that forced
+                      # this: D6b (a doctrine invariant) was found and correctly flagged on
+                      # 2026-07-22, sat untouched for 6.5 weeks because nothing surfaced PENDING
+                      # doctrine rows as work at all (closed by pending_doctrine_sweep,
+                      # 2026-09-08) — but even AFTER pending_doctrine_sweep correctly seeded it
+                      # as EPIC-54, it sat 6 MORE days as an ordinary catalogued Untested story,
+                      # competing on equal footing with the rest of the standing backlog, and
+                      # only got built because an unrelated live bug report happened to point at
+                      # it. The generic project-goal skill's Step 3 batch order (Needs-Human-
+                      # since-unblocked > Failing P0/P1 > Untested > Uncatalogued) has no sub-
+                      # ordering WITHIN "Untested" — this section adds one, since a flat FIFO/
+                      # arbitrary order inside a backlog of 100+ rows means anything can starve
+                      # indefinitely regardless of how it was found.
+  self_generated_priority: "Within the Untested tier, a story whose Source traces to one of
+                      catalog.self_generated_sources (persona_matrix, onboarding_lifecycle_
+                      walkthrough, pending_doctrine_sweep, exercise_intake_promotion) — or an
+                      Epic that subsumes one — ranks AHEAD of ordinary tracker-sourced Untested
+                      rows, not merely alongside them. These are deterministic, objective,
+                      already-vetted structural findings (loop-config's own words: 'treat it as
+                      gate-worthy as persona_matrix's own findings') — they should never lose a
+                      priority contest to an arbitrary older Bug Log row just because that row
+                      happened to be catalogued first. This does not override
+                      still_needs_kerwin/escalation below — it only changes ORDER within what the
+                      loop is already allowed to just build."
+  staleness_escalation: "A story or Epic that appears as Untested/Planned/Scoped in 3 or more
+                      CONSECUTIVE cycle snapshots (the Goal Record's own LAST_SNAPSHOT state,
+                      already recorded every cycle — no new Notion field required) without a
+                      status change is STALE. A stale item is force-included in the next batch,
+                      on top of (not instead of) whatever safety.max_items_per_cycle would
+                      otherwise pick — the cap governs ordinary throughput, not indefinite
+                      starvation of something already known and ready. Report every stale item
+                      pulled in this way as its own line in the cycle's Goal Record entry ('stale,
+                      force-included: <story/Epic id>, sitting N cycles') so this is visible, not
+                      quietly absorbed into the ordinary batch count."
+  reporting: "A cycle that has self_generated_sources-seeded or stale work available and reports
+                      it as 0 buildable work (the same failure shape catalog.self_generated_sources
+                      already names for persona_matrix/pending_doctrine_sweep findings going
+                      unfiled) is incomplete, not honestly conservative — same standard as
+                      escalation.exhaust_before_parking below, applied to the batch-SELECTION step
+                      instead of the fix-attempt step."
+
 escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
                       # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
                       # this ("they should be your go-to anyway") and reserved himself for real
