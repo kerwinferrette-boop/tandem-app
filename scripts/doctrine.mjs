@@ -1097,9 +1097,158 @@ try {
   if (/\?\s*1\.025\s*:\s*0\.975/.test(tandemHtml)) {
     fail('D11', 'the scheduled ±2.5%/week 1RM ratchet is back — the working 1RM must be earned (running-max Epley), never a fixed weekly step');
   }
+
+  // ── D11 SCOPE (added 2026-09-14, Kerwin ruling 2026-09-13) ──────────────────────
+  // "It should also look to add to one-rep max calculations: weights lifted, etc."
+  // A measured lift binds the working 1RM regardless of WHICH session earned it. D9's
+  // exemption list is closed (D1/D4/D7) and D11 is not on it, so scoping the earned-only
+  // loop to the periodized program was a silent D11 violation: every set logged in a
+  // one-off was dropped on the floor because getSingleDay()'s day object is, by
+  // definition, not in `program`.
+  //
+  // These are text assertions, not behavioral ones, because reconcileWorking1RMs closes
+  // over module-level app state (currentDay, LS, calcRM) that this credential-free gate
+  // cannot stand up. The behavior itself was proven by extracting and RUNNING the
+  // function (CLAUDE.md "verify by running"): 225x5 in a one-off raised a stored 200 to
+  // 263, and a fatigued 95x3 left 263 untouched. What the gate defends is that the
+  // three structural properties that made that true cannot be quietly removed.
+  const rmFnMatch = tandemHtml.match(/function reconcileWorking1RMs\([\s\S]{0,4000}?\n {2}\}/);
+  if (!rmFnMatch) {
+    fail('D11', 'reconcileWorking1RMs() not found in tandem.html — the earned-only 1RM loop is the mechanism D11 names, so its absence is a violation, not a skipped check');
+  } else {
+    const rmFn = rmFnMatch[0];
+    // 1. The signature must still accept a day the caller names explicitly.
+    if (!/function reconcileWorking1RMs\(\s*sessionExs\s*,\s*program\s*,\s*explicitDay/.test(rmFn)) {
+      fail('D11', 'reconcileWorking1RMs() no longer takes an explicitDay parameter — without it a one-off session cannot bind a 1RM, since its day object is never in the periodized program (Kerwin ruling 2026-09-13)');
+    }
+    // 2. The explicit day must WIN over the currentDay lookup, not merely exist.
+    if (!/const day = explicitDay \|\|/.test(rmFn)) {
+      fail('D11', 'reconcileWorking1RMs() no longer prefers explicitDay over the currentDay program lookup — a one-off would resolve to a program day or to nothing');
+    }
+    // 3. The guard must stay ONE-SIDED. This is what makes crediting a non-periodized,
+    //    possibly-fatigued session safe: it can raise a stored max and can never lower
+    //    one. If this ever became two-sided, an "extra arm day" done tired would
+    //    DE-load the program — a D11 monotonicity violation by the same edit.
+    if (!/if \(best <= prior\) return;/.test(rmFn)) {
+      fail('D11', 'the one-sided working-1RM guard (`if (best <= prior) return;`) is gone — a fatigued session could now LOWER a measured max, which is the monotonicity D11 forbids and the reason a one-off is safe to credit at all');
+    }
+  }
+  // 4. The one-off finisher must actually make the call. Scope without a caller is the
+  //    "wired is not working" failure: the widened signature would sit unused.
+  if (!/reconcileWorking1RMs\(oneOffExs,\s*null,\s*oneOffState\.day\)/.test(tandemHtml)) {
+    fail('D11', 'finishOneOff() no longer feeds its sets to reconcileWorking1RMs() — a one-off\'s earned loads must bind the working 1RM (Kerwin ruling 2026-09-13)');
+  }
 } catch (e) {
   fail('D11', `could not verify monotonic overload: ${e.message}`);
 }
+
+// ── D9 SCOPE (ACTIVE — added 2026-09-14) — a one-off is a WORKOUT, never a program DAY ──
+//
+// Kerwin's ruling, 2026-09-13, verbatim: one-offs "should count towards streak/points/
+// volume, as it is a workout... However, as it pertains to the program itself, it should
+// not count as an extra day," and, of the overdue clock specifically, "overdue should
+// ignore one-offs."
+//
+// That is one rule with two obligations, and BOTH are load-bearing, so both are checked:
+//   (a) a one-off must not move program POSITION — the week counter, the day pointer, or
+//       the overdue gap; and
+//   (b) the test for "is this a program row?" must live in ONE function, because the two
+//       consumers that derive position from local history will otherwise disagree about
+//       which day he is on.
+//
+// This is not a hypothetical: syncFromCloud() hydrates tandem_history directly from
+// workout_sessions rows, and finishOneOff() writes a real completed row there, so a
+// one-off DOES reach the same array completedSessionCount() and getOverdueDays() read.
+// Before this change it was counted by both.
+let d9ScopeChecked = 0;
+try {
+  // Declared locally on purpose: the D11 block above scopes its own copy inside its own
+  // try, so reusing that name here would be a ReferenceError (the exact omission that
+  // failed this gate on 2026-09-13).
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+
+  // The discriminator has one home (CLAUDE.md "one rule, one home"), and it is the same
+  // string migration 0015's partial unique index predicates on, so client and database
+  // agree on what a program day is by construction rather than by coincidence.
+  if (!/const ONEOFF_SESSION_TYPE = 'oneoff';/.test(tandemHtml)) {
+    fail('D9', "the ONEOFF_SESSION_TYPE constant is gone — the one-off discriminator must have one home and must match migration 0015's partial index predicate (session_type <> 'oneoff')");
+  } else d9ScopeChecked++;
+
+  const predMatch = tandemHtml.match(/function isProgramHistoryRow\(h\) \{[\s\S]{0,300}?\n\}/);
+  if (!predMatch) {
+    fail('D9', 'isProgramHistoryRow() not found — the "does this row count as program progress?" test must exist as one named function, not be inlined per consumer');
+  } else {
+    d9ScopeChecked++;
+    // session_type is the SOLE legal discriminator. day_type must not be tested: a
+    // one-off's day_type is a body-part word ('chest') that can equal a program day key.
+    if (!/session_type !== ONEOFF_SESSION_TYPE/.test(predMatch[0])) {
+      fail('D9', 'isProgramHistoryRow() no longer discriminates on session_type !== ONEOFF_SESSION_TYPE');
+    }
+    if (/day_type/.test(predMatch[0])) {
+      fail('D9', "isProgramHistoryRow() tests day_type — a one-off's day_type is a body-part word that can collide with a program day key; session_type is the only safe discriminator");
+    }
+  }
+
+  // Both position consumers must route through that predicate. Checked per-function body
+  // rather than file-wide, because a file-wide grep would pass if only one of them used it
+  // — and one-of-two is precisely the disagreement this invariant exists to prevent.
+  for (const [fn, why] of [
+    ['completedSessionCount', 'the week counter and day queue would count a one-off as an extra program day ("it should not count as an extra day")'],
+    ['getOverdueDays', 'an extra arm day would reset the clock that says the PRESCRIBED session is late ("overdue should ignore one-offs")'],
+  ]) {
+    // Lazy to the first brace in column 0, which for a top-level function is its own
+    // closing brace. The cap is generous because both bodies carry long provenance
+    // comments — a cap that clips the body makes the match fail and reads as "function
+    // not found", which is a FALSE failure, not a safe one.
+    const m = tandemHtml.match(new RegExp(`function ${fn}\\([\\s\\S]{0,8000}?\\n\\}`));
+    if (!m) { fail('D9', `${fn}() not found in tandem.html`); continue; }
+    if (!/isProgramHistoryRow\(/.test(m[0])) {
+      fail('D9', `${fn}() does not filter through isProgramHistoryRow() — ${why} (Kerwin ruling 2026-09-13)`);
+    } else d9ScopeChecked++;
+  }
+
+  // ── the program POINTER ─────────────────────────────────────────────────────────
+  // Three sites write tandem_current_day, and they fail differently, so they are checked
+  // differently rather than by one grep count. A count is the wrong instrument here: five
+  // one-off guards exist in the file for other reasons, so "at least three guards" stays
+  // true even after the one that matters is deleted — it would report green on the exact
+  // regression it was meant to catch. Enumerating the sites and pinning the TOTAL is the
+  // honest version: a fourth site cannot appear without a human extending this list.
+  const ptrWrites = (tandemHtml.match(/LS\.set\('tandem_current_day'/g) || []).length;
+  if (ptrWrites !== 3) {
+    fail('D9', `${ptrWrites} sites write tandem_current_day; this gate knows 3 (finishSession's local advance + syncFromCloud's lastDone + the boot-time rehydrate). A new one must be reviewed for a one-off guard and enumerated here before it ships — an unguarded pointer advance is how a one-off becomes "an extra day"`);
+  } else d9ScopeChecked++;
+
+  // Site 1 — finishSession()'s advance is guard-free BY CONSTRUCTION: it steps from
+  // currentDay, reading no session row at all, so a one-off cannot reach it. What must
+  // hold instead is that the one-off finisher never advances the pointer itself. That is
+  // the whole of "it should not count as an extra day" at the local finisher.
+  const foMatch = tandemHtml.match(/async function finishOneOff\([\s\S]{0,12000}?\n\}/);
+  if (!foMatch) {
+    fail('D9', 'finishOneOff() not found in tandem.html');
+  } else if (/LS\.set\('tandem_current_day'/.test(foMatch[0])) {
+    fail('D9', 'finishOneOff() advances tandem_current_day — a one-off "should not count as an extra day" (Kerwin ruling 2026-09-13); it must credit streak/points/volume/1RM without moving the program pointer');
+  } else d9ScopeChecked++;
+
+  // Sites 2 and 3 — both pick a session row out of newest-first data and advance past it.
+  // Unguarded, a one-off does not merely over-advance: its day_type is a body-part word
+  // that matches no program key, so findIndex returns -1 and the pointer STALLS, serving
+  // the same prescribed day twice. The guard must live inside the lookup, so each window
+  // is matched from the lookup itself rather than file-wide.
+  for (const [label, re, guard] of [
+    ['syncFromCloud()\'s lastDone', /const lastDone = sessions\?\.find\([\s\S]{0,300}?\);/, /session_type !== ONEOFF_SESSION_TYPE/],
+    ['the boot-time day rehydrate', /\.select\('session_date,day_type'\)[\s\S]{0,900}?\.maybeSingle\(\);/, /\.neq\('session_type', ONEOFF_SESSION_TYPE\)/],
+  ]) {
+    const m = tandemHtml.match(re);
+    if (!m) { fail('D9', `${label} day-pointer lookup not found — it cannot be confirmed one-off-guarded`); continue; }
+    if (!guard.test(m[0])) {
+      fail('D9', `${label} advances the program pointer from an UNFILTERED session lookup — a one-off can win it, and because its day_type matches no program key the pointer stalls and the same prescribed day is served twice (Kerwin ruling 2026-09-13)`);
+    } else d9ScopeChecked++;
+  }
+} catch (e) {
+  fail('D9', `could not verify one-off program-position scope: ${e.message}`);
+}
+console.log(`  D9 one-off scope: ${d9ScopeChecked} structural guards verified`);
 
 // ── D12 (ACTIVE) — Multi-formula 1RM estimation, monotonic in reps ─────────────
 // A single linear formula (Epley) is accurate only to ~12 reps; the estimate must

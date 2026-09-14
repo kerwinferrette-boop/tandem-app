@@ -258,3 +258,96 @@ specifically to measure a real person's real training); nothing about it general
 **Enforced by** judgment — not mechanically checkable today. `.claude/loop-config.md`'s
 `live_test_account_verification` section is amended in this same change to state this as the
 default path, not a fallback, so the next session reads it as instruction rather than trivia.
+
+---
+
+## SC-09 — I inferred permanence from a flag's NAME instead of reading its writer
+
+**What I believed.** That letting a one-off session seed the 1RM calibration was dangerous because
+it would be *irreversible* — a weak or fatigued one-off would lock in a lowball starting max. I
+reported this to Kerwin as a genuine open risk, and it was a reason I listed for keeping one-offs
+out of the earned-only feedback loop.
+
+**What was true.** It is fully reversible, and nothing in the code suggested otherwise. Kerwin
+answered in one line: *"1rm should be ever changing & progressing, so not sure what you're saying
+here."* He was right. Two facts settle it, both read directly, then confirmed by running the
+extracted function (a 225×5 one-off raised a stored 200 to 263; a later 95×3 left 263 untouched):
+
+- `reconcileWorking1RMs` (tandem.html) is a **running max** — `const prior = working[ex.name]?.rm ??
+  prs[ex.name] ?? 0; if (best <= prior) return;` — and it fires on *every* finished session. A low
+  stored number is raised by the next session that beats it. There is no lock.
+- `computeCalibration1RMs`'s `calibration_complete` gate only decides whether the **initial seed**
+  re-runs. It has no bearing on later updates, and it never freezes the value it seeded.
+
+So the "irreversible" framing was not a misjudged risk — it was a nonexistent one, and asserting it
+argued against a change the doctrine actually required (D9's exemption list is D1/D4/D7 and does not
+include D11).
+
+**The gap.** I read the identifier `calibration_complete` and let the word *complete* stand in for
+the behavior, without opening the code that writes the value the flag guards. A name is a claim by
+its author; it is not evidence. This is the same failure shape as CLAUDE.md's plausibility-first
+warning, aimed at a variable name instead of at exercise science — and it is worse than a silent
+wrong guess, because I escalated it to Kerwin as a finding, spending his attention on a fiction.
+
+> **THE RULE — SC-09.** Before asserting that a stored value is permanent, irreversible, locked,
+> frozen, or one-shot, find and read **every writer of that value** and quote the guard that makes
+> it so. If the only basis for the claim is an identifier containing `complete`, `final`, `locked`,
+> `once`, `init`, or `calibrated`, the claim is unverified — say "I have not checked what updates
+> this" instead. And never escalate a permanence claim to Kerwin without the writer's source line
+> in hand.
+
+**Enforced by** judgment for the general rule — not mechanically checkable. This specific instance
+now has a structural backstop: the D11 scope tripwires added in the same change
+(`scripts/doctrine.mjs`, D11 block) fail the build if `reconcileWorking1RMs` loses its `explicitDay`
+parameter, stops preferring it over the `currentDay` lookup, or loses the one-sided
+`if (best <= prior) return;` guard. Each of those three was proven to fail the gate by deliberate
+regression. The gate now asserts the very running-max behavior I had talked myself out of believing.
+
+---
+
+## SC-10 — I repeated SC-01 in the session that was writing SC-09
+
+**What I believed.** That after a context compaction I could resume building from the repository
+state described in my own summary, since the summary was written from a session that had checked.
+
+**What was true.** `HEAD` was **17 commits behind `origin/main`**. I wrote roughly 600 lines on that
+stale base. Among what had already landed: `09641d5` shipped the one-off Finish button and its
+`workout_sessions` row + sets insert, the `.neq('session_type','oneoff')` filters on both open-row
+lookups, and a `migrations/0015_epic036_oneoff_session_coexistence.sql` — so my parallel
+`migrations/0015_epic036_oneoff_session_scope.sql` was a *second file claiming the same number*, and
+EPIC-16's nutrition UI had shipped as `modal-journal`, making my `modal-nutrition` a duplicate too.
+`scripts/snapshots/program-snapshot.json` had also moved by 2522 lines under me.
+
+It then happened **twice more inside the same session, in this very file.** My entry above was
+written as SC-07; upstream had already shipped a different SC-07 (the regex-gate one), so it became
+SC-08. I re-fetched before committing and found **4 more commits**, one of which had shipped its own
+SC-08 — so it became SC-09 and this entry became SC-10. An append-only ledger keyed by a hand-chosen
+number is the most sensitive possible detector of a stale base: every collision is a commit I did
+not know about. Three collisions in one session is not bad luck, it is a measurement of how far
+behind I was working, and the only reason the last one was caught before the push is that I ran the
+fetch SC-01 already required.
+
+**The gap.** SC-01 names the trigger as "session start" and "before a long push," and a compaction
+is neither of those by its own wording — so I read my summary as the session-start check that had
+already happened. The mechanism is precise: **a compaction produces a document that reads like live
+state, and I had no step that re-derived state after one.** `scripts/preflight.mjs` exists and would
+have caught this in one command; I never ran it, because nothing in my resume path called for it.
+This is SC-05's failure (a snapshot read as present tense) applied to my own summary, which is the
+one status document I am least likely to doubt.
+
+> **THE RULE — SC-10.** **A context compaction is a session start.** The first tool call after
+> resuming from a summary is `node scripts/preflight.mjs` (or `git fetch origin main` plus a
+> behind-count) — before reading a file, before editing a line, before believing any claim in the
+> summary about what exists, what is unfinished, or what is new. Treat the summary as evidence about
+> a past moment (SC-05), never as the repository. **Re-fetch again immediately before the commit**,
+> and specifically re-check the next free number in any append-only ledger (`docs/self-corrections.md`,
+> `migrations/NNNN_*.sql`, the D-invariant table) at that moment rather than reusing the number chosen
+> when the work started — a collision there is not a formatting nit, it is proof the base moved. And
+> when work does turn out to be duplicated, commit it to a named branch before resetting, so the
+> assessment of what was genuinely new can be made from a diff rather than from memory.
+
+**Enforced by** `scripts/preflight.mjs` — the same guard SC-01 already named — but *only* if it is
+actually invoked on resume, which is judgment. Honest statement of the limit: nothing in the harness
+runs preflight automatically after a compaction, so this rule is a habit with a tool behind it, not
+a gate. What made the cost recoverable this time was branching rather than discarding
+(`claude/epic036-ruling-stale-base`), and that part is worth keeping regardless.

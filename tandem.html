@@ -2095,6 +2095,15 @@ let currentDay = ''; // active day key
 let currentWeek = 1;
 const S = { restTimers:{}, swTimers:{}, swRun:{}, swSec:{}, logged:{}, sessionSets:{} };
 
+// The discriminator that separates a one-off ("Build Me a Workout") session from a
+// PROGRAM session, everywhere. It is the same string migration 0015's partial unique
+// index workout_sessions_user_date_program_key predicates on
+// (`where session_type <> 'oneoff'`), so the client and the database agree on what a
+// program day is by construction rather than by coincidence. Declared here, once,
+// because five separate paths now test it and a literal that merely happens to match
+// today is the silo CLAUDE.md's "one rule, one home" is about.
+const ONEOFF_SESSION_TYPE = 'oneoff';
+
 
 // ═══════════════════════════════════════════════════════
 // PROGRESSIVE OVERLOAD ENGINE
@@ -2400,9 +2409,18 @@ async function persistWeekTargets(names) {
 // instead of clamped. The stored all-time PR is a running max and is never lowered.
 // Recomputes week_targets for any exercise whose 1RM moved. Skips core/timed work
 // and cardio.
-function reconcileWorking1RMs(sessionExs, program) {
+//
+// `explicitDay` (EPIC-036, Kerwin ruling 2026-09-13 — "it should also look to add to
+// one-rep max calculations: weights lifted, etc."): a one-off's day object is built by
+// getSingleDay() and by definition is NOT in `program`, so the `currentDay` lookup below
+// finds nothing and every real set logged in a one-off was silently dropped on the floor.
+// D9's exemption list is closed — D1/D4/D7 only — and D11 is not on it, so a measured
+// lift binds regardless of which session earned it. Fatigue is not a reason to exclude
+// one: the guard below is one-sided (`best <= prior` returns), so a tired one-off can
+// only fail to raise the number, never lower it.
+function reconcileWorking1RMs(sessionExs, program, explicitDay = null) {
   if (!sessionExs || !Object.keys(sessionExs).length) return;
-  const day = (program || []).find(d => d.key === currentDay);
+  const day = explicitDay || (program || []).find(d => d.key === currentDay);
   if (!day) return;
   const prs = LS.get('tandem_prs') || {};
   const working = LS.get('tandem_working1rm') || {};
@@ -5213,7 +5231,7 @@ function skipAhead() {
           .eq('user_id', currentUser.id)
           .eq('session_date', today)
           .eq('completed', false)
-          .neq('session_type', 'oneoff')
+          .neq('session_type', ONEOFF_SESSION_TYPE)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -5260,6 +5278,54 @@ function reorderWeek() {
   renderTracker();
   showToast('Moved to the back of this week — nothing lost');
   if (typeof syncToCloud === 'function') syncToCloud();
+}
+
+// The scoring rule has ONE owner (CLAUDE.md, "one rule, one home"): 10 points for a
+// completed session + 5 per PR, with the streak advancing only across consecutive
+// calendar days. Two finishers call it — the program day's finishSession() and, per
+// Kerwin's ruling of 2026-09-13 ("one-offs should count towards streak/points/volume,
+// as it is a workout"), finishOneOff(). It was inlined in finishSession until that
+// ruling; a second copy inside the one-off path is exactly the silo that drifts.
+// Returns the streak to display on the completion card.
+async function creditSessionToStreaks(prCount, volume, todayDate) {
+  const sessionPoints = 10 + (prCount || 0) * 5;
+  const { data: existing } = await sb.from('streaks')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+  if (!existing) {
+    const { error: sErr } = await sb.from('streaks').insert({
+      user_id: currentUser.id,
+      current_streak_days: 1,
+      longest_streak_days: 1,
+      total_sessions: 1,
+      total_prs: prCount || 0,
+      total_volume_lbs: volume,
+      weekly_points: sessionPoints,
+      last_session_date: todayDate,
+      updated_at: new Date().toISOString()
+    });
+    if (sErr) throw sErr;
+    return 1;
+  }
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
+  const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
+  const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
+  const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
+  const { error: sErr } = await sb.from('streaks').update({
+    current_streak_days: newStreak,
+    longest_streak_days: newLongest,
+    total_sessions: (existing.total_sessions || 0) + 1,
+    total_prs: (existing.total_prs || 0) + (prCount || 0),
+    total_volume_lbs: (existing.total_volume_lbs || 0) + volume,
+    weekly_points: (existing.weekly_points || 0) + sessionPoints,
+    last_session_date: todayDate,
+    updated_at: new Date().toISOString()
+  }).eq('user_id', currentUser.id);
+  if (sErr) throw sErr;
+  return newStreak;
 }
 
 function finishSession() {
@@ -5328,7 +5394,7 @@ function finishSession() {
             .eq('user_id', currentUser.id)
             .eq('session_date', localDateStr())
             .eq('completed', false)
-            .neq('session_type', 'oneoff')
+            .neq('session_type', ONEOFF_SESSION_TYPE)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -5451,47 +5517,9 @@ function finishSession() {
           .eq('session_id', resolvedId)
           .eq('is_pr', true);
 
-        // 4. Upsert streaks — 10 pts/session + 5 pts/PR
-        const sessionPoints = 10 + (prCount || 0) * 5;
-        const { data: existing } = await sb.from('streaks')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
-        let finalStreak = 1; // EPIC-13 Step 4/Step 3: fed into the completion summary card below
-
-        if (!existing) {
-          const { error: sErr } = await sb.from('streaks').insert({
-            user_id: currentUser.id,
-            current_streak_days: 1,
-            longest_streak_days: 1,
-            total_sessions: 1,
-            total_prs: prCount || 0,
-            total_volume_lbs: totalVolume,
-            weekly_points: sessionPoints,
-            last_session_date: todayDate,
-            updated_at: new Date().toISOString()
-          });
-          if (sErr) throw sErr;
-        } else {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
-          const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
-          const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
-          const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
-          const { error: sErr } = await sb.from('streaks').update({
-            current_streak_days: newStreak,
-            longest_streak_days: newLongest,
-            total_sessions: (existing.total_sessions || 0) + 1,
-            total_prs: (existing.total_prs || 0) + (prCount || 0),
-            total_volume_lbs: (existing.total_volume_lbs || 0) + totalVolume,
-            weekly_points: (existing.weekly_points || 0) + sessionPoints,
-            last_session_date: todayDate,
-            updated_at: new Date().toISOString()
-          }).eq('user_id', currentUser.id);
-          if (sErr) throw sErr;
-          finalStreak = newStreak;
-        }
+        // 4. Upsert streaks — 10 pts/session + 5 pts/PR (creditSessionToStreaks owns it)
+        // EPIC-13 Step 4/Step 3: fed into the completion summary card below.
+        const finalStreak = await creditSessionToStreaks(prCount || 0, totalVolume, todayDate);
 
         // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
         try {
@@ -6022,7 +6050,12 @@ let _oneoffSets = null; // recent-sets read, cached for the life of the open mod
 // generated day only and is never written back to cfg.goal — a one-off must not
 // mutate the periodized program or the onboarding profile (the same "writes
 // nothing" rule the block comment above states for the day itself).
-const oneOffState = { goal: null, focus: null };
+// `day` is the getSingleDay() object this wizard last rendered. It is held because
+// finishOneOff() must hand it to reconcileWorking1RMs(): a one-off's exercises are not
+// in the periodized program, so without the day object the 1RM loop has no way to map a
+// logged set back to an exercise name (Kerwin ruling 2026-09-13 — one-offs "should also
+// look to add to one-rep max calculations"). Still transient: cleared with the rest.
+const oneOffState = { goal: null, focus: null, day: null };
 
 // Goal key for RECOVERY_PARAMS, PHASES and the goal-shaped opts below. The wizard's
 // pick wins; with no pick (or a stale/unknown one) this falls back to exactly the
@@ -6083,6 +6116,7 @@ function oneOffBack() {
   if (document.getElementById('oneoffDay').innerHTML) { showOneOffStep(2); return; }
   oneOffState.goal = null;
   oneOffState.focus = null;
+  oneOffState.day = null;
   document.querySelectorAll('#oneoffGoalRow .oneoff-card, #oneoffFocusRow .oneoff-card')
     .forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   showOneOffStep(1);
@@ -6180,6 +6214,7 @@ async function openOneOff() {
   openModal('oneoff');
   oneOffState.goal = null;
   oneOffState.focus = null;
+  oneOffState.day = null;
   _oneoffSets = null;
   const finishBtn = document.getElementById('oneoffFinishBtn');
   if (finishBtn) finishBtn.style.display = 'none';
@@ -6243,7 +6278,8 @@ function renderOneOff(focus) {
     cardio: goalKey === 'fat_burn',
   });
   const host = document.getElementById('oneoffDay');
-  if (!day) { host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
+  if (!day) { oneOffState.day = null; host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
+  oneOffState.day = day; // finishOneOff() hands this to reconcileWorking1RMs
   // buildDayHTML needs a phase — it drives the rep display through effectiveReps().
   // Use the user's CURRENT phase at the PICKED goal, the same
   // getPhase(currentWeek, goal, weeks) every other call site uses. A one-off is exempt
@@ -6282,7 +6318,7 @@ async function finishOneOff() {
       session_date: localDateStr(), // BUG-018/027: local day, not UTC
       day_type: oneOffState.focus || 'oneoff',
       program_goal: oneOffGoalKey(),
-      session_type: 'oneoff', // the whole point of migrations/0015's partial index
+      session_type: ONEOFF_SESSION_TYPE, // the whole point of migrations/0015's partial index
       completed: true,
       total_volume_lbs: Math.round(totalVolume),
     }).select('id').single();
@@ -6300,9 +6336,70 @@ async function finishOneOff() {
     const { error: setsErr } = await sb.from('sets').insert(rows);
     if (setsErr) throw setsErr;
 
+    // ── Kerwin's ruling, 2026-09-13, verbatim: "one-offs should count towards
+    // streak/points/volume, as it is a workout, and it should also look to add to
+    // one-rep max calculations: weights lifted, etc." Everything below is that half of
+    // the ruling. The OTHER half — "as it pertains to the program itself, it should not
+    // count as an extra day" — is why nothing here touches tandem_current_day, the week
+    // counter, or the overdue clock (see isProgramHistoryRow()).
+    //
+    // A one-off's earned loads bind the working 1RM. `oneOffState.day` is passed
+    // explicitly because these exercises are NOT in the periodized program, so
+    // reconcileWorking1RMs' currentDay lookup would find nothing and drop every set.
+    // This is a measurement, not a schedule (D11), and the function only ever raises a
+    // stored max — a fatigued one-off cannot lower anything.
+    const oneOffExs = {};
+    oneOffIds.forEach(id => { oneOffExs[id] = sessionSetsMap[id] || []; });
+    try { reconcileWorking1RMs(oneOffExs, null, oneOffState.day); }
+    catch (rmErr) { console.warn('One-off 1RM reconcile skipped:', rmErr); }
+
+    // PRs are set by the sets_apply_1rm_and_pr() trigger on insert, so they are read
+    // back rather than computed here — the DB is the one that decided.
+    const { count: prCount } = await sb.from('sets')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id)
+      .eq('is_pr', true);
+
+    // Streak, points and cumulative volume, through the one owner of that rule.
+    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), localDateStr()); }
+    catch (stErr) { console.warn('One-off streak credit failed:', stErr); }
+
+    // The W1D1 calibration seed is offered here too: it is idempotent (its own
+    // calibration_complete guard), and a one-off may legitimately be the first session
+    // that produces a measured max. Nothing is locked in — reconcileWorking1RMs above
+    // is a running max that raises it from any later session (docs/self-corrections.md
+    // SC-08).
+    try { await computeCalibration1RMs(session.id, currentUser.id); }
+    catch (calErr) { console.warn('Calibration 1RM write skipped:', calErr); }
+
+    // Local history, so the workout is visible in the History modal like any other —
+    // it IS a workout. It carries session_type explicitly, which is what keeps it out of
+    // the program's position math (isProgramHistoryRow) while still being listed.
+    const hist = LS.get('tandem_history') || [];
+    hist.unshift({
+      id: Date.now(),
+      date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      session_date: localDateStr(),
+      week: currentWeek,
+      goal: oneOffGoalKey(),
+      day: oneOffState.focus || ONEOFF_SESSION_TYPE,
+      session_type: ONEOFF_SESSION_TYPE,
+      completed: true,
+      exercises: oneOffExs
+    });
+    if (hist.length > 100) hist.pop();
+    LS.set('tandem_history', hist);
+
     oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
-    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved`);
+    const pts = 10 + (prCount || 0) * 5;
+    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts`);
     closeModal('oneoff');
+    // The scoreboard on screen is now stale by exactly this session's points and volume.
+    // loadDashboard() is the one path that re-reads them from the cloud (showView does the
+    // same call), so without it the credit above is invisible until the next navigation —
+    // "wired is not working" if the user cannot see it.
+    if (typeof loadDashboard === 'function') loadDashboard();
+
   } catch (e) {
     console.error('finishOneOff failed:', e);
     showToast('Could not save — try again');
@@ -6523,6 +6620,30 @@ function getWeekSchedule() {
 // slot does not. If he wants a missed day to be picked up rather than passed over, that
 // is a second change to the day cadence and it contradicts a ruling he made himself,
 // so it is surfaced for a decision instead of being silently overridden here.
+// ── isProgramHistoryRow() — the one home for "does this row count as program progress?" ──
+//
+// Kerwin's ruling, 2026-09-13: a one-off "should not count as an extra day" as it pertains
+// to the program, and, of overdue specifically, "overdue should ignore one-offs". Both
+// consumers below derive PROGRAM POSITION from local history — the week counter, the day
+// queue, and the overdue gap — so both must apply the same test, from the same function,
+// or they will disagree about where he is.
+//
+// This is not hypothetical bookkeeping: syncFromCloud() hydrates tandem_history straight
+// from workout_sessions rows, and finishOneOff() writes a real completed row there, so a
+// one-off DOES arrive in local history carrying session_type = 'oneoff'.
+//
+// session_type is the sole discriminator, matching the cloud (migration 0015's partial
+// unique index workout_sessions_user_date_program_key). `day_type` is deliberately NOT
+// tested: a one-off's day_type is a body-part word like 'chest', which can equal a
+// program day key.
+//
+// A row written before 2026-09-13 carries no session_type at all. Those are program rows
+// by construction — the one-off path could not reach history before this change — so
+// `undefined` must count, and the `!==` comparison gives exactly that.
+function isProgramHistoryRow(h) {
+  return !!h && h.session_type !== ONEOFF_SESSION_TYPE;
+}
+
 // Completed sessions on/after the program start. The single counter both the week
 // and the day-queue derive from, so they can never disagree about where he is.
 // A session the user did not finish is not volume and does not advance anything —
@@ -6533,6 +6654,7 @@ function completedSessionCount() {
   let done = 0;
   for (const h of hist) {
     if (h.completed === false) continue;
+    if (!isProgramHistoryRow(h)) continue; // a one-off is a workout, not a program day
     const raw = h.session_date || h.date;
     if (!raw) continue;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -6626,6 +6748,11 @@ function getOverdueDays() {
   let last = null;
   hist.forEach(h => {
     if (h.completed === false) return; // cloud-hydrated incomplete sessions don't count
+    // Kerwin, 2026-09-13, verbatim: "overdue should ignore one-offs." An extra arm day is
+    // a workout, but it is not the prescribed session — so it must not reset the clock
+    // that says the prescribed session is late. Same predicate completedSessionCount()
+    // applies, from the same function, so the two cannot disagree.
+    if (!isProgramHistoryRow(h)) return;
     const raw = h.session_date || h.date;
     if (!raw) return;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -6724,7 +6851,14 @@ async function syncFromCloud() {
       LS.set('tandem_lastsets', ls);
     }
     // Advance the day pointer past the last completed session
-    const lastDone = sessions?.find(s => s.completed && s.session_date);
+    // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13: a
+    // one-off "should not count as an extra day"). The filter is not cosmetic: `sessions`
+    // is newest-first, so a one-off finished after today's program day would win this
+    // find(), and its day_type is a body-part word ('chest') that matches no program key —
+    // so idx === -1 and the pointer would never advance at all. The one-off would shadow
+    // the real session and the same workout would be served again tomorrow.
+    const lastDone = sessions?.find(s => s.completed && s.session_date
+      && s.session_type !== ONEOFF_SESSION_TYPE);
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
@@ -7361,6 +7495,11 @@ function refreshAvatarPreview(){
           .select('session_date,day_type')
           .eq('user_id', currentUser.id)
           .eq('completed', true)
+          // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13).
+          // Without this, a one-off takes the single row limit(1) returns, its day_type
+          // ('chest') matches no program key, so idx === -1 and the pointer stalls — the
+          // last real day gets served twice. Same guard as syncFromCloud()'s lastDone.
+          .neq('session_type', ONEOFF_SESSION_TYPE)
           .order('session_date', { ascending: false })
           .limit(1)
           .maybeSingle();
