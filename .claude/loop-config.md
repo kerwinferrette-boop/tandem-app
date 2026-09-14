@@ -362,12 +362,54 @@ batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a r
                       in the cycle's Goal Record entry ('stale, force-included: <story/Epic id>,
                       created <date>, N days old') so this is visible, not quietly absorbed into
                       the ordinary batch count."
-  reporting: "A cycle that has self_generated_sources-seeded or stale work available and reports
-                      it as 0 buildable work (the same failure shape catalog.self_generated_sources
-                      already names for persona_matrix/pending_doctrine_sweep findings going
-                      unfiled) is incomplete, not honestly conservative — same standard as
-                      escalation.exhaust_before_parking below, applied to the batch-SELECTION step
-                      instead of the fix-attempt step."
+  unblocked_dependency_recheck: "Added 2026-09-14, per Kerwin, in-session ('fold it — I'm trying
+                      to tighten up this loop as much as I can to push real work'). Worked example
+                      that forced this: EPIC-18's story was correctly investigated (Cycle 79,
+                      2026-09-08), correctly found blocked on a real prerequisite (BUG-107 — the
+                      equipment-tier selector couldn't express 'home', which would have broken if
+                      EPIC-18 shipped as scoped), and the blocker got filed and RESOLVED (commit
+                      4943094) — but nothing ever re-checked EPIC-18 afterward. The blocker
+                      cleared; the dependent story just sat at its old status. A real prerequisite
+                      being fixed is exactly the moment a blocked item should come back into play,
+                      and nothing was watching for that moment.
+                      TESTED, not just asserted, against this exact case before writing the rule
+                      (per SC-08/the staleness_escalation correction above — verify the mechanism
+                      against real data before shipping it as a rule): the first design considered
+                      was 'when a bug resolves, walk its Linked User Story relation for stories
+                      still open.' Checked against BUG-107 and it does NOT work — BUG-107's own
+                      Linked User Story relation points to its OWN auto-generated story, not to
+                      EPIC-18's story at all. The only connection between them is TEXT: EPIC-18's
+                      story cites BUG-107's page id in its own Evidence field, and BUG-107's
+                      content separately says 'this also blocks EPIC-18 Slice 1.' A structured-
+                      relation walk would have found nothing and looked like it worked.
+                      Rule that actually matches the data: when a Bug & QA Log row transitions to
+                      Resolved, run notion-search for that bug's own ID string (e.g. 'BUG-107')
+                      across the workspace. For each OTHER page the search surfaces whose own
+                      Status is not Resolved/Shipped, open it and check whether its content
+                      references being blocked/parked/gated on this bug (the kind of citation
+                      EPIC-18's Evidence field carries). Anything that matches gets re-evaluated
+                      in the current cycle — re-run its story's Test Assertion for real, don't
+                      just flip its status on the strength of the blocker being gone — same
+                      priority tier as self_generated_priority above (ahead of ordinary Untested
+                      rows), since a cleared, real dependency is exactly the kind of deterministic
+                      signal that source already treats as gate-worthy.
+                      Known limit, stated honestly rather than glossed over: this is a text-search
+                      heuristic over free-form Evidence/content fields, not a structured
+                      dependency graph — it will miss a blocking relationship that was never
+                      written down as a citable bug ID, and could theoretically false-match a
+                      page that mentions a bug ID for an unrelated reason (re-check the actual
+                      language, not just the ID's presence, before treating a hit as real). The
+                      durable fix is a real 'Blocked By' relation field on both databases — that
+                      is a schema change (a structural decision, not something this loop makes
+                      unilaterally per project-goal's own guardrail) and should be proposed to
+                      Kerwin directly rather than added silently the next time this heuristic
+                      catches a real case, as evidence for why the field would pay for itself."
+  reporting: "A cycle that has self_generated_sources-seeded, stale, or unblocked-dependency work
+                      available and reports it as 0 buildable work (the same failure shape
+                      catalog.self_generated_sources already names for persona_matrix/pending_
+                      doctrine_sweep findings going unfiled) is incomplete, not honestly
+                      conservative — same standard as escalation.exhaust_before_parking below,
+                      applied to the batch-SELECTION step instead of the fix-attempt step."
 
 escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
                       # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
