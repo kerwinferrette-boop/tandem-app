@@ -1091,29 +1091,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <div class="ob-card-title">Training Preferences</div>
         <div class="ob-card-sub">This shapes how your coach programs and adapts your workouts daily.</div>
 
-        <!-- Equipment -->
-        <div class="ob-section">
-          <span class="ob-label">Equipment Access</span>
-          <div class="ob-toggle-row two">
-            <div class="ob-toggle" onclick="selectEquipment('full_gym',this)">
-              <div class="ob-toggle-icon" data-icon="dumbbell"></div>
-              <div class="ob-toggle-label">Full Gym</div>
-            </div>
-            <div class="ob-toggle" onclick="selectEquipment('barbell_rack',this)">
-              <div class="ob-toggle-icon" data-icon="cog"></div>
-              <div class="ob-toggle-label">Barbell + Rack</div>
-            </div>
-            <div class="ob-toggle" onclick="selectEquipment('home_dumbbells',this)">
-              <div class="ob-toggle-icon" data-icon="dumbbell"></div>
-              <div class="ob-toggle-label">Home Dumbbells</div>
-            </div>
-            <div class="ob-toggle" onclick="selectEquipment('bodyweight',this)">
-              <div class="ob-toggle-icon" data-icon="activity"></div>
-              <div class="ob-toggle-label">Bodyweight</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Muscle Emphasis -->
         <div class="ob-section">
           <span class="ob-label">Muscle Emphasis</span>
@@ -2622,12 +2599,39 @@ const CFG_EQ_TO_BANK = {
   full_gym:'full_gym', barbell_rack:'full_gym',
   home_dumbbells:'hotel_gym', bodyweight:'home'
 };
+// EPIC-18 Slice 1 / BUG-107 follow-up (2026-09-14): BUG-107 fixed the selector's
+// VOCABULARY gap (it can now express every bank tier CFG_EQ_TO_BANK can). It left
+// a second gap open, named in its own writeup: the selector only ever wrote
+// sessionStorage, so a user's choice never survived a closed tab, and cfg.equipment
+// (the only DURABLE source) was reachable exclusively through the onboarding
+// question this slice removes. This table is what actually closes that gap — the
+// selector's own choice now also persists through the SAME cfg.equipment/
+// users.equipment path the onboarding question used, via applySetupSelection()
+// below. Every mapping here resolves to the identical bank tier as EQ_TIER_TO_BANK
+// (verified: EQ_TIER_TO_BANK[t] === CFG_EQ_TO_BANK[EQ_TIER_TO_CFG[t]] for all 6
+// keys) — this durability path can never disagree with the live-session path.
+const EQ_TIER_TO_CFG = {
+  full_gym:'full_gym', standard_gym:'full_gym',
+  hotel_full:'home_dumbbells', hotel_small:'home_dumbbells', dumbbells:'home_dumbbells',
+  bodyweight:'bodyweight'
+};
 // Source priority: live selector (sessionStorage.eq_tier) → onboarding cfg → full_gym.
 function resolveEquipmentTier() {
   const sess = sessionStorage.getItem('eq_tier');
   if (sess && EQ_TIER_TO_BANK[sess]) return EQ_TIER_TO_BANK[sess];
   if (cfg.equipment && CFG_EQ_TO_BANK[cfg.equipment]) return CFG_EQ_TO_BANK[cfg.equipment];
   return 'full_gym';
+}
+// Best-effort reverse of EQ_TIER_TO_CFG, for display only: which selector
+// BUTTON to show active when sessionStorage.eq_tier is empty (fresh session)
+// but cfg.equipment carries a durable choice. Lossy (several selector tiers
+// collapse to the same cfg.equipment value, e.g. hotel_full/hotel_small/
+// dumbbells all → 'home_dumbbells') — picks the first match, which is fine
+// since this only drives which button LOOKS active, never which exercises
+// get selected (that's resolveEquipmentTier(), unaffected by this ambiguity).
+function selectorTierFromCfg() {
+  if (!cfg.equipment) return null;
+  return Object.keys(EQ_TIER_TO_CFG).find(k => EQ_TIER_TO_CFG[k] === cfg.equipment) || null;
 }
 // Dumbbell weight cap for hotel/small-DB tiers (0/NaN = uncapped).
 function resolveMaxDb() {
@@ -3281,6 +3285,21 @@ function applySetupSelection() {
   const maxDb = dbInput ? parseInt(dbInput.value) || 0 : 0;
   sessionStorage.setItem('eq_tier', tier);
   sessionStorage.setItem('eq_max_db', maxDb);
+  // EPIC-18 Slice 1 / BUG-107 follow-up: persist through the SAME durable path
+  // cfg.equipment/users.equipment always used (see EQ_TIER_TO_CFG above) — the
+  // onboarding equipment question is gone, so this is now the only place that
+  // choice gets saved past a closed tab.
+  if (typeof cfg === 'object' && cfg) {
+    cfg.equipment = EQ_TIER_TO_CFG[tier] || null;
+    // Write local FIRST so the choice survives a reload even if the cloud
+    // round-trip is slow, offline, or the tab closes before it resolves —
+    // every other cfg-mutation call site in this file does the same
+    // (LS.set('tandem_cfg', cfg) at onboarding build, syncFromCloud, etc.);
+    // this was the one that skipped it, which is what let a fresh session
+    // silently revert to Full Gym.
+    LS.set('tandem_cfg', cfg);
+    if (typeof syncToCloud === 'function') syncToCloud();
+  }
   document.getElementById('setupStatus').textContent = EQ_LABELS[tier] || tier;
   document.getElementById('eqActiveLabel').textContent = tier === 'full_gym'
     ? '' : `Active: ${EQ_LABELS[tier]}${maxDb ? ` · ${maxDb} lbs max` : ''}`;
@@ -3319,7 +3338,6 @@ let selectedGoal = null;
 let selectedDays = null;
 let selectedSex = null;
 let selectedExperience = null;
-let selectedEquipment = null;
 let selectedEmphasis = 'balanced';
 let selectedDuration = 60;
 let selectedWorkoutTime = null;
@@ -3427,7 +3445,7 @@ function obCanAdvance() {
       // FIX BUG 3: require explicit day selection — selectedDays init is 4 but we now init it null
       return wks >= 4 && wks <= 24 && !!selectedDays;
     }
-    case 3: return !!selectedEquipment && !!selectedWorkoutTime;
+    case 3: return !!selectedWorkoutTime;
     default: return true;
   }
 }
@@ -3463,16 +3481,6 @@ function selectSex(sex, el) {
 function selectExperience(exp, el) {
   selectedExperience = exp;
   document.querySelectorAll('.ob-toggle[onclick*="selectExperience"]').forEach(t => t.classList.remove('selected'));
-  el.classList.add('selected');
-  obUpdateNextState();
-}
-
-function selectEquipment(val, el) {
-  selectedEquipment = val;
-  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
-    if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('selected');
-  });
   el.classList.add('selected');
   obUpdateNextState();
 }
@@ -3570,7 +3578,6 @@ function populateReview() {
   const age = document.getElementById('ob-age').value || '—';
   const weeks = document.getElementById('ob-weeks').value || '12';
 
-  const equipMap = { full_gym: 'Full Gym', barbell_rack: 'Barbell + Rack', home_dumbbells: 'Home Dumbbells', bodyweight: 'Bodyweight' };
   const timeMap = { morning: 'Morning', lunch: 'Lunch', evening: 'Evening' };
   const secGoalMap = { run_5k: 'Run a 5K', '10k_steps': '10K Steps/Day', improve_mobility: 'Mobility', none: 'None' };
 
@@ -3610,10 +3617,6 @@ function populateReview() {
     <div class="review-item">
       <div class="review-item-label">Days / Week</div>
       <div class="review-item-value">${selectedDays}</div>
-    </div>
-    <div class="review-item">
-      <div class="review-item-label">Equipment</div>
-      <div class="review-item-value">${equipMap[selectedEquipment] || '—'}</div>
     </div>
     <div class="review-item">
       <div class="review-item-label">Session Length</div>
@@ -3659,7 +3662,12 @@ function buildProgram() {
     age,
     sex: selectedSex,
     experience: selectedExperience,
-    equipment: selectedEquipment,
+    // EPIC-18 Slice 1 (2026-09-14): equipment is no longer asked at onboarding —
+    // the per-workout tier selector (resolveEquipmentTier(), applySetupSelection())
+    // now durably owns it (syncs cfg.equipment + users.equipment, same as this used
+    // to). A brand-new user with no selector choice yet falls through to
+    // resolveEquipmentTier()'s 'full_gym' default, matching the selector's own
+    // default active button.
     emphasis: selectedEmphasis || 'balanced',
     workout_duration_minutes: selectedDuration,
     preferred_workout_time: selectedWorkoutTime,
@@ -3688,7 +3696,6 @@ function resetProgram() {
   selectedDays = null;
   selectedSex = null;
   selectedExperience = null;
-  selectedEquipment = null;
   selectedDuration = 60;
   selectedWorkoutTime = null;
   selectedSecondaryGoal = null;
@@ -3881,7 +3888,12 @@ function renderTracker() {
   renderSessionTimer();
   updateProgress();
 
-  const _eTier = sessionStorage.getItem('eq_tier');
+  // Mirrors resolveEquipmentTier()'s own source priority (session → cfg →
+  // full_gym) — this block previously read sessionStorage alone, so the
+  // setup card visually reverted to "Full Gym" on a fresh session even
+  // though the engine was already correctly building the durable tier's
+  // workout from cfg.equipment.
+  const _eTier = sessionStorage.getItem('eq_tier') || selectorTierFromCfg();
   const _eDb   = parseInt(sessionStorage.getItem('eq_max_db')) || 0;
   if (_eTier && _eTier !== 'full_gym') {
     document.querySelectorAll('.eq-btn').forEach(b => {
