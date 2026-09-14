@@ -41,11 +41,12 @@ is a new, additive logging surface (a table + a UI form + a summary read), the s
 
 ## Step status
 
-- [ ] **1. Schema — `nutrition_logs` table**
+- [x] **1. Schema — `nutrition_logs` table**
       **Depends on:** nothing. New table, no existing schema touched.
-      **File/region:** `migrations/0014_epic16_nutrition_logs.sql` (written this session, NOT
-      applied — schema changes are human-apply-only per `.claude/loop-config.md`; same posture as
-      `0013_bug72_groupA_wedding_tables_cleanup.sql`). One row per day per user, matching the
+      **File/region:** `migrations/0014_epic16_nutrition_logs.sql`. **APPLIED to prod** on Kerwin's
+      explicit one-off authorization (the file previously said "NOT applied" — that was stale;
+      corrected 2026-09-14). Confirmed independently via live introspection: `public.nutrition_logs`
+      exists, RLS enabled, table comment matches this file. One row per day per user, matching the
       Epic's "no calorie math" framing: a small set of self-reported qualitative fields (meal
       count logged, protein target hit y/n, notes) rather than a macro calculator — the Epic's own
       title is explicit that this is NOT a calorie/macro engine.
@@ -55,14 +56,21 @@ is a new, additive logging surface (a table + a UI form + a summary read), the s
       shape to mirror yet without guessing at it). DID / RECONCILE — n/a, no science claim to
       reconcile.
 
-- [ ] **2. UI — manual log entry surface**
+- [x] **2. UI — manual log entry surface**
       **Depends on:** Slice 1 (table must exist before the form can write to it).
-      **File/region:** new view in `tandem.html`, same pattern as the existing bug-report modal
-      (`sb.from(...).insert(...)`, RLS-scoped to `auth.uid() = user_id`). Out of this session's
-      Notion-only scope to build — flagged as the next slice for a Fix pass, not built here.
-      **Independent verification:** confirm a row inserted via the form round-trips through RLS as
-      the owning user only (mirror the BUG-78 assertion pattern — `anon`/other-user probes return
-      0 rows).
+      **File/region:** SHIPPED as the "Journal" feature (`tandem.html`), not the standalone
+      dashboard form originally scoped here — Kerwin redirected this into the "Today's Workout"
+      flow (`#modal-journal`, `openJournal()`/`saveJournal()`, both `tandem.html`). Uses
+      `sb.from('nutrition_logs').upsert(..., { onConflict: 'user_id,log_date' })`, keyed off
+      `currentUser.id` + `localDateStr()` — RLS-scoped to the owning user, matching this file's
+      original intent even though the surface location changed.
+      **Independent verification:** confirmed by reading the shipped code — `upsert` on
+      `user_id,log_date` (not insert) correctly avoids the `nutrition_logs_one_per_user_per_day`
+      unique-violation on a second same-day open, and a signed-out user is refused client-side
+      (`if (!currentUser) { showToast(...); return; }`) before any write is attempted. **Not yet
+      independently re-verified against live RLS with a real signed-in JWT through supabase-js**
+      (only the client-side guard and query shape were read) — do this before calling Slice 2 fully
+      closed.
 
 - [ ] **3. Read surface — dashboard/summary tie-in**
       **Depends on:** Slice 2. Deferred to Fix; the Epic's Expected Behavior text doesn't specify
@@ -76,8 +84,8 @@ is a new, additive logging surface (a table + a UI form + a summary read), the s
 - **Ship gates, both green, every code slice:** `npm run verify` AND `npm run validate:personas`
   — though nothing in Slices 1-3 touches the program engine those gates check, so a pass here is
   expected to be a no-op confirmation, not a real risk surface.
-- **`0014_epic16_nutrition_logs.sql` is written, not applied.** Kerwin (or whoever has DB access)
-  must run it; do not `apply_migration` it autonomously.
+- **`0014_epic16_nutrition_logs.sql` is APPLIED** (corrected 2026-09-14 — the file previously,
+  wrongly, said otherwise). Do not re-apply it.
 - **RLS from day one** — no table ships without owner-scoped policies; do not repeat the BUG-74/
   BUG-78 shape (a permissive `USING(true)` policy that looks scoped by name but isn't).
 - **No calorie/macro math** — the Epic's title is the constraint. If a future slice is tempted to
@@ -88,6 +96,16 @@ is a new, additive logging surface (a table + a UI form + a summary read), the s
 - **2026-09-07/08 (Kerwin-ruling session, Group 4):** File created. Audited the Epic's own
   Dependency Gate + Agent Context Notes against the tracker row's stated blocker and found the
   blocker doesn't exist — `health_snapshots` dependency was never real, per the Epic's own text.
-  Wrote `migrations/0014_epic16_nutrition_logs.sql` (unapplied). Tracker row synced Needs Human →
-  Untested (see Notion Evidence). Slices 2/3 (UI, dashboard tie-in) are named but not built —
-  next Fix pass.
+  Wrote `migrations/0014_epic16_nutrition_logs.sql` (unapplied at the time). Tracker row synced
+  Needs Human → Untested (see Notion Evidence). Slices 2/3 (UI, dashboard tie-in) are named but
+  not built — next Fix pass.
+- **2026-09-14 (dirty-tree reconciliation session):** Corrected two stale claims found via a
+  branch audit (`claude/epic036-ruling-stale-base`), neither requiring new code: (1) Slice 1's
+  migration was actually applied to prod 2026-09-08 — this file and the migration's own header
+  wrongly said "NOT APPLIED"; confirmed live via `list_tables` introspection. (2) Slice 2's UI was
+  never built as originally scoped (a standalone dashboard form) — instead Kerwin redirected it
+  into the "Today's Workout" flow and it shipped 2026-09-12 as the "Journal" feature
+  (`openJournal()`/`saveJournal()`, `tandem.html`), which independently turned out to satisfy this
+  Slice's requirement (writes to `nutrition_logs`, owner-scoped, upsert-safe). Marked both `[x]`.
+  Slice 2's owner-JWT-through-supabase-js RLS check remains unverified on-device — flagged, not
+  claimed. Slice 3 (dashboard/summary tie-in) is still genuinely unbuilt.

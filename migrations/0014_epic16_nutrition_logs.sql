@@ -2,12 +2,14 @@
 -- EPIC-16 — Simplified Nutrition Tracking, schema slice (Slice 1 of
 -- docs/waves/EPIC-16-WAVE-STATE.md).
 --
--- WRITTEN 2026-09-07/08, NOT APPLIED. Schema changes are human-apply-only per
--- .claude/loop-config.md; this session is Notion/docs-updates-only except for
--- the wave-decomposition files it was explicitly scoped to write. Same
--- posture as migrations/0013_bug72_groupA_wedding_tables_cleanup.sql — a
--- fully-formed, reviewable file, left for Kerwin (or whoever has DB access)
--- to apply.
+-- WRITTEN 2026-09-07/08. APPLIED to prod on Kerwin's explicit one-off
+-- authorization. Confirmed independently 2026-09-14 via live introspection
+-- (list_tables): public.nutrition_logs exists, RLS enabled, 0 rows, table
+-- comment matches this file. The POST-MIGRATION ASSERTIONS below were NOT
+-- independently re-run this session — only existence/RLS-on/row-count were
+-- confirmed; do not assume the anon/cross-user/uniqueness probes passed
+-- without re-running them. Slice 2 (the manual-log UI this table backs) has
+-- since shipped as the "Journal" feature — see docs/waves/EPIC-16-WAVE-STATE.md.
 --
 -- WHAT THIS IS
 --
