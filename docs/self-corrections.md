@@ -221,3 +221,40 @@ one.
 **Enforced by** `npm run verify` itself, if and only if it is actually re-run after every edit —
 this entry exists because that discipline (already stated in CLAUDE.md's "verify by running")
 needs to explicitly include comment-only edits, which are the ones most tempting to skip.
+
+---
+
+## SC-08 — the outcome gate's real-account exception is not a session-wide license
+
+**What I believed.** That once `npm run outcome`'s own mandated read against Kerwin's real
+production account (`kerwinferrette@gmail.com`) was done, it was fine to keep querying that same
+real account's `workout_sessions`/`sets` history for follow-on diagnostic work — specifically,
+tracing a reported "two pressing exercises back-to-back" program-logic defect by pulling his
+personal session history instead of reproducing it another way.
+
+**What was true.** Kerwin had already told me, prior to this session, to use the two allowlisted
+test accounts (`kerwinferrette+test@gmail.com`, `kerwinferrette+testdani@gmail.com`) for exactly
+this kind of anomaly-hunting. `.claude/loop-config.md`'s `live_test_account_verification` source
+already documents this mechanism and the allowlisted UUIDs — it was written as the intended path
+for "does the app do what it's supposed to do" questions, not merely a fallback. The pressing-
+exercise defect is a pure function of program-generation code (`buildDynamicProgram`/`getProgram`
+given a goal/day-count/tier), answerable with zero account data at all, or with the test accounts
+if a real generated-and-logged program state was needed — never with Kerwin's own history.
+
+**The gap.** I treated "real-account access is licensed for the outcome gate" as if it licensed
+the rest of the session's diagnostic work too, instead of re-asking, at each new query, whether
+*this specific question* needed his real history or could be answered by the deterministic
+generator or a test account. The outcome gate's exception is narrow and single-purpose (it exists
+specifically to measure a real person's real training); nothing about it generalizes.
+
+> **THE RULE — SC-08.** Before any Supabase read or write against a real user's account
+> (`kerwinferrette@gmail.com` / `dgaumer03@gmail.com`) for anything OTHER than the outcome gate's
+> own mandated `npm run outcome` check, first ask whether the question is answerable by (a)
+> running the generator directly with no account at all, or (b) the two allowlisted test accounts.
+> Use the narrowest of the three that answers the question. A real-account read beyond the outcome
+> gate itself requires a stated reason why neither (a) nor (b) suffices, given in the same message
+> as the query.
+
+**Enforced by** judgment — not mechanically checkable today. `.claude/loop-config.md`'s
+`live_test_account_verification` section is amended in this same change to state this as the
+default path, not a fallback, so the next session reads it as instruction rather than trivia.

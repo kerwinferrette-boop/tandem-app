@@ -232,6 +232,21 @@ catalog:
              question — route those through escalation.direct_ask instead). Not a standing
              every-cycle sweep like persona_matrix/onboarding_lifecycle_walkthrough above; it's
              pulled in on demand by whichever story needs it."
+      default_not_fallback: "ADDED 2026-09-14, per Kerwin, in-session, correcting a real gap
+             (see docs/self-corrections.md SC-08): the two test accounts are the DEFAULT
+             mechanism for reproducing or diagnosing an anomaly against the real app/real
+             Supabase, not a fallback reached for only when nothing else works. Outside the
+             OUTCOME RULE's own mandated npm run outcome check (which must read Kerwin's and
+             Dani's REAL accounts — that is the entire point of that gate, per
+             live_test_account_verification's scope note above), do not query
+             kerwinferrette@gmail.com's or dgaumer03@gmail.com's real history to chase a
+             program-logic question. Ask first whether the question is answerable by (a)
+             running the generator directly (buildDynamicProgram()/getProgram() with no
+             account at all — most program-structure questions are a pure function of
+             goal/day-count/tier and need zero Supabase data), or (b) the two allowlisted test
+             accounts. Use the narrowest of the three that answers the question. A real-account
+             read for anything beyond the outcome gate itself needs a stated reason, in the
+             same message as the query, for why neither (a) nor (b) suffices."
 
 wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why every Epic bigger
                       # than a one-file change was parking in Needs Human instead of getting
