@@ -2100,6 +2100,11 @@ function getSingleDay(focus, opts = {}) {
     // mode — BUG-82 — is what this fallback exists to avoid).
     let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (cat !== 'compound' || primaryOnlyMatch(e, g)));
     if (cat === 'compound' && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
+    // Coverage tiebreak — see identical rationale + worked example (Barbell Hip
+    // Thrust orphaning hamstring) on buildDynamicProgram's bank() above. Ranked
+    // after D20's recency (an established, unrelated precedence this doesn't
+    // disturb) but before oneRmFactor, matching bank()'s placement.
+    const coverageCount = (e) => g.filter(gr => primaryOnlyMatch(e, [gr])).length;
     return pool
       .sort((a, b) => {
         // WITHIN-token demotion first: it is the direct measure of "this exact
@@ -2111,6 +2116,10 @@ function getSingleDay(focus, opts = {}) {
         if (freshSet) {
           const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
           if (diff !== 0) return diff;
+        }
+        if (g.length > 1) {
+          const covDiff = coverageCount(b) - coverageCount(a);
+          if (covDiff !== 0) return covDiff;
         }
         if (a.oneRmFactor != null || b.oneRmFactor != null) {
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
@@ -2319,7 +2328,26 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // silently drop Day 1's secondary compound slot for every home-tier user.
     let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (cat !== 'compound' || primaryOnlyMatch(e, groups)));
     if (cat === 'compound' && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
+    // Coverage tiebreak (Kerwin, 2026-09-14, live — root cause of a SECOND
+    // symptom of the same defect BUG-116 fixed): a slot requesting TWO muscles
+    // (e.g. day2's hinge slot, groups:['hamstring','glute_max']) is an OR at the
+    // eligibility stage, but oneRmFactor alone then picked whichever candidate
+    // has the higher loading number regardless of how many of the slot's OWN
+    // requested muscles it actually covers — Barbell Hip Thrust (primary=
+    // glute_max only) beat Romanian-Deadlift-class candidates for that exact
+    // slot, orphaning hamstring at 0 weekly volume for the whole day-count
+    // (measured: 2-day split, D6b's own sweep). Reuses primaryOnlyMatch (itself
+    // reusing groupsMatch, D19's gated rule) per requested muscle — no new
+    // anchor-matching text, so D18's regex-extraction is unaffected. Ranked
+    // ABOVE oneRmFactor: covering more of what the slot actually asked for
+    // outranks raw loading capacity, which is what Kerwin's council-verdict ask
+    // ("synergies... properly attributed") means at the single-slot level.
+    const coverageCount = (e) => groups.filter(g => primaryOnlyMatch(e, [g])).length;
     return pool.sort((a, b) => {
+        if (groups.length > 1) {
+          const covDiff = coverageCount(b) - coverageCount(a);
+          if (covDiff !== 0) return covDiff;
+        }
         if (a.oneRmFactor != null || b.oneRmFactor != null) {
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
           if (diff !== 0) return diff;
@@ -2664,8 +2692,53 @@ const GOAL_VOLUME = {
   build_muscle: { compound: 4, isolation: 3 },
   fat_burn:     { compound: 3, isolation: 3 },
 };
+// D6b (Kerwin, 2026-09-14, live — "fixes that go into only specific programs
+// versus the overarching macro-level logic"): GOAL_VOLUME above is a per-goal
+// FLOOR, not the final answer. The actual sets-per-exercise a day-count needs
+// to reach the goal's MEV floor is DERIVED from how much weekly slot-presence
+// THAT day-count's own structure (build2/ppl/build5/build6 wrappers, or the
+// unwrapped 4-day base) gives each major muscle — one formula, evaluated fresh
+// per (goal, days), not a hand-tuned bracket per day-count. Measured 2026-09-14:
+// flat GOAL_VOLUME left 90/216 goal x day-count x sex checks below MEV,
+// correlated with day-count (3d 44/54, 4d 32/54, 5d 14/54, 6d 0/54) because
+// lower day-counts give each muscle fewer weekly slot exposures, and nothing
+// compensated with more volume per exposure. Self-corrects for ANY day-count,
+// including one that doesn't exist yet — not scoped to "the reported cases."
+function resolveGoalVolume(program, goal) {
+  const base = GOAL_VOLUME[goal];
+  const landmark = VOLUME_LANDMARKS[goal];
+  if (!base || !landmark || !Array.isArray(program)) return base;
+  // Unit-volume probe: force every COMPOUND exercise to 1 set and measure each
+  // major muscle's resulting weekly total via the SAME computeMuscleWeeklyVolume()
+  // D6b's doctrine check uses (primary 1.0 / secondary 0.5 credit). ISOLATION
+  // exercises are deliberately excluded from the probe (D28, caught by its own
+  // smoke test, not assumed safe): a short session or beginner tier drops the
+  // isolation block's 3rd accessory slot BEFORE applyGoalVolume ever runs, so a
+  // probe that counted isolation slots would derive a DIFFERENT sets number for
+  // a pruned vs. unpruned day — and that number sets BOTH cfg.compound and
+  // cfg.isolation, silently letting session duration leak into the Compound
+  // Block's set count, which D28 forbids outright ("duration must never touch
+  // D3's compound-first structure"). Compound-slot presence is never pruned by
+  // duration/experience, so measuring only compound exercises makes the
+  // derivation invariant to both — structural, not runtime-dependent.
+  const probe = program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
+    ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e : ({ ...e, sets: e.compound ? 1 : 0 })),
+  })) }));
+  const slotWeight = computeMuscleWeeklyVolume(probe, EXERCISE_BANK);
+  const weights = MAJOR_MUSCLE_GROUP_TOKENS
+    .map(token => Object.entries(slotWeight)
+      .filter(([tag]) => tag === token || tag.startsWith(token + '_'))
+      .reduce((sum, [, v]) => sum + v, 0))
+    .filter(w => w > 0);
+  if (!weights.length) return base;
+  // The WORST-served major muscle sets the sets-per-exercise floor — every
+  // other muscle clears MEV for free once the tightest constraint is met.
+  const worstSlotWeight = Math.min(...weights);
+  const needed = Math.max(base.compound, base.isolation, Math.ceil(landmark.mev / worstSlotWeight));
+  return { compound: needed, isolation: needed };
+}
 function applyGoalVolume(program, goal) {
-  const cfg = GOAL_VOLUME[goal];
+  const cfg = resolveGoalVolume(program, goal);
   if (!cfg || !Array.isArray(program)) return program;
   return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
     ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e
