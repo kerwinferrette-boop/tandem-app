@@ -7,6 +7,13 @@
       "runtimeArgs": ["serve", "."],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "tandem-tags-worktree",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/dub/Desktop/Claude Context/tandem-tags"],
+      "port": 3100,
+      "autoPort": true
     }
   ]
 }
