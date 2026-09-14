@@ -44,9 +44,9 @@ vm.runInContext(formulaSrc, ctx, { filename: 'formula-layer(tandem.html)' });
 vm.runInContext(programsSrc, ctx, { filename: 'programs.js' });
 const {
   PROGRESSION, ACCESSORY_FACTORS, COMPOUND_PATTERNS, ACCESSORY_ALIASES,
-  roundTo5, weekFactor, getWeekTarget, getProgram
+  roundTo5, weekFactor, getWeekTarget, EXERCISE_BANK
 } = vm.runInContext(
-  '({ PROGRESSION, ACCESSORY_FACTORS, COMPOUND_PATTERNS, ACCESSORY_ALIASES, roundTo5, weekFactor, getWeekTarget, getProgram })',
+  '({ PROGRESSION, ACCESSORY_FACTORS, COMPOUND_PATTERNS, ACCESSORY_ALIASES, roundTo5, weekFactor, getWeekTarget, EXERCISE_BANK })',
   ctx
 );
 
@@ -83,22 +83,33 @@ check('calibrated source', cal.source, 'calibrated');
 check('calibrated weight = roundTo5(200 × 0.68)', cal.weight, roundTo5(200 * PROGRESSION.build_muscle[3]));
 
 // ── 4. C7 canonical registration + derived path, with REAL bank names ──
-// Verify the variant names actually exist in the generated bank output.
-// getProgram(goal, days, weeks, sex) returns an ARRAY of days (validate-programs.mjs L140-148).
-// build_muscle/5d generates BOTH bench variants — lets us test Math.max registration.
-const prog = getProgram('build_muscle', 5, 12, 'male');
-const allNames = new Set();
-prog.forEach(d => d.blocks.forEach(b => (b.exs || []).forEach(e => e && allNames.add(e.name))));
-check("bank generates 'Flat Barbell Press' (build_muscle/5d/male)", allNames.has('Flat Barbell Press'), true);
-check("bank generates 'Low Incline Barbell Press'", allNames.has('Low Incline Barbell Press'), true);
+// Verify the variant names actually exist in EXERCISE_BANK (the "REAL bank names"
+// requirement this test is named for), rather than requiring the live GENERATOR
+// to place both in the same day. It used to rely on getProgram('build_muscle', 5,
+// 12, 'male') happening to select both — that was never this test's actual
+// subject (it exists to prove Math.max canonical-registration, not slot
+// selection) and broke as an intended side effect of the 2026-09-14 fix (Kerwin,
+// live report — "two pressing sets back to back makes no sense"): a compound
+// slot's candidate must now match the requested muscle group as its OWN PRIMARY
+// tag, not a mere secondary/synergist tag, so Day 1's shoulder slot no longer
+// accepts a second chest-press variant that only decorated the slot's canon
+// pattern incidentally. Bank membership is the right fixture: it doesn't care
+// which slot a name would or wouldn't be selected for.
+check("'Flat Barbell Press' is a real bank entry matching COMPOUND_PATTERNS['Bench Press']",
+  !!EXERCISE_BANK['flat-barbell-press'] && COMPOUND_PATTERNS['Bench Press'].test('Flat Barbell Press'), true);
+check("'Low Incline Barbell Press' is a real bank entry matching COMPOUND_PATTERNS['Bench Press']",
+  !!EXERCISE_BANK['low-incline-barbell-press'] && COMPOUND_PATTERNS['Bench Press'].test('Low Incline Barbell Press'), true);
 
-// Replicate buildDayHTML's dayCompound1RMs registration verbatim (L2841-2854).
-// Two variants of the same pattern seeded — canonical key must take the MAX.
+// Replicate buildDayHTML's dayCompound1RMs registration verbatim (L2841-2854),
+// against a SYNTHETIC day carrying both real bank names directly — the actual
+// subject under test is the Math.max canonicalization, not the generator's slot
+// selection (which is exercised in full by validate-programs.mjs/persona-matrix.mjs
+// elsewhere, and is not this file's job to re-assert).
 const _dayWorking = { 'Flat Barbell Press': { rm: 150 }, 'Low Incline Barbell Press': { rm: 130 } };
-const _dayPrs = {};
+const syntheticDay = [{ blocks: [{ exs: [{ name: 'Flat Barbell Press' }, { name: 'Low Incline Barbell Press' }] }] }];
 const dayCompound1RMs = {};
-prog.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
-  const _rm = e && (_dayWorking[e.name]?.rm ?? _dayPrs[e.name] ?? _dayPrs[e.id]);
+syntheticDay.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
+  const _rm = e && _dayWorking[e.name]?.rm;
   if (!_rm) return;
   dayCompound1RMs[e.name] = _rm;
   for (const [canon, rx] of Object.entries(COMPOUND_PATTERNS)) {

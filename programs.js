@@ -1999,6 +1999,22 @@ function getSingleDay(focus, opts = {}) {
     const all = [...(e.muscleGroups.primary || []), ...(e.muscleGroups.secondary || [])];
     return groups.some(g => all.some(a => a === g || a.startsWith(g + '_')));
   };
+  // BUG (Kerwin, 2026-09-14, live report — "two pressing sets back to back makes no
+  // sense"): a COMPOUND slot's `groups` request names the muscle that slot exists to
+  // train — but groupsMatch (above) matches a candidate's SECONDARY/synergist tags
+  // too, so any horizontal press qualifies for FOCUS_SLOTS.push's second compound
+  // slot (['anterior_delt','lateral_delt']) purely because every bench-press variant
+  // co-tags anterior_delt as a synergist. Verified by running getProgram(): the
+  // TEMPLATES.day1/FOCUS_SLOTS.push 'secondary' compound slot picks a second chest
+  // press (Flat/Decline Barbell Press) 100% of the time, never a genuine shoulder
+  // press — contradicting both slots' own inline rationale ("chest, shoulders,
+  // triceps") and the v0.5 schema's canonical Push day (chest/shoulders/triceps).
+  // Days 2-4 / FOCUS_SLOTS.back/legs/hinge etc. don't exhibit this: their correct
+  // secondary picks already match via PRIMARY tag alone (confirmed by testing this
+  // filter change produces byte-identical output for every other slot). Reuses
+  // groupsMatch itself (one rule, one home) on a shallow copy with `secondary`
+  // stripped — the anchoring rule (D19) is untouched, not re-implemented.
+  const primaryOnlyMatch = (e, groups) => groupsMatch({ muscleGroups: { primary: e.muscleGroups.primary, secondary: [] } }, groups);
   // ── D20 (EPIC-028) — per-muscle recency SOFT de-prioritization ─────────────
   // opts.recentExposure: { muscleTag: hoursSinceLastTrained } — the exact shape
   // recentMuscleLoad() (tandem.html, EPIC-027/028 shared read path) produces,
@@ -2071,8 +2087,20 @@ function getSingleDay(focus, opts = {}) {
     // via its secondary tag and silently defeated the steering (caught by the
     // functional-proof check below before this was fixed).
     const isFresh = (e) => freshSet && (e.muscleGroups.primary || []).some(a => freshSet.has(a));
-    return Object.values(EXERCISE_BANK)
-      .filter(e => tierOk(e) && e.category === cat && groupsMatch(e, freshSet ? [...groups, ...freshGroups] : groups) && !injuryBlocked(e.name) && !used.has(e.name))
+    const g = freshSet ? [...groups, ...freshGroups] : groups;
+    const eligible = (e) => tierOk(e) && e.category === cat && groupsMatch(e, g) && !injuryBlocked(e.name) && !used.has(e.name);
+    // See primaryOnlyMatch above: a COMPOUND slot must be trained by its requested
+    // muscle as the candidate's OWN primary target, not merely a synergist —
+    // isolation/core/cardio slots are unaffected (unchanged). SOFT, same guarantee
+    // D20 already makes ("soft, never hard-excludes"): if the stricter pool would
+    // be EMPTY at this tier (verified: 'anterior_delt'/'lateral_delt' has zero
+    // primary-tagged compound candidates at 'home' tier — every dedicated shoulder
+    // press is machine/barbell/full_gym), fall back to the original primary+
+    // secondary pool rather than silently dropping the slot (D18's exact failure
+    // mode — BUG-82 — is what this fallback exists to avoid).
+    let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (cat !== 'compound' || primaryOnlyMatch(e, g)));
+    if (cat === 'compound' && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
+    return pool
       .sort((a, b) => {
         // WITHIN-token demotion first: it is the direct measure of "this exact
         // candidate trains a muscle you just trained." A fresh alternate-group
@@ -2266,6 +2294,9 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     const all = [...(ex.muscleGroups.primary||[]),...(ex.muscleGroups.secondary||[])];
     return groups.some(g => all.some(a => a === g || a.startsWith(g+'_')));
   };
+  // See identical fix + rationale on getSingleDay's primaryOnlyMatch above
+  // (Kerwin, 2026-09-14 — "two pressing sets back to back makes no sense").
+  const primaryOnlyMatch = (e, groups) => groupsMatch({ muscleGroups: { primary: e.muscleGroups.primary, secondary: [] } }, groups);
   // GEN-fix (exercise-selection mechanism): bank() now returns a candidate
   // pool in a fixed, explainable priority order instead of raw EXERCISE_BANK
   // object-insertion order. Compounds (oneRmFactor is non-null) rank by
@@ -2279,10 +2310,16 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   // happens to be inserted. Either way, adding an exercise to the bank can
   // no longer silently reassign exercises in unrelated, already-generated
   // programs — the fragility that caused the C7 regression.
-  const bank = ({groups, cat, excl=[]}) =>
-    Object.values(EXERCISE_BANK).filter(e =>
-      tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name))
-      .sort((a, b) => {
+  const bank = ({groups, cat, excl=[]}) => {
+    const eligible = (e) => tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name);
+    // SOFT fallback — see identical rationale on getSingleDay's select() above:
+    // never let the stricter primary-only compound filter silently empty a slot
+    // (D18/BUG-82). Verified: at 'home' tier this fallback IS live (0 primary-
+    // tagged shoulder-press compounds exist below full_gym), so removing it would
+    // silently drop Day 1's secondary compound slot for every home-tier user.
+    let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (cat !== 'compound' || primaryOnlyMatch(e, groups)));
+    if (cat === 'compound' && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
+    return pool.sort((a, b) => {
         if (a.oneRmFactor != null || b.oneRmFactor != null) {
           const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
           if (diff !== 0) return diff;
@@ -2292,6 +2329,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         if (eqDiff !== 0) return eqDiff;
         return a.name.localeCompare(b.name);
       });
+  };
 
   // emphasis tag → bank emphasis tag
   const emphMap = {back_heavy:'back',push_heavy:'push',pull_heavy:'pull',
