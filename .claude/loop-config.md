@@ -338,16 +338,30 @@ batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a r
                       happened to be catalogued first. This does not override
                       still_needs_kerwin/escalation below — it only changes ORDER within what the
                       loop is already allowed to just build."
-  staleness_escalation: "A story or Epic that appears as Untested/Planned/Scoped in 3 or more
-                      CONSECUTIVE cycle snapshots (the Goal Record's own LAST_SNAPSHOT state,
-                      already recorded every cycle — no new Notion field required) without a
-                      status change is STALE. A stale item is force-included in the next batch,
-                      on top of (not instead of) whatever safety.max_items_per_cycle would
-                      otherwise pick — the cap governs ordinary throughput, not indefinite
-                      starvation of something already known and ready. Report every stale item
-                      pulled in this way as its own line in the cycle's Goal Record entry ('stale,
-                      force-included: <story/Epic id>, sitting N cycles') so this is visible, not
-                      quietly absorbed into the ordinary batch count."
+  staleness_escalation: "CORRECTED 2026-09-14, same session — the first version of this rule
+                      said 'appears in 3+ CONSECUTIVE cycle snapshots' sourced from 'the Goal
+                      Record's own LAST_SNAPSHOT state' and claimed 'no new Notion field
+                      required.' That was asserted, not verified, and Kerwin caught it by asking
+                      'are you sure this picks up those epics moving forward?' — checking found
+                      the Cycle Log entry (project-goal SKILL.md, Step 4) only ever records
+                      AGGREGATE status COUNTS ('N Untested, M Failing'), never which specific
+                      stories were Untested. There is no data anywhere that reconstructs one
+                      story's identity across past cycles, so the original rule was uncomputable
+                      by any future cycle that tried to follow it — it would have been silently
+                      inert, the exact 'wired is not working' failure CLAUDE.md warns about,
+                      just written into config instead of code.
+                      Fixed rule, directly computable with data that already exists on every row:
+                      a story or Epic is STALE when its own Notion page's Created time (fetch the
+                      page — notion-fetch's page_last_edited_at, or the page's Created-time
+                      property where the database exposes one, e.g. Epics' 'Created' field) is
+                      more than 3 days old AND its Status is still Untested/Planned/Scoped. No
+                      cross-cycle reconstruction, no new schema — one page fetch, one date
+                      comparison, per candidate row. A stale item is force-included in the next
+                      batch, on top of (not instead of) whatever safety.max_items_per_cycle would
+                      otherwise pick. Report every stale item pulled in this way as its own line
+                      in the cycle's Goal Record entry ('stale, force-included: <story/Epic id>,
+                      created <date>, N days old') so this is visible, not quietly absorbed into
+                      the ordinary batch count."
   reporting: "A cycle that has self_generated_sources-seeded or stale work available and reports
                       it as 0 buildable work (the same failure shape catalog.self_generated_sources
                       already names for persona_matrix/pending_doctrine_sweep findings going
