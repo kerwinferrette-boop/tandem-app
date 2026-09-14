@@ -57,6 +57,23 @@ head, so naming the head is the accurate claim and the bare parent throws inform
 50 of 50 tricep/bicep secondaries conform. That is the convention, and it was already the
 convention before anyone wrote it down.
 
+**The scope of that table, stated so it is not over-read.** It measures the two *top-level* parents
+where the choice actually exists. It is not a claim about all 303 secondary instances, and most of
+those could not violate the convention if they tried: only **7** of the 49 tags have a sub-head at
+all (`bicep`, `bicep_brachii`, `hamstring`, `quad`, `quad_vastus`, `rectus_abdominis`, `tricep`).
+A secondary like `anterior_delt` or `glute_max` is a leaf because the vocabulary offers nothing
+finer — that is not conformance, it is an absence of alternatives.
+
+Run across the whole bank, **8** isolations carry a bare-parent secondary. Three are the
+`hamstring` hip-extension cases named below. The other **five are `bicep_brachii` on
+`hammer-curl`, `reverse-curl`, `cross-body-hammer-curl`, `cable-rope-hammer-curl`, and
+`band-hammer-curl`** — all neutral- or pronated-grip curls whose primaries are `brachialis` +
+`brachioradialis`, with the biceps as the synergist. They stay bare for the reason §3 already
+establishes for the `bicep_brachii` primaries: long-vs-short-head bias is determinable *in
+principle*, but **no source in this repo, in Notion, or in the Wave-1 research tables states it for
+these specific entries**, and determinable-in-principle is not a citation. That is a statement about
+what the sources contain — verified by looking — not a physiological claim of my own.
+
 **Named exceptions, kept rather than normalised** (normalising them would be a science claim, and
 no source was consulted for one):
 
