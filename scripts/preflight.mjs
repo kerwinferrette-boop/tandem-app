@@ -16,11 +16,20 @@
  * questions. The first has a blind spot shaped exactly like the place the work was.
  *
  * The protocol bug is the interesting one. The rule was ALREADY WRITTEN DOWN, in the
- * right file, in imperative language — docs/WAVE-STATE.md:109 says verbatim "Whoever
- * resumes a workflow-launched wave: run `git worktree list` FIRST." It was skipped
- * anyway. So the fix cannot be "write the rule down better"; writing it down is the
- * thing that already failed. Prose in a document does not execute. This script does,
- * and .claude/hooks/session-start.sh runs it before the session can decide to skip it.
+ * right file, in imperative language — the now-retired docs/WAVE-STATE.md:109 said
+ * verbatim "Whoever resumes a workflow-launched wave: run `git worktree list` FIRST."
+ * It was skipped anyway. So the fix cannot be "write the rule down better"; writing it
+ * down is the thing that already failed. Prose in a document does not execute. This
+ * script does, and .claude/hooks/session-start.sh runs it before the session can
+ * decide to skip it.
+ *
+ * 2026-09-15 (Kerwin, in-session): docs/WAVE-STATE.md itself was retired the same way —
+ * it was a single stale campaign ledger (stuck since 2026-08-18) sitting alongside the
+ * REAL per-Epic mechanism (docs/waves/<EPIC-ID>-WAVE-STATE.md, `loop-config.md`'s
+ * documented wave_decomposition checkpoint), and this script printed the stale one at
+ * every session start while the live per-Epic files went unread. Two ledgers claiming
+ * the same job is the same failure shape one level up: consolidated to ONE place
+ * (docs/waves/) below, rather than writing a third document to reconcile the first two.
  *
  * This is the same lesson as docs/2026-08-17-why-56-cycles-missed-it.md: the council
  * rejected "the agent should try harder" as a diagnosis because a character flaw is
@@ -40,7 +49,7 @@
  *   --deep  also run `git fsck --lost-found` (slow; for when something is genuinely missing)
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -188,19 +197,35 @@ if (DEEP) {
   checked('git fsck --lost-found', 'SKIPPED (re-run with --deep if something is genuinely missing)');
 }
 
-// ── 7. The ledger. WAVE-STATE.md:3 — "the next one reads THIS FILE FIRST." ──────
-const wavePath = join(root, 'docs', 'WAVE-STATE.md');
-if (existsSync(wavePath)) {
-  const lines = readFileSync(wavePath, 'utf8').split('\n');
-  const firstOpen = lines.findIndex(l => /^\s*[-*]\s*\[ \]/.test(l));
-  checked('docs/WAVE-STATE.md', firstOpen >= 0 ? `first unchecked step at line ${firstOpen + 1}` : 'no unchecked steps');
-  if (firstOpen >= 0) {
-    console.log(`  LEDGER — first unchecked step (docs/WAVE-STATE.md:${firstOpen + 1}):`);
-    console.log(`    ${lines[firstOpen].trim()}\n`);
+// ── 7. The ledger. ONE place now: docs/waves/*.md, one file per live Epic/Wave. ──
+// (docs/WAVE-STATE.md, the old single campaign ledger, was retired 2026-09-15 — see
+// header comment above. Backlog items it was tracking that had not yet been folded
+// into a wave file were confirmed independently live in Notion before deletion, so
+// nothing was lost by removing it.)
+const wavesDir = join(root, 'docs', 'waves');
+if (existsSync(wavesDir)) {
+  const waveFiles = readdirSync(wavesDir).filter(f => f.endsWith('-WAVE-STATE.md')).sort();
+  checked('docs/waves/*.md', `${waveFiles.length} wave file(s)`);
+  const openWaves = [];
+  for (const f of waveFiles) {
+    const lines = readFileSync(join(wavesDir, f), 'utf8').split('\n');
+    const firstOpen = lines.findIndex(l => /^\s*[-*]\s*\[ \]/.test(l));
+    if (firstOpen >= 0) openWaves.push({ file: f, line: firstOpen + 1, text: lines[firstOpen].trim() });
+  }
+  if (openWaves.length) {
+    console.log(`  LEDGER — ${openWaves.length} wave file(s) with an open step:`);
+    for (const w of openWaves) {
+      console.log(`    docs/waves/${w.file}:${w.line}`);
+      console.log(`      ${w.text}`);
+    }
+    console.log('');
+  } else if (waveFiles.length) {
+    console.log('  LEDGER — all wave files fully checked off.\n');
   }
 } else {
-  checked('docs/WAVE-STATE.md', 'MISSING');
-  flag('docs/WAVE-STATE.md is missing — the campaign ledger is the resume point.');
+  checked('docs/waves/', 'MISSING');
+  flag('docs/waves/ is missing — the per-Epic wave checkpoint mechanism (loop-config.md\'s ' +
+       'wave_decomposition) is the resume point; this directory should not be absent.');
 }
 
 // ── Report ─────────────────────────────────────────────────────────────────────
