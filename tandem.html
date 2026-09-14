@@ -1806,6 +1806,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="modal-title">Build Custom Template</div>
     <div class="modal-sub">A from-scratch program made of your own picks — 2 to 6 days, each exercise chosen from the exercise bank. Replaces your generated plan; you can switch back anytime from the Library.</div>
     <input type="text" id="builderName" class="modal-input" placeholder="Template name (e.g. My Push/Pull/Legs)" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <label class="profile-input-label" for="builderWeeks">Duration (weeks)</label>
+      <input type="number" id="builderWeeks" class="modal-input" min="4" max="12" value="12" style="width:64px;">
+    </div>
     <div id="builderStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
     <div id="builderDays"></div>
     <button class="clear-btn" style="margin-bottom:10px;" onclick="addBuilderDay()">+ Add Day</button>
@@ -2958,6 +2962,10 @@ async function createCustomTemplate(input) {
   const days = Array.isArray(input?.days) ? input.days : [];
   // workout_templates_days_per_week_check: CHECK (days_per_week >= 2 AND <= 6).
   if (days.length < 2 || days.length > 6) throw new Error('Custom templates need 2-6 days');
+  // Slice 6 (EPIC-27 wave-state): D7 (4-12wk block duration), ✅ ACTIVE — caller-supplied,
+  // no longer hardcoded to 12. Mirrors the days.length 2-6 validation pattern above.
+  const weeks = Number.isInteger(input?.weeks) ? input.weeks : 12;
+  if (weeks < 4 || weeks > 12) throw new Error('Custom templates need 4-12 weeks');
   for (const d of days) {
     if (!d.label || !String(d.label).trim()) throw new Error('Every day needs a label');
     if (!Array.isArray(d.exercises) || !d.exercises.length) throw new Error(`Day "${d.label}" needs at least one exercise`);
@@ -2976,22 +2984,24 @@ async function createCustomTemplate(input) {
   const difficulty = EXPERIENCE_LEVELS.includes(cfg.experience) ? cfg.experience : 'intermediate';
   const slug = `custom-${uid.slice(0, 8)}-${Date.now().toString(36)}`;
 
-  // 1. Template row — 12wk single block, per docs/waves/EPIC-27-WAVE-STATE.md's
-  // council-cited verdict (D15's 8-12wk block-length doctrine).
+  // 1. Template row — single block spanning `weeks` weeks, per
+  // docs/waves/EPIC-27-WAVE-STATE.md Slice 6 (D7, 4-12wk block duration,
+  // ✅ ACTIVE — supersedes the earlier D15 miscitation for Slice 1's
+  // original hardcoded 12).
   const { data: tpl, error: te } = await sb.from('workout_templates').insert({
     name, slug, author_id: uid, is_published: false,
     parent_goal: goal, code_goal_mapping: goal,
-    duration_weeks: 12, days_per_week: days.length,
+    duration_weeks: weeks, days_per_week: days.length,
     equipment_tier: resolveEquipmentTier(), difficulty,
     science_overrides: {},
   }).select('id').single();
   if (te) throw te;
   try {
-    // 2. One non-periodized block spanning the whole 12 weeks — empty
+    // 2. One non-periodized block spanning the whole `weeks` weeks — empty
     // rep_scheme_by_week/technique_by_week is the column's own existing
     // default and already means "no periodization", zero new schema behavior.
     const { data: block, error: be } = await sb.from('template_blocks').insert({
-      template_id: tpl.id, block_order: 1, week_start: 1, week_end: 12,
+      template_id: tpl.id, block_order: 1, week_start: 1, week_end: weeks,
       name: 'Block 1',
     }).select('id').single();
     if (be) throw be;
@@ -3032,6 +3042,11 @@ async function createCustomTemplate(input) {
   const bundle = await fetchTemplateBundle(tpl.id);
   LS.set('tandem_adopted_program', bundle);
   cfg.programSource = 'template';
+  // Slice 6: cfg.weeks is what getPhase()/deloadWeeks()/effectiveReps() actually read
+  // (grep confirms `duration_weeks` on the template row itself is never consulted at
+  // render time) — without this, a custom template shorter/longer than the user's
+  // onboarding cfg.weeks would render deloads/phases sized for the WRONG length.
+  cfg.weeks = weeks;
   LS.set('tandem_cfg', cfg);
   currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
   await syncToCloud();
@@ -3061,6 +3076,8 @@ async function openTemplateBuilder() {
   openModal('builder');
   const nameInput = document.getElementById('builderName');
   if (nameInput) nameInput.value = '';
+  const weeksInput = document.getElementById('builderWeeks');
+  if (weeksInput) weeksInput.value = '12';
   builderState = { days: [
     { label: 'Day 1', exercises: [] },
     { label: 'Day 2', exercises: [] },
@@ -3242,6 +3259,10 @@ async function saveCustomTemplate(btn) {
   const nameInput = document.getElementById('builderName');
   const name = (nameInput?.value || '').trim();
   if (!name) { showToast('Name your template first'); return; }
+  const weeksInput = document.getElementById('builderWeeks');
+  const weeks = parseInt(weeksInput?.value, 10) || 12;
+  // Slice 6: D7 (4-12wk block duration, ACTIVE) — same range createCustomTemplate() enforces.
+  if (weeks < 4 || weeks > 12) { showToast('Duration must be 4-12 weeks'); return; }
   for (const d of builderState.days) {
     if (!d.exercises.length) { showToast(`"${d.label}" needs at least one exercise`); return; }
     for (const x of d.exercises) {
@@ -3252,6 +3273,7 @@ async function saveCustomTemplate(btn) {
   try {
     await createCustomTemplate({
       name,
+      weeks,
       days: builderState.days.map(d => ({
         label: d.label,
         exercises: d.exercises.map(x => ({ exercise_id: x.exercise_id, sets: x.sets, reps: x.reps, rest: x.rest, role: x.role })),
