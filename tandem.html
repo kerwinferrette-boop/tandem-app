@@ -1757,31 +1757,35 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 </div>
 
-<!-- JOURNAL (EPIC-16 manual nutrition log, rebuilt 2026-09-12 as the "Today's
-     Workout" flow's Journal entry rather than a standalone dashboard side-quest
-     — Kerwin: "not worth a nutrition log at all whatsoever [on its own] ...
-     Journal" as one of the three Today's-Workout buttons. No calorie/macro math
-     — self-reported meals/protein/notes only, per EPIC-16's own Agent Context
-     Notes and the nutrition_logs schema (migrations/0014, already live). -->
+<!-- JOURNAL — manual WORKOUT log (rebuilt 2026-09-14 on Kerwin's correction:
+     "The journal it's not supposed to be a food journal. It's supposed to be:
+     These are the workouts that I did today. These are the reps that I did.
+     These are the weights that I did, record it."). Meals/protein are GONE:
+     nutrition is EPIC-4's Apple Health / MyFitnessPal pipeline, not a hand-typed
+     field ("'2 meals' has no ability to add nutritional value to the home page").
+     Date may be backdated; a backdated entry does NOT advance the streak
+     (Kerwin, 2026-09-14: "Past date, don't count for the streak."). -->
 <div class="modal-overlay" id="modal-journal" onclick="if(event.target===this)closeModal('journal')">
-  <div class="modal-sheet">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <button class="modal-close" onclick="closeModal('journal')">✕</button>
-    <div class="modal-title">Journal</div>
-    <div class="modal-sub" id="journalDateLabel">Today</div>
+    <div class="modal-title">Journal a Workout</div>
+    <div class="modal-sub">Record what you actually did — exercise, reps, weight.</div>
     <div style="margin-top:14px;">
-      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Meals logged today</label>
-      <input type="number" id="journalMeals" min="0" max="12" step="1" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;">
-    </div>
-    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
-      <label class="profile-input-label" for="journalProtein">Hit my protein target</label>
-      <input type="checkbox" id="journalProtein" style="width:20px;height:20px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Date</label>
+      <input type="date" id="journalDate" onchange="renderJournalDateNote()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;">
+      <div id="journalDateNote" class="modal-sub" style="margin-top:6px;font-size:11px;"></div>
     </div>
     <div style="margin-top:14px;">
-      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Notes</label>
-      <textarea id="journalNotes" rows="3" placeholder="However you want to remember today — no macros required." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">What did you do?</label>
+      <div id="journalRows"></div>
+      <button class="clear-btn" style="margin-top:8px;" onclick="addJournalRow()">+ Add exercise</button>
     </div>
-    <button class="profile-save-btn" style="margin-top:14px;" onclick="saveJournal()">Save</button>
+    <div style="margin-top:14px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Notes (optional)</label>
+      <textarea id="journalNotes" rows="2" placeholder="However you want to remember it." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <button class="profile-save-btn" id="journalSaveBtn" style="margin-top:14px;" onclick="saveJournal()">Save Workout</button>
   </div>
 </div>
 
@@ -5313,7 +5317,17 @@ function reorderWeek() {
 // as it is a workout"), finishOneOff(). It was inlined in finishSession until that
 // ruling; a second copy inside the one-off path is exactly the silo that drifts.
 // Returns the streak to display on the completion card.
-async function creditSessionToStreaks(prCount, volume, todayDate) {
+//
+// `advanceStreak` (Kerwin, 2026-09-14, verbatim: "Past date, don't count for the
+// streak."): a BACKDATED journal entry is still a workout, so it still earns points,
+// volume, sessions and PRs — but it must not move the streak, because a streak is a
+// claim about consecutive days actually shown up for, and a retroactive entry cannot
+// make yesterday have happened today. When false, the three streak-bearing columns
+// (current_streak_days, longest_streak_days, last_session_date) are left untouched
+// rather than written with today's or the backdated value — writing last_session_date
+// backwards would silently BREAK a live streak, which is worse than not crediting it.
+// This is an option on the one owner, deliberately not a second copy of the rule.
+async function creditSessionToStreaks(prCount, volume, todayDate, advanceStreak = true) {
   const sessionPoints = 10 + (prCount || 0) * 5;
   const { data: existing } = await sb.from('streaks')
     .select('*')
@@ -5322,17 +5336,17 @@ async function creditSessionToStreaks(prCount, volume, todayDate) {
   if (!existing) {
     const { error: sErr } = await sb.from('streaks').insert({
       user_id: currentUser.id,
-      current_streak_days: 1,
-      longest_streak_days: 1,
+      current_streak_days: advanceStreak ? 1 : 0,
+      longest_streak_days: advanceStreak ? 1 : 0,
       total_sessions: 1,
       total_prs: prCount || 0,
       total_volume_lbs: volume,
       weekly_points: sessionPoints,
-      last_session_date: todayDate,
+      last_session_date: advanceStreak ? todayDate : null,
       updated_at: new Date().toISOString()
     });
     if (sErr) throw sErr;
-    return 1;
+    return advanceStreak ? 1 : 0;
   }
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -5340,18 +5354,21 @@ async function creditSessionToStreaks(prCount, volume, todayDate) {
   const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
   const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
   const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
-  const { error: sErr } = await sb.from('streaks').update({
-    current_streak_days: newStreak,
-    longest_streak_days: newLongest,
+  const patch = {
     total_sessions: (existing.total_sessions || 0) + 1,
     total_prs: (existing.total_prs || 0) + (prCount || 0),
     total_volume_lbs: (existing.total_volume_lbs || 0) + volume,
     weekly_points: (existing.weekly_points || 0) + sessionPoints,
-    last_session_date: todayDate,
     updated_at: new Date().toISOString()
-  }).eq('user_id', currentUser.id);
+  };
+  if (advanceStreak) {
+    patch.current_streak_days = newStreak;
+    patch.longest_streak_days = newLongest;
+    patch.last_session_date = todayDate;
+  }
+  const { error: sErr } = await sb.from('streaks').update(patch).eq('user_id', currentUser.id);
   if (sErr) throw sErr;
-  return newStreak;
+  return advanceStreak ? newStreak : (existing.current_streak_days || 0);
 }
 
 function finishSession() {
@@ -6087,10 +6104,12 @@ const oneOffState = { goal: null, focus: null, day: null };
 // pick wins; with no pick (or a stale/unknown one) this falls back to exactly the
 // previous behavior. 'burn_fat' is the onboarding pill's value and 'fat_burn' is the
 // canonical key — same alias weekFactor() already applies.
-function oneOffGoalKey() {
-  const raw = oneOffState.goal || cfg.goal;
+function goalKeyFor(raw) {
   const g = raw === 'burn_fat' ? 'fat_burn' : raw;
   return RECOVERY_PARAMS[g] ? g : 'build_muscle';
+}
+function oneOffGoalKey() {
+  return goalKeyFor(oneOffState.goal || cfg.goal);
 }
 
 // Card face for each focus. PRESENTATION ONLY — deliberately not in programs.js,
@@ -6435,61 +6454,180 @@ async function finishOneOff() {
 }
 
 // ═══════════════════════════════════════════════════════
-// JOURNAL — EPIC-16 manual nutrition log (rebuilt 2026-09-12 as the "Today's
-// Workout" flow's Journal button, per Kerwin's direct restructure request).
-// nutrition_logs (migrations/0014) is already live in prod: one row per user
-// per day, self-reported only — meals_logged/protein_hit/notes, no calorie or
-// macro math, per the table's own EPIC-16 comment. This is the missing UI;
-// the schema was never the gap.
+// JOURNAL — manual WORKOUT log. Kerwin, 2026-09-14, verbatim: "The journal it's
+// not supposed to be a food journal. It's supposed to be: These are the workouts
+// that I did today. These are the reps that I did. These are the weights that I
+// did, record it."
+//
+// It was a nutrition form (nutrition_logs, migrations/0014) until that correction.
+// Nutrition is NOT hand-typed here — it belongs to the Apple Health / MyFitnessPal
+// pipeline (EPIC-4); Kerwin on the field it replaced: "'2 meals' has no ability to
+// add nutritional value to the home page."
+//
+// A journaled workout is a WORKOUT, NEVER A PROGRAM DAY — the same ruling that
+// governs one-offs (2026-09-13, DOCTRINE D9/D11). So it writes session_type =
+// ONEOFF_SESSION_TYPE and reuses finishOneOff()'s exact seams rather than growing a
+// second copy of the scoring or 1RM rules: `sets` rows (the DB trigger decides PRs),
+// reconcileWorking1RMs() with an explicit synthesized day, creditSessionToStreaks(),
+// computeCalibration1RMs(). The ONE difference is the date: a backdated entry passes
+// advanceStreak=false, per "Past date, don't count for the streak."
 // ═══════════════════════════════════════════════════════
-async function openJournal() {
+let journalRowSeq = 0;
+
+function addJournalRow(prefill) {
+  const host = document.getElementById('journalRows');
+  if (!host) return;
+  const i = journalRowSeq++;
+  const row = document.createElement('div');
+  row.className = 'journal-row';
+  row.dataset.idx = i;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 54px 54px 68px 28px;gap:6px;align-items:center;margin-bottom:6px;';
+  const cell = 'padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:13px;box-sizing:border-box;width:100%;';
+  row.innerHTML =
+    `<input type="text" class="j-name" placeholder="Exercise" value="${prefill?.name || ''}" style="${cell}font-family:var(--font-body);">` +
+    `<input type="number" class="j-sets" min="1" max="20" step="1" placeholder="sets" value="${prefill?.sets ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<input type="number" class="j-reps" min="1" max="100" step="1" placeholder="reps" value="${prefill?.reps ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<input type="number" class="j-weight" min="0" step="0.5" placeholder="lbs" value="${prefill?.weight ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<button class="modal-close" style="position:static;width:28px;height:28px;font-size:14px;" title="Remove" onclick="this.closest('.journal-row').remove()">✕</button>`;
+  host.appendChild(row);
+}
+
+// The date note is the only place the streak rule is visible to the user. Without it
+// the "doesn't count for the streak" behavior would be a silent surprise — wired but
+// not working, from his side of the glass.
+function renderJournalDateNote() {
+  const note = document.getElementById('journalDateNote');
+  const picked = document.getElementById('journalDate')?.value;
+  if (!note) return;
+  if (!picked || picked === localDateStr()) { note.textContent = ''; return; }
+  note.textContent = 'Past date — this counts for points, volume, PRs and your 1RMs, but not for your streak.';
+}
+
+function openJournal() {
   openModal('journal');
-  const dateLabel = document.getElementById('journalDateLabel');
-  const mealsEl = document.getElementById('journalMeals');
-  const proteinEl = document.getElementById('journalProtein');
+  const dateEl = document.getElementById('journalDate');
   const notesEl = document.getElementById('journalNotes');
+  const host = document.getElementById('journalRows');
   const today = localDateStr(); // BUG-018/027: local day, not UTC
-  if (dateLabel) dateLabel.textContent = new Date(today + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-  if (mealsEl) mealsEl.value = '';
-  if (proteinEl) proteinEl.checked = false;
+  if (dateEl) { dateEl.value = today; dateEl.max = today; } // no future workouts — you haven't done them yet
   if (notesEl) notesEl.value = '';
-  if (!currentUser) return; // local-only session: form stays blank, Save will explain why it can't persist
-  try {
-    const { data } = await sb.from('nutrition_logs')
-      .select('meals_logged, protein_hit, notes')
-      .eq('user_id', currentUser.id)
-      .eq('log_date', today)
-      .maybeSingle();
-    if (data) {
-      if (mealsEl) mealsEl.value = data.meals_logged ?? '';
-      if (proteinEl) proteinEl.checked = !!data.protein_hit;
-      if (notesEl) notesEl.value = data.notes || '';
-    }
-  } catch (e) {
-    console.warn('Journal load failed:', e);
-  }
+  if (host) host.innerHTML = '';
+  journalRowSeq = 0;
+  addJournalRow();
+  renderJournalDateNote();
+}
+
+// Reads the rows into finishOneOff()'s set shape. One UI row = `sets` identical sets,
+// which is how people actually remember a workout ("3x8 at 185"), and it is what the
+// `sets` table wants: one row per set, numbered.
+function collectJournalSets() {
+  const out = [];   // { id, name, set, w, r, est1rm }
+  const problems = [];
+  document.querySelectorAll('#journalRows .journal-row').forEach(row => {
+    const name = (row.querySelector('.j-name')?.value || '').trim();
+    const nSets = parseInt(row.querySelector('.j-sets')?.value, 10);
+    const reps = parseInt(row.querySelector('.j-reps')?.value, 10);
+    const w = parseFloat(row.querySelector('.j-weight')?.value);
+    if (!name && !Number.isFinite(nSets) && !Number.isFinite(reps) && !Number.isFinite(w)) return; // untouched row
+    if (!name) { problems.push('every row needs an exercise name'); return; }
+    if (!Number.isInteger(nSets) || nSets < 1 || nSets > 20) { problems.push(`${name}: sets must be 1-20`); return; }
+    if (!Number.isInteger(reps) || reps < 1 || reps > 100) { problems.push(`${name}: reps must be 1-100`); return; }
+    if (!Number.isFinite(w) || w < 0) { problems.push(`${name}: weight must be a number (0 for bodyweight)`); return; }
+    const id = `oneoff-journal-${row.dataset.idx}`; // 'oneoff-' prefix: same family, same downstream handling
+    const est1rm = w > 0 ? Math.round(calcRM(w, reps)) : 0; // D12's calcRM is the ONE 1RM formula
+    for (let s = 1; s <= nSets; s++) out.push({ id, name, set: s, w, r: reps, est1rm });
+  });
+  return { sets: out, problems };
 }
 
 async function saveJournal() {
-  if (!currentUser) { showToast('Sign in to save your journal'); return; }
-  const meals = document.getElementById('journalMeals')?.value;
-  const protein = document.getElementById('journalProtein')?.checked || false;
-  const notes = document.getElementById('journalNotes')?.value || null;
+  if (!currentUser) { showToast('Sign in to save a journaled workout'); return; }
+  const { sets: allSets, problems } = collectJournalSets();
+  if (problems.length) { showToast(problems[0]); return; }
+  if (!allSets.length) { showToast('Add at least one exercise'); return; }
+
   const today = localDateStr(); // BUG-018/027: local day, not UTC
+  const sessionDate = document.getElementById('journalDate')?.value || today;
+  if (sessionDate > today) { showToast("You can't journal a workout you haven't done yet"); return; }
+  const isBackdated = sessionDate !== today;
+  const notes = (document.getElementById('journalNotes')?.value || '').trim();
+  const totalVolume = allSets.reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
+
+  const btn = document.getElementById('journalSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
-    const { error } = await sb.from('nutrition_logs').upsert({
+    const { data: session, error: sessErr } = await sb.from('workout_sessions').insert({
       user_id: currentUser.id,
-      log_date: today,
-      meals_logged: meals === '' || meals == null ? null : parseInt(meals, 10),
-      protein_hit: protein,
+      session_date: sessionDate,
+      day_type: 'journal', // a label only — session_type is the ONLY safe discriminator
+      program_goal: goalKeyFor(cfg.goal),
+      session_type: ONEOFF_SESSION_TYPE, // migrations/0015's partial index is what lets this coexist with a program day on the same date
+      completed: true,
+      total_volume_lbs: Math.round(totalVolume),
       notes: notes || null,
-    }, { onConflict: 'user_id,log_date' });
-    if (error) throw error;
-    showToast('Journal saved ✓');
+    }).select('id').single();
+    if (sessErr) throw sessErr;
+
+    const { error: setsErr } = await sb.from('sets').insert(allSets.map(s => ({
+      session_id: session.id,
+      user_id: currentUser.id,
+      exercise_name: s.name,
+      set_number: s.set,
+      weight_lbs: s.w,
+      reps: s.r,
+      estimated_1rm_lbs: s.est1rm > 0 ? s.est1rm : null,
+    })));
+    if (setsErr) throw setsErr;
+
+    // D11: earned load binds the working 1RM. These exercises are not in the periodized
+    // program, so the day is synthesized and passed explicitly — otherwise
+    // reconcileWorking1RMs' currentDay lookup finds nothing and drops every set.
+    const journalExs = {};
+    allSets.forEach(s => { (journalExs[s.id] = journalExs[s.id] || []).push(s); });
+    const journalDay = { key: 'journal', blocks: [{ exs: Object.entries(journalExs).map(([id, ss]) => ({ id, name: ss[0].name })) }] };
+    try { reconcileWorking1RMs(journalExs, null, journalDay); }
+    catch (rmErr) { console.warn('Journal 1RM reconcile skipped:', rmErr); }
+
+    // The DB trigger (sets_apply_1rm_and_pr) decided the PRs — read them back.
+    const { count: prCount } = await sb.from('sets')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id)
+      .eq('is_pr', true);
+
+    // Points/volume/sessions/PRs always; the streak ONLY if it happened today.
+    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), sessionDate, !isBackdated); }
+    catch (stErr) { console.warn('Journal streak credit failed:', stErr); }
+
+    try { await computeCalibration1RMs(session.id, currentUser.id); }
+    catch (calErr) { console.warn('Calibration 1RM write skipped:', calErr); }
+
+    const hist = LS.get('tandem_history') || [];
+    hist.unshift({
+      id: Date.now(),
+      date: new Date(sessionDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      session_date: sessionDate,
+      week: currentWeek,
+      goal: goalKeyFor(cfg.goal),
+      day: 'journal',
+      session_type: ONEOFF_SESSION_TYPE, // keeps it OUT of the program's position math (isProgramHistoryRow)
+      completed: true,
+      exercises: journalExs
+    });
+    if (hist.length > 100) hist.pop();
+    LS.set('tandem_history', hist);
+
+    const pts = 10 + (prCount || 0) * 5;
+    showToast(`${svgIcon('flame')} Logged — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts${isBackdated ? ' (streak unchanged)' : ''}`);
     closeModal('journal');
+    // The scoreboard is now stale by exactly this session's points and volume, and
+    // loadDashboard() is the only path that re-reads them: without this the credit
+    // above is invisible, i.e. wired but not working.
+    if (typeof loadDashboard === 'function') loadDashboard();
   } catch (e) {
     console.error('saveJournal failed:', e);
     showToast('Could not save — try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Workout'; }
   }
 }
 

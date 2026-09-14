@@ -1245,6 +1245,65 @@ try {
       fail('D9', `${label} advances the program pointer from an UNFILTERED session lookup — a one-off can win it, and because its day_type matches no program key the pointer stalls and the same prescribed day is served twice (Kerwin ruling 2026-09-13)`);
     } else d9ScopeChecked++;
   }
+
+  // ── the JOURNAL clause (Kerwin 2026-09-14) ──────────────────────────────────────
+  // The Journal is a manual WORKOUT log, and a journaled workout is a workout, never a
+  // program day — so it must carry the SAME discriminator, or migration 0015's partial
+  // unique index stops excluding it and the position consumers start counting it.
+  const sjMatch = tandemHtml.match(/async function saveJournal\([\s\S]{0,14000}?\n\}/);
+  if (!sjMatch) {
+    fail('D9', 'saveJournal() not found in tandem.html — the Journal must be a workout log governed by D9, not a nutrition form (Kerwin ruling 2026-09-14)');
+  } else {
+    // TWO rows carry the discriminator and they are checked SEPARATELY, per window.
+    // A file-wide (or even function-wide) grep for `session_type: ONEOFF_SESSION_TYPE`
+    // is a weak instrument here and was proven so by running the regression: deleting it
+    // from the workout_sessions insert left the local-history copy behind, and the
+    // function-wide test reported GREEN on the exact defect it exists to catch.
+    for (const [label, re, why] of [
+      ['the workout_sessions insert', /sb\.from\('workout_sessions'\)\.insert\(\{[\s\S]{0,900}?\}\)/,
+       "the DB row would be a PROGRAM day: migration 0015's partial unique index would collide with a real program day on the same date, and the cloud day-pointer lookups would advance off a journal entry"],
+      ['the local-history unshift', /hist\.unshift\(\{[\s\S]{0,900}?\}\);/,
+       'the local row would be counted by isProgramHistoryRow(), moving the week counter and the overdue clock'],
+    ]) {
+      const w = sjMatch[0].match(re);
+      if (!w) { fail('D9', `saveJournal(): ${label} not found — its session_type stamp cannot be confirmed`); continue; }
+      if (!/session_type: ONEOFF_SESSION_TYPE/.test(w[0])) {
+        fail('D9', `saveJournal(): ${label} does not stamp session_type: ONEOFF_SESSION_TYPE — ${why}. A journaled workout is a workout, never a program day (Kerwin rulings 2026-09-13 / 2026-09-14)`);
+      } else d9ScopeChecked++;
+    }
+
+    // "Past date, don't count for the streak." A journaled workout is credited from its
+    // OWN date, so the streak flag must be derived from whether that date is today. A
+    // literal `true`, or the 3-arg call, silently re-credits the streak for a backdated
+    // entry — the exact regression this clause exists to prevent.
+    // Matched to the `);` terminator, not to the first `)` — the argument list contains
+    // nested calls (Math.round(...)), and a `[^)]*` cap would clip mid-argument and read
+    // as "the flag is missing" when it is present. A false failure, not a safe one.
+    const creditCall = sjMatch[0].match(/creditSessionToStreaks\([\s\S]{0,200}?\);/);
+    if (!creditCall) {
+      fail('D9', 'saveJournal() never calls creditSessionToStreaks() — points/volume/PRs must be credited through the ONE owner of the scoring rule, not inlined');
+    } else if (!/,\s*!isBackdated\s*\);$/.test(creditCall[0])) {
+      fail('D9', `saveJournal()'s streak credit is \`${creditCall[0]}\` — it must pass \`!isBackdated\` as the advanceStreak argument. "Past date, don't count for the streak." (Kerwin ruling 2026-09-14)`);
+    } else d9ScopeChecked++;
+  }
+
+  // The option must actually gate the three streak-bearing columns inside the one owner.
+  // Checked on the owner's body, not on the caller: passing advanceStreak=false and then
+  // writing last_session_date anyway is "wired, not working" — and writing it BACKWARDS
+  // is worse than not crediting, because it breaks a live streak.
+  const csMatch = tandemHtml.match(/async function creditSessionToStreaks\([\s\S]{0,6000}?\n\}/);
+  if (!csMatch) {
+    fail('D9', 'creditSessionToStreaks() not found in tandem.html');
+  } else {
+    if (!/advanceStreak\s*=\s*true/.test(csMatch[0])) {
+      fail('D9', 'creditSessionToStreaks() has no advanceStreak parameter defaulting to true — a backdated journal entry cannot be credited without advancing the streak, and defaulting it false would silently stop crediting real sessions');
+    } else d9ScopeChecked++;
+    // The UPDATE branch must assign the streak-bearing columns conditionally.
+    const guarded = /if \(advanceStreak\) \{[\s\S]{0,400}?last_session_date[\s\S]{0,200}?\n  \}/.test(csMatch[0]);
+    if (!guarded) {
+      fail('D9', "creditSessionToStreaks() writes last_session_date unconditionally — a backdated entry would move the streak date BACKWARDS and break a live streak. The three streak-bearing columns (current_streak_days, longest_streak_days, last_session_date) must be assigned only inside `if (advanceStreak)` (Kerwin ruling 2026-09-14)");
+    } else d9ScopeChecked++;
+  }
 } catch (e) {
   fail('D9', `could not verify one-off program-position scope: ${e.message}`);
 }
