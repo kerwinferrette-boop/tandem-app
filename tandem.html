@@ -2026,8 +2026,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 // HERO IMAGERY — heroSrc(moment) returns the right photo for each app moment
 // ═══════════════════════════════════════════════════════
 const HERO_PHOTOS = {
-  male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg'],
-  female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg']
+  male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg','public/hero-male-5.jpg','public/hero-male-6.jpg'],
+  female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg','public/hero-female-5.jpg','public/hero-female-6.jpg']
 };
 const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3 };
 function userSexKey(){
@@ -2040,8 +2040,12 @@ function userSexKey(){
   return (s === 'f' || s === 'female') ? 'female' : 'male';
 }
 function heroSrc(moment){
-  const idx = HERO_MOMENTS[moment] != null ? HERO_MOMENTS[moment] : 0;
-  return HERO_PHOTOS[userSexKey()][idx];
+  const pool = HERO_PHOTOS[userSexKey()];
+  const base = HERO_MOMENTS[moment] != null ? HERO_MOMENTS[moment] : 0;
+  // cycle daily through the full gender pool so the whole set gets seen over time,
+  // not just a permanently-fixed photo per moment
+  const dayOffset = new Date().getDate();
+  return pool[(base + dayOffset) % pool.length];
 }
 function applyHeroImages(root){
   const sex = userSexKey();
