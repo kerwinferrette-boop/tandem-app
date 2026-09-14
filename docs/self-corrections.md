@@ -258,3 +258,39 @@ specifically to measure a real person's real training); nothing about it general
 **Enforced by** judgment — not mechanically checkable today. `.claude/loop-config.md`'s
 `live_test_account_verification` section is amended in this same change to state this as the
 default path, not a fallback, so the next session reads it as instruction rather than trivia.
+
+## SC-09 — shipping + Notion is not the whole completion ritual when a wave file exists
+
+**What I believed.** That EPIC-18 Slice 1 was fully "closed out" once the code was committed,
+pushed to `main`, gates re-run green, and the Notion EPIC-18/BUG-107 pages updated. I told Kerwin
+exactly that: "EPIC-18 Slice 1 is fully closed out."
+
+**What was true.** `docs/waves/EPIC-18-WAVE-STATE.md` — the per-Epic checkpoint file
+`.claude/loop-config.md`'s `wave_decomposition` section names as *the* resume mechanism ("This IS
+the checkpoint... there is no other resume mechanism") — still showed step 1 unchecked (`[ ]`)
+after the push. Its own text states the rule directly: "A slice's status flips to done in this
+file, and the file is committed, the moment the slice's story goes Resolved — not batched to
+end-of-cycle." I only caught this because Kerwin asked whether a future session would pick up
+where this one left off, which forced me to actually go check the resume mechanism rather than
+assert continuity. Separately, `scripts/preflight.mjs` (the tool that runs at session start to
+answer "where can work be hiding") only reads the old, single, stale `docs/WAVE-STATE.md` and
+never looks at `docs/waves/*.md` at all — so even a correctly-updated per-Epic wave file would not
+have surfaced at the next session's start without a further fix.
+
+**The gap.** I treated "committed the code + updated the tracker Kerwin reads (Notion)" as
+synonymous with "updated every mechanism this project uses to answer 'is this done and where do I
+resume'" — without checking whether a wave file existed for the Epic I'd just shipped, even though
+loop-config.md documents the wave file as authoritative for exactly that question and even links
+its own commit-timing rule. Two different systems track completion here (Notion for Kerwin-facing
+status, git-committed wave files for session-to-session resume) and finishing one is not evidence
+the other is current.
+
+> **THE RULE — SC-09.** Before declaring a shipped Epic/story "closed out," check whether
+> `docs/waves/<EPIC-ID>-WAVE-STATE.md` exists for it. If it does, flip the shipped step's checkbox
+> and append the verification detail in the SAME turn as the push — not a follow-up correction —
+> per that file's own stated commit-timing rule. Do not equate "Notion updated" with "every
+> resume-mechanism updated."
+
+**Enforced by** judgment — not mechanically checkable today. `scripts/preflight.mjs` checking only
+`docs/WAVE-STATE.md` (not `docs/waves/*.md`) is a separate, real gap flagged to Kerwin the same
+session this entry was written, not yet fixed.

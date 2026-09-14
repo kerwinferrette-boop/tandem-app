@@ -44,7 +44,30 @@ here); Fix must confirm Wave 7's status before starting Slice 1 below.
 
 ## Step status
 
-- [ ] **1. Onboarding Step 4 restructure — equipment removal + 4 new preference questions**
+- [x] **1. Onboarding Step 4 restructure — equipment removal + 4 new preference questions**
+      **SHIPPED 2026-09-14, commit `d7b9a32` (main + claude/lucid-volta-xwwrbb).** Scope actually
+      built: removed the Equipment Access question from Step 4 and made the per-workout tier
+      selector (`applySetupSelection()`) the single durable source of `cfg.equipment` via a new
+      `EQ_TIER_TO_CFG` table. The 4 new preference fields this step originally called for
+      (Session Length, Preferred Workout Time, Injury Limitations, Secondary Goal) were found
+      **already present** on Step 3/"Training Preferences" going into this session — only
+      Preferred Workout Time remained the gated `obCanAdvance()` field once equipment was pulled
+      out; Session Length/Injuries/Secondary Goal were already optional fields on that step. So
+      this slice's real remaining work was narrower than originally scoped: equipment removal +
+      durability, not net-new field additions.
+      Verified end-to-end in a real headless-Chromium run (not just the stubbed walkthrough):
+      onboarding completes with no equipment question; selecting Bodyweight Only + Apply changes
+      the rendered workout to bodyweight/band exercises; the choice survives a simulated fresh
+      session (both the setup-card label and the actual generated exercises stayed correct).
+      Verification caught two real bugs the first-pass implementation missed — `applySetupSelection()`
+      was setting `cfg.equipment` in memory and calling `syncToCloud()` but never
+      `LS.set('tandem_cfg', cfg)` (every other cfg-mutation site does), and the setup card's own
+      display-sync-on-load code read `sessionStorage.eq_tier` only instead of mirroring
+      `resolveEquipmentTier()`'s session→cfg→default priority — both fixed in the same commit.
+      Gates: `npm run verify` 12/12, `npm run validate:personas` 630/630,
+      `npm run walkthrough:onboarding` 0 real findings. Notion EPIC-18 row and BUG-107
+      cross-reference updated same session.
+      ~~Original text below, kept for the record:~~
       **Depends on:** Wave 7 landing first (Dependency Gate — shared render surface, not
       re-verified this session, confirm before starting).
       **File/region:** onboarding flow in `tandem.html` (Step 4 render + `cfg` write-back). Remove
@@ -94,3 +117,10 @@ here); Fix must confirm Wave 7's status before starting Slice 1 below.
   whole — split into Slice 1 (buildable, Kerwin already confirmed the product direction twice) and
   Slice 1a (Needs Human carve-out, feeds the Epley calibration formula). Tracker row synced Needs
   Human → Untested with Evidence pointing here (see Notion). Neither slice built this session.
+
+- **2026-09-14:** Slice 1 SHIPPED — see step 1 above for full detail. Slice 1a remains untouched,
+  Needs Human, per the standing forbidden-ops rule (unaffected by Slice 1 shipping). This file was
+  NOT updated at the moment the commit landed, only afterward when Kerwin asked whether a future
+  session would pick up where this one left off — that question is what caught the gap between
+  "shipped and pushed" and "this checkpoint file actually says so." Flagging so it doesn't repeat:
+  the checkbox flip belongs in the SAME turn as the push, not a follow-up correction.
