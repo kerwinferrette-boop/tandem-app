@@ -510,15 +510,19 @@ const EXERCISE_BANK = {
     // free barbell squat in trained women — a guided bar path removes stabilization
     // demand, which can mechanically allow MORE load, not less. That's squat-specific
     // (bench's stabilization demand differs) so it doesn't directly transfer to a
-    // higher bench factor. More importantly: in THIS codebase oneRmFactor is also the
-    // exercise-SELECTION ranking key (bank()/pick() sort candidates oneRmFactor-desc)
-    // — raising it was tested and confirmed to displace 'Low Incline Barbell Press'
-    // from the generated program (same failure C7 caught before, reproduced live).
-    // DECISION: kept at 0.92. Correcting the load-math in isolation would corrupt
-    // selection priority, which correctly favors free-weight compounds as primary
-    // (more stabilizer/EMG engagement — the same literature this cites). The real fix
-    // is separating load-scaling from selection-priority into two fields; flagged as
-    // a future refactor, not done here.
+    // higher bench factor.
+    // The second half of this note used to read: "in THIS codebase oneRmFactor is also
+    // the exercise-SELECTION ranking key (bank()/pick() sort candidates oneRmFactor-
+    // desc) — raising it was tested and confirmed to displace 'Low Incline Barbell
+    // Press' from the generated program... The real fix is separating load-scaling from
+    // selection-priority into two fields; flagged as a future refactor, not done here."
+    // THAT REFACTOR IS NOW DONE (council ruling R1, 2026-09-14): oneRmFactor is read by
+    // load derivation only, and D29 keeps it out of every comparator. Selection priority
+    // can no longer be corrupted by correcting the load math, so this value is now free
+    // to be judged purely as a load estimate.
+    // It is NOT changed here, because no source has been produced that says what it
+    // should be instead, and inventing one is the exact failure R7 bans. Its provenance
+    // is owed the same retroactive audit R7 orders for D21/D15 — flagged, not filled.
     emphasis:['chest','push','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:0.92,
     why:'The fixed vertical bar path removes the balance demand, letting a lifter push chest close to failure safely and even without a spotter — ideal for overloading the sternal pec late in a session or for newer lifters still grooving the press pattern. Ranked below the free-weight barbell presses: a guided machine press is an assistance movement, not a primary prescription over free weights.',
     cues:['Set the bench so the bar lines up with the lower chest','Retract and depress the shoulder blades into the bench','Lower to a light touch on the chest; press to full lockout','Rotate the wrists to unrack/rerack the safety hooks between sets']},
@@ -1894,7 +1898,19 @@ function flagDropSet(day) {
 // generated day — so a one-off still prescribes at the lifter's real strength.
 // ═══════════════════════════════════════════════════════
 const FOCUS_SLOTS = {
-  chest:     [['pec_major','pec','compound'],['pec_major','pec','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
+  // COUNCIL R2, 2026-09-14 — chest[1] was a BYTE-IDENTICAL copy of chest[0]
+  // (['pec_major','pec','compound'] twice). That is the reported bug's actual home: the
+  // comparator only ever chose WHICH duplicate pec compound; this table guaranteed one.
+  // No sort can fix a slot that asks the same question twice, which is why the ruling
+  // put R2 here and not in a comparator. Every compound in the bank that matches
+  // pec_major/pec is a horizontal press, so "pick a different pec compound" has no legal
+  // answer — the second compound has to be a different pattern to exist at all.
+  // Replaced with the vertical press, which is NOT an invention for this table: push[1]
+  // and TEMPLATES day1's `secondary` slot already ask for exactly this, so a chest-focus
+  // day now has the same two-pattern press structure the weekly engine has always had.
+  // The day keeps its chest identity through chest[2] (pec isolation) and chest[3]
+  // (tricep); it gains the overhead press it never had.
+  chest:     [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
   back:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['lat_dorsi','','isolation'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation']],
   legs:      [['quad','','compound'],['hamstring','glute_max','compound'],['quad_rectus_femoris','quad_vastus','isolation'],['hamstring','','isolation'],['gastrocnemius','calf','isolation']],
   shoulders: [['anterior_delt','lateral_delt','compound'],['lateral_delt','','isolation'],['posterior_delt','rhomboid','isolation'],['anterior_delt','','isolation'],['upper_trap','','isolation']],
@@ -1980,6 +1996,165 @@ const ONEOFF_CARDIO_GROUPS = ['full_body','glute_max'];
 const EQUIPMENT_AVAILABILITY_RANK = { barbell:0, machine:0, cable:0, dumbbell:1, band:2, bodyweight:2 };
 const equipmentAvailabilityRank = (e) => EQUIPMENT_AVAILABILITY_RANK[e.equipment] ?? 1;
 
+// ── FREE-WEIGHT RANK — the last tiebreak before the alphabet, and the reason the ──
+// ── alphabet is no longer allowed to be the effective decider of a slot.         ──
+//
+// SHOULD. ACSM 2009 Position Stand, "Progression Models in Resistance Training for
+// Healthy Adults" (PMID 19204579), section *Free Weights and Machines*, quoted verbatim
+// from the position stand itself — NOT from research-report (8).pdf's paraphrase of it,
+// and NOT from that report's [22], which is a healthline.com article and cannot carry a
+// program rule under council ruling R7:
+//   Evidence category A — "For novice to intermediate training, it is recommended that
+//     free-weight and machine exercises are included."
+//   Evidence category C — "For advanced RT, it is recommended that emphasis be placed on
+//     free-weight exercises with machine exercises used to compliment program needs."
+// The mechanism the stand gives for the latter: "machine exercises have demonstrated less
+// neural activation when matched for intensity for most comparisons to free-weight
+// exercises," and free weights "result in a pattern of intra- and intermuscular
+// coordination that mimics the movement requirements of a specific task."
+//
+// DID, measured before this rank existed (getProgram, build_muscle, male, 12wk, the
+// COMPOUND_PATTERNS['Bench Press'] family counted across the generated week):
+//   3d 0 · 4d 0 · 5d 0 · 6d 0  — ZERO free-weight horizontal presses at every day-count.
+// Not "deprioritized": absent. Cable Chest Press ties Flat Barbell Press on primary-match
+// (both pec_major_sternal) and on equipment rank (cable and barbell are both 0, because
+// Kerwin's 2026-09-13 ruling deliberately ties bar/machine/cable above bodyweight), so
+// the comparator fell through to localeCompare and "Cable..." < "Flat...". A program with
+// no free-weight press fails Evidence category A outright, at EVERY experience level.
+//
+// COULD (rejected):
+//  - Re-rank EQUIPMENT_AVAILABILITY_RANK to put barbell above machine/cable. Rejected:
+//    that table answers a different question (is the implement contended for in a busy
+//    gym) and Kerwin CLOSED its ordering on 2026-09-13. Two rules, two homes.
+//  - Use oneRmFactor (Flat 1.00 > Machine 0.90 > Cable 0.80), which ranks these correctly
+//    by accident. Rejected, hard: that is precisely the dual-role defect D29 now bans.
+//  - Gate this on experience === 'advanced', matching Evidence C's literal scope.
+//    Rejected: the defect being fixed is ABSENCE, and "included" (Evidence A) binds every
+//    level. Applying it unconditionally is the weaker, safer reading — it restores a
+//    free-weight press for novices rather than withholding one. Stated as a deliberate
+//    over-application of a C-category recommendation, not as something the stand says.
+//
+// SCOPE, so this is not read wider than it was taken. Ranks *equipment*, nothing else.
+// It runs AFTER equipmentAvailabilityRank, so it can only ever break a tie WITHIN one
+// availability class — {barbell,machine,cable}=0, {dumbbell}=1, {band,bodyweight}=2.
+// Bodyweight (2) can never tie barbell (0), so Kerwin's closed bodyweight ruling is
+// untouched by construction, not by convention. Dumbbell is class 1 alone and band/
+// bodyweight both score 1 here, so the ONLY behavioural change is barbell and dumbbell
+// beating machine/cable inside their own class. Machines are not excluded and must not
+// be — Evidence A requires them included, which is verified by measurement in the ship
+// report, in BOTH directions, because a rank that evacuated machines would fail the same
+// recommendation this one exists to satisfy.
+//
+// Transitive by construction: a pure per-candidate lookup, never a pairwise relation.
+// Reorder, never a filter — D18's empty-pool gate stays safe.
+const FREE_WEIGHT_RANK = { barbell:0, dumbbell:0, machine:1, cable:1, band:1, bodyweight:1 };
+const freeWeightRank = (e) => FREE_WEIGHT_RANK[e.equipment] ?? 1;
+
+// ── MOVEMENT PATTERN — council ruling R2, 2026-09-14 ────────────────────────────
+// docs/council-science-application-2026-09-14.md: "Two compound variants of the same
+// movement pattern in one session: INADMISSIBLE. Enforced in FOCUS_SLOTS, not in a sort.
+// Tiered ENGINEERING_DEFAULT with the corpus gap flagged."
+//
+// PROVENANCE, stated first because this is the exact thing the council convened over.
+// The RULE has NO citation. Two advisors attributed "one primary multi-joint per movement
+// pattern per session" to NSCA Essentials 4th ed.; the reviewer could not find it there and
+// neither could I. Schoenfeld/Baz-Valle, which two more advisors invoked, are WEEKLY volume
+// dose-response analyses and say nothing about within-session pattern repetition. So this
+// ships as an ENGINEERING_DEFAULT and is labelled one — NOT as an NSCA or ACSM rule.
+// What IS cited, and is offered as supporting MECHANISM only, never as the rule:
+// ACSM 2009 Position Stand (PMID 19204579), *Exercise Order*: "Studies show that
+// multiple-joint exercise (bench press, squat, leg press, and shoulder press) performance
+// declines significantly when these exercises are performed later (after several exercises
+// stressing similar muscle groups) rather than early in a workout." That licenses "the
+// second same-pattern compound is performed degraded"; it does not license "therefore
+// never program one." The burden runs against the engine (silence is the absence of a
+// warrant, not a permission), which is why this ships — but it ships honestly tiered.
+//
+// SCOPE. `pattern` is a DESCRIPTIVE classification of a movement, not a coefficient, so
+// R7 ("no uncited coefficient ships") is not engaged by the assignments themselves — each
+// is an observable fact about the lift, checkable by watching someone do it. The
+// assignments ARE a judgment at two boundaries, named rather than hidden:
+//   * Incline presses are horizontal_push, not vertical_push. They are chest presses;
+//     grouping them with the overhead press would let a day run Flat + Incline unchallenged,
+//     which is the reported bug with one word changed.
+//   * Hip thrust / glute bridge is its OWN pattern, not hinge. Bundling it with the RDL
+//     would forbid the RDL + hip-thrust pairing, which is standard posterior-chain practice
+//     and is not what anyone complained about. A rule that banned it would be over-reach.
+// Deliberately NOT in EXERCISE_BANK as a per-entry field: the bank is synced to the prod
+// `exercises` table by scripts/sync-exercise-bank.mjs and diffed by prod-integration.mjs
+// check A2, so a new bank field is a schema question. This is a selection-engine concern
+// and lives with the other selection-engine helpers. One rule, one home.
+//
+// Only `category === 'compound'` entries are classified (72 of 179). Isolation, core and
+// cardio are unclassified by design — `movementPattern` returns null for them and the
+// clash rank is a no-op, so nothing outside compound selection changes.
+const MOVEMENT_PATTERN = {
+  // horizontal push — chest press family (incline included, see SCOPE above)
+  'flat-barbell-press':'horizontal_push', 'db-bench-press':'horizontal_push',
+  'incline-db-press':'horizontal_push', 'low-incline-barbell-press':'horizontal_push',
+  'high-incline-barbell-press':'horizontal_push', 'decline-barbell-press':'horizontal_push',
+  'decline-db-press':'horizontal_push', 'close-grip-barbell-press':'horizontal_push',
+  'dips':'horizontal_push', 'push-up':'horizontal_push',
+  'machine-chest-press':'horizontal_push', 'alternating-db-bench-press':'horizontal_push',
+  'alternating-incline-db-press':'horizontal_push', 'db-floor-press':'horizontal_push',
+  'cable-chest-press':'horizontal_push', 'squeeze-press':'horizontal_push',
+  'smith-machine-bench-press':'horizontal_push',
+  // vertical push — overhead press family
+  'arnold-press':'vertical_push', 'barbell-ohp':'vertical_push',
+  'db-shoulder-press':'vertical_push', 'push-press':'vertical_push',
+  'z-press':'vertical_push', 'landmine-press':'vertical_push',
+  'machine-shoulder-press':'vertical_push', 'alternating-db-shoulder-press':'vertical_push',
+  'seated-db-shoulder-press':'vertical_push', 'smith-machine-shoulder-press':'vertical_push',
+  // vertical pull — resistance travels down the torso's long axis
+  'lat-pulldown':'vertical_pull', 'pull-up':'vertical_pull', 'chin-up':'vertical_pull',
+  'neutral-grip-lat-pulldown':'vertical_pull', 'assisted-pull-up':'vertical_pull',
+  'machine-high-row':'vertical_pull', 'upright-row':'vertical_pull',
+  'cable-upright-row':'vertical_pull',
+  // horizontal pull — row family
+  'table-inverted-row':'horizontal_pull', 'seated-cable-row':'horizontal_pull',
+  'dumbbell-row':'horizontal_pull', 'barbell-row':'horizontal_pull',
+  'single-arm-db-row':'horizontal_pull', 't-bar-row':'horizontal_pull',
+  'chest-supported-row':'horizontal_pull', 'pendlay-row':'horizontal_pull',
+  'chest-supported-db-row':'horizontal_pull', 'kroc-row':'horizontal_pull',
+  'band-row':'horizontal_pull',
+  // squat — bilateral knee-dominant
+  'barbell-back-squat':'squat', 'hack-squat':'squat', 'leg-press':'squat',
+  'bodyweight-squat':'squat', 'goblet-squat':'squat', 'front-squat':'squat',
+  'smith-machine-squat':'squat', 'landmine-squat':'squat', 'db-sumo-squat':'squat',
+  // lunge — split-stance / single-leg knee-dominant
+  'bulgarian-split-squat':'lunge', 'db-lunge':'lunge', 'step-up':'lunge',
+  'db-split-squat':'lunge', 'reverse-lunge':'lunge', 'curtsy-lunge':'lunge',
+  'lateral-step-down':'lunge',
+  // hinge — hip-dominant with a loaded hamstring stretch
+  'romanian-deadlift':'hinge', 'bodyweight-single-leg-rdl':'hinge', 'good-morning':'hinge',
+  'db-rdl':'hinge', 'single-leg-db-rdl':'hinge', 'stiff-leg-deadlift':'hinge',
+  'sumo-rdl':'hinge', 'cable-pull-through':'hinge',
+  // bridge — supine//horizontal hip extension (see SCOPE: deliberately not `hinge`)
+  'hip-thrust':'bridge', 'barbell-hip-thrust':'bridge',
+};
+// select()/bank() iterate Object.values(EXERCISE_BANK), so the slug is not on the entry —
+// index by name once at load. The lookup FAILS OPEN — a missing entry returns null and
+// null clashes with nothing — so scripts/movement-pattern-smoke.mjs (run by `npm run
+// verify`) asserts the table and the bank's compound set are 1:1 in BOTH directions, that
+// every pattern name is in a closed set, and that bank names are unique (this Map is
+// name-keyed, so a duplicate name would silently overwrite). A slug typo or a new
+// unclassified compound therefore fails the build instead of silently scoring null.
+const MOVEMENT_PATTERN_BY_NAME = new Map();
+for (const [slug, p] of Object.entries(MOVEMENT_PATTERN)) {
+  const e = EXERCISE_BANK[slug];
+  if (e) MOVEMENT_PATTERN_BY_NAME.set(e.name, p);
+}
+const movementPattern = (e) => (e && MOVEMENT_PATTERN_BY_NAME.get(e.name)) || null;
+// 1 = this candidate repeats a movement pattern already used by a compound earlier in THIS
+// session, 0 = it does not. Per-candidate, so transitive by construction (BUG-94's
+// non-transitive gate is the reason that is stated rather than assumed). An unclassified
+// entry scores 0 and is unaffected.
+const patternClash = (e, usedPatterns) => {
+  if (!usedPatterns || !usedPatterns.size) return 0;
+  const p = movementPattern(e);
+  return (p && usedPatterns.has(p)) ? 1 : 0;
+};
+
 // ── PRIMARY-MATCH RANK — a slot should be won by an exercise that TRAINS the muscle ──
 // groupsMatch (D19, SAFETY, untouched) flattens primary + secondary into one
 // unweighted list to decide ELIGIBILITY, which is correct: a synergist match is a
@@ -1998,6 +2173,49 @@ const equipmentAvailabilityRank = (e) => EQUIPMENT_AVAILABILITY_RANK[e.equipment
 // It ranks ABOVE the equipment tiebreak for the same reason: WHICH MUSCLE IS TRAINED
 // dominates WHICH IMPLEMENT TRAINS IT. It ranks BELOW D20's recency/fresh-set ranks,
 // which are about recovery (SAFETY-adjacent) rather than relevance.
+//
+// 2026-09-14, council ruling R1: oneRmFactor is now GONE from selection entirely, not
+// merely outranked. Demoting it left the contradiction live one rank down — a field
+// that claims you are 7% stronger on Decline and then prescribes 26% less weight than
+// Flat was still ordering slots wherever primary-match tied. The general rule the
+// ruling states: ONE COEFFICIENT, ONE SEMANTIC ROLE, READABLE ONLY BY THE SUBSYSTEM
+// THAT OWNS THAT ROLE. oneRmFactor had two jobs; that, not its provenance, is what
+// shipped a contradiction. Its owner is load derivation (seedWeight/D26). The
+// replacement is NO NEW SCALAR — the surviving keys are all pre-existing and
+// deterministic. Enforced by D29: oneRmFactor appears in zero .sort() bodies.
+// CORRECTED 2026-09-14, same session, per SC-02/SC-08. An earlier revision of this
+// comment asserted "R1 alone does NOT fix the reported Decline/Flat chest day",
+// reasoning that with the factor gone the tie falls to equipment rank (both barbell, 0)
+// then name, where "Decline Barbell Press" still sorts before "Flat Barbell Press".
+// That head-to-head is true; THE CONCLUSION DRAWN FROM IT WAS FALSE, because the pool is
+// not {Decline, Flat}. It also holds "Cable Chest Press" (cable, equipment rank 0, same
+// pec_major_sternal primary), which sorts before both. Measured over the 630-combo sweep
+// rather than reasoned about: Decline Barbell Press goes 210 combos -> 0 and Decline DB
+// Press 210 -> 0. The reported day becomes Cable Chest Press + Barbell Overhead Press —
+// one horizontal press and one vertical press, where it used to be two pec presses and
+// no overhead press at all on a day labelled "Upper Push".
+// SCOPE of that claim, stated so the number is not read wider than it was taken: it is a
+// getProgram() measurement over the persona matrix. It says nothing about the one-off
+// getSingleDay() path, whose FOCUS_SLOTS.chest[0] and [1] ARE still byte-identical
+// requests and still guarantee A duplicate pec compound. The comparator only ever chose
+// WHICH duplicate. That remains ruling R2's job, and it lands in FOCUS_SLOTS, not a sort.
+// RETRACTED 2026-09-14, same session, per SC-02. An earlier revision of this comment
+// called the post-R1 localeCompare fallback "KNOWN RESIDUE ... LEFT arbitrary on purpose",
+// on the grounds that R7 bans an uncited coefficient and the corpus offered no rule for
+// ordering two legitimate compound variants of one pattern. BOTH HALVES WERE WRONG.
+//  1. The residue is not benign. Measured across build_muscle/male/12wk at 3d/4d/5d/6d,
+//     the alphabet took the COMPOUND_PATTERNS['Bench Press'] family from 2 lifts to ZERO
+//     at every day-count, because "Cable Chest Press" < "Flat Barbell Press". Shipping a
+//     hypertrophy program with no free-weight horizontal press is not a cosmetic cost.
+//  2. The corpus was not silent — I had only searched research-report (8).pdf, which
+//     paraphrases the rule and sources it to [22] healthline.com, a blog. The rule is in
+//     the PRIMARY source that same report cites as [8]: ACSM's 2009 Position Stand
+//     (PMID 19204579), which states the free-weight emphasis directly at Evidence
+//     category C. "The corpus is silent" was a claim about my search, reported as a claim
+//     about the literature. See FREE_WEIGHT_RANK above for the verbatim quotes.
+// The generalisable error, recorded because it is the project's named failure mode
+// pointed at myself: absence of evidence in a secondary synthesis was treated as evidence
+// of absence, and an unsourced fallback was then defended as principled restraint.
 //
 // REORDER, NEVER A FILTER. Eligibility is still 100% groupsMatch's call — a slot whose
 // pool contains only synergist matches still fills, identically to before, because
@@ -2099,7 +2317,7 @@ function getSingleDay(focus, opts = {}) {
   // slot can never come up empty because of this (D20: "soft, never hard-excludes"),
   // and D9/D18 hold by construction rather than by a runtime check. With no
   // exposure the sort is unchanged from the pre-D20 comparator.
-  const select = (groups, cat, used, freshGroups = []) => {
+  const select = (groups, cat, used, freshGroups = [], usedPatterns = null) => {
     const freshSet = freshGroups.length ? new Set(freshGroups) : null;
     // The EFFECTIVE slot request — identical to what groupsMatch filters on below, so
     // the primary-match rank and eligibility can never disagree about what was asked
@@ -2126,18 +2344,28 @@ function getSingleDay(focus, opts = {}) {
           const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
           if (diff !== 0) return diff;
         }
-        // PRIMARY-MATCH before oneRmFactor — see primaryMatchRank's declaration.
-        // A load-estimation coefficient must not outrank "does this train the muscle
-        // the slot asked for". Reorder only: never removes a candidate.
+        // PRIMARY-MATCH — see primaryMatchRank's declaration. Reorder only.
         const pm = primaryMatchRank(a, reqGroups) - primaryMatchRank(b, reqGroups);
         if (pm !== 0) return pm;
-        if (a.oneRmFactor != null || b.oneRmFactor != null) {
-          const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
-          if (diff !== 0) return diff;
-        }
+        // PATTERN NOVELTY (council R2) — demote a compound that repeats a movement
+        // pattern already used earlier in this same session. A sort key is sufficient
+        // HERE and only here: select() takes [0], so demotion is decisive, and when
+        // every candidate clashes the rank is a no-op and the slot still fills.
+        // buildDynamicProgram's pick() walks the pool by block index instead of taking
+        // [0], so demotion alone would not bind there — it narrows the pool instead.
+        // Same predicate, one home (patternClash); two application sites because the
+        // two engines consume their pools differently, which is stated rather than
+        // left for someone to discover.
+        const pc = patternClash(a, usedPatterns) - patternClash(b, usedPatterns);
+        if (pc !== 0) return pc;
+        // NO oneRmFactor RANK HERE — removed by council ruling R1, enforced by D29.
+        // See primaryMatchRank's declaration for why, and DOCTRINE.md D29 for the gate.
         // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
         const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
         if (eqDiff !== 0) return eqDiff;
+        // FREE-WEIGHT — ACSM 2009 (PMID 19204579). See freeWeightRank's declaration.
+        const fw = freeWeightRank(a) - freeWeightRank(b);
+        if (fw !== 0) return fw;
         return a.name.localeCompare(b.name);
       })[0] || null;
   };
@@ -2162,6 +2390,11 @@ function getSingleDay(focus, opts = {}) {
   });
 
   const used = new Set();
+  // Council R2 — movement patterns already spent by a COMPOUND in this one-off day.
+  // Per-day by construction: getSingleDay builds exactly one day, so this Set's scope
+  // IS the session. (buildDynamicProgram's `used` is deliberately cross-day; its
+  // pattern set must therefore be created per template, not alongside `used`.)
+  const usedPatterns = new Set();
   const comp = [], acc = [];
   slots.forEach((s, i) => {
     const groups = [s[0], s[1]].filter(Boolean);
@@ -2185,9 +2418,10 @@ function getSingleDay(focus, opts = {}) {
         });
       });
     }
-    const chosen = select(groups, cat, used, freshGroups);
+    const chosen = select(groups, cat, used, freshGroups, cat === 'compound' ? usedPatterns : null);
     if (!chosen) return;
     used.add(chosen.name);
+    if (cat === 'compound') { const p = movementPattern(chosen); if (p) usedPatterns.add(p); }
     (cat === 'compound' ? comp : acc).push(mk(chosen, i, cat === 'isolation' ? { sets: 3 } : {}));
   });
   // 2 core movements, then an optional Zone 2 finisher
@@ -2313,38 +2547,46 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     const all = [...(ex.muscleGroups.primary||[]),...(ex.muscleGroups.secondary||[])];
     return groups.some(g => all.some(a => a === g || a.startsWith(g+'_')));
   };
-  // GEN-fix (exercise-selection mechanism): bank() now returns a candidate
-  // pool in a fixed, explainable priority order instead of raw EXERCISE_BANK
-  // object-insertion order. Compounds (oneRmFactor is non-null) rank by
-  // relative loading capacity descending — the same biomechanical signal
-  // baseW() already uses to set starting weight, so the "primary" choice for
-  // a muscle group is whichever compound the bank itself already claims has
-  // the highest load ceiling / most direct recruitment. Isolation/core/cardio
-  // have no oneRmFactor (there's no single "best" accessory variant backed
-  // by evidence the same way) — those rank alphabetically, purely so the
-  // pool order is deterministic and independent of where a new bank entry
-  // happens to be inserted. Either way, adding an exercise to the bank can
-  // no longer silently reassign exercises in unrelated, already-generated
-  // programs — the fragility that caused the C7 regression.
+  // GEN-fix (exercise-selection mechanism): bank() returns a candidate pool in a
+  // fixed, explainable priority order instead of raw EXERCISE_BANK object-insertion
+  // order, so adding an exercise to the bank can no longer silently reassign
+  // exercises in unrelated, already-generated programs (the fragility that caused
+  // the C7 regression).
+  //
+  // WHAT THIS COMMENT USED TO SAY, and why it was wrong. It claimed compounds should
+  // "rank by relative loading capacity descending — the same biomechanical signal
+  // baseW() already uses to set starting weight, so the 'primary' choice for a muscle
+  // group is whichever compound the bank itself already claims has the highest load
+  // ceiling / most direct recruitment." That inference does not hold. oneRmFactor
+  // estimates HOW MUCH WEIGHT A LIFT MOVES relative to its implement's baseline; it
+  // says nothing about which muscle the lift trains, and "most direct recruitment"
+  // was never a property the field encoded. Shipping it as a relevance signal is what
+  // produced the Decline-before-Flat chest day: the engine ranked Decline first
+  // because it claims you are 7% stronger on it (factor 1.07 vs 1.00), then prescribed
+  // 26% LESS weight (100 vs 135) because the two loads come from different code paths.
+  // One field, two contradictory claims, both shipped.
+  //
+  // Removed per the 2026-09-14 council ruling R1 (docs/council-science-application-
+  // 2026-09-14.md), whose general rule is: ONE COEFFICIENT, ONE SEMANTIC ROLE,
+  // READABLE ONLY BY THE SUBSYSTEM THAT OWNS THAT ROLE. oneRmFactor's owner is load
+  // derivation (seedWeight/D26), and that is now its only reader. Enforced by D29.
   const bank = ({groups, cat, excl=[]}) =>
     Object.values(EXERCISE_BANK).filter(e =>
       tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name))
       .sort((a, b) => {
-        // PRIMARY-MATCH before oneRmFactor — rule-identical to select()'s copy above,
-        // via the SHARED primaryMatchRank helper (no second copy to drift, which is
-        // the hazard D19 had to police for groupsMatch). See its declaration for the
-        // rationale: oneRmFactor is a load-estimation coefficient, not a relevance
-        // signal. Reorder only: never removes a candidate, so a synergist-only pool
-        // still fills exactly as before.
+        // PRIMARY-MATCH — rule-identical to select()'s copy above, via the SHARED
+        // primaryMatchRank helper (no second copy to drift, which is the hazard D19
+        // had to police for groupsMatch). Reorder only: never removes a candidate,
+        // so a synergist-only pool still fills exactly as before.
         const pm = primaryMatchRank(a, groups) - primaryMatchRank(b, groups);
         if (pm !== 0) return pm;
-        if (a.oneRmFactor != null || b.oneRmFactor != null) {
-          const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
-          if (diff !== 0) return diff;
-        }
         // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
         const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
         if (eqDiff !== 0) return eqDiff;
+        // FREE-WEIGHT — rule-identical to select()'s copy above, via the SHARED
+        // freeWeightRank helper. ACSM 2009 (PMID 19204579); see its declaration.
+        const fw = freeWeightRank(a) - freeWeightRank(b);
+        if (fw !== 0) return fw;
         return a.name.localeCompare(b.name);
       });
 
@@ -2359,10 +2601,32 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   // list by mesocycle phase and accessories walk it by week — purposeful
   // variety over time/program segment, always landing on the next-best
   // candidate in the scientifically-ordered list rather than an arbitrary one.
-  const pick = (cands, slot, tmpl) => {
+  const pick = (cands, slot, tmpl, usedPatterns = null) => {
     if (!cands.length) return null;
     let pool = cands;
     if (emphTag) { const b = cands.filter(e => e.emphasis && e.emphasis.includes(emphTag)); if (b.length) pool = b; }
+    // ── COUNCIL R2 — no two compounds in one session share a movement pattern ──
+    // Narrowing, not a sort key, and not a filter on bank(). Three reasons, in order:
+    //  1. pick() does NOT take pool[0] — it returns pool[block % pool.length]. A sort
+    //     demotion would therefore be advisory: the block walk can land on a demoted
+    //     candidate anyway. Narrowing binds regardless of where the walk lands.
+    //  2. `if (novel.length) pool = novel` is the SAME guaranteed-non-empty house
+    //     pattern as emphTag above and the beginner machine-bias below: when every
+    //     candidate clashes, the narrowing is skipped entirely and the slot fills
+    //     exactly as it did before. It can never empty a pool, so D18 stays safe.
+    //  3. Doing it on bank()'s `excl` would be a hard filter — that CAN empty a pool,
+    //     and D20/D27 establish that selection steering in this engine is soft.
+    // Measured before this existed (getProgram, both sexes x 3/4/5/6 days): 12 of 36
+    // generated days contained two compounds of one pattern. R1 + the free-weight rank
+    // did not change that number at all — the duplicate merely MOVED from the push day
+    // (Decline + High Incline) to the pull day (Barbell Row + Pendlay Row). That is the
+    // council Contrarian's position confirmed by measurement: the comparator only ever
+    // chose WHICH duplicate; the slot tables guaranteed A duplicate. See MOVEMENT_PATTERN
+    // for the provenance of the rule (ENGINEERING_DEFAULT, corpus gap flagged).
+    if (usedPatterns && usedPatterns.size) {
+      const novel = pool.filter(e => !patternClash(e, usedPatterns));
+      if (novel.length) pool = novel;
+    }
     const isPrimary = slot && (slot.role === 'primary' || slot.role === 'secondary');
     // EPIC-8a: beginner tier biases compound-slot selection toward guided
     // (machine/cable) equipment when available — lower technique barrier.
@@ -2489,7 +2753,19 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       rationale:'Hip hinge pattern — glutes, hamstrings, posterior chain. Calf and hip abductor accessories.',
       slots:[
         {role:'primary',   groups:['hamstring','glute_max'],                    cat:'compound'},
-        {role:'secondary', groups:['glute_max','quad'],                         cat:'compound'},
+        // COUNCIL R2 — was ['glute_max','quad']. Same defect class as FOCUS_SLOTS.chest[1],
+        // just harder to see: a day whose own label is "Lower Hinge" and whose own rationale
+        // reads "Hip hinge pattern — glutes, hamstrings, posterior chain" asked its second
+        // compound slot for QUAD, and got a Barbell Back Squat. In the 4/5/6-day splits that
+        // is merely off-theme. In the 3-DAY split it is the bug: ppl() merges this day's two
+        // compounds with the quad day's primary into one Legs session, so the generated day
+        // was Hip Thrust + Front Squat + Back Squat — two squat-pattern compounds, measured
+        // at both sexes. The pattern rank could not catch it because the clash is created by
+        // the WRAPPER after selection, and each base template was individually clean.
+        // 'hamstring' restores the day's stated purpose and the 3-day Legs day becomes
+        // bridge + squat + hinge. Quad volume is unaffected: it lives on day4, whose primary
+        // slot is ['quad'], and the 3-day merge still carries that day's Front Squat.
+        {role:'secondary', groups:['glute_max','hamstring'],                    cat:'compound'},
         {role:'acc1',      groups:['glute_max','glute_medius'], cat:'isolation'},
         {role:'acc2',      groups:['hamstring'],                                cat:'isolation'},
         {role:'acc3',      groups:['gastrocnemius','soleus','calf'],            cat:'isolation'},
@@ -2546,9 +2822,45 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     cardioGroups:['full_body','glute_max'],
   };
 
+  // ── COUNCIL R2 — pattern sets follow the SESSION, not the template ──────────
+  // R2's rule is "not twice in ONE session". For 4/5/6 days a template IS a session,
+  // so a per-template Set is the session. For 2 and 3 days it is NOT: those splits
+  // build the same four base templates and then MERGE them, so one rendered session
+  // holds compounds selected under two different templates. A per-template Set is
+  // blind across that seam by construction.
+  //
+  // Measured, not reasoned (getProgram over all 630 persona combos): with per-template
+  // Sets, every 3-day hotel_gym Legs day still paired two `lunge` compounds — Curtsy
+  // Lunge from the hinge template and Bulgarian Split Squat from the quad template.
+  // Each template was individually clean; ppl() put them in one session afterwards.
+  //
+  // This is the BUG-73/BUG-114 shape CLAUDE.md names explicitly: the first pass fixed
+  // it for full_gym by retargeting one slot, which left the identical defect live at
+  // another value of the same axis. The axis here is DAY-COUNT (2-6), so the rule is
+  // stated once, for every value of it, from the merge topology itself:
+  //   build2  (days===2): dayA = [day1.c0, day2.c0, …]   dayB = [day3.c0, day4.c0, …]
+  //   ppl     (days===3): day3 = [day2.c0, day4.c0, day2.c1]  (day1 and day3 stand alone)
+  //   build5/build6/4d  : no merge — every template is its own session.
+  // Grouped templates share ONE Set; ungrouped ones get their own. `used` is NOT
+  // touched: it is deliberately cross-day (day 3 must not repeat day 1's pick), which
+  // is the opposite scope and the reason these cannot be the same object.
+  const SESSION_GROUPS = {
+    2: [['day1', 'day2'], ['day3', 'day4']],
+    3: [['day2', 'day4']],
+  };
+  const sessionPatterns = new Map();
+  for (const group of (SESSION_GROUPS[days] || [])) {
+    const shared = new Set();
+    for (const k of group) sessionPatterns.set(k, shared);
+  }
+
   try {
     const result = TEMPLATES.map(tmpl => {
       const exs = {};
+      // One Set per rendered SESSION (see SESSION_GROUPS above). Templates that no
+      // split merges get a fresh Set here — a horizontal press on Monday must not
+      // block one on Thursday.
+      const dayPatterns = sessionPatterns.get(tmpl.key) || new Set();
       tmpl.slots.forEach(s => {
         // EPIC-8a: beginner tier drops the Accessory Block's 3rd exercise slot
         // (2 accessories instead of 3) — skip selection entirely so acc3's
@@ -2561,8 +2873,11 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         // consequence of existing doctrine, not a gap).
         if ((exp === 'beginner' || isShortSession) && s.role === 'acc3') return;
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
-        const chosen = pick(cands, s, tmpl);
-        if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
+        const chosen = pick(cands, s, tmpl, s.cat === 'compound' ? dayPatterns : null);
+        if (chosen) {
+          used.add(chosen.name); exs[s.role] = chosen;
+          if (s.cat === 'compound') { const p = movementPattern(chosen); if (p) dayPatterns.add(p); }
+        }
       });
       // GEN-fix: if every group-matched cardio candidate is excluded, allow
       // reuse rather than silently dropping the finisher (cardio repeats
@@ -2620,10 +2935,19 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
     // Build the Shoulders + Arms day and attach it for build5 (5-day split only).
     const sa = SHOULDER_TEMPLATE;
+    // One Set across BOTH fillSlots calls — shoulderSlots and armSlots are the same
+    // session. (Today armSlots is all isolation and sa has exactly one compound slot,
+    // so this is a measured no-op; it exists so the rule is applied by every day-builder
+    // rather than by two of three, which is how the groupsMatch copies drifted.)
+    const saPatterns = new Set();
     const fillSlots = (slots) => slots.map(s => {
       const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
-      const chosen = pick(cands, s, sa);
-      if (chosen) { used.add(chosen.name); return makeEx(chosen, sa.key+'-'+s.role, {sets:s.cat==='compound'?4:3}); }
+      const chosen = pick(cands, s, sa, s.cat === 'compound' ? saPatterns : null);
+      if (chosen) {
+        used.add(chosen.name);
+        if (s.cat === 'compound') { const p = movementPattern(chosen); if (p) saPatterns.add(p); }
+        return makeEx(chosen, sa.key+'-'+s.role, {sets:s.cat==='compound'?4:3});
+      }
       return null;
     }).filter(Boolean);
     const shoulderExs = fillSlots(sa.shoulderSlots);
