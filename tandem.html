@@ -6557,6 +6557,9 @@ function recentMuscleLoad(sets, now = Date.now()) {
 // Resolves through bankIndexByName(), same as liftSessionCounts (D27) and
 // recentMuscleLoad (D20) — one resolution rule, one home, so a legacy slug-keyed row
 // and its display name collapse to a single lift instead of two.
+// Input contract: `sets` must be fetchOneOffHistorySets()'s output shape — pre-sorted
+// newest-first by created_at and including `session_id`. fetchRecentSets() omits
+// session_id, so feeding its output here silently returns an empty Set (no error).
 function recentExerciseNames(sets, sessionLimit = 4) {
   const idx = bankIndexByName();
   const orderedSessionIds = [];
