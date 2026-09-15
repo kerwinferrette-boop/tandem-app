@@ -503,3 +503,40 @@ unknown interval.
 
 **Enforced by** judgment — not mechanically checkable today. No gate currently diffs doc prose
 against the code paths it cites.
+
+---
+
+## SC-15 — I capped an audit's SCOPE by reusing a throughput limit meant for FIXES
+
+**What I believed.** That writing `needs_human_staleness_recheck` (loop-config.md) as "up to 5
+Needs-Human rows per cycle, self-throttling once caught up" gave Kerwin what he'd just asked for:
+the 16 open Needs-Human rows getting periodically reconfirmed instead of never.
+
+**What was true.** Kerwin's actual ask, stated directly right after I shipped that rule: he wants
+"the macro scope of figuring out what needs to be done in the whole project done every morning,
+not just for the next 7 days." A 5-per-cycle trickle makes full-backlog coverage a function of how
+often the loop happens to fire — fine at the ~20min self-paced cadence running that session, but if
+this project ever runs on a slower cadence (a once-daily scheduled fire, the way
+`tandem-data-integrity-audit` already does), the SAME rule I wrote would take multiple real
+calendar days to look at all 16 rows even once, which is exactly the delay he was rejecting.
+
+**The gap.** I copied `safety.max_items_per_cycle`'s batch-cap shape onto a rule that was doing a
+different job. Capping how many stories get FIXED per cycle is correct and deliberate (smaller
+verifiable batches, `safety.max_items_per_cycle`'s own stated reason). Capping how much of the
+backlog gets AUDITED/TRIAGED for currency is not the same decision, and defaulting to "reuse the
+existing cap" without asking which one the human actually wanted decoupled from cycle frequency
+produced a rule that looked responsive but didn't deliver full-project awareness on any predictable
+schedule.
+
+> **THE RULE — SC-15.** When a standing rule's job is figuring out the CURRENT STATE of the whole
+> backlog (an audit/triage pass), its scope must default to the WHOLE backlog, on a fixed calendar
+> cadence (e.g. once per day) — never throttled by the same per-cycle item cap used for EXECUTING
+> fixes. The two are different decisions with different right answers: execution stays small-batch
+> for verifiability; audit scope should not shrink just because it inherited the nearest existing
+> number in the file. Before writing a cadence into a new rule, name explicitly which of the two
+> jobs (audit vs. execution) it is, and don't reuse the other job's limit without saying so.
+
+**Enforced by** `.claude/loop-config.md`'s `daily_macro_audit` section (added the same session,
+2026-09-15) — the current durable artifact this rule produced. Whether a *future* new rule
+correctly separates audit-scope from execution-throughput is judgment, not mechanically checkable
+today.

@@ -484,6 +484,63 @@ batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a r
                       silently skips it (rather than doing the retriage/recheck AND reporting the
                       outcome) has failed this same bar, not stayed conservative."
 
+daily_macro_audit:    # Added 2026-09-15, per Kerwin, in-session, correcting needs_human_
+                      # staleness_recheck's cadence within the same conversation that introduced
+                      # it (see docs/self-corrections.md SC-15 — the worked example that forced
+                      # this section). His words: "I want the macro scope of figuring out what
+                      # needs to be done in the whole project done every morning, not just for
+                      # the next 7 days." needs_human_staleness_recheck's "5 rows/cycle,
+                      # self-throttling" trickle makes full-backlog awareness a function of how
+                      # OFTEN the loop happens to fire — fine at a continuous ~20min self-paced
+                      # cadence, but if this project ever runs on a slower fire (a once-daily
+                      # scheduled cron, the way tandem-data-integrity-audit already does), that
+                      # same rule could take several real calendar days to look at the whole
+                      # backlog even once. This section decouples "how much of the backlog gets
+                      # RECONSIDERED" from "how much gets FIXED" — the latter stays batch-capped
+                      # (safety.max_items_per_cycle) for verifiability, the former does not.
+  trigger: "The first cycle of each new calendar day — computable, not asserted (SC-10's own
+                      lesson): before picking a batch, check whether the Goal Record's '## Cycle
+                      log' already has an entry dated today. If not, THIS cycle is today's first
+                      and runs the full audit below BEFORE the ordinary batch_prioritization
+                      picks anything. If a Cycle-log entry for today already exists, skip this
+                      section entirely for the rest of the day — it is a once-per-day pass, not
+                      a per-cycle one."
+  scope: "Unlike every other batch/recheck rule in this file, this audit is NOT capped by
+                      safety.max_items_per_cycle — its job is to look, not to fix, so its cost is
+                      read-heavy investigation, not risky code changes. Cover the WHOLE current
+                      backlog in one pass:
+                      (1) Full CATALOG re-sweep — not just new rows since last check: confirm
+                      EVERY currently-open Bug & QA Log row and open Epic has a linked tracker
+                      story (catches anything incremental seeding missed), then run every
+                      catalog.self_generated_sources check (these already run every cycle, so
+                      this is a re-affirmation, not new work).
+                      (2) Full Needs-Human recheck — ALL open Needs-Human rows (all 16 as of
+                      2026-09-15, not a 5-row slice), each run against escalation.
+                      exhaust_before_parking's step (1): does an already-cited source resolve
+                      this NOW even though it didn't when filed. This is the primary mechanism
+                      for needs_human_staleness_recheck's coverage guarantee; that section's
+                      5-per-cycle version becomes a secondary, INTRADAY backstop only (e.g. a bug
+                      resolving mid-afternoon that might unblock something before tomorrow's
+                      audit), not the thing responsible for eventually covering all 16.
+                      (3) Fixing-row retriage — fixing_status_retriage above already runs every
+                      cycle (stricter than daily), so nothing new here; just confirmed as part of
+                      the same morning pass for a single combined report.
+                      (4) Full Untested re-triage — re-derive the CURRENT priority order across
+                      every Untested row (not just the next 5): apply staleness_escalation, check
+                      for anything self_generated_priority should promote, and flag anything that
+                      looks stale/superseded/already-done-elsewhere (the D6b shape) for the same
+                      kind of resolution fixing_status_retriage gives Fixing rows."
+  output: "Write the full, current backlog picture — not just what got fixed — into the Goal
+                      Record as a distinguished 'Today's Plan' block at the top of that day's
+                      first Cycle-log entry: total counts per status, the priority-ordered
+                      worklist this audit produced, every Needs-Human row's recheck outcome
+                      (confirmed-still-blocked vs. resolved-now), and anything newly flagged
+                      stale/superseded. Subsequent cycles THAT SAME DAY read this block instead
+                      of re-deriving priority from scratch, and still execute against it in
+                      normal max_items_per_cycle-capped batches — full visibility does not mean
+                      unbounded throughput. If GOAL MET fires mid-audit (everything's actually
+                      resolved), report that plainly instead of manufacturing a worklist."
+
 escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
                       # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
                       # this ("they should be your go-to anyway") and reserved himself for real
