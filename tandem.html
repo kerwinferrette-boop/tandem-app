@@ -6596,6 +6596,7 @@ function recentSetsFor(exerciseName, sets) {
 // behaves like any generated day, and it writes nothing: a one-off is explicitly
 // not part of the periodized program (D9 exempts it from D1/D4/D7 by design).
 let _oneoffSets = null; // recent-sets read, cached for the life of the open modal
+let _oneoffHistorySets = null; // D29 recent-exercise read, cached for the life of the open modal
 
 // Wizard state. TRANSIENT BY DESIGN: `goal` is the goal-type picked for THIS
 // generated day only and is never written back to cfg.goal — a one-off must not
@@ -6769,6 +6770,7 @@ async function openOneOff() {
   oneOffState.focus = null;
   oneOffState.day = null;
   _oneoffSets = null;
+  _oneoffHistorySets = null;
   const finishBtn = document.getElementById('oneoffFinishBtn');
   if (finishBtn) finishBtn.style.display = 'none';
   // Built on every open, so a sex changed in the profile modal is reflected the next
@@ -6783,6 +6785,7 @@ async function openOneOff() {
   // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
   // Fetched at open (goal-independent) but RENDERED per goal — see renderRecencyBanner.
   _oneoffSets = await fetchRecentSets(7);
+  _oneoffHistorySets = await fetchOneOffHistorySets();
   renderOneOffFocusRow();
   if (oneOffState.goal) renderRecencyBanner();
 }
@@ -6815,6 +6818,11 @@ function renderOneOff(focus) {
     // (D20's gate greps this RHS to its line end for the token RECOVERY_PARAMS —
     // hoisting the number to a variable above would pass review and fail the build.)
     recencyThresholdHours: (RECOVERY_PARAMS[goalKey] || RECOVERY_PARAMS.build_muscle).sameGroupHours,
+    // D29 (SCIENCE_DEFAULT) — cross-context variety. _oneoffHistorySets is fetched
+    // once per modal-open (Step 1 above), same caching shape _oneoffSets already
+    // uses for D20. Absent/null degrades to an empty Set, which getSingleDay treats
+    // as varietyActive=false — the exact no-op-by-default shape D20/D27 use.
+    recentExerciseNames: recentExerciseNames(_oneoffHistorySets || []),
     // The goal's SHAPE. Both opts have existed in getSingleDay since D9 and were
     // never passed by any caller, so every goal produced a structurally identical
     // day. Per the 5-Goal Taxonomy (D5): Transform is antagonist-superset driven and
