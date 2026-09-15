@@ -351,3 +351,75 @@ actually invoked on resume, which is judgment. Honest statement of the limit: no
 runs preflight automatically after a compaction, so this rule is a habit with a tool behind it, not
 a gate. What made the cost recoverable this time was branching rather than discarding
 (`claude/epic036-ruling-stale-base`), and that part is worth keeping regardless.
+
+---
+
+## SC-11 — the right function is not the right window: a scoped grep matched the wrong occurrence
+
+> **Numbering note (SC-10's own prediction, observed again).** At the moment this was written,
+> `origin/main` carried a *different* SC-09 ("shipping + Notion is not the whole completion ritual
+> when a wave file exists"). The local SC-09/SC-10 above and this entry must therefore be renumbered
+> 10/11/12 when this branch is rebased. Recorded rather than silently fixed, because the collision is
+> the measurement SC-10 says it is.
+
+**What I believed.** That asserting `/session_type: ONEOFF_SESSION_TYPE/` against the *body of
+`saveJournal()`* was a properly scoped guard — not a file-wide grep, not a count, but a test confined
+to the one function whose behavior the invariant governs.
+
+**What was true.** `saveJournal()` writes that key **twice**, in two rows that fail differently: the
+`workout_sessions` insert (which is what migration 0015's partial unique index and the cloud
+day-pointer lookups read) and the local-history `unshift` (which is what `isProgramHistoryRow()`
+reads). I deleted the stamp from the DB insert — a real D9 violation, a journaled workout becoming a
+program day in Postgres — and **the gate printed green**, because the local-history copy still
+matched. The only reason I know is that I ran the deliberate regression instead of trusting the
+assertion I had just written.
+
+**The gap.** I scoped the search to the correct *function* and then reasoned as if that made the
+match unambiguous. Function scope is not window scope: within one function the same token can be
+written by several sites that fail independently, and a regex reports "a match exists", never "the
+site I care about has it". This is SC-07's family (a gate measuring text, not behavior) and the
+`ptrWrites` lesson from 2026-09-13 (a *count* inflated by unrelated matches) arriving through a third
+door — narrowing the haystack does not make an existence check into a per-site check.
+
+> **THE RULE — SC-11.** When an invariant is carried by a repeated token, **enumerate the sites and
+> assert per site**, matching each from its own syntactic window (`sb.from('X').insert({…})`,
+> `hist.unshift({…})`), never once against the enclosing function. And **prove every branch of the
+> assertion bites separately** — remove the token from site A alone, then from site B alone. A
+> regression sweep that only ever deletes *all* copies at once cannot distinguish a per-site guard
+> from an existence check, and will certify the weaker one.
+
+**Enforced by** `scripts/doctrine.mjs`'s D9 block, which now matches the two windows independently
+and names which failure each one prevents; both branches were proven to fail alone (2026-09-14).
+The general habit — run the deliberate regression for *each* branch, not for the assertion as a
+whole — is judgment, not mechanically checkable.
+
+---
+
+## SC-12 — I committed a doc as durable without checking whether my next commit would break it
+
+**What I believed.** That correcting `docs/waves/EPIC-16-WAVE-STATE.md` (commit `7220c35`) to say
+Slice 2 shipped as the Journal feature, writing to `nutrition_logs`, was a finished, durable
+correction.
+
+**What was true.** In the same session, sitting uncommitted in the working tree the entire time,
+was a complete D9 "Journal clause" rebuild — Kerwin's same-day follow-up ruling that the Journal
+"is not supposed to be a food journal... These are the workouts that I did today... record it."
+When I found and committed that WIP (`cf9d25a`), it rewrote `saveJournal()` to write
+`workout_sessions`/`sets` instead of `nutrition_logs`, which made my own prior doc correction false
+the moment I committed it. Nothing forced me to notice — I only caught it by chance, rereading the
+file afterward.
+
+**The gap.** I treated a commit as scoped to the files I edited, not to every doc that makes a
+claim about the function/table I was about to change. `EPIC-16-WAVE-STATE.md` names `saveJournal()`
+and `nutrition_logs` explicitly; a grep for either string before committing `cf9d25a` would have
+surfaced the doc needing a matching fix in the same commit, instead of leaving it stale for an
+unknown interval.
+
+> **THE RULE — SC-12.** Before committing any change that alters or removes a named function's or
+> table's behavior, `grep -r <name> docs/ DOCTRINE.md migrations/` for that identifier and check
+> whether any doc's claim about it is about to become false. Fix those docs in the **same commit**
+> (or, if truly separable, the very next commit in the same session) — never leave a doc holding a
+> claim you know your own current change just falsified, even briefly.
+
+**Enforced by** judgment — not mechanically checkable today. No gate currently diffs doc prose
+against the code paths it cites.

@@ -8,8 +8,11 @@
 -- comment matches this file. The POST-MIGRATION ASSERTIONS below were NOT
 -- independently re-run this session — only existence/RLS-on/row-count were
 -- confirmed; do not assume the anon/cross-user/uniqueness probes passed
--- without re-running them. Slice 2 (the manual-log UI this table backs) has
--- since shipped as the "Journal" feature — see docs/waves/EPIC-16-WAVE-STATE.md.
+-- without re-running them. Slice 2 (the manual-log UI this table backs) briefly
+-- shipped as the "Journal" feature, then regressed the same day (2026-09-14)
+-- when Kerwin redirected the Journal into a manual WORKOUT log instead — this
+-- table currently has NO write path anywhere in the app. See
+-- docs/waves/EPIC-16-WAVE-STATE.md for the full correction.
 --
 -- WHAT THIS IS
 --

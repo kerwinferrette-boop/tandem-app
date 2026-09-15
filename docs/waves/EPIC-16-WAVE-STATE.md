@@ -56,34 +56,43 @@ is a new, additive logging surface (a table + a UI form + a summary read), the s
       shape to mirror yet without guessing at it). DID / RECONCILE — n/a, no science claim to
       reconcile.
 
-- [x] **2. UI — manual log entry surface**
-      **Depends on:** Slice 1 (table must exist before the form can write to it).
-      **File/region:** SHIPPED as the "Journal" feature (`tandem.html`), not the standalone
-      dashboard form originally scoped here — Kerwin redirected this into the "Today's Workout"
-      flow (`#modal-journal`, `openJournal()`/`saveJournal()`, both `tandem.html`). Uses
-      `sb.from('nutrition_logs').upsert(..., { onConflict: 'user_id,log_date' })`, keyed off
-      `currentUser.id` + `localDateStr()` — RLS-scoped to the owning user, matching this file's
-      original intent even though the surface location changed.
-      **Independent verification:** confirmed by reading the shipped code — `upsert` on
-      `user_id,log_date` (not insert) correctly avoids the `nutrition_logs_one_per_user_per_day`
-      unique-violation on a second same-day open, and a signed-out user is refused client-side
-      (`if (!currentUser) { showToast(...); return; }`) before any write is attempted. **Not yet
-      independently re-verified against live RLS with a real signed-in JWT through supabase-js**
-      (only the client-side guard and query shape were read) — do this before calling Slice 2 fully
-      closed.
+- [ ] **2. UI — manual log entry surface — UNSHIPPED AGAIN, 2026-09-14. Do not trust this file's
+      own prior entry below without reading this correction first.**
+      **What changed:** this file previously (same day, earlier pass) called Slice 2 `[x]`,
+      SHIPPED as the "Today's Workout" Journal (`#modal-journal`, `openJournal()`/`saveJournal()`),
+      writing to `nutrition_logs` via upsert. That was accurate for the code AS IT STOOD AT THAT
+      MOMENT — it is no longer accurate. Kerwin corrected the Journal's purpose the same day,
+      verbatim: *"The journal it's not supposed to be a food journal. It's supposed to be: These
+      are the workouts that I did today. These are the reps that I did. These are the weights that
+      I did, record it."* `saveJournal()` was rebuilt to write `workout_sessions`/`sets` (a manual
+      WORKOUT log, governed by D9/D11 — see `DOCTRINE.md`), not `nutrition_logs`. Meals/protein
+      fields are gone from the modal entirely. **`nutrition_logs` (Slice 1, still live in prod) now
+      has NO write path anywhere in the app.** This is a real regression against this Epic's own
+      goal, not a stale doc — the code itself moved away from nutrition, on a direct Kerwin
+      instruction, so this is the correct disposition to record, not something to quietly re-fix.
+      **File/region:** `#modal-journal`, `openJournal()`/`saveJournal()` (`tandem.html`) — now scoped
+      to EPIC-036/D9's one-off-workout logging, not this Epic.
+      **Not this session's call to rebuild a nutrition surface** — Kerwin explicitly redirected the
+      one surface this Epic had; whether EPIC-16 gets a new, separate manual-nutrition entry point
+      (dashboard-native, not reusing Journal) is a product decision, not inferred here.
 
 - [ ] **3. Read surface — dashboard/summary tie-in**
-      **Depends on:** Slice 2. Deferred to Fix; the Epic's Expected Behavior text doesn't specify
-      dashboard placement, so this needs a short design pass (where does it render, does it affect
-      streak/points) before it's sliceable — flagged, not guessed.
+      **Depends on:** Slice 2, which regressed (above) — moot until Slice 2 has a real write path
+      again. The Epic's Expected Behavior text doesn't specify dashboard placement either, so this
+      still needs a design pass once Slice 2 is re-decided.
 
 ---
 
 ## Invariants for whoever resumes
 
 - **Ship gates, both green, every code slice:** `npm run verify` AND `npm run validate:personas`
-  — though nothing in Slices 1-3 touches the program engine those gates check, so a pass here is
-  expected to be a no-op confirmation, not a real risk surface.
+  — this was true of Slices 1-3 as originally scoped (pure logging surface, no program-engine
+  contact), but is **no longer true of whatever eventually replaces Slice 2**: the code that used
+  to satisfy Slice 2 (`saveJournal()`) was rebuilt 2026-09-14 into a one-off WORKOUT log governed
+  by D9/D11, which DOES touch `reconcileWorking1RMs`/the 1RM layer. A future nutrition-specific
+  Slice 2 rebuild should stay clear of that layer (per this Epic's original no-program-engine
+  scope) — but don't assume a pass here is a no-op the way it used to be if the rebuild reuses any
+  part of the Journal's current plumbing.
 - **`0014_epic16_nutrition_logs.sql` is APPLIED** (corrected 2026-09-14 — the file previously,
   wrongly, said otherwise). Do not re-apply it.
 - **RLS from day one** — no table ships without owner-scoped policies; do not repeat the BUG-74/
@@ -99,13 +108,25 @@ is a new, additive logging surface (a table + a UI form + a summary read), the s
   Wrote `migrations/0014_epic16_nutrition_logs.sql` (unapplied at the time). Tracker row synced
   Needs Human → Untested (see Notion Evidence). Slices 2/3 (UI, dashboard tie-in) are named but
   not built — next Fix pass.
-- **2026-09-14 (dirty-tree reconciliation session):** Corrected two stale claims found via a
-  branch audit (`claude/epic036-ruling-stale-base`), neither requiring new code: (1) Slice 1's
-  migration was actually applied to prod 2026-09-08 — this file and the migration's own header
-  wrongly said "NOT APPLIED"; confirmed live via `list_tables` introspection. (2) Slice 2's UI was
-  never built as originally scoped (a standalone dashboard form) — instead Kerwin redirected it
-  into the "Today's Workout" flow and it shipped 2026-09-12 as the "Journal" feature
-  (`openJournal()`/`saveJournal()`, `tandem.html`), which independently turned out to satisfy this
-  Slice's requirement (writes to `nutrition_logs`, owner-scoped, upsert-safe). Marked both `[x]`.
-  Slice 2's owner-JWT-through-supabase-js RLS check remains unverified on-device — flagged, not
-  claimed. Slice 3 (dashboard/summary tie-in) is still genuinely unbuilt.
+- **2026-09-14 (dirty-tree reconciliation session, earlier pass):** Corrected two stale claims
+  found via a branch audit (`claude/epic036-ruling-stale-base`), neither requiring new code at the
+  time: (1) Slice 1's migration was actually applied to prod 2026-09-08 — this file and the
+  migration's own header wrongly said "NOT APPLIED"; confirmed live via `list_tables`
+  introspection. (2) Slice 2's UI was never built as originally scoped (a standalone dashboard
+  form) — instead Kerwin redirected it into the "Today's Workout" flow and it shipped 2026-09-12
+  as the "Journal" feature (`openJournal()`/`saveJournal()`, `tandem.html`), which at that moment
+  independently turned out to satisfy this Slice's requirement (writes to `nutrition_logs`,
+  owner-scoped, upsert-safe). Marked both `[x]` — **this Slice-2 disposition was correct for the
+  code as it stood in that moment, but did not survive the same day** (see next entry).
+- **2026-09-14 (same reconciliation session, later pass — self-correction):** Discovered and
+  committed (`cf9d25a`) a separate, pre-existing, fully-built-and-gate-verified WIP block that had
+  been sitting uncommitted in the working tree since before this session started: Kerwin's SAME-DAY
+  follow-up ruling that the Journal "is not supposed to be a food journal... These are the
+  workouts that I did today... record it." `saveJournal()` was rebuilt to write
+  `workout_sessions`/`sets` under D9/D11's one-off-session rules, not `nutrition_logs`; the meals/
+  protein/notes fields are gone from the modal. Committing that WIP retroactively invalidated the
+  entry directly above — it documented Slice 2 as shipped-and-satisfied when it no longer is.
+  Caught and corrected in the same session per CLAUDE.md's self-correction protocol: Slice 2
+  reverted to `[ ]` UNSHIPPED, Slice 3 marked moot pending Slice 2, and this Invariants section's
+  "no program-engine contact" claim narrowed to no longer overclaim about Slice 2's future
+  replacement. `nutrition_logs` remains live in prod (Slice 1, unaffected) with zero write paths.
