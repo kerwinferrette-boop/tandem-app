@@ -71,7 +71,7 @@ const TIERS = {
   D4b: 'SCIENCE_DEFAULT', // training-age cadence scaling (PENDING)
   D5: 'SPLIT',            // never-on-primary = SAFETY; superset-required = SCIENCE_DEFAULT
   D6: 'SCIENCE_DEFAULT',  // goal volume MEV order
-  D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor (PENDING — measured gap, needs Kerwin's ruling on how to close it)
+  D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor — ACTIVE since 2026-09-14 (resolveGoalVolume() + coverage tiebreak); see the D6b check block below
   D6c: 'SCIENCE_DEFAULT', // within-block MEV->MRV ramp cadence (PENDING — needs numeric ruling, depends on D6b)
   D7: 'SCIENCE_DEFAULT',
   D8: 'SPLIT',            // zero-supersets-on-strength-primaries = SAFETY; Maintenance MAV cap = SCIENCE_DEFAULT
