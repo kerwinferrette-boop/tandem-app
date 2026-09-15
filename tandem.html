@@ -6468,6 +6468,24 @@ async function fetchRecentSets(days = 7) {
   return data || [];
 }
 
+// D29 — cross-context history read for one-off exercise-instance variety.
+// Broader window than fetchRecentSets(7)'s D20 group-recency read (hours-scale) or
+// refreshLiftHistory's 56-day D27 window (session-COUNT scale, not last-N-sessions):
+// this needs the last ~4 DISTINCT session_ids regardless of goal or session_type, so
+// it reads session_id (fetchRecentSets does not) and uses a generous 60-day floor so
+// an infrequent lifter's last 4 sessions aren't silently cut off by a tight date window.
+async function fetchOneOffHistorySets() {
+  if (!currentUser?.id) return [];
+  const sinceISO = new Date(Date.now() - 60 * 86400000).toISOString();
+  const { data, error } = await sb.from('sets')
+    .select('exercise_name, session_id, created_at')
+    .eq('user_id', currentUser.id)
+    .gte('created_at', sinceISO)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('[D29] fetchOneOffHistorySets failed', error); return []; }
+  return data || [];
+}
+
 // Projection C (D27) — { exerciseName: distinctTrainingDayCount }.
 // Keyed on the BANK ENTRY's display name, resolved through bankIndexByName() so a
 // legacy slug-keyed row and its display name collapse to one lift rather than
@@ -6526,6 +6544,33 @@ function recentMuscleLoad(sets, now = Date.now()) {
     }
   }
   return out;
+}
+
+// D29 (SCIENCE_DEFAULT) — cross-context "recently used exercises" signal for one-off
+// variety. NOT a science citation — Kerwin's explicit ruling (2026-09-15): "if the 4
+// workout thing isn't science, then it's not science." 4 is a logic-based default, not
+// a mechanistic threshold; sessionLimit is a plain parameter so it can be tuned without
+// touching the call site. Combines program AND one-off history automatically — both
+// finishSession() and finishOneOff() write to the same `sets` table, so no session_type
+// filter is applied here (the union is the point, per Kerwin: "tie in the persons
+// program and where they are in recently completed workouts there").
+// Resolves through bankIndexByName(), same as liftSessionCounts (D27) and
+// recentMuscleLoad (D20) — one resolution rule, one home, so a legacy slug-keyed row
+// and its display name collapse to a single lift instead of two.
+function recentExerciseNames(sets, sessionLimit = 4) {
+  const idx = bankIndexByName();
+  const orderedSessionIds = [];
+  for (const s of sets || []) {
+    if (s.session_id && !orderedSessionIds.includes(s.session_id)) orderedSessionIds.push(s.session_id);
+  }
+  const trackedSessions = new Set(orderedSessionIds.slice(0, sessionLimit));
+  const names = new Set();
+  for (const s of sets || []) {
+    if (!trackedSessions.has(s.session_id)) continue;
+    const e = idx[String(s.exercise_name || '').toLowerCase()];
+    if (e && e.name) names.add(e.name);
+  }
+  return names;
 }
 
 // Projection B (EPIC-027) — that one lift's recent sets, newest first (the fetch
