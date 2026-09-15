@@ -2085,7 +2085,7 @@ function getSingleDay(focus, opts = {}) {
   // product ruling, not a mechanistic threshold ("if the 4 workout thing isn't
   // science, then it's not science" — 2026-09-15).
   const recentNamesRaw = opts.recentExerciseNames;
-  const recentNames = (recentNamesRaw instanceof Set) ? recentNamesRaw
+  const recentNames = (recentNamesRaw && typeof recentNamesRaw.has === 'function' && typeof recentNamesRaw[Symbol.iterator] === 'function') ? recentNamesRaw
     : (Array.isArray(recentNamesRaw) && recentNamesRaw.length) ? new Set(recentNamesRaw)
     : null;
   const varietyActive = !!(recentNames && recentNames.size);
