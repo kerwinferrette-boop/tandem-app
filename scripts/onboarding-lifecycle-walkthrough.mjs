@@ -146,6 +146,20 @@ async function runOnboardingPass(page, order, findings) {
     }
     await page.click('#obNextBtn');
     await page.waitForTimeout(150);
+
+    // Path Gate (onboarding fork, commit bb61112): the first Next off step 0
+    // (Goal) now shows a Build-My-Own-vs-Choose-a-Program fork instead of
+    // landing directly on Stats. Take the "Build My Own Program" branch so
+    // this walkthrough keeps exercising the classic 7-step wizard it was
+    // built to cover — the parallel library mini-flow is a separate surface,
+    // not this script's Phase 1 scope.
+    if (spec.step === 0) {
+      const gateBtn = page.locator('button.ob-build-btn[onclick*="resumePath(\'build\')"]');
+      if (await gateBtn.isVisible().catch(() => false)) {
+        await gateBtn.click();
+        await page.waitForTimeout(150);
+      }
+    }
   }
 
   // Remaining ungated steps (Preferences extras, Color, Baseline Estimates, Review) — just advance.
@@ -234,6 +248,13 @@ async function main() {
     page.on('pageerror', err => jsErrors.push(err.message));
     page.on('console', msg => { if (msg.type() === 'error' && !msg.text().includes('ERR_CONNECTION_RESET') && !msg.text().includes('favicon')) jsErrors.push(msg.text()); });
     await page.route('**/supabase.min.js', route => route.fulfill({ contentType: 'application/javascript', body: SUPABASE_STUB }));
+    // Google Fonts is a real cross-origin request this script never intended to make —
+    // the "zero network egress" design (see loop-config.md) already stubs Supabase but
+    // missed this one. Fulfill with an empty stylesheet (not abort()) so no TLS-
+    // interception environment (or plain offline run) surfaces a spurious
+    // net::ERR_CERT_AUTHORITY_INVALID / net::ERR_FAILED console error that looks like
+    // an app finding but is purely about this stylesheet fetch.
+    await page.route('https://fonts.googleapis.com/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
 
     const reachedDashboard = await runOnboardingPass(page, order, findings);
     if (reachedDashboard && order === 'forward') {
