@@ -75,24 +75,40 @@ still the open product question the Epic's Agent Context Notes name — not reso
 correction, and not this session's call to make. Flagging that the blocker is gone, not that the
 decision is made.
 
+**Superseded same day.** The above framed equipment removal as a still-open product decision. It
+was not — the removal shipped later the same day (2026-09-14, commit `d7b9a32`): the Equipment
+Access question was actually deleted and `applySetupSelection()` made the durable single source of
+`cfg.equipment`. This section is kept for provenance (it accurately describes the state at the
+moment it was written) but is not current — see Step status below for what actually shipped.
+
 ---
 
 ## Step status
 
-- [x] **1. Onboarding Step 4 restructure — 4 new preference questions.** SHIPPED — see Finding 1
-      above. Note: the step title below still describes equipment removal too, which is its own
-      sub-slice (1b).
-
-- [ ] **1b. Remove the onboarding Equipment Access question — blocker cleared (BUG-107), decision
-      still open.** Was blocked on `3d5ca37f-935b-811c-a5dc-df8f7c116e3c` (selector couldn't express
-      `home`); that bug shipped 2026-09-13 (`4943094`). The technical objection to removal no longer
-      applies, but removing the question is still a product call, not something this correction
-      pass is authorized to make — surface to Kerwin/Fix before building.
-
-<details>
-<summary>Original Slice 1 description (superseded by Findings 1 &amp; 2 above — kept for provenance)</summary>
-
-- [ ] **1. Onboarding Step 4 restructure — equipment removal + 4 new preference questions**
+- [x] **1. Onboarding Step 4 restructure — equipment removal + 4 new preference questions**
+      **SHIPPED 2026-09-14, commit `d7b9a32` (main + claude/lucid-volta-xwwrbb).** Scope actually
+      built: removed the Equipment Access question from Step 4 and made the per-workout tier
+      selector (`applySetupSelection()`) the single durable source of `cfg.equipment` via a new
+      `EQ_TIER_TO_CFG` table. The 4 new preference fields this step originally called for
+      (Session Length, Preferred Workout Time, Injury Limitations, Secondary Goal) were found
+      **already present** on Step 3/"Training Preferences" going into this session — only
+      Preferred Workout Time remained the gated `obCanAdvance()` field once equipment was pulled
+      out; Session Length/Injuries/Secondary Goal were already optional fields on that step. So
+      this slice's real remaining work was narrower than originally scoped: equipment removal +
+      durability, not net-new field additions.
+      Verified end-to-end in a real headless-Chromium run (not just the stubbed walkthrough):
+      onboarding completes with no equipment question; selecting Bodyweight Only + Apply changes
+      the rendered workout to bodyweight/band exercises; the choice survives a simulated fresh
+      session (both the setup-card label and the actual generated exercises stayed correct).
+      Verification caught two real bugs the first-pass implementation missed — `applySetupSelection()`
+      was setting `cfg.equipment` in memory and calling `syncToCloud()` but never
+      `LS.set('tandem_cfg', cfg)` (every other cfg-mutation site does), and the setup card's own
+      display-sync-on-load code read `sessionStorage.eq_tier` only instead of mirroring
+      `resolveEquipmentTier()`'s session→cfg→default priority — both fixed in the same commit.
+      Gates: `npm run verify` 12/12, `npm run validate:personas` 630/630,
+      `npm run walkthrough:onboarding` 0 real findings. Notion EPIC-18 row and BUG-107
+      cross-reference updated same session.
+      ~~Original text below, kept for the record:~~
       **Depends on:** Wave 7 landing first (Dependency Gate — shared render surface, not
       re-verified this session, confirm before starting).
       **File/region:** onboarding flow in `tandem.html` (Step 4 render + `cfg` write-back). Remove
@@ -110,8 +126,6 @@ decision is made.
       change, Kerwin-pre-confirmed on product direction (2026-06-11, 2026-06-18) — the "should" is
       the product decision itself, already made, cited above. COULD — n/a. DID / RECONCILE —
       blank, for Fix/Verify.
-
-</details>
 
 - [ ] **1a. NEEDS HUMAN — strength-target intake (bench 3×15 / squat 5×5) feeding Epley calibration**
       **Not decomposed. Do not implement without Kerwin.** This is new input into the biometric/
@@ -145,13 +159,22 @@ decision is made.
   whole — split into Slice 1 (buildable, Kerwin already confirmed the product direction twice) and
   Slice 1a (Needs Human carve-out, feeds the Epley calibration formula). Tracker row synced Needs
   Human → Untested with Evidence pointing here (see Notion). Neither slice built this session.
-- **2026-09-14 (dirty-tree reconciliation session):** Corrected two stale claims found via a
-  branch audit (`claude/epic036-ruling-stale-base`), neither requiring new code this session: (1)
-  Slice 1's four preference fields are already fully shipped, confirmed live in `tandem.html` —
-  this file wrongly still called it unbuilt. Marked `[x]`, split equipment-removal out as its own
-  Slice 1b. (2) The equipment-removal proposal's stated justification was false as implemented (the
-  selector couldn't express the `home` bank tier) — but that specific bug (P1,
+- **2026-09-14 (earlier pass, dirty-tree reconciliation session):** Corrected two stale claims
+  found via a branch audit (`claude/epic036-ruling-stale-base`), neither requiring new code at the
+  time: (1) Slice 1's four preference fields are already fully shipped, confirmed live in
+  `tandem.html` — this file wrongly still called it unbuilt. Marked `[x]`, split equipment-removal
+  out as its own Slice 1b. (2) The equipment-removal proposal's stated justification was false as
+  implemented (the selector couldn't express the `home` bank tier) — but that specific bug (P1,
   `3d5ca37f-935b-811c-a5dc-df8f7c116e3c`) has since been fixed independently as BUG-107
   (`4943094`, 2026-09-13, confirmed live: a 6th "Bodyweight Only" selector button now exists).
-  Slice 1b's technical blocker is therefore cleared, but removing the onboarding question remains
-  an open product decision, not resolved here.
+  Slice 1b's technical blocker was cleared, but removing the onboarding question was framed here
+  as an open product decision — that framing did not survive the same day (see next entry).
+
+- **2026-09-14 (later pass):** Slice 1 SHIPPED — see step 1 above for full detail. This
+  retroactively closes the "1b, decision still open" framing directly above: the removal happened
+  the same day, commit `d7b9a32`. Slice 1a remains untouched, Needs Human, per the standing
+  forbidden-ops rule (unaffected by Slice 1 shipping). This file was NOT updated at the moment the
+  commit landed, only afterward when Kerwin asked whether a future session would pick up where
+  this one left off — that question is what caught the gap between "shipped and pushed" and "this
+  checkpoint file actually says so." Flagging so it doesn't repeat: the checkbox flip belongs in
+  the SAME turn as the push, not a follow-up correction (see `docs/self-corrections.md` SC-09).

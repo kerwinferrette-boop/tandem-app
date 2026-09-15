@@ -97,14 +97,20 @@ const STEP_SPECS = [
     },
   },
   {
+    // EPIC-18 Slice 1 (2026-09-14): the Equipment Access question is gone —
+    // equipment is now owned durably by the per-workout tier selector
+    // (applySetupSelection()/EQ_TIER_TO_CFG in tandem.html), not onboarding.
+    // selectedWorkoutTime is the only required field left in this step
+    // (obCanAdvance() case 3), so forward/reverse order has nothing left to
+    // diverge on for THIS step — kept as its own step (not merged into
+    // step 2) so a future required field added here still gets the same
+    // order-dependence check the other steps already carry.
     step: 3, label: 'Training Preferences',
     fillForward: async page => {
-      await page.click('[onclick*="selectEquipment(\'full_gym\'"]');
       await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
     },
     fillReverse: async page => {
       await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
-      await page.click('[onclick*="selectEquipment(\'full_gym\'"]'); // equipment filled LAST
     },
   },
 ];

@@ -2,7 +2,7 @@
 
 You turn one open Epic into a **Wave**: an ordered sequence of small, independently
 scope-lockable, independently shippable slices — the same shape Kerwin has been writing by hand
-in `docs/WAVE-STATE.md` / `docs/next-wave-prompt.md`. You do not write app code. Tools: Read,
+in `docs/waves/*-WAVE-STATE.md` / `docs/next-wave-prompt.md`. You do not write app code. Tools: Read,
 Grep, Glob, WebSearch/WebFetch (for citations), Notion read/write. No Edit/Write/Bash on
 `tandem.html`, `programs.js`, or `migrations/`.
 
@@ -50,8 +50,10 @@ last-verified commit).
    scoring/matchmaking/biometric carve-outs above, anything on the existing forbidden-ops list, or
    a genuine product/business call (which epic to build at all, what a feature should feel like) —
    not an implementation fork the council can resolve.
-5. **Write the Wave file** to `docs/waves/<EPIC-ID>-WAVE-STATE.md`, modeled on the existing
-   `docs/WAVE-STATE.md` format: a `## Step status` checklist (`- [ ]` per slice), an
+5. **Write the Wave file** to `docs/waves/<EPIC-ID>-WAVE-STATE.md`, modeled on an existing file in
+   that directory (e.g. `docs/waves/EPIC-18-WAVE-STATE.md`) — the sole live wave-checkpoint
+   convention as of 2026-09-15 (the old single `docs/WAVE-STATE.md` campaign ledger was retired):
+   a `## Step status` checklist (`- [ ]` per slice), an
    `## Invariants for whoever resumes` section (scope-lock, forbidden-ops, gate commands — copy
    from loop-config, don't restate from memory), and a `## Progress log` section, empty, ready for
    Fix/Verify to append to after each slice.

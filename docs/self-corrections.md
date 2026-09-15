@@ -258,10 +258,87 @@ specifically to measure a real person's real training); nothing about it general
 **Enforced by** judgment — not mechanically checkable today. `.claude/loop-config.md`'s
 `live_test_account_verification` section is amended in this same change to state this as the
 default path, not a fallback, so the next session reads it as instruction rather than trivia.
-
 ---
 
-## SC-09 — I inferred permanence from a flag's NAME instead of reading its writer
+## SC-09 — shipping + Notion is not the whole completion ritual when a wave file exists
+
+**What I believed.** That EPIC-18 Slice 1 was fully "closed out" once the code was committed,
+pushed to `main`, gates re-run green, and the Notion EPIC-18/BUG-107 pages updated. I told Kerwin
+exactly that: "EPIC-18 Slice 1 is fully closed out."
+
+**What was true.** `docs/waves/EPIC-18-WAVE-STATE.md` — the per-Epic checkpoint file
+`.claude/loop-config.md`'s `wave_decomposition` section names as *the* resume mechanism ("This IS
+the checkpoint... there is no other resume mechanism") — still showed step 1 unchecked (`[ ]`)
+after the push. Its own text states the rule directly: "A slice's status flips to done in this
+file, and the file is committed, the moment the slice's story goes Resolved — not batched to
+end-of-cycle." I only caught this because Kerwin asked whether a future session would pick up
+where this one left off, which forced me to actually go check the resume mechanism rather than
+assert continuity. Separately, `scripts/preflight.mjs` (the tool that runs at session start to
+answer "where can work be hiding") only reads the old, single, stale `docs/WAVE-STATE.md` and
+never looks at `docs/waves/*.md` at all — so even a correctly-updated per-Epic wave file would not
+have surfaced at the next session's start without a further fix.
+
+**The gap.** I treated "committed the code + updated the tracker Kerwin reads (Notion)" as
+synonymous with "updated every mechanism this project uses to answer 'is this done and where do I
+resume'" — without checking whether a wave file existed for the Epic I'd just shipped, even though
+loop-config.md documents the wave file as authoritative for exactly that question and even links
+its own commit-timing rule. Two different systems track completion here (Notion for Kerwin-facing
+status, git-committed wave files for session-to-session resume) and finishing one is not evidence
+the other is current.
+
+> **THE RULE — SC-09.** Before declaring a shipped Epic/story "closed out," check whether
+> `docs/waves/<EPIC-ID>-WAVE-STATE.md` exists for it. If it does, flip the shipped step's checkbox
+> and append the verification detail in the SAME turn as the push — not a follow-up correction —
+> per that file's own stated commit-timing rule. Do not equate "Notion updated" with "every
+> resume-mechanism updated."
+
+**Enforced by** judgment — not mechanically checkable today. `scripts/preflight.mjs` checking only
+`docs/WAVE-STATE.md` (not `docs/waves/*.md`) is a separate, real gap flagged to Kerwin the same
+session this entry was written, not yet fixed.
+
+## SC-10 — a new process rule is an engine claim too, and I only verified it after being asked twice
+
+**What I believed.** That writing `staleness_escalation` into `.claude/loop-config.md` — a rule
+claiming a story/Epic could be identified as stale by checking "3+ consecutive cycle snapshots"
+against "the Goal Record's own LAST_SNAPSHOT state" — was a complete, working fix once the prose
+read correctly and covered the case Kerwin described.
+
+**What was true.** It didn't compute. Checking `project-goal/SKILL.md` showed the Cycle Log only
+records aggregate counts, never per-story identity, so the rule had no data to read and was
+silently inert from the moment it was written. I only found this because Kerwin asked, twice in a
+row ("Your sure this picks up those epics?" / "Your sure that this loop now picks up those epics
+moving forward?") — not because I checked it myself before or after writing it. The first fix
+attempt, once forced to check, also turned out wrong on a second axis
+(`unblocked_dependency_recheck`'s assumption that a resolved bug's "Linked User Story" relation
+points at the story it blocks) — verified false against the real BUG-107/EPIC-18 case, corrected
+to a `notion-search` text-heuristic instead. Both corrections happened in-session, but neither was
+logged here — this entry is that missing log, written only because Kerwin's next question ("if you
+know it may happen again, let's try and stop it") forced the check that SC-03 should have already
+covered.
+
+**The gap.** SC-03 already states the rule for one category — "any claim about what the engine
+does... is produced by running it, in the same message." I treated that as scoped to program code
+(`programs.js`/`tandem.html`) and didn't apply it to a claim about what a *process rule I was
+writing into `loop-config.md`* does — even though "does this staleness check actually fire" is
+exactly the same shape of claim as "does this slot match that exercise." A rule about the loop's
+own machinery got a pass that a rule about the app's machinery would not have.
+
+> **THE RULE — SC-10.** SC-03 applies to `loop-config.md` and every other process/config file this
+> project's automation reads, not only to `programs.js`/`tandem.html`. Before a new or edited
+> mechanism there is treated as working — a staleness check, a dependency check, a prioritization
+> rule, anything that claims to compute something from a real data source (Notion schema, Cycle
+> Log fields, tracker relations) — verify it against that data source's actual current shape, in
+> the same turn it's written, the same way an engine claim gets a `node -e`. Do not wait to be
+> asked "are you sure" a second time.
+
+**Enforced by** judgment — not mechanically checkable today. No script currently diffs a claimed
+rule in `loop-config.md` against the real shape of the Notion schema or Cycle Log it depends on;
+building one is exactly the kind of "guardrail on the program, not the prompt" Kerwin flagged the
+same session as a direction for a future session, not this one (see
+`.claude/loop-config.md`'s "Future direction" note, added in this same change).
+---
+
+## SC-11 — I inferred permanence from a flag's NAME instead of reading its writer
 
 **What I believed.** That letting a one-off session seed the 1RM calibration was dangerous because
 it would be *irreversible* — a weak or fatigued one-off would lock in a lowball starting max. I
@@ -289,7 +366,7 @@ its author; it is not evidence. This is the same failure shape as CLAUDE.md's pl
 warning, aimed at a variable name instead of at exercise science — and it is worse than a silent
 wrong guess, because I escalated it to Kerwin as a finding, spending his attention on a fiction.
 
-> **THE RULE — SC-09.** Before asserting that a stored value is permanent, irreversible, locked,
+> **THE RULE — SC-11.** Before asserting that a stored value is permanent, irreversible, locked,
 > frozen, or one-shot, find and read **every writer of that value** and quote the guard that makes
 > it so. If the only basis for the claim is an identifier containing `complete`, `final`, `locked`,
 > `once`, `init`, or `calibrated`, the claim is unverified — say "I have not checked what updates
@@ -305,7 +382,7 @@ regression. The gate now asserts the very running-max behavior I had talked myse
 
 ---
 
-## SC-10 — I repeated SC-01 in the session that was writing SC-09
+## SC-12 — I repeated SC-01 in the session that was writing SC-09
 
 **What I believed.** That after a context compaction I could resume building from the repository
 state described in my own summary, since the summary was written from a session that had checked.
@@ -335,7 +412,7 @@ have caught this in one command; I never ran it, because nothing in my resume pa
 This is SC-05's failure (a snapshot read as present tense) applied to my own summary, which is the
 one status document I am least likely to doubt.
 
-> **THE RULE — SC-10.** **A context compaction is a session start.** The first tool call after
+> **THE RULE — SC-12.** **A context compaction is a session start.** The first tool call after
 > resuming from a summary is `node scripts/preflight.mjs` (or `git fetch origin main` plus a
 > behind-count) — before reading a file, before editing a line, before believing any claim in the
 > summary about what exists, what is unfinished, or what is new. Treat the summary as evidence about
@@ -354,13 +431,16 @@ a gate. What made the cost recoverable this time was branching rather than disca
 
 ---
 
-## SC-11 — the right function is not the right window: a scoped grep matched the wrong occurrence
+## SC-13 — the right function is not the right window: a scoped grep matched the wrong occurrence
 
-> **Numbering note (SC-10's own prediction, observed again).** At the moment this was written,
-> `origin/main` carried a *different* SC-09 ("shipping + Notion is not the whole completion ritual
-> when a wave file exists"). The local SC-09/SC-10 above and this entry must therefore be renumbered
-> 10/11/12 when this branch is rebased. Recorded rather than silently fixed, because the collision is
-> the measurement SC-10 says it is.
+> **Numbering note (resolved).** At the moment this was written, `origin/main` carried a
+> *different* SC-09 ("shipping + Notion is not the whole completion ritual when a wave file
+> exists"), and this note predicted the local SC-09/SC-10/SC-11 chain would be renumbered
+> 10/11/12 on rebase. By the time the merge actually happened, `origin/main` had ALSO shipped its
+> own SC-10 ("a new process rule is an engine claim too..."), so both origin numbers stayed fixed
+> and the local chain was renumbered one slot further than predicted — 11/12/13/14 (this entry is
+> SC-13, not SC-12). Recorded rather than silently fixed, because the collision is the measurement
+> SC-10 (now SC-12) says it is.
 
 **What I believed.** That asserting `/session_type: ONEOFF_SESSION_TYPE/` against the *body of
 `saveJournal()`* was a properly scoped guard — not a file-wide grep, not a count, but a test confined
@@ -381,7 +461,7 @@ site I care about has it". This is SC-07's family (a gate measuring text, not be
 `ptrWrites` lesson from 2026-09-13 (a *count* inflated by unrelated matches) arriving through a third
 door — narrowing the haystack does not make an existence check into a per-site check.
 
-> **THE RULE — SC-11.** When an invariant is carried by a repeated token, **enumerate the sites and
+> **THE RULE — SC-13.** When an invariant is carried by a repeated token, **enumerate the sites and
 > assert per site**, matching each from its own syntactic window (`sb.from('X').insert({…})`,
 > `hist.unshift({…})`), never once against the enclosing function. And **prove every branch of the
 > assertion bites separately** — remove the token from site A alone, then from site B alone. A
@@ -395,7 +475,7 @@ whole — is judgment, not mechanically checkable.
 
 ---
 
-## SC-12 — I committed a doc as durable without checking whether my next commit would break it
+## SC-14 — I committed a doc as durable without checking whether my next commit would break it
 
 **What I believed.** That correcting `docs/waves/EPIC-16-WAVE-STATE.md` (commit `7220c35`) to say
 Slice 2 shipped as the Journal feature, writing to `nutrition_logs`, was a finished, durable
@@ -415,7 +495,7 @@ and `nutrition_logs` explicitly; a grep for either string before committing `cf9
 surfaced the doc needing a matching fix in the same commit, instead of leaving it stale for an
 unknown interval.
 
-> **THE RULE — SC-12.** Before committing any change that alters or removes a named function's or
+> **THE RULE — SC-14.** Before committing any change that alters or removes a named function's or
 > table's behavior, `grep -r <name> docs/ DOCTRINE.md migrations/` for that identifier and check
 > whether any doc's claim about it is about to become false. Fix those docs in the **same commit**
 > (or, if truly separable, the very next commit in the same session) — never leave a doc holding a

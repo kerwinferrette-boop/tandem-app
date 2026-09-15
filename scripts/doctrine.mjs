@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -1017,6 +1017,39 @@ for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
   d6Checked++;
   if (!(t >= b && b >= f)) fail('D6', `${days}d/${sex}: goal volume not in MEV order (transform ${t} ≥ build_muscle ${b} ≥ fat_burn ${f})`);
   if (f <= 0) fail('D6', `${days}d/${sex}: fat_burn produced zero working volume`);
+}
+
+// ── D6b (ACTIVE, MEV floor) — Per-muscle weekly volume meets the goal's MEV floor ──
+// Promoted 2026-09-14. Numbers: Exercise Science Research Canonical Reference §1
+// (Notion 399ca37f935b8172acaafc541b703726, the project's stated single source of
+// truth). Secondary/synergist volume counts at 0.5 credit, primary at 1.0 — Kerwin's
+// ruling, 2026-09-14, live ("is that muscle not worked out just because it's
+// secondary?"), fractional credit externally corroborated (Renaissance
+// Periodization's own direct/indirect convention). Uses computeMuscleWeeklyVolume()
+// and resolveGoalVolume() (programs.js) — the SAME functions the generator itself
+// runs, not a parallel reference implementation, so this checks what actually
+// ships. Measured before promoting (2026-09-14): the flat pre-fix GOAL_VOLUME left
+// 90/216 checks below MEV; resolveGoalVolume() (deriving sets-per-exercise from
+// each day-count's own COMPOUND-slot structure — isolation excluded so the
+// derivation stays invariant to D28's duration-based accessory pruning) plus a
+// coverage tiebreak fix (an OR-slot requesting two muscles, e.g. hamstring+
+// glute_max, was letting oneRmFactor pick a candidate covering only one — the
+// exact BUG-116 defect shape, a second symptom of the same root cause) brought
+// this to 0/270 across every goal x day-count(2-6) x sex combo.
+let d6bChecked = 0;
+for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+  for (const goal of CANONICAL_GOALS) {
+    const prog = getProgram(goal, days, 12, sex, 'full_gym', 'balanced', null, null, { week: 1, phase: 0 });
+    const vol = computeMuscleWeeklyVolume(prog, EXERCISE_BANK);
+    const mev = VOLUME_LANDMARKS[goal]?.mev;
+    if (!mev) continue;
+    for (const token of MAJOR_MUSCLE_GROUP_TOKENS) {
+      d6bChecked++;
+      const total = Object.entries(vol).filter(([tag]) => tag === token || tag.startsWith(token + '_'))
+        .reduce((sum, [, v]) => sum + v, 0);
+      if (total < mev) fail('D6b', `${goal}/${days}d/${sex}: '${token}' weekly volume ${total} sets is below the goal's MEV floor (${mev}) — primary sets at 1.0 credit, secondary at 0.5 (Kerwin's 2026-09-14 ruling, BUG-105)`);
+    }
+  }
 }
 
 // ── D11 (ACTIVE — strengthened 2026-07-30) — Monotonic progressive overload + earned-only 1RM ──
@@ -2299,8 +2332,7 @@ let d21Checked = 0;
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
-  ['D6b', 'Per-muscle weekly volume must meet the goal MEV floor (numbers sourced, secondary volume counts at 0.5 credit per Kerwin 2026-09-14). MEASURED against real output 2026-09-14: 90/216 checks below MEV, cleanly by day-count (3d 44/54, 4d 32/54, 5d 14/54, 6d 0/54) — needs Kerwin\'s ruling on how to close the gap (more sets/exercise, more slots, a day-count-scoped floor, or an accepted limitation) before promoting', 'needs Kerwin\'s ruling on closing the measured gap'],
-  ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b resolving first', 'needs numeric ramp cadence + D6b resolved first'],
+  ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b (now ACTIVE) as its real per-muscle baseline', 'needs numeric ramp cadence'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops the isolation block\'s 3rd accessory slot (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
 ];
@@ -2351,6 +2383,7 @@ console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on prima
 console.log(`  D27 continuity across regenerations — ${d27Checked} property checks`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
+console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() across the full 4-24wk range — ${d11Checked} week-steps checked`);
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);
