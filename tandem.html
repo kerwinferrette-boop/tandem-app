@@ -91,11 +91,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* Cards container */
 .ob-cards{flex:1;overflow:hidden;position:relative;}
-.ob-card{display:none;padding:0 18px;animation:obSlideIn .25s ease;}
-.ob-card.active{display:block;}
+.ob-card,.ob-lib-card{display:none;padding:0 18px;animation:obSlideIn .25s ease;}
+.ob-card.active,.ob-lib-card.active{display:block;}
 @keyframes obSlideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 @keyframes obSlideBack{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
 .ob-card.slide-back{animation:obSlideBack .25s ease;}
+/* Onboarding top-level screen switch (build wizard / path gate / library mini-flow) —
+   mutually exclusive, added for the onboarding fork. */
+.ob-screen-hidden{display:none !important;}
 
 .ob-card-title{font-family:var(--font-display);font-size:28px;letter-spacing:.04em;color:#fff;margin-bottom:4px;}
 .ob-card-sub{font-size:12px;color:var(--muted2);font-weight:300;line-height:1.6;margin-bottom:20px;}
@@ -911,6 +914,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </div>
 
+    <div id="obBuildScreen">
     <!-- Step dots -->
     <div class="ob-step-label" id="obStepLabel">Step 1 of 6 — Goal</div>
     <div class="ob-steps">
@@ -1256,6 +1260,191 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <button class="ob-back-btn" id="obBackBtn" onclick="obStep(-1)">‹</button>
       <button class="ob-next-btn" id="obNextBtn" onclick="obStep(1)" disabled>Next →</button>
     </div>
+    </div><!-- /obBuildScreen -->
+
+    <!-- ══════════════════════════════════
+         PATH GATE — shown once, right after Goal, before Stats.
+         "Build My Own" resumes the wizard above unchanged; "Choose a
+         Program" branches into the parallel library mini-flow below.
+    ══════════════════════════════════ -->
+    <div id="obPathGate" class="ob-screen-hidden">
+      <div class="ob-card-title" style="padding:0 18px;">Ready to build your program?</div>
+      <div class="ob-card-sub" style="padding:0 18px;">You picked <strong id="obGateGoalName">your goal</strong>. Now choose how you want to get there.</div>
+      <div style="padding:0 18px;display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+        <button class="ob-build-btn" onclick="resumePath('build')">🛠️ Build My Own Program</button>
+        <button class="ob-build-btn" id="obGateLibraryBtn" style="background:linear-gradient(135deg,#4A9EFF 0%,#2C6FCC 100%);" onclick="resumePath('library')">📚 Choose a <span id="obGateGoalLabel">Program</span></button>
+        <div id="obGateGuestNote" class="ob-screen-hidden" style="font-size:11px;color:var(--muted);text-align:center;">Sign in to browse authored programs</div>
+      </div>
+      <div class="ob-nav">
+        <button class="ob-back-btn" onclick="backToGoalFromGate()">‹</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         LIBRARY MINI-FLOW — parallel 3-step path for adopting an authored
+         program. Deliberately NOT merged with obStep()/OB_STEPS above.
+    ══════════════════════════════════ -->
+    <div id="obLibFlow" class="ob-screen-hidden">
+      <div class="ob-step-label" id="obLibStepLabel">Step 1 of 3 — Choose Program</div>
+      <div class="ob-steps">
+        <div class="ob-step-dot active" id="sdot-lib-0"></div>
+        <div class="ob-step-dot" id="sdot-lib-1"></div>
+        <div class="ob-step-dot" id="sdot-lib-2"></div>
+      </div>
+
+      <div class="ob-cards">
+        <!-- L0: Picker -->
+        <div class="ob-lib-card active" id="ob-lib-card-0">
+          <div class="ob-card-title">Choose a Program</div>
+          <div class="ob-card-sub">Authored, published programs matching your goal.</div>
+          <div id="obLibPickerList" style="display:flex;flex-direction:column;gap:10px;">
+            <span style="font-size:12px;color:var(--muted)">Loading…</span>
+          </div>
+        </div>
+
+        <!-- L1: Stats -->
+        <div class="ob-lib-card" id="ob-lib-card-1">
+          <div class="ob-card-title">Your Stats</div>
+          <div class="ob-card-sub">Used to calibrate your program and track progress over time.</div>
+
+          <div class="ob-section">
+            <span class="ob-label">Weight</span>
+            <div class="ob-row" style="margin-bottom:10px;">
+              <div class="ob-field">
+                <div class="ob-field-label">Current (lbs)</div>
+                <input class="ob-input" type="number" inputmode="decimal" id="ob-lib-weight" placeholder="225" oninput="obLibUpdateNextState()">
+              </div>
+              <div class="ob-field">
+                <div class="ob-field-label">Target (lbs)</div>
+                <input class="ob-input" type="number" inputmode="decimal" id="ob-lib-target-weight" placeholder="195" oninput="obLibUpdateNextState()">
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-section">
+            <span class="ob-label">Height</span>
+            <div class="ob-row">
+              <div class="ob-field">
+                <div class="ob-field-label">Feet</div>
+                <select class="ob-select" id="ob-lib-height-ft">
+                  <option value="">ft</option>
+                  <option value="4">4 ft</option>
+                  <option value="5">5 ft</option>
+                  <option value="6">6 ft</option>
+                  <option value="7">7 ft</option>
+                </select>
+              </div>
+              <div class="ob-field">
+                <div class="ob-field-label">Inches</div>
+                <select class="ob-select" id="ob-lib-height-in">
+                  <option value="">in</option>
+                  <option value="0">0 in</option>
+                  <option value="1">1 in</option>
+                  <option value="2">2 in</option>
+                  <option value="3">3 in</option>
+                  <option value="4">4 in</option>
+                  <option value="5">5 in</option>
+                  <option value="6">6 in</option>
+                  <option value="7">7 in</option>
+                  <option value="8">8 in</option>
+                  <option value="9">9 in</option>
+                  <option value="10">10 in</option>
+                  <option value="11">11 in</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-section">
+            <div class="ob-row" style="margin-bottom:14px;">
+              <div class="ob-field">
+                <span class="ob-label" style="margin-bottom:6px;">Age</span>
+                <input class="ob-input" type="number" inputmode="numeric" id="ob-lib-age" placeholder="30" min="16" max="80">
+              </div>
+              <div class="ob-field">
+                <span class="ob-label" style="margin-bottom:6px;">Biological Sex</span>
+                <div class="ob-toggle-row two">
+                  <div class="ob-toggle" onclick="selectSex('M',this)">
+                    <div class="ob-toggle-icon">♂</div>
+                    <div class="ob-toggle-label">Male</div>
+                  </div>
+                  <div class="ob-toggle" onclick="selectSex('F',this)">
+                    <div class="ob-toggle-icon">♀</div>
+                    <div class="ob-toggle-label">Female</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-section">
+            <span class="ob-label">Experience Level</span>
+            <div class="ob-toggle-row three">
+              <div class="ob-toggle" onclick="selectExperience('beginner',this)">
+                <div class="ob-toggle-icon" data-icon="sprout"></div>
+                <div class="ob-toggle-label">Beginner</div>
+              </div>
+              <div class="ob-toggle" onclick="selectExperience('intermediate',this)">
+                <div class="ob-toggle-icon" data-icon="zap"></div>
+                <div class="ob-toggle-label">Intermediate</div>
+              </div>
+              <div class="ob-toggle" onclick="selectExperience('advanced',this)">
+                <div class="ob-toggle-icon" data-icon="flame"></div>
+                <div class="ob-toggle-label">Advanced</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ob-section">
+            <span class="ob-label">Injuries or Limitations <span style="font-weight:300;color:var(--muted);">(optional)</span></span>
+            <input class="ob-input" type="text" id="ob-lib-injuries"
+              placeholder="e.g. bad knees, lower back, shoulder impingement"
+              style="width:100%;box-sizing:border-box;">
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:300;">
+              Your coach will avoid programming movements that aggravate these areas.
+            </div>
+          </div>
+        </div>
+
+        <!-- L2: Color + Start Date + Summary -->
+        <div class="ob-lib-card" id="ob-lib-card-2">
+          <div class="ob-card-title">Your Color</div>
+          <div class="ob-card-sub">This is how you show up in the competition. You can always change it later.</div>
+
+          <div class="color-swatches">
+            <div class="color-swatch selected" style="background:#1B5E38;" data-color="#1B5E38" onclick="selectThemeColor('#1B5E38',this)"></div>
+            <div class="color-swatch" style="background:#d4a843;" data-color="#d4a843" onclick="selectThemeColor('#d4a843',this)"></div>
+            <div class="color-swatch" style="background:#4A9EFF;" data-color="#4A9EFF" onclick="selectThemeColor('#4A9EFF',this)"></div>
+            <div class="color-swatch" style="background:#B47FFF;" data-color="#B47FFF" onclick="selectThemeColor('#B47FFF',this)"></div>
+            <div class="color-swatch" style="background:#E85454;" data-color="#E85454" onclick="selectThemeColor('#E85454',this)"></div>
+            <div class="color-swatch" style="background:#38D9C0;" data-color="#38D9C0" onclick="selectThemeColor('#38D9C0',this)"></div>
+            <div class="color-swatch" style="background:#FF6B35;" data-color="#FF6B35" onclick="selectThemeColor('#FF6B35',this)"></div>
+            <div class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4" onclick="selectThemeColor('#FF69B4',this)"></div>
+          </div>
+
+          <div class="ob-section" style="margin-top:20px;">
+            <span class="ob-label">Program Start Date</span>
+            <div class="ob-field">
+              <div class="ob-field-label">First Workout</div>
+              <input class="ob-input" type="date" id="ob-lib-start-date" style="text-align:left;padding-left:18px;">
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">The day your first workout falls on becomes Day 1 of your program.</div>
+          </div>
+
+          <div class="review-grid" id="obLibSummary" style="margin-top:16px;">
+            <!-- populated by renderLibSummary() -->
+          </div>
+
+          <button class="ob-build-btn" style="margin-top:16px;" onclick="finalizeLibraryOnboarding(this)">Start This Program →</button>
+          <div style="height:8px;"></div>
+        </div>
+      </div><!-- /ob-cards (lib) -->
+
+      <div class="ob-nav">
+        <button class="ob-back-btn" onclick="obLibStep(-1)">‹</button>
+        <button class="ob-next-btn" id="obLibNextBtn" onclick="obLibStep(1)" disabled>Next →</button>
+      </div>
+    </div><!-- /obLibFlow -->
 
   </div>
 </div>
@@ -2747,6 +2936,52 @@ function getActiveProgram() {
 // is_published = false, cloned_from = original id) — RLS write policies permit
 // exactly this shape. The clone bundle is cached in LS 'tandem_adopted_program'
 // so materializeTemplate never needs a network round-trip at render time.
+// EPIC-033 F5 / BUG-68. Two columns describe a template's goal and they are NOT
+// interchangeable: `parent_goal` is the authored 5-Goal-Taxonomy intent (all five,
+// including strength/maintenance, so an authored program may precede code support),
+// while `code_goal_mapping` names the live PROGRESSION/superset chassis the engine
+// will actually run (three values only). The card used to print parent_goal — so a
+// template authored as Strength but mapped onto the build_muscle chassis advertised
+// a program the engine cannot deliver. Kerwin ruled BOTH remedies:
+//   (a) FILTER — until D8 (Strength/Maintenance) ships, only list templates whose
+//       parent_goal is one the engine can deliver (D2: only canonical goals generate);
+//   (b) SURFACE — label the card with the engine goal, and when the two differ, say so
+//       out loud rather than silently substituting.
+// Onboarding fork (2026-09-14) reuses this same query/card pair, filtered to the
+// goal the user just picked — "one rule, one home" per CLAUDE.md.
+const LIVE_GOALS = ['build_muscle', 'fat_burn', 'transform']; // == doctrine.mjs CANONICAL_GOALS
+const TEMPLATE_GOAL_LABEL = { build_muscle: 'Build Muscle', fat_burn: 'Fat Burn', transform: 'Transform', strength: 'Strength', maintenance: 'Maintenance' };
+
+async function fetchPublishedTemplates(goalFilter) {
+  let q = sb.from('workout_templates')
+    .select('id, name, slug, tagline, description, parent_goal, code_goal_mapping, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
+    .eq('is_published', true).is('cloned_from', null).in('parent_goal', LIVE_GOALS);
+  if (goalFilter) q = q.eq('code_goal_mapping', goalFilter);
+  const { data, error } = await q.order('name');
+  if (error) throw error;
+  return data || [];
+}
+
+function templateGoalChip(t) {
+  const engine = TEMPLATE_GOAL_LABEL[t.code_goal_mapping] || t.code_goal_mapping;
+  if (!t.parent_goal || t.parent_goal === t.code_goal_mapping) return engine;
+  return `${TEMPLATE_GOAL_LABEL[t.parent_goal] || t.parent_goal} · runs as ${engine}`;
+}
+
+function templateCardHTML(t, actionHTML) {
+  return `
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+        <div style="font-weight:700;font-size:15px;">${t.name}</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${templateGoalChip(t)}</div>
+      </div>
+      ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
+      ${t.description ? `<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-top:8px;">${t.description}</div>` : ''}
+      ${actionHTML}
+    </div>`;
+}
+
 async function openProgramLibrary() {
   openModal('library');
   const list = document.getElementById('libraryList');
@@ -2756,43 +2991,199 @@ async function openProgramLibrary() {
     : 'Currently running your generated program.';
   if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online.</span>'; return; }
   try {
-    // EPIC-033 F5 / BUG-68. Two columns describe a template's goal and they are NOT
-    // interchangeable: `parent_goal` is the authored 5-Goal-Taxonomy intent (all five,
-    // including strength/maintenance, so an authored program may precede code support),
-    // while `code_goal_mapping` names the live PROGRESSION/superset chassis the engine
-    // will actually run (three values only). The card used to print parent_goal — so a
-    // template authored as Strength but mapped onto the build_muscle chassis advertised
-    // a program the engine cannot deliver. Kerwin ruled BOTH remedies:
-    //   (a) FILTER — until D8 (Strength/Maintenance) ships, only list templates whose
-    //       parent_goal is one the engine can deliver (D2: only canonical goals generate);
-    //   (b) SURFACE — label the card with the engine goal, and when the two differ, say so
-    //       out loud rather than silently substituting.
-    const LIVE_GOALS = ['build_muscle', 'fat_burn', 'transform']; // == doctrine.mjs CANONICAL_GOALS
-    const { data, error } = await sb.from('workout_templates')
-      .select('id, name, slug, tagline, description, parent_goal, code_goal_mapping, duration_weeks, days_per_week, split_type, difficulty, author_attribution')
-      .eq('is_published', true).is('cloned_from', null).in('parent_goal', LIVE_GOALS).order('name');
-    if (error) throw error;
-    if (!data || !data.length) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">No published programs yet.</span>'; return; }
-    const GOAL_LABEL = { build_muscle: 'Build Muscle', fat_burn: 'Fat Burn', transform: 'Transform', strength: 'Strength', maintenance: 'Maintenance' };
-    const goalChip = t => {
-      const engine = GOAL_LABEL[t.code_goal_mapping] || t.code_goal_mapping;
-      if (!t.parent_goal || t.parent_goal === t.code_goal_mapping) return engine;
-      return `${GOAL_LABEL[t.parent_goal] || t.parent_goal} · runs as ${engine}`;
-    };
-    list.innerHTML = data.map(t => `
-      <div style="border:1px solid var(--line);border-radius:12px;padding:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-          <div style="font-weight:700;font-size:15px;">${t.name}</div>
-          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${goalChip(t)}</div>
-        </div>
-        ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
-        ${t.description ? `<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-top:8px;">${t.description}</div>` : ''}
-        <button class="tool-btn" style="width:100%;margin-top:10px;padding:9px;" onclick="adoptTemplate('${t.id}', this)">Adopt this program</button>
-      </div>`).join('');
+    const data = await fetchPublishedTemplates(null);
+    if (!data.length) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">No published programs yet.</span>'; return; }
+    list.innerHTML = data.map(t => templateCardHTML(t,
+      `<button class="tool-btn" style="width:100%;margin-top:10px;padding:9px;" onclick="adoptTemplate('${t.id}', this)">Adopt this program</button>`
+    )).join('');
   } catch (e) {
     console.warn('[library] load failed', e);
     list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Couldn\'t load the library — see console.</span>';
+  }
+}
+
+// ═══ Onboarding fork — Path Gate + parallel library mini-flow ═══
+// Sits right after Goal (selectedGoal already set by the time obStep(1) hits
+// step 0). #obBuildScreen/#obPathGate/#obLibFlow are mutually exclusive.
+function setOnboardScreen(screen) {
+  document.getElementById('obBuildScreen').classList.toggle('ob-screen-hidden', screen !== 'build');
+  document.getElementById('obPathGate').classList.toggle('ob-screen-hidden', screen !== 'gate');
+  document.getElementById('obLibFlow').classList.toggle('ob-screen-hidden', screen !== 'library');
+}
+
+function showPathGate() {
+  document.getElementById('obGateGoalName').textContent = TEMPLATE_GOAL_LABEL[selectedGoal] || 'your goal';
+  document.getElementById('obGateGoalLabel').textContent = TEMPLATE_GOAL_LABEL[selectedGoal] || 'a Program';
+  const libBtn = document.getElementById('obGateLibraryBtn');
+  const guestNote = document.getElementById('obGateGuestNote');
+  // Guest-blocking precedent already exists on every other library entry
+  // point (openProgramLibrary/adoptTemplate/openTemplateBuilder) — matched here.
+  if (!currentUser) {
+    libBtn.disabled = true;
+    libBtn.style.opacity = '0.5';
+    libBtn.style.cursor = 'not-allowed';
+    guestNote.classList.remove('ob-screen-hidden');
+  } else {
+    libBtn.disabled = false;
+    libBtn.style.opacity = '';
+    libBtn.style.cursor = '';
+    guestNote.classList.add('ob-screen-hidden');
+  }
+  setOnboardScreen('gate');
+}
+
+function backToGoalFromGate() {
+  setOnboardScreen('build');
+}
+
+function resumePath(path) {
+  onboardPath = path;
+  if (path === 'build') {
+    obGatePassed = true;
+    setOnboardScreen('build');
+    obStep(1);
+  } else if (path === 'library') {
+    if (!currentUser) { showToast('Sign in to browse authored programs'); return; }
+    renderOnboardLibraryPicker(selectedGoal);
+    setOnboardScreen('library');
+  }
+}
+
+async function renderOnboardLibraryPicker(goal) {
+  libCurrentStep = 0; pendingLibraryTemplate = null; obLibTemplates = [];
+  document.querySelectorAll('.ob-lib-card').forEach((c,i) => c.classList.toggle('active', i === 0));
+  for (let i = 0; i < OB_LIB_STEPS; i++) {
+    const d = document.getElementById('sdot-lib-' + i);
+    if (d) { d.classList.toggle('active', i === 0); d.classList.remove('done'); }
+  }
+  document.getElementById('obLibStepLabel').textContent = OB_LIB_LABELS[0];
+  const nextBtn = document.getElementById('obLibNextBtn');
+  if (nextBtn) { nextBtn.style.display = 'block'; nextBtn.textContent = 'Next →'; nextBtn.disabled = true; }
+  const list = document.getElementById('obLibPickerList');
+  list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Loading…</span>';
+  if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online, or <a href="#" onclick="resumePath(\'build\');return false;" style="color:var(--accent)">Build My Own instead</a>.</span>'; return; }
+  try {
+    const data = await fetchPublishedTemplates(goal);
+    obLibTemplates = data;
+    if (!data.length) {
+      list.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">No published programs for ${TEMPLATE_GOAL_LABEL[goal] || goal} yet.</div>
+        <button class="ob-build-btn" onclick="resumePath('build')">🛠️ Build My Own instead</button>`;
+      return;
+    }
+    list.innerHTML = data.map(t => templateCardHTML(t,
+      `<button class="tool-btn" id="obLibPick-${t.id}" style="width:100%;margin-top:10px;padding:9px;" onclick="selectOnboardTemplate('${t.id}', this)">Choose this program →</button>`
+    )).join('');
+  } catch (e) {
+    console.warn('[onboard library] load failed', e);
+    list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Couldn\'t load the library — see console.</span>';
+  }
+}
+
+function selectOnboardTemplate(id, btnEl) {
+  const t = obLibTemplates.find(x => x.id === id);
+  if (!t) return;
+  pendingLibraryTemplate = t;
+  document.querySelectorAll('#obLibPickerList button.tool-btn').forEach(b => { b.textContent = 'Choose this program →'; });
+  btnEl.textContent = '✓ Selected';
+  obLibUpdateNextState();
+}
+
+function obLibCanAdvance() {
+  switch (libCurrentStep) {
+    case 0: return !!pendingLibraryTemplate;
+    case 1: {
+      const w = parseFloat(document.getElementById('ob-lib-weight').value);
+      const t = parseFloat(document.getElementById('ob-lib-target-weight').value);
+      return w > 0 && t > 0 && !!selectedSex && !!selectedExperience;
+    }
+    default: return true;
+  }
+}
+
+function obLibUpdateNextState() {
+  const btn = document.getElementById('obLibNextBtn');
+  if (!btn) return;
+  btn.disabled = !obLibCanAdvance();
+}
+
+function obLibStep(dir) {
+  if (dir === -1 && libCurrentStep === 0) { setOnboardScreen('gate'); return; }
+  if (dir === 1 && !obLibCanAdvance()) return;
+  const prev = libCurrentStep;
+  libCurrentStep = Math.max(0, Math.min(OB_LIB_STEPS - 1, libCurrentStep + dir));
+  if (libCurrentStep === prev) return;
+  document.querySelectorAll('.ob-lib-card').forEach((c,i) => c.classList.toggle('active', i === libCurrentStep));
+  for (let i = 0; i < OB_LIB_STEPS; i++) {
+    const d = document.getElementById('sdot-lib-' + i);
+    d.classList.toggle('active', i === libCurrentStep);
+    d.classList.toggle('done', i < libCurrentStep);
+  }
+  document.getElementById('obLibStepLabel').textContent = OB_LIB_LABELS[libCurrentStep];
+  const nextBtn = document.getElementById('obLibNextBtn');
+  if (libCurrentStep === OB_LIB_STEPS - 1) {
+    renderLibSummary();
+    nextBtn.style.display = 'none';
+  } else {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = libCurrentStep === OB_LIB_STEPS - 2 ? 'Review →' : 'Next →';
+  }
+  obLibUpdateNextState();
+}
+
+function renderLibSummary() {
+  const wrap = document.getElementById('obLibSummary');
+  if (!wrap || !pendingLibraryTemplate) return;
+  const t = pendingLibraryTemplate;
+  wrap.innerHTML = `
+    <div class="review-item span2"><div class="review-item-label">Program</div><div class="review-item-value">${t.name}</div></div>
+    <div class="review-item"><div class="review-item-label">Goal</div><div class="review-item-value">${TEMPLATE_GOAL_LABEL[t.code_goal_mapping] || t.code_goal_mapping}</div></div>
+    <div class="review-item"><div class="review-item-label">Duration</div><div class="review-item-value">${t.duration_weeks} wks</div></div>
+    <div class="review-item"><div class="review-item-label">Days/Week</div><div class="review-item-value">${t.days_per_week}</div></div>
+    <div class="review-item"><div class="review-item-label">Difficulty</div><div class="review-item-value">${t.difficulty}</div></div>`;
+}
+
+// Field-population shape mirrors buildProgram()'s cfg assembly. Only fields
+// confirmed (by reading materializeTemplate/buildDynamicProgram in programs.js)
+// to affect an AUTHORED program's output are asked here — Emphasis, Session
+// Length, Preferred Workout Time, and Secondary Goal are confirmed inert for
+// the library path and set to null rather than asked-and-ignored. Equipment
+// is asked nowhere in onboarding as of EPIC-18 Slice 1 (Today's Setup owns it).
+async function finalizeLibraryOnboarding(btn) {
+  if (!pendingLibraryTemplate) { showToast('Pick a program first'); return; }
+  if (!currentUser) { showToast('Sign in to adopt a program'); return; }
+  const tpl = pendingLibraryTemplate;
+  const weight = parseFloat(document.getElementById('ob-lib-weight').value) || 225;
+  const targetWeight = parseFloat(document.getElementById('ob-lib-target-weight').value) || weight;
+  const ftEl = document.getElementById('ob-lib-height-ft');
+  const inEl = document.getElementById('ob-lib-height-in');
+  const heightIn = ftEl.value ? (parseInt(ftEl.value) * 12 + parseInt(inEl.value || 0)) : null;
+  const age = parseInt(document.getElementById('ob-lib-age').value) || null;
+  const startDate = document.getElementById('ob-lib-start-date')?.value || new Date().toISOString().split('T')[0];
+
+  cfg = {
+    goal: tpl.code_goal_mapping,
+    days: tpl.days_per_week,
+    weeks: tpl.duration_weeks,
+    weight, targetWeight, heightIn, age,
+    sex: selectedSex,
+    experience: selectedExperience,
+    emphasis: null,
+    workout_duration_minutes: null,
+    preferred_workout_time: null,
+    injuries: document.getElementById('ob-lib-injuries').value.trim() || null,
+    secondary_goal: null,
+    program_goal: tpl.code_goal_mapping,
+    startDate,
+    themeColor: selectedThemeColor || '#1B5E38',
+    onboardingEstimates: {},
+  };
+  LS.set('tandem_cfg', cfg);
+  currentWeek = 1;
+  LS.set('tandem_week', 1);
+
+  await adoptTemplate(tpl.id, btn);
+  if (cfg.programSource === 'library') {
+    showView('dashboard');
   }
 }
 
@@ -3392,6 +3783,16 @@ let selectedWorkoutTime = null;
 let selectedSecondaryGoal = null;
 let selectedThemeColor = '#1B5E38';
 
+// Path Gate / library mini-flow state (onboarding fork) — parallel to, and
+// deliberately not merged with, the obCurrentStep/OB_STEPS machinery above.
+let onboardPath = null;
+let obGatePassed = false;
+let libCurrentStep = 0;
+const OB_LIB_STEPS = 3;
+const OB_LIB_LABELS = ['Step 1 of 3 — Choose Program','Step 2 of 3 — Your Stats','Step 3 of 3 — Color & Start'];
+let obLibTemplates = [];
+let pendingLibraryTemplate = null;
+
 // ═══════════════════════════════════════════════════════
 // ONBOARDING — MULTI-STEP
 // ═══════════════════════════════════════════════════════
@@ -3438,10 +3839,22 @@ function collectBaselineEstimates() {
 }
 
 function obStep(dir) {
+  // Path Gate: the first time Next is hit from Goal (step 0), show the
+  // Build-My-Own-vs-Choose-a-Program fork instead of advancing to Stats.
+  // resumePath('build') sets obGatePassed and re-calls obStep(1) to proceed —
+  // the ONE branch added to this function; everything below is unchanged.
+  if (dir === 1 && obCurrentStep === 0 && !obGatePassed) {
+    if (!obCanAdvance()) return;
+    showPathGate();
+    return;
+  }
   if (dir === 1 && !obCanAdvance()) return;
   const prev = obCurrentStep;
   obCurrentStep = Math.max(0, Math.min(OB_STEPS - 1, obCurrentStep + dir));
   if (obCurrentStep === prev) return;
+  // Back-navigation past Stats lands here on Goal again — re-arm the gate so
+  // a changed goal (or a change of mind) gets the fork again, not a skip.
+  if (obCurrentStep === 0) obGatePassed = false;
 
   // FIX BUG 1 & 4: proper slide animation using double rAF so browser paints before removing class
   const card = document.getElementById('ob-card-' + obCurrentStep);
@@ -3518,19 +3931,29 @@ function selectDays(n, el) {
   obUpdateNextState();
 }
 
+// Dispatches to whichever step machine is currently on screen — Build's
+// obUpdateNextState() or the library mini-flow's obLibUpdateNextState().
+// Lets selectSex/selectExperience stay single functions shared by both flows
+// (they're simple global-state setters keyed off DOM class toggling, not
+// which card invoked them) instead of duplicating them per flow.
+function obRefreshNextState() {
+  if (onboardPath === 'library') obLibUpdateNextState();
+  else obUpdateNextState();
+}
+
 function selectSex(sex, el) {
   selectedSex = sex;
   document.querySelectorAll('.ob-toggle[onclick*="selectSex"]').forEach(t => t.classList.remove('selected'));
   el.classList.add('selected');
   applyHeroImages();
-  obUpdateNextState();
+  obRefreshNextState();
 }
 
 function selectExperience(exp, el) {
   selectedExperience = exp;
   document.querySelectorAll('.ob-toggle[onclick*="selectExperience"]').forEach(t => t.classList.remove('selected'));
   el.classList.add('selected');
-  obUpdateNextState();
+  obRefreshNextState();
 }
 
 function selectEmphasis(val, el) {
@@ -3748,6 +4171,31 @@ function resetProgram() {
   selectedWorkoutTime = null;
   selectedSecondaryGoal = null;
   selectedThemeColor = '#1B5E38';
+  // Path Gate / library mini-flow state — a prior library excursion must not
+  // leak into the next run-through.
+  onboardPath = null;
+  obGatePassed = false;
+  libCurrentStep = 0;
+  obLibTemplates = [];
+  pendingLibraryTemplate = null;
+  setOnboardScreen('build');
+  document.querySelectorAll('.ob-lib-card').forEach((c,i) => c.classList.toggle('active', i === 0));
+  for (let i = 0; i < OB_LIB_STEPS; i++) {
+    const d = document.getElementById('sdot-lib-' + i);
+    if (d) { d.classList.toggle('active', i === 0); d.classList.remove('done'); }
+  }
+  const libNextBtn = document.getElementById('obLibNextBtn');
+  if (libNextBtn) { libNextBtn.style.display = 'block'; libNextBtn.textContent = 'Next →'; libNextBtn.disabled = true; }
+  const libStepLabel = document.getElementById('obLibStepLabel');
+  if (libStepLabel) libStepLabel.textContent = OB_LIB_LABELS[0];
+  ['ob-lib-weight','ob-lib-target-weight','ob-lib-age','ob-lib-injuries','ob-lib-start-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['ob-lib-height-ft','ob-lib-height-in'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
   // Reset multi-step state
   obCurrentStep = 0;
   document.querySelectorAll('.ob-card').forEach((c,i) => c.classList.toggle('active', i === 0));
