@@ -36,7 +36,7 @@
 html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;font-size:15px;}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 100% 45% at 50% -5%,rgba(24,194,106,0.06) 0%,transparent 55%),
+  background:radial-gradient(ellipse 100% 45% at 50% -5%,color-mix(in srgb,var(--accent) 6%,transparent) 0%,transparent 55%),
   repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.011) 40px),
   repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.011) 40px);}
 .page{position:relative;z-index:1;max-width:580px;margin:0 auto;padding-bottom:88px;}
@@ -53,15 +53,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .logo-mark{position:relative;width:36px;height:36px;flex-shrink:0;}
 .logo-mark svg{width:36px;height:36px;}
 .logo-text{font-family:var(--font-display);font-size:22px;letter-spacing:.1em;
-  background:linear-gradient(135deg,#fff 0%,#3FE08C 100%);
+  background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 
 .nav-right{display:flex;gap:5px;align-items:center;}
 .nav-pill{padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:transparent;
   font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--muted2);cursor:pointer;transition:all .15s;}
-.nav-pill.active{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
-.nav-pill.teal.active{background:var(--teal-dim);border-color:rgba(63,224,140,.4);color:var(--teal);}
+.nav-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
+.nav-pill.teal.active{background:var(--teal-dim);border-color:color-mix(in srgb,var(--teal) 40%,transparent);color:var(--teal);}
 
 /* ═══════════════════════════════
    VIEWS
@@ -77,7 +77,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ob-logo{text-align:center;padding:32px 18px 24px;}
 .ob-logo-big svg{width:64px;height:64px;display:block;margin:0 auto 12px;}
 .ob-title{font-family:var(--font-display);font-size:42px;letter-spacing:.06em;
-  background:linear-gradient(135deg,#fff 0%,#3FE08C 100%);
+  background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
 .ob-sub{font-size:13px;color:var(--muted2);margin-top:8px;font-weight:300;line-height:1.6;}
 
@@ -114,7 +114,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .goal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
   background:var(--gc,var(--accent));opacity:0;transition:opacity .2s;}
 .goal-card:hover::before,.goal-card.selected::before{opacity:1;}
-.goal-card.selected{background:var(--gd,var(--accent-dim));border-color:var(--gb,rgba(24,194,106,.4));}
+.goal-card.selected{background:var(--gd,var(--accent-dim));border-color:var(--gb,color-mix(in srgb,var(--accent) 40%,transparent));}
 .goal-card-top{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
 .goal-icon{font-size:22px;flex-shrink:0;}
 .goal-name{font-family:var(--font-display);font-size:20px;letter-spacing:.04em;color:var(--text);}
@@ -158,7 +158,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ob-toggle{padding:12px 10px;background:var(--s1);border:1px solid var(--border2);border-radius:10px;
   cursor:pointer;transition:all .18s;text-align:center;}
 .ob-toggle:hover{border-color:var(--border2);}
-.ob-toggle.selected{background:var(--accent-dim);border-color:rgba(24,194,106,.4);}
+.ob-toggle.selected{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
 .ob-toggle-icon{font-size:18px;margin-bottom:4px;}
 .ob-toggle-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--muted2);}
@@ -169,7 +169,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .day-dot{width:44px;height:44px;border-radius:10px;border:1px solid var(--border2);
   background:var(--s1);display:flex;align-items:center;justify-content:center;
   font-family:var(--font-display);font-size:18px;color:var(--muted2);cursor:pointer;transition:all .15s;}
-.day-dot.selected{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
+.day-dot.selected{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 
 /* Review card */
 .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
@@ -187,17 +187,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   display:flex;align-items:center;justify-content:center;}
 .ob-back-btn:hover{border-color:var(--border2);color:var(--text);}
 .ob-next-btn{flex:1;height:48px;border-radius:11px;border:none;
-  background:linear-gradient(135deg,#18C26A 0%,#0E7A45 100%);
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);
   color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.08em;
   cursor:pointer;transition:all .2s;}
 .ob-next-btn:disabled{background:var(--s2);color:var(--muted);cursor:not-allowed;}
-.ob-next-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(24,194,106,.3);}
+.ob-next-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .ob-next-btn:not(:disabled):active{transform:scale(.98);}
 .ob-build-btn{width:100%;padding:16px;border-radius:12px;
-  background:linear-gradient(135deg,#18C26A 0%,#0E7A45 100%);
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);
   border:none;color:#fff;font-family:var(--font-display);font-size:22px;
   letter-spacing:.08em;cursor:pointer;transition:all .2s;margin-top:8px;}
-.ob-build-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(24,194,106,.3);}
+.ob-build-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 30%,transparent);}
 .ob-build-btn:active{transform:scale(.98);}
 
 /* Color picker step */
@@ -213,8 +213,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    PHASE BANNER
 ═══════════════════════════════ */
 .phase-banner{margin:14px 16px 0;padding:14px 16px;border-radius:13px;
-  background:linear-gradient(135deg,rgba(24,194,106,0.09) 0%,var(--s1) 70%);
-  border:1px solid rgba(24,194,106,0.25);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,transparent) 0%,var(--s1) 70%);
+  border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
 .pb-left{flex:1;min-width:0;}
 .pb-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;}
 .pb-name{font-family:var(--font-display);font-size:22px;color:#fff;line-height:1;}
@@ -238,11 +238,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    that goes until finish is hit... doesnt lose my spot")
 ═══════════════════════════════ */
 .session-timer-row{padding:8px 16px 0;display:flex;justify-content:center;}
-.session-timer-start{width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(24,194,106,.35);
+.session-timer-start{width:100%;padding:9px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
   background:var(--accent-dim);color:var(--accent);font-family:var(--font-mono);font-size:11px;
   letter-spacing:.07em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;
   justify-content:center;gap:6px;transition:all .15s;}
-.session-timer-start:hover{background:rgba(24,194,106,.28);}
+.session-timer-start:hover{background:color-mix(in srgb,var(--accent) 28%,transparent);}
 .session-timer-live{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
   padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--s1);
   color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
@@ -264,7 +264,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tool-btn{flex-shrink:0;padding:6px 12px;border-radius:7px;border:1px solid var(--border);
   background:var(--s1);font-family:var(--font-mono);font-size:10px;
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transition:all .15s;}
-.tool-btn:hover,.tool-btn.on{background:var(--accent-dim);border-color:rgba(24,194,106,.35);color:var(--accent);}
+.tool-btn:hover,.tool-btn.on{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);}
 
 /* ═══════════════════════════════
    DAY TABS
@@ -277,7 +277,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .day-tab{flex-shrink:0;padding:7px 13px;border-radius:8px;border:1px solid var(--border);
   background:var(--s1);font-family:var(--font-mono);font-size:10px;
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .15s;}
-.day-tab.active{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
+.day-tab.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 
 /* ═══════════════════════════════
    WORKOUT VIEW
@@ -291,20 +291,20 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dh-chips{display:flex;gap:5px;flex-wrap:wrap;}
 .dh-chip{font-family:var(--font-mono);font-size:9px;padding:3px 9px;border-radius:5px;
   background:var(--s2);border:1px solid var(--border);color:var(--muted2);text-transform:uppercase;}
-.dh-chip.hi{background:var(--accent-dim);border-color:rgba(24,194,106,.28);color:var(--accent);}
+.dh-chip.hi{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 28%,transparent);color:var(--accent);}
 .dh-rationale{font-size:12px;color:var(--muted2);line-height:1.65;font-weight:300;}
 
 /* ── BLOCK LABEL ── */
 .block-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--accent);margin:14px 0 7px;display:flex;align-items:center;gap:8px;}
-.block-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(24,194,106,.3),transparent);}
+.block-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 30%,transparent),transparent);}
 .block-coach-tip{font-size:11px;color:var(--muted2);line-height:1.5;margin:-2px 0 10px;font-weight:300;}
 
 /* ── EXERCISE CARD ── */
 .ex-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s;}
-.ex-card.completed{border-color:rgba(63,224,140,.32);}
+.ex-card.completed{border-color:color-mix(in srgb,var(--accent2) 32%,transparent);}
 .ex-card.pr-beat{border-color:rgba(255,176,32,.4);}
-.ex-card.warn{border-left:3px solid rgba(24,194,106,.6);}
+.ex-card.warn{border-left:3px solid color-mix(in srgb,var(--accent) 60%,transparent);}
 
 .ex-header{padding:12px 13px;display:flex;align-items:flex-start;gap:9px;cursor:pointer;user-select:none;}
 .ex-check{width:20px;height:20px;border-radius:5px;border:2px solid var(--border2);flex-shrink:0;
@@ -314,8 +314,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ex-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;line-height:1.3;}
 .ex-badge{display:inline-block;font-family:var(--font-mono);font-size:9px;padding:1px 6px;
   border-radius:3px;margin-left:5px;vertical-align:middle;}
-.badge-compound{background:rgba(24,194,106,.1);border:1px solid rgba(24,194,106,.2);color:var(--accent);}
-.badge-isolation{background:rgba(63,224,140,.08);border:1px solid rgba(63,224,140,.15);color:var(--green);}
+.badge-compound{background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);}
+.badge-isolation{background:color-mix(in srgb,var(--accent2) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--green);}
 .badge-cardio{background:rgba(154,154,172,.08);border:1px solid rgba(154,154,172,.15);color:var(--blue);}
 .badge-warn{background:rgba(232,84,84,.08);border:1px solid rgba(232,84,84,.2);color:var(--red);}
 
@@ -332,7 +332,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .eq-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
   padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);
   color:var(--muted2);cursor:pointer;transition:all .15s;}
-.eq-btn.active{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
+.eq-btn.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 .eq-db-row{margin-top:10px;display:none;align-items:center;gap:8px;}
 .eq-db-row.show{display:flex;}
 .eq-db-label{font-size:12px;color:var(--muted2);}
@@ -348,8 +348,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ★ PO CHIP — key feature */
 .po-chip{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 8px;
   border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:600;}
-.po-chip.up{background:rgba(63,224,140,.1);border:1px solid rgba(63,224,140,.28);color:var(--green);}
-.po-chip.same{background:rgba(24,194,106,.1);border:1px solid rgba(24,194,106,.24);color:var(--accent);}
+.po-chip.up{background:color-mix(in srgb,var(--accent2) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent2) 28%,transparent);color:var(--green);}
+.po-chip.same{background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);color:var(--accent);}
 .po-chip.down{background:rgba(232,84,84,.1);border:1px solid rgba(232,84,84,.24);color:var(--red);}
 .po-chip.new{background:rgba(154,154,172,.1);border:1px solid rgba(154,154,172,.22);color:var(--blue);}
 .po-reason{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--font-mono);}
@@ -361,31 +361,46 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ex-card.open .ex-expand{transform:rotate(180deg);}
 
 /* Warning strip */
-.ex-warning{margin:0 12px 8px;padding:8px 10px;background:rgba(24,194,106,.07);
-  border:1px solid rgba(24,194,106,.2);border-radius:7px;font-size:11px;color:var(--accent2);line-height:1.5;display:none;}
+.ex-warning{margin:0 12px 8px;padding:8px 10px;background:color-mix(in srgb,var(--accent) 7%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:7px;font-size:11px;color:var(--accent2);line-height:1.5;display:none;}
 .ex-card.open .ex-warning{display:block;}
 
 /* Set logger */
-.set-logger{padding:0 12px;display:none;}
+/* One grid, two consumers. .set-hdr labels the columns .set-row draws, so the two
+   track lists must be identical by construction — written twice they drift, and the
+   header silently starts naming the wrong column. Single custom property instead.
+   Columns: set# · weight · reps · volume · RPE · log · delete */
+.set-logger{padding:0 12px;display:none;--set-grid:24px 1fr 1fr 38px 40px 26px 22px;}
 .ex-card.open .set-logger{display:block;}
-.set-hdr{display:grid;grid-template-columns:24px 1fr 1fr 38px 26px 22px;gap:5px;
+.set-hdr{display:grid;grid-template-columns:var(--set-grid);gap:5px;
   padding:0 2px 5px;border-bottom:1px solid var(--border);margin-bottom:6px;}
 .set-hdr-cell{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--muted);text-align:center;}
-.set-row{display:grid;grid-template-columns:24px 1fr 1fr 38px 26px 22px;gap:5px;align-items:center;margin-bottom:5px;}
+.set-row{display:grid;grid-template-columns:var(--set-grid);gap:5px;align-items:center;margin-bottom:5px;}
+/* RPE picker. Values 6-10 ONLY — that is the full extent of the scale both canonical
+   sources define (Exercise Science Framework §"Reps in Reserve (RIR) & RPE
+   Equivalencies"; research-report (8).pdf p.6 §"Rate of Perceived Exertion (RPE)
+   Targets" [49]). Neither source anchors RPE 5 or below, so no such option is offered
+   and none is invented. Blank = not rated, which stores NULL. */
+.set-rpe{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--muted2);
+  font-family:var(--font-mono);font-size:13px;font-weight:600;padding:8px 2px;width:100%;
+  text-align:center;text-align-last:center;outline:none;-webkit-appearance:none;appearance:none;
+  cursor:pointer;transition:border-color .15s,color .15s;}
+.set-rpe:focus{border-color:var(--accent);}
+.set-rpe.rated{color:var(--text);border-color:var(--border2);}
 .set-num{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;}
 .set-input{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--text);
   font-family:var(--font-mono);font-size:16px;font-weight:600;padding:8px 4px;
   width:100%;text-align:center;outline:none;-webkit-appearance:none;transition:border-color .15s;}
 .set-input:focus{border-color:var(--accent);}
-.set-input.done{border-color:rgba(63,224,140,.4);color:var(--green);background:rgba(63,224,140,.04);}
+.set-input.done{border-color:color-mix(in srgb,var(--accent2) 40%,transparent);color:var(--green);background:color-mix(in srgb,var(--accent2) 4%,transparent);}
 .set-input.pr{border-color:rgba(255,176,32,.5);color:var(--amber);}
 .set-input.bw{border-style:dashed;}
 .set-input.bw::placeholder{color:var(--muted);opacity:.7;font-size:10px;letter-spacing:.05em;}
 .set-vol{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center;}
 .set-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);
   color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
-.set-btn.logged{background:var(--green-dim);border-color:rgba(63,224,140,.4);color:var(--green);}
+.set-btn.logged{background:var(--green-dim);border-color:color-mix(in srgb,var(--accent2) 40%,transparent);color:var(--green);}
 .set-btn.pr-set{background:var(--amber-dim);border-color:rgba(255,176,32,.4);color:var(--amber);}
 .set-actions{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 8px;}
 .set-act{flex:1;padding:7px;background:transparent;border:1px dashed var(--border2);border-radius:7px;
@@ -393,7 +408,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   cursor:pointer;transition:all .15s;text-align:center;}
 .set-act:hover{border-color:var(--accent);color:var(--accent);}
 .set-act.blue:hover{border-color:var(--blue);color:var(--blue);}
-.set-act.green{color:var(--green);border-color:rgba(63,224,140,.3);}
+.set-act.green{color:var(--green);border-color:color-mix(in srgb,var(--accent2) 30%,transparent);}
 .set-del{background:transparent;border:none;color:var(--muted);font-size:13px;padding:4px 6px;cursor:pointer;border-radius:5px;}
 .set-del:hover{color:var(--red);}
 
@@ -477,7 +492,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* Mobility */
 .mob-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);
   border:1px solid var(--border);border-radius:9px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
-.mob-item.done{border-color:rgba(63,224,140,.28);}
+.mob-item.done{border-color:color-mix(in srgb,var(--accent2) 28%,transparent);}
 .mob-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--border2);flex-shrink:0;
   display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .2s;}
 .mob-item.done .mob-check{background:var(--green);border-color:var(--green);color:#000;}
@@ -485,8 +500,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .mob-detail{font-size:11px;color:var(--muted);margin-top:1px;}
 
 /* Finish banner */
-.finish-banner{display:none;margin:12px 0 0;padding:18px;background:linear-gradient(135deg,rgba(63,224,140,.1) 0%,var(--s1) 60%);
-  border:1px solid rgba(63,224,140,.28);border-radius:12px;text-align:center;}
+.finish-banner{display:none;margin:12px 0 0;padding:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent2) 10%,transparent) 0%,var(--s1) 60%);
+  border:1px solid color-mix(in srgb,var(--accent2) 28%,transparent);border-radius:12px;text-align:center;}
 .finish-banner.show{display:block;}
 .finish-title{font-family:var(--font-display);font-size:30px;color:var(--green);letter-spacing:.04em;margin-bottom:5px;}
 .finish-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
@@ -570,6 +585,59 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .modal-sub{font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.5;}
 .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;}
 
+/* ═══ TODAY'S WORKOUT CHOICE — full-screen, hero-photo entry point ═══
+   Kerwin, 2026-09-15: "make this full screen & hero images instead of small
+   bars down below" → explored 4 variants (docs mockup-todaychoice.html),
+   picked D: "mixture of B & C. Center the text on the images... make it
+   seem like a real button vs a text box" → then: "the color that's picked
+   on the user profile [should be] the hues of all the pictures and hero
+   images... Tandem is not meant to just be green."
+   The duotone below is NOT a new recipe — it's .hero-band's/.oneoff-card's
+   own (both above in this file): grayscale photo + `background:var(--accent);
+   mix-blend-mode:color`. --accent is already the one variable the rest of
+   the app repoints to the profile/competition color (updateCompetitionColor,
+   selectThemeColor, profile restore, all below) — reusing it here instead of
+   a hardcoded green is what makes these three cards recolor with everything
+   else. One rule, one home. */
+.modal-overlay.tc-full{align-items:stretch;justify-content:stretch;background:var(--bg);backdrop-filter:none;}
+.tc-sheet{position:relative;width:100%;height:100%;max-width:none;max-height:none;
+  border:none;border-radius:0;padding:0;margin:0;display:flex;flex-direction:column;animation:fadeIn .18s ease;}
+.tc-head{padding:22px 20px 14px;flex:0 0 auto;}
+.tc-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;}
+.tc-sub{font-size:13px;color:var(--muted2);margin-top:5px;}
+.tc-deck{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;
+  padding:0 14px max(14px,env(safe-area-inset-bottom));}
+.tc-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;width:100%;border:1px solid var(--border2);border-radius:var(--r-xl);overflow:hidden;
+  cursor:pointer;isolation:isolate;padding:14px 12px;color:inherit;font:inherit;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.4);
+  transition:transform .13s ease,box-shadow .13s ease,border-color .13s ease;}
+.tc-card:active{transform:scale(.976);}
+.tc-card .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
+  filter:grayscale(1) contrast(1.08) brightness(.75);}
+.tc-card .tc-tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.tc-card .tc-scrim{position:absolute;inset:0;z-index:-1;
+  background:radial-gradient(120% 76% at 50% 50%,rgba(7,7,11,.32) 0%,rgba(7,7,11,.74) 56%,rgba(7,7,11,.93) 100%);}
+.tc-card .tc-meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.85);
+  display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:10px;opacity:.85;}
+.tc-card .tc-dot{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
+.tc-card h2{font-family:var(--font-display);font-weight:700;color:#fff;letter-spacing:-.02em;
+  max-width:12ch;margin:0 auto;text-wrap:balance;}
+.tc-card p{font-size:12.5px;max-width:26ch;margin:8px auto 0;color:rgba(255,255,255,.66);}
+.tc-card .tc-cta{margin-top:13px;display:inline-flex;align-items:center;gap:7px;font-family:var(--font-body);
+  font-size:12px;font-weight:600;color:#fff;padding:8px 16px;border-radius:99px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(8px);}
+.tc-card.primary{border-color:var(--accent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 1px var(--accent-glow),0 8px 22px rgba(0,0,0,.4);}
+.tc-card.primary h2{font-size:32px;}
+.tc-card.primary .tc-cta{background:var(--accent);border-color:transparent;color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
+.tc-hero{flex:1 1 54%;min-height:230px;}
+.tc-row{flex:1 1 46%;display:flex;gap:12px;min-height:180px;}
+.tc-row .tc-card{flex:1 1 0;padding:12px 10px;}
+.tc-row .tc-card h2{font-size:22px;max-width:9ch;}
+.tc-row .tc-card p{font-size:11px;max-width:19ch;margin-top:6px;}
+.tc-row .tc-card .tc-cta{font-size:11px;padding:7px 13px;margin-top:11px;}
+
 /* 1RM */
 .calc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .calc-field{display:flex;flex-direction:column;gap:5px;}
@@ -578,7 +646,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   font-family:var(--font-mono);font-size:22px;font-weight:600;padding:12px 14px;width:100%;
   text-align:center;outline:none;-webkit-appearance:none;}
 .calc-input:focus{border-color:var(--accent);}
-.calc-result{background:linear-gradient(135deg,var(--accent-dim) 0%,var(--s2) 60%);border:1px solid rgba(24,194,106,.3);
+.calc-result{background:linear-gradient(135deg,var(--accent-dim) 0%,var(--s2) 60%);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
   border-radius:11px;padding:14px;text-align:center;margin-bottom:14px;}
 .calc-result-val{font-family:var(--font-display);font-size:58px;color:var(--accent2);line-height:1;}
 .calc-result-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
@@ -599,7 +667,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .formula-tabs{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
 .ftab{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--s2);
   font-family:var(--font-mono);font-size:10px;color:var(--muted2);cursor:pointer;transition:all .15s;}
-.ftab.active{background:var(--accent-dim);border-color:rgba(24,194,106,.3);color:var(--accent);}
+.ftab.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent);}
 
 /* Plate calc */
 .plate-display{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:14px;
@@ -624,14 +692,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .pr-data{font-family:var(--font-mono);font-size:10px;color:var(--muted2);margin-top:2px;}
 .pr-1rm{font-family:var(--font-display);font-size:22px;color:var(--green);}
 .pr-badge{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;
-  background:var(--green-dim);border:1px solid rgba(63,224,140,.2);color:var(--green);}
+  background:var(--green-dim);border:1px solid color-mix(in srgb,var(--accent2) 20%,transparent);color:var(--green);}
 
 /* History */
 .hist-session{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:7px;}
 .hist-date{font-family:var(--font-mono);font-size:10px;color:var(--muted2);margin-bottom:5px;
   display:flex;justify-content:space-between;align-items:center;}
 .hist-badge{font-family:var(--font-mono);font-size:9px;padding:2px 7px;border-radius:4px;
-  background:var(--accent-dim);border:1px solid rgba(24,194,106,.2);color:var(--accent);text-transform:uppercase;}
+  background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);text-transform:uppercase;}
 .hist-ex{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
 .hist-sets{font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-bottom:5px;line-height:1.6;}
 .hist-pr{font-family:var(--font-mono);font-size:9px;color:var(--amber);background:var(--amber-dim);
@@ -654,7 +722,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .bnav-btn{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--s1);
   color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;cursor:pointer;transition:all .15s;text-align:center;}
-.bnav-btn.primary{background:var(--accent-dim);border-color:rgba(24,194,106,.35);color:var(--accent);font-weight:600;}
+.bnav-btn.primary{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);font-weight:600;}
 .bnav-btn:active{transform:scale(.97);}
 
 @media(max-width:420px){
@@ -673,8 +741,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .auth-field-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;display:block;}
 .auth-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--font-body);font-size:16px;padding:13px 14px;outline:none;margin-bottom:12px;transition:border-color .15s;-webkit-appearance:none;}
 .auth-input:focus{border-color:var(--accent);}
-.auth-send-btn{width:100%;padding:15px;border-radius:11px;background:linear-gradient(135deg,#18C26A 0%,#0E7A45 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.08em;cursor:pointer;transition:all .2s;margin-bottom:10px;}
-.auth-send-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(24,194,106,.3);}
+.auth-send-btn{width:100%;padding:15px;border-radius:11px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.08em;cursor:pointer;transition:all .2s;margin-bottom:10px;}
+.auth-send-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 30%,transparent);}
 .auth-send-btn:active{transform:scale(.98);}
 .auth-send-btn:disabled{opacity:.5;cursor:default;transform:none;}
 .auth-skip{width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
@@ -683,7 +751,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .auth-sent-icon{font-size:44px;margin-bottom:12px;}
 .auth-sent-title{font-family:var(--font-display);font-size:26px;color:var(--green);margin-bottom:8px;letter-spacing:.04em;}
 .auth-sent-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
-.auth-user-badge{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--green-dim);border:1px solid rgba(63,224,140,.2);border-radius:8px;margin-bottom:10px;}
+.auth-user-badge{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--green-dim);border:1px solid color-mix(in srgb,var(--accent2) 20%,transparent);border-radius:8px;margin-bottom:10px;}
 .aub-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
 .aub-email{font-family:var(--font-mono);font-size:11px;color:var(--green);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .auth-signout{font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;padding:0;}
@@ -700,7 +768,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .profile-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
 .profile-pill-row{display:flex;gap:6px;flex-wrap:wrap;}
 .profile-pill{padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
-.profile-pill.active{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
+.profile-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 .profile-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
 .profile-swatch.active{border-color:#fff;transform:scale(1.15);}
 .profile-swatch-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
@@ -709,11 +777,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .profile-input-group{display:flex;flex-direction:column;gap:5px;}
 .profile-input-label{font-size:11px;color:var(--muted2);}
 .modal-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
-.profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#18C26A 0%,#0E7A45 100%);border:none;color:#fff;font-family:var(--font-display);font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:8px;transition:all .2s;}
-.profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(24,194,106,.3);}
+.profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:8px;transition:all .2s;}
+.profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
 #profileBtn{cursor:pointer;transition:all .15s;}
-#profileBtn:hover{background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent2);}
+#profileBtn:hover{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 /* ── Avatar prototypes ── */
 .avatar-stage{width:148px;height:148px;margin:0 auto 14px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 32%,var(--s2) 0%,var(--s1) 78%);border:1px solid var(--border2);overflow:hidden;position:relative;}
 .avatar-stage svg,.avatar-stage img{display:block;width:148px;height:148px;}
@@ -727,7 +795,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dash-header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px;}
 .dash-title{font-family:var(--font-display);font-size:22px;letter-spacing:.06em;color:var(--text);}
 .dash-refresh-btn{width:34px;height:34px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
-.dash-refresh-btn:hover:not(:disabled){background:var(--accent-dim);border-color:rgba(24,194,106,.4);color:var(--accent);}
+.dash-refresh-btn:hover:not(:disabled){background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);}
 .dash-refresh-btn:disabled{opacity:.35;cursor:default;}
 @keyframes dash-spin{to{transform:rotate(360deg);}}
 .dash-refresh-btn.spinning span{display:inline-block;animation:dash-spin .7s linear infinite;}
@@ -755,8 +823,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dash-medal-row{display:flex;gap:8px;margin-top:10px;}
 .dash-medal-chip{flex:1;background:var(--bg);border-radius:10px;padding:10px 6px;text-align:center;font-size:11px;color:var(--muted2);border:1px solid var(--border);}
 .dash-medal-icon{font-size:20px;display:block;margin-bottom:4px;}
-.dash-cta{width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--accent) 0%,#0E7A45 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.1em;cursor:pointer;transition:all .2s;}
-.dash-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(24,194,106,.3);}
+.dash-cta{width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.1em;cursor:pointer;transition:all .2s;}
+.dash-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .dash-date{font-family:var(--font-mono);font-size:12px;color:var(--muted2);flex:1;text-align:center;}
 .dash-comp-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:2px;}
 .dash-comp-name-right{text-align:right;}
@@ -811,7 +879,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .qa-row{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
 .qa-row:last-child{border-bottom:none;}
 .qa-type-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;flex-shrink:0;margin-top:3px;letter-spacing:.03em;}
-.qa-type-badge.auto{background:rgba(24,194,106,.18);color:var(--accent);}
+.qa-type-badge.auto{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);}
 .qa-type-badge.user{background:rgba(232,84,84,.16);color:#e85454;}
 .qa-row-content{flex:1;min-width:0;}
 .qa-row-label{font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -830,7 +898,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   <div class="tandem-logo" onclick="goHome()">
     <div class="logo-mark">
       <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="36" height="36" rx="8" fill="#18C26A"/>
+        <rect width="36" height="36" rx="8" fill="var(--accent)"/>
         <!-- T crossbar -->
         <polygon points="4,7 27,7 26,13 3,13" fill="#fff"/>
         <!-- T stem (italic slant) -->
@@ -895,7 +963,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="ob-logo">
       <div class="ob-logo-big">
         <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="64" height="64" rx="14" fill="#18C26A"/>
+          <rect width="64" height="64" rx="14" fill="var(--accent)"/>
           <polygon points="7,12 48,12 46,23 5,23" fill="#fff"/>
           <polygon points="16,23 28,23 22,54 10,54" fill="#fff"/>
           <polygon points="34,25 46,25 40,54 28,54" fill="#fff"/>
@@ -945,7 +1013,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
             <div class="goal-desc">Maximize hypertrophy and strength through progressive overload, wave periodization, and compound-first programming.</div>
             <div class="goal-tags"><span class="goal-tag">6–12 Reps</span><span class="goal-tag">2 min Rest</span><span class="goal-tag">Heavy Compounds</span><span class="goal-tag">Wave Loading</span></div>
           </div>
-          <div class="goal-card" style="--gc:var(--teal);--gd:rgba(63,224,140,0.08);--gb:rgba(63,224,140,0.35);" onclick="selectGoal('transform',this)">
+          <div class="goal-card" style="--gc:var(--teal);--gd:color-mix(in srgb,var(--teal) 8%,transparent);--gb:color-mix(in srgb,var(--teal) 35%,transparent);" onclick="selectGoal('transform',this)">
             <div class="goal-card-top"><div class="goal-icon" data-icon="zap"></div><div class="goal-name">Transform</div></div>
             <div class="goal-desc">Simultaneous fat loss and muscle building. Body recomposition through metabolic resistance training and moderate deficit.</div>
             <div class="goal-tags"><span class="goal-tag">8–15 Reps</span><span class="goal-tag">90 sec Rest</span><span class="goal-tag">MRT Circuits</span><span class="goal-tag">Hybrid Cardio</span></div>
@@ -1456,12 +1524,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   <div class="auth-wrap">
     <div class="auth-logo">
       <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:52px;height:52px;display:block;margin:0 auto 10px;">
-        <rect width="64" height="64" rx="14" fill="#18C26A"/>
+        <rect width="64" height="64" rx="14" fill="var(--accent)"/>
         <polygon points="7,12 48,12 46,23 5,23" fill="#fff"/>
         <polygon points="16,23 28,23 22,54 10,54" fill="#fff"/>
         <polygon points="34,25 46,25 40,54 28,54" fill="#fff"/>
       </svg>
-      <div style="font-family:var(--font-display);font-size:30px;letter-spacing:.1em;background:linear-gradient(135deg,#fff 0%,#3FE08C 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">TANDEM</div>
+      <div style="font-family:var(--font-display);font-size:30px;letter-spacing:.1em;background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">TANDEM</div>
     </div>
     <div class="auth-heading">Sync your training</div>
     <div class="auth-sub">Sign in to back up sessions, PRs, and progressive overload data across devices. Your data lives on-device — cloud is the safety net.</div>
@@ -1874,7 +1942,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <button class="modal-close" onclick="closeModal('goal')">✕</button>
     <div class="modal-title">Your Program</div>
     <div id="goalSummary" style="font-size:13px;color:var(--muted2);line-height:1.8;"></div>
-    <button class="clear-btn" style="color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);margin-top:14px;" onclick="resetProgram()">← Rebuild Program</button>
+    <button class="clear-btn" style="color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);margin-top:14px;" onclick="resetProgram()">← Rebuild Program</button>
     <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openProgramLibrary()">📚 Browse Program Library</button>
     <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openOneOff()">⚡ Build Me a Workout</button>
     <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('goal');openTemplateBuilder()">🛠️ Build Custom Template</button>
@@ -1902,24 +1970,61 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
     </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
-    <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="finishOneOff()">Finish — Save This Workout</button>
+    <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="finishOneOff()">Finish — Save This Workout</button>
   </div>
 </div>
 
-<!-- TODAY'S WORKOUT — entry-point choice (Kerwin, attended session 2026-09-12):
-     "after clicking Today's workout... there should be three buttons: Continue
-     plan / Generate me a workout... / Journal." The dashboard above (steps,
-     calories, MFP/Apple Health rings) is explicitly UNCHANGED — this is only
-     what happens next, once the CTA is tapped. -->
-<div class="modal-overlay" id="modal-todaychoice" onclick="if(event.target===this)closeModal('todaychoice')">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
+<!-- TODAY'S WORKOUT — entry-point choice (Kerwin, attended session 2026-09-12:
+     "three buttons: Continue plan / Generate me a workout... / Journal";
+     2026-09-15: "make this full screen & hero images instead of small bars
+     down below" → Variant D of the mockup exploration, picked over A/B/C.
+     Hero photos: --tint (see CSS block above .tc-card) recolors each photo
+     to the live --accent, so this screen carries the user's own color, not
+     a fixed green. Continue/Journal reuse heroSrc()'s existing sex-aware,
+     day-rotating pool via data-hero (applyHeroImages() already re-scans the
+     whole document on every call — no new wiring needed); Build Me a Workout
+     reuses the one-off flow's own full-body photo since it isn't tied to one
+     focus. The dashboard above (steps, calories, MFP/Apple Health rings) is
+     explicitly UNCHANGED — this is only what happens next, once the CTA is
+     tapped. -->
+<div class="modal-overlay tc-full" id="modal-todaychoice" onclick="if(event.target===this)closeModal('todaychoice')">
+  <div class="tc-sheet">
     <button class="modal-close" onclick="closeModal('todaychoice')">✕</button>
-    <div class="modal-title">Today's Workout</div>
-    <div class="modal-sub">What are you doing right now?</div>
-    <button id="todayChoiceContinueBtn" class="clear-btn" style="margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:rgba(24,194,106,.3);" onclick="closeModal('todaychoice');showView('tracker')">Continue Plan</button>
-    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('todaychoice');openOneOff()">Generate Me a Workout (chest, legs, hinge, and so on)</button>
-    <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('todaychoice');openJournal()">Journal</button>
+    <div class="tc-head">
+      <div class="tc-title">Today's workout</div>
+      <div class="tc-sub">What are you doing right now?</div>
+    </div>
+    <div class="tc-deck">
+      <button id="todayChoiceContinueBtn" class="tc-card primary tc-hero" onclick="closeModal('todaychoice');showView('tracker')">
+        <div class="tc-photo" data-hero="phase"></div>
+        <div class="tc-tint"></div>
+        <div class="tc-scrim"></div>
+        <div class="tc-meta"><span class="tc-dot"></span>YOUR PROGRAM</div>
+        <h2>Continue your plan</h2>
+        <p>Pick up where your program left off.</p>
+        <span class="tc-cta">Start workout →</span>
+      </button>
+      <div class="tc-row">
+        <button class="tc-card" onclick="closeModal('todaychoice');openOneOff()">
+          <div class="tc-photo" style="background-image:url('public/oneoff-full-body.jpg')"></div>
+          <div class="tc-tint"></div>
+          <div class="tc-scrim"></div>
+          <div class="tc-meta">ONE-OFF</div>
+          <h2>Build me a workout</h2>
+          <p>Pick a focus, get a session.</p>
+          <span class="tc-cta">Choose →</span>
+        </button>
+        <button class="tc-card" onclick="closeModal('todaychoice');openJournal()">
+          <div class="tc-photo" data-hero="complete"></div>
+          <div class="tc-tint"></div>
+          <div class="tc-scrim"></div>
+          <div class="tc-meta">MANUAL LOG</div>
+          <h2>Journal</h2>
+          <p>Log something you already did.</p>
+          <span class="tc-cta">Log it →</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4645,6 +4750,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
               <div class="set-hdr-cell">${inputMode === 'sec' ? '—' : inputMode === 'bw' ? 'BW' : 'lbs'}</div>
               <div class="set-hdr-cell">${ex.unit === 'sec' ? 'sec' : 'Reps'}</div>
               <div class="set-hdr-cell">${ex.unit === 'sec' ? '—' : 'Vol'}</div>
+              <div class="set-hdr-cell">RPE</div>
               <div class="set-hdr-cell">✓</div>
             </div>
             ${buildSetRows(ex.id, ex.sets, startW, anchorReps, inputMode, tierRows)}
@@ -4706,6 +4812,40 @@ function buildSetRows(id, sets, w, r, unit, tierSets) {
   return html;
 }
 
+// ── RPE_ANCHORS — the effort scale, quoted, not paraphrased. ──
+//
+// SOURCE (both agree, and both STOP AT 6):
+//   · "Exercise Science Framework for Adaptive Workout Pr.docx",
+//     §"Reps in Reserve (RIR) & RPE Equivalencies" — the RIR and effort columns below
+//     are that table verbatim.
+//   · research-report (8).pdf, PDF p.6, §"Rate of Perceived Exertion (RPE) Targets" [49]
+//     — same five rows, same RIR mapping.
+//
+// This is the 0-10 RIR-based scale, NOT Borg 6-20. Only 6-10 carry defined anchors.
+//
+// KNOWN SOURCE GAP — deliberately not filled: both sources PRESCRIBE sub-6 values
+// ("deload: RPE 5-6" p.15; "maintenance, RPE 5-6" and "fat loss ... RPE 5-7" p.6) while
+// neither DEFINES an anchor for RPE 5 or below. Rather than invent one, the picker stops
+// at 6 and blank stores NULL. Flagged to Kerwin 2026-09-15; needs a source before a
+// 5 option ships. Do not add one from memory.
+const RPE_ANCHORS = {
+  6:  { rir: '~4 RIR', effort: 'Challenging but easy' },
+  7:  { rir: '~3 RIR', effort: 'Hard effort' },
+  8:  { rir: '~2 RIR', effort: 'Very hard effort' },
+  9:  { rir: '~1 RIR', effort: 'Maximal effort' },
+  10: { rir: '0 RIR',  effort: 'Absolute maximum' },
+};
+
+function rpeCellHTML(id, i) {
+  const opts = Object.keys(RPE_ANCHORS).map(v =>
+    `<option value="${v}" title="RPE ${v} — ${RPE_ANCHORS[v].effort}; ${RPE_ANCHORS[v].rir}">${v}</option>`
+  ).join('');
+  return `<select class="set-rpe" id="${id}-p${i}" aria-label="Rate of perceived exertion for set ${i + 1}"
+    onchange="onRpeInput('${id}',${i})" onclick="event.stopPropagation()">
+    <option value="" title="Not rated">–</option>${opts}
+  </select>`;
+}
+
 function setRowHTML(id, i, w, r, unit) {
   // unit: 'sec' timed hold | 'bw' bodyweight-reps | 'reps' weighted (default).
   // Weight cell stays in the DOM in all three modes (logSet reads it non-optionally,
@@ -4725,6 +4865,7 @@ function setRowHTML(id, i, w, r, unit) {
     ${wCell}
     <input class="set-input" type="number" inputmode="numeric" value="${r}" id="${id}-r${i}" oninput="onSetInput('${id}',${i})">
     <div class="set-vol" id="${id}-v${i}">${timed ? '—' : bw ? (r || 0) : Math.round(w*r)}</div>
+    ${rpeCellHTML(id, i)}
     <button class="set-btn" id="${id}-b${i}" onclick="logSet('${id}',${i})">✓</button>
     <button class="set-del" style="display:none" onclick="event.stopPropagation();deleteSet('${id}',${i},this)">✕</button>
   </div>`;
@@ -4817,6 +4958,23 @@ function onSetInput(id, i) {
   }
 }
 
+// Single reader for a set's RPE. Returns a number 6-10, or null for "not rated".
+// Anything outside the defined scale is discarded rather than stored — a value with no
+// anchor behind it is not data, and `sets.rpe` is what plateau detection will read
+// (research-report (8).pdf p.13 §"Strength Stalling / Plateau Detection": symptom 2 is
+// "RPE creep: Same load feels progressively harder (RPE 7 → RPE 8)").
+function readSetRpe(id, i) {
+  const raw = document.getElementById(`${id}-p${i}`)?.value;
+  if (!raw) return null;
+  const n = Number(raw);
+  return RPE_ANCHORS[n] ? n : null;
+}
+
+function onRpeInput(id, i) {
+  const el = document.getElementById(`${id}-p${i}`);
+  if (el) el.classList.toggle('rated', !!el.value);
+}
+
 function logSet(id, i) {
   if (!loggedSetsMap[id]) loggedSetsMap[id] = [];
   while (loggedSetsMap[id].length <= i) loggedSetsMap[id].push(false);
@@ -4852,7 +5010,7 @@ function logSet(id, i) {
     // different movements across rotations/weeks (see BUG-45), so a later
     // per-exercise history lookup that only trusted the id key would silently
     // mix in — or hide — sets logged under a since-rotated id.
-    sessionSetsMap[id].push({ set: i+1, w, r, est1rm, name: prExName });
+    sessionSetsMap[id].push({ set: i+1, w, r, est1rm, name: prExName, rpe: readSetRpe(id, i) });
 
     if (est1rm > prev && w > 0) {   // D12: est1rm already uses the correct formula for these reps
       prs[prExName] = est1rm;                 // C7: write by canonical name
@@ -4921,7 +5079,7 @@ function logSet(id, i) {
             set_number: i + 1,
             weight_lbs: w,
             reps: r,
-            rpe: null,
+            rpe: readSetRpe(id, i),
             estimated_1rm_lbs: est1rm > 0 ? est1rm : null,
             is_pr: isPr
           }).select('id').single();
@@ -5029,6 +5187,7 @@ async function saveExerciseToCloud(id) {
           set_number: s.set || 1,
           weight_lbs: w,
           reps: r,
+          rpe: s.rpe ?? null,
           // BUG-75: recompute from (w, r) instead of trusting s.est1rm off the
           // cached snapshot. A NULL here is not cosmetic — on `sets` the PR
           // trigger fires BEFORE the 1RM trigger (Postgres orders same-timing
@@ -5984,6 +6143,9 @@ function finishSession() {
                 set_number: s.set || 1,
                 weight_lbs: w,
                 reps: r,
+                // A snapshot written before RPE capture shipped has no `rpe` key at all;
+                // `?? null` is what keeps that an unrated set rather than an aborted rescue.
+                rpe: s.rpe ?? null,
                 // BUG-75: recompute — see saveExerciseToCloud. This path is the
                 // sharper one: a snapshot written by a build that predates est1rm
                 // carries no est1rm at all, so `s.est1rm || null` sent NULL, the
@@ -6836,6 +6998,7 @@ async function finishOneOff() {
       set_number: s.set,
       weight_lbs: s.w,
       reps: s.r,
+      rpe: s.rpe ?? null,
       estimated_1rm_lbs: s.est1rm > 0 ? s.est1rm : null,
     }));
     const { error: setsErr } = await sb.from('sets').insert(rows);
@@ -6941,13 +7104,19 @@ function addJournalRow(prefill) {
   const row = document.createElement('div');
   row.className = 'journal-row';
   row.dataset.idx = i;
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 54px 54px 68px 28px;gap:6px;align-items:center;margin-bottom:6px;';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 54px 54px 68px 56px 28px;gap:6px;align-items:center;margin-bottom:6px;';
   const cell = 'padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:13px;box-sizing:border-box;width:100%;';
+  // RPE options come from RPE_ANCHORS, the same table the in-workout picker reads — the
+  // scale is defined once (see its citation) so the journal can never offer a value the
+  // logger doesn't, or carry a different anchor for the same number.
+  const rpeOpts = Object.keys(RPE_ANCHORS).map(v =>
+    `<option value="${v}" title="RPE ${v} — ${RPE_ANCHORS[v].effort}; ${RPE_ANCHORS[v].rir}">${v}</option>`).join('');
   row.innerHTML =
     `<input type="text" class="j-name" placeholder="Exercise" value="${prefill?.name || ''}" style="${cell}font-family:var(--font-body);">` +
     `<input type="number" class="j-sets" min="1" max="20" step="1" placeholder="sets" value="${prefill?.sets ?? ''}" style="${cell}font-family:var(--font-mono);">` +
     `<input type="number" class="j-reps" min="1" max="100" step="1" placeholder="reps" value="${prefill?.reps ?? ''}" style="${cell}font-family:var(--font-mono);">` +
     `<input type="number" class="j-weight" min="0" step="0.5" placeholder="lbs" value="${prefill?.weight ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<select class="j-rpe" aria-label="Rate of perceived exertion" style="${cell}font-family:var(--font-mono);text-align:center;text-align-last:center;cursor:pointer;"><option value="" title="Not rated">RPE</option>${rpeOpts}</select>` +
     `<button class="modal-close" style="position:static;width:28px;height:28px;font-size:14px;" title="Remove" onclick="this.closest('.journal-row').remove()">✕</button>`;
   host.appendChild(row);
 }
@@ -6981,7 +7150,7 @@ function openJournal() {
 // which is how people actually remember a workout ("3x8 at 185"), and it is what the
 // `sets` table wants: one row per set, numbered.
 function collectJournalSets() {
-  const out = [];   // { id, name, set, w, r, est1rm }
+  const out = [];   // { id, name, set, w, r, est1rm, rpe }
   const problems = [];
   document.querySelectorAll('#journalRows .journal-row').forEach(row => {
     const name = (row.querySelector('.j-name')?.value || '').trim();
@@ -6995,7 +7164,12 @@ function collectJournalSets() {
     if (!Number.isFinite(w) || w < 0) { problems.push(`${name}: weight must be a number (0 for bodyweight)`); return; }
     const id = `oneoff-journal-${row.dataset.idx}`; // 'oneoff-' prefix: same family, same downstream handling
     const est1rm = w > 0 ? Math.round(calcRM(w, reps)) : 0; // D12's calcRM is the ONE 1RM formula
-    for (let s = 1; s <= nSets; s++) out.push({ id, name, set: s, w, r: reps, est1rm });
+    // One RPE for the row, applied to every set it expands into — the journal describes a
+    // whole exercise, not individual sets, so it cannot carry per-set effort. Same gating as
+    // readSetRpe(): a value with no anchor in RPE_ANCHORS is discarded, not stored.
+    const rpeRaw = Number(row.querySelector('.j-rpe')?.value);
+    const rpe = RPE_ANCHORS[rpeRaw] ? rpeRaw : null;
+    for (let s = 1; s <= nSets; s++) out.push({ id, name, set: s, w, r: reps, est1rm, rpe });
   });
   return { sets: out, problems };
 }
@@ -7035,6 +7209,7 @@ async function saveJournal() {
       set_number: s.set,
       weight_lbs: s.w,
       reps: s.r,
+      rpe: s.rpe ?? null,
       estimated_1rm_lbs: s.est1rm > 0 ? s.est1rm : null,
     })));
     if (setsErr) throw setsErr;
@@ -7523,10 +7698,7 @@ function applyColorTakeover() {
   const winnerColor = myPts >= theirPts
     ? (dashboardData.userTargets?.theme_color || '#18C26A')
     : (dashboardData.partnerTargets?.theme_color || '#18C26A');
-  document.documentElement.style.setProperty('--accent', winnerColor);
-  document.documentElement.style.setProperty('--accent-dim', winnerColor + '1f');
-  document.documentElement.style.setProperty('--accent2', winnerColor + 'cc');
-  document.documentElement.style.setProperty('--accent-glow', winnerColor + '33');
+  applyAccentColor(winnerColor);
 }
 
 async function loadDashboard() {
@@ -7957,11 +8129,34 @@ function saveProfileNutrition() {
   showToast('Nutrition targets saved');
 }
 
+// Blend hex toward white (amt>0) or black (amt<0), amt in [-1,1].
+function shiftHex(hex, amt) {
+  const h = hex.replace('#', '');
+  const num = parseInt(h, 16);
+  const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  const blend = c => amt >= 0 ? c + (255 - c) * amt : c * (1 + amt);
+  return '#' + [r, g, b].map(c => Math.max(0, Math.min(255, Math.round(blend(c)))).toString(16).padStart(2, '0')).join('');
+}
+
+// One rule, one home: every CSS var driven by the user's picked accent color is set HERE.
+// Gold (celebration) and red (danger) are fixed semantic colors and are never touched by this.
+function applyAccentColor(hex) {
+  const accent2 = shiftHex(hex, 0.25);
+  const accentDeep = shiftHex(hex, -0.4);
+  const root = document.documentElement.style;
+  root.setProperty('--accent', hex);
+  root.setProperty('--accent2', accent2);
+  root.setProperty('--accent-deep', accentDeep);
+  root.setProperty('--accent-dim', hex + '1f');
+  root.setProperty('--accent-glow', hex + '33');
+  root.setProperty('--green', accent2);
+  root.setProperty('--green-dim', accent2 + '1a');
+  root.setProperty('--teal', accent2);
+  root.setProperty('--teal-dim', accent2 + '1a');
+}
+
 function applyColorTheme(hex) {
-  // Compute a slightly lighter accent2
-  document.documentElement.style.setProperty('--accent', hex);
-  document.documentElement.style.setProperty('--accent-dim', hex + '1f');
-  document.documentElement.style.setProperty('--accent-glow', hex + '33');
+  applyAccentColor(hex);
   // Update swatch active states
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
     b.classList.toggle('active', b.dataset.color === hex);
@@ -8098,9 +8293,7 @@ function refreshAvatarPreview(){
     // Restore saved color theme immediately
     const savedProfile = LS.get('tandem_profile');
     if (savedProfile?.colorTheme) {
-      document.documentElement.style.setProperty('--accent', savedProfile.colorTheme);
-      document.documentElement.style.setProperty('--accent-dim', savedProfile.colorTheme + '1f');
-      document.documentElement.style.setProperty('--accent-glow', savedProfile.colorTheme + '33');
+      applyAccentColor(savedProfile.colorTheme);
     }
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
