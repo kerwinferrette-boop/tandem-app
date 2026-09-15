@@ -3416,6 +3416,12 @@ async function adoptTemplate(templateId, btn) {
     // program_source='library'"). It used to write 'template', which collapsed
     // the two and left a CHECK-legal value that no code path could ever produce.
     cfg.programSource = 'library';
+    // BUG-106: cfg.weeks is what getPhase()/deloadWeeks()/effectiveReps() actually
+    // read (the template row's own duration_weeks is never consulted at render
+    // time) — without this, a library template shorter/longer than the user's
+    // onboarding cfg.weeks would render deloads/phases sized for the WRONG length.
+    // Same fix already applied to the sibling createCustomTemplate() path (Slice 6).
+    cfg.weeks = src.duration_weeks;
     LS.set('tandem_cfg', cfg);
     currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
     await syncToCloud();
