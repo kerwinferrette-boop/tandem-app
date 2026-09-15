@@ -116,7 +116,7 @@ syntheticDay.forEach(day => day.blocks.forEach(b => (b.exs || []).forEach(e => {
     if (rx.test(e.name)) dayCompound1RMs[canon] = Math.max(dayCompound1RMs[canon] || 0, _rm);
   }
 })));
-check("C7: canonical 'Bench Press' = max(Flat 150, Low Incline 130)", dayCompound1RMs['Bench Press'], 150);
+check("C7: canonical 'Bench Press' = max(Decline 150, High Incline 130)", dayCompound1RMs['Bench Press'], 150);
 
 const der = getWeekTarget('Tricep Rope Pushdown', 3, 'build_muscle', null, 'male', dayCompound1RMs, 8);
 check('derived source (via ACCESSORY_ALIASES → Tricep Pushdown)', der.source, 'derived');

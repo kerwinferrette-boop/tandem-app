@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, MOVEMENT_PATTERN, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, MOVEMENT_PATTERN, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -85,6 +85,14 @@ const TIERS = {
   D16: 'SAFETY',          // the override protocol itself is not overridable
   D27: 'SCIENCE_DEFAULT', // D27 continuity across program regenerations — soft reorder only
   D28: 'SCIENCE_DEFAULT', // duration-gated isolation drop — shape cited, cutoff PENDING a ruling
+  D29: 'SAFETY',          // one coefficient, one semantic role — a load coefficient may not
+                          // order a candidate pool. Engineering correctness (D12's reason),
+                          // not a preference, so no science_overrides channel exists.
+  D30: 'SCIENCE_DEFAULT', // one movement pattern, once per SESSION. SCIENCE_DEFAULT, not
+                          // SAFETY, on purpose: an authored specialization block could
+                          // legitimately double a pattern with a cited rationale (D16), and
+                          // the council filed R2 as an engineering default with the corpus
+                          // gap flagged — claiming SAFETY would overstate what is cited.
   D17: 'SAFETY',          // ACTIVE 2026-09-03 — enforced by scripts/d17-db-sweep.mjs in the
                           // credentialed production workflow, NOT here: this gate is deliberately
                           // credential-free (it runs on fork PRs), and a file-side check claiming
@@ -2371,6 +2379,217 @@ let d27Checked = 0;
   }
 }
 
+// ── D29 (ACTIVE, SAFETY) — one coefficient, one semantic role ─────────────────
+// Council ruling R1, 2026-09-14 (docs/council-science-application-2026-09-14.md),
+// evidence in docs/science-application-gap-audit.md §2.
+//
+// oneRmFactor is a LOAD-ESTIMATION coefficient: "what fraction of this implement's
+// baseline 1RM does this lift move?" It was ALSO the 4th key in both exercise-SELECTION
+// comparators, so one field made two claims about the same exercise — and they
+// contradicted each other in shipped output. Generated full_gym chest day: the engine
+// ranked Decline Barbell Press ahead of Flat because it claims you are 7% stronger on
+// Decline (1.07 vs 1.00), then prescribed 26% LESS weight on it (100 vs 135), because
+// the selection read and the load read come from different code paths.
+//
+// The invariant is the GENERAL rule, not the instance: a coefficient may be read only
+// by the subsystem that owns its semantic role. oneRmFactor's owner is load derivation
+// (seedWeight/D26 in programs.js; the phase-substitution scaler in tandem.html). Those
+// reads are legal and untouched. What is banned is reading it to decide WHICH exercise
+// a slot gets — relevance — because it encodes nothing about which muscle is trained.
+//
+// TIER: SAFETY, for D12's reason — this is engineering correctness, not a preference.
+// No science_overrides key can make a load coefficient into a relevance signal; that is
+// a category error, not a tradeoff, so there is no override channel.
+//
+// SCOPE, stated so the gate is not over-read: this proves oneRmFactor does not ORDER a
+// candidate pool. It asserts NOTHING about whether any individual oneRmFactor VALUE is
+// correct or cited — ruling R7 orders that audit separately and it is not done.
+//
+// SC-07: comments are not exempt from a regex gate, so this strips comments before
+// scanning rather than matching raw text. Otherwise the explanatory comments R1 left
+// beside both comparators (which necessarily name the banned field) would fail it.
+let d29Checked = 0;
+{
+  // String-aware comment stripper: a naive /\/\/.*/ would eat the rest of any line
+  // containing a URL or an apostrophe-free '//' inside a `why:` string.
+  const stripComments = (src) => {
+    let out = '', i = 0;
+    while (i < src.length) {
+      const c = src[i], d = src[i + 1];
+      if (c === '/' && d === '/') { while (i < src.length && src[i] !== '\n') i++; continue; }
+      if (c === '/' && d === '*') { i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; continue; }
+      if (c === '"' || c === "'" || c === '`') {
+        out += c; i++;
+        while (i < src.length && src[i] !== c) { if (src[i] === '\\') { out += src[i]; i++; } out += src[i]; i++; }
+        out += src[i]; i++; continue;
+      }
+      out += c; i++;
+    }
+    return out;
+  };
+
+  // Every .sort( body, by balanced-paren scan over the comment-free source.
+  const sortBodies = (src) => {
+    const bodies = [];
+    for (let i = src.indexOf('.sort('); i !== -1; i = src.indexOf('.sort(', i + 1)) {
+      let depth = 0, j = i + '.sort'.length;
+      const start = j;
+      for (; j < src.length; j++) {
+        if (src[j] === '(') depth++;
+        else if (src[j] === ')') { depth--; if (depth === 0) break; }
+      }
+      bodies.push({ index: i, body: src.slice(start, j + 1) });
+    }
+    return bodies;
+  };
+
+  const surfaces = [
+    ['programs.js', code],
+    ['tandem.html', readFileSync(join(root, 'tandem.html'), 'utf8')],
+  ];
+
+  let totalSorts = 0;
+  for (const [file, raw] of surfaces) {
+    const src = stripComments(raw);
+    const bodies = sortBodies(src);
+    totalSorts += bodies.length;
+    for (const { index, body } of bodies) {
+      d29Checked++;
+      if (body.includes('oneRmFactor')) {
+        const line = src.slice(0, index).split('\n').length;
+        fail('D29', `${file}:~${line} — a .sort() comparator reads oneRmFactor. That field is a LOAD-estimation coefficient; using it to order a candidate pool makes it a relevance signal too, which is what shipped Decline-ranked-above-Flat-then-loaded-26%-lighter. Rank on what the slot asked for (primaryMatchRank), not on how much weight the lift moves.`);
+      }
+    }
+  }
+
+  // A gate that can only ever pass has not been shown to work. Prove the scanner sees a
+  // real comparator at all (if .sort( extraction silently broke, the check above would
+  // vacuously "pass" forever), and prove it can distinguish code from a comment.
+  d29Checked++;
+  if (totalSorts < 5) fail('D29', `only found ${totalSorts} .sort() bodies across programs.js + tandem.html — extraction is broken, so the ban is asserting nothing (expected 5+)`);
+  d29Checked++;
+  if (!stripComments('// oneRmFactor\nconst x = 1;').includes('const x')) fail('D29', 'comment stripper is broken — it ate live code');
+  d29Checked++;
+  if (stripComments('// oneRmFactor\nconst x = 1;').includes('oneRmFactor')) fail('D29', 'comment stripper is broken — it left a comment in, so the ban would fire on prose');
+  d29Checked++;
+  if (!stripComments('const u = "http://x";').includes('http://x')) fail('D29', 'comment stripper is broken — it truncated a string containing //');
+
+  // The positive half: the replacement key must actually be present in both comparators,
+  // or R1 would "pass" by having deleted selection ranking altogether.
+  d29Checked++;
+  const pmRanks = (code.match(/primaryMatchRank\((?:a|b),/g) || []).length;
+  if (pmRanks < 4) fail('D29', `expected primaryMatchRank to be read by both comparators (4 references: a+b in select() and in bank()), found ${pmRanks} — oneRmFactor was removed without the relevance rank replacing it`);
+}
+
+// ── D30 (ACTIVE, SCIENCE_DEFAULT) — one movement pattern, once per SESSION ────
+// Council ruling R2, 2026-09-14 (docs/council-science-application-2026-09-14.md).
+//
+// Two COMPOUND variants of the same movement pattern in one rendered session is
+// inadmissible: Decline Barbell Press stacked on Flat Barbell Press is not a chest day
+// with two exercises, it is the same joint action loaded twice under two names. The
+// unit is the SESSION, not the template — build2 (2d) and ppl (3d) merge base templates
+// AFTER selection, so a per-template check is blind across that seam by construction
+// (that blindness is what left every 3-day hotel_gym Legs day pairing two `lunge`
+// compounds while each contributing template was individually clean).
+//
+// WHY THIS IS A BEHAVIOURAL GATE AND NOT A GREP. The rule lives in FOCUS_SLOTS'
+// selection path; asserting on the source would assert that a line of code exists, not
+// that the engine obeys it. So this runs the engine over the full 630-combo persona
+// matrix and reads the generated days. scripts/movement-pattern-smoke.mjs is its
+// companion, not its duplicate: that gate proves the pattern TABLE is 1:1 with the
+// bank's compounds (a lift with no pattern scores null and clashes with nothing, i.e.
+// fails open); this gate proves the rule FIRES. One rule, one home — neither restates
+// the other.
+//
+// THE RESIDUE IS NAMED, NOT ROUNDED AWAY. 276 of 2520 generated days still pair a
+// pattern, and every one was proved (by instrumenting pick()'s pool narrowing) to be
+// inventory exhaustion, not a rule failure: the narrowing no-opped exactly 276 times,
+// 1:1 with the survivors, each with <= 2 legal patterns available and all of them
+// already spent. Three causes, enumerated below with their measured counts. Listing
+// them is the point — an unexplained clash fails this gate, and each ceiling is a
+// ratchet, so fixing a cause (e.g. adding a home vertical-pull compound) requires
+// lowering its number here in the same change.
+//
+// SCOPE: compounds only (isolation work legitimately repeats a pattern — that is what
+// an accessory IS), and the generated path only. Authored programs deviate via D16.
+let d30Checked = 0;
+{
+  const { combos } = await import('./lib/persona-combos.mjs');
+
+  const patByName = new Map();
+  for (const [slug, p] of Object.entries(MOVEMENT_PATTERN)) {
+    const e = EXERCISE_BANK[slug];
+    if (e && e.name) patByName.set(e.name, p);
+  }
+
+  // Measured 2026-09-14 over all 630 combos / 2520 days. Each entry is a CEILING.
+  const EXHAUSTED = [
+    { tier: 'home', pattern: 'horizontal_pull', max: 210,
+      why: 'the bank has NO home-tier vertical-pull compound, so the back slots have exactly one legal candidate (Table Inverted Row) and the pool narrowing cannot offer an unspent pattern. Filed as a bank-inventory gap (doorway pull-up bar / band lat pulldown), not a selection defect.' },
+    { injury: 'shoulder', pattern: 'horizontal_push', max: 60,
+      why: 'the shoulder-injury filter removes the entire vertical_push family (all overhead pressing), leaving horizontal presses as the only legal pressing structure. Arguably correct behaviour; surfaced to Kerwin as a product question rather than silently smoothed.' },
+    { tier: 'hotel_gym', injury: 'lowerback', pattern: 'lunge', max: 6,
+      why: 'pigeonhole: hinge is banned by the injury filter and hotel_gym carries no third legal leg pattern, so 3 compound slots must be filled from 2 patterns. No selection order can avoid a repeat.' },
+  ];
+
+  const counts = EXHAUSTED.map(() => 0);
+  let daysSwept = 0, patternedDays = 0;
+  const unexplained = [];
+
+  for (const c of combos()) {
+    for (const d of getProgram(...c.args) || []) {
+      daysSwept++;
+      const seen = new Map();
+      let anyPattern = false;
+      for (const b of (d.blocks || [])) for (const e of (b.exs || [])) {
+        if (!e || !e.name) continue;
+        const p = patByName.get(e.name);
+        if (!p) continue;
+        anyPattern = true;
+        if (!seen.has(p)) { seen.set(p, e.name); continue; }
+
+        const idx = EXHAUSTED.findIndex(x =>
+          x.pattern === p &&
+          (x.tier === undefined || x.tier === c.tier) &&
+          (x.injury === undefined || x.injury === c.injury.label));
+        if (idx === -1)
+          unexplained.push(`${c.combo} :: ${d.label} :: ${p} — ${seen.get(p)} + ${e.name}`);
+        else counts[idx]++;
+      }
+      if (anyPattern) patternedDays++;
+    }
+  }
+
+  d30Checked++;
+  if (unexplained.length) {
+    const shown = unexplained.slice(0, 8).map(s => `\n        · ${s}`).join('');
+    fail('D30', `${unexplained.length} generated day(s) pair two COMPOUND variants of the same movement pattern outside the three documented inventory-exhaustion classes. That is the rule failing to fire, not a bank limit — the slot had an unspent pattern available and took a duplicate anyway:${shown}${unexplained.length > 8 ? `\n        … and ${unexplained.length - 8} more` : ''}`);
+  }
+
+  // Each class is a RATCHET. Going over means a new clash crept into a class that was
+  // supposed to be capped; going under means the cause was fixed and this number is now
+  // stale prose claiming a defect that no longer exists (SC-02).
+  for (let i = 0; i < EXHAUSTED.length; i++) {
+    const x = EXHAUSTED[i];
+    const label = [x.tier, x.injury, x.pattern].filter(Boolean).join(' / ');
+    d30Checked++;
+    if (counts[i] > x.max)
+      fail('D30', `exhaustion class "${label}" is capped at ${x.max} day(s) but produced ${counts[i]}. The cap is a ratchet: a rise means a new same-pattern pair entered a class that was only ever licensed for the measured inventory limit. Reason on record: ${x.why}`);
+    d30Checked++;
+    if (counts[i] < x.max)
+      fail('D30', `exhaustion class "${label}" is recorded at ${x.max} day(s) but now produces ${counts[i]}. This is a PASS in behaviour and a FAIL in bookkeeping: the number above now overstates a defect, so lower it to ${counts[i]} in the same change that fixed it (and, if it reached 0, delete the class and its rationale).`);
+  }
+
+  // Non-vacuity. Without these, a broken sweep or a name-keyed lookup that resolves
+  // nothing would report "0 unexplained clashes" forever.
+  d30Checked++;
+  if (daysSwept < 2000) fail('D30', `swept only ${daysSwept} generated days (expected 2000+ across 630 combos) — the sweep is broken, so this gate is asserting nothing`);
+  d30Checked++;
+  if (patternedDays < daysSwept * 0.9) fail('D30', `only ${patternedDays}/${daysSwept} days contained ANY pattern-classified compound — the name-keyed lookup is resolving almost nothing, so no clash could ever be detected`);
+  d30Checked++;
+  if (patByName.size < 60) fail('D30', `MOVEMENT_PATTERN resolved only ${patByName.size} names against the bank (expected 70+) — see scripts/movement-pattern-smoke.mjs, which owns table/bank integrity`);
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────────
 console.log(`DOCTRINE CONFORMANCE — Notion law is enforced here (mirror: /DOCTRINE.md)\n`);
 console.log(`Active checks:`);
@@ -2401,6 +2620,8 @@ console.log(`  D26 one sex-aware seed-weight owner; no lookup key names an exerc
 if (d26SeedCoverageGaps.length) {
   console.log(`      ⚠️ D26 flagged gap (not a violation, deliberately unfilled): EPIC-9's two seed matrices cover different lifts, so ${d26SeedCoverageGaps.length} lift(s) get a curated number for one sex and the generic equipment floor for the other — ${d26SeedCoverageGaps.join(', ')}. Filling these means inventing numbers no source states. Needs a ruling + a citation.`);
 }
+console.log(`  D30 one movement pattern, once per SESSION (council R2) — ${d30Checked} assertions over 630 combos / ${''}every generated day: no same-pattern COMPOUND pair outside the three documented inventory-exhaustion classes (home has no vertical-pull compound · shoulder injury bans all overhead pressing · hotel_gym+lowerback pigeonholes 3 leg slots into 2 patterns), each class ratcheted in BOTH directions so a fix must update its number. Behavioural, not a grep — the companion scripts/movement-pattern-smoke.mjs owns table/bank integrity so a lift cannot fail open.`);
+console.log(`  D29 one coefficient, one semantic role — oneRmFactor orders no candidate pool (council R1) — ${d29Checked} assertions (every .sort() body in programs.js + tandem.html is comment-stripped and scanned + extraction proved non-vacuous + stripper negative-tested three ways + primaryMatchRank proved still read by both comparators). SCOPE: proves the field does not RANK; asserts nothing about whether any oneRmFactor VALUE is cited — R7 owns that audit and it is not done.`);
 console.log(`  D21 one-off tiered-set ladder: compounds only, build_muscle only, weight derived by inverting D12's live calcRM against an EARNED RM — ${d21Checked} assertions (derived cadence + band clamp + no duplicate rung + never-descending load + no invented RM + no private copy of the 1RM formula + call-site scope)`);
 if (d16Seeds > 0) {
   console.log(`  D16 authored seeds: SAFETY always, overrides cited — ${d16Seeds} seed(s), ${d16Checked} checks`);

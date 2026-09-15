@@ -71,7 +71,16 @@ const OPEN_GAPS = {
     hip_flexor:        'all 3 carriers reachable via rectus_abdominis/transverse_abdominis',
     adductor:          'all 3 carriers reachable via glute/quad/oblique tags; EPIC-026 §7.5 open question for Kerwin (split magnus vs longus/brevis?)',
     // (iii) blocked on a citation that does not exist.
-    upper_pec:         'BUG-85 — landmine-press is reachable via anterior_delt/tricep, but `upper_pec` is a §4 duplicate of `pec_major_clavicular`. Retagging asserts a regional pec bias that is UNVERIFIED (no landmine-press EMG study found). Blocked on a citation.',
+    //       — `upper_pec` CLOSED 2026-09-14 (EPIC-026 Phase 3b). The gap is gone because the
+    //         TERM is gone, not because a citation arrived. epic-026-submuscle-audit.md §6C
+    //         rejects `upper_pec` as dead weight ("not anatomical, duplicates clavicular"), and
+    //         §6B mandates additive-only change with ZERO renames. So landmine-press was
+    //         DELETED down to primary:['anterior_delt'] rather than retagged to
+    //         `pec_major_clavicular` — deleting an unsourced tag asserts nothing, whereas the
+    //         rename would have asserted the regional pec bias this entry called UNVERIFIED.
+    //         Reachability is unaffected: this entry's own text already recorded that
+    //         landmine-press reaches its slots via anterior_delt/tricep, and `upper_pec` was an
+    //         orphan by definition, so zero slots changed (measured, 630/630 combos identical).
   },
 };
 

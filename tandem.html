@@ -2225,7 +2225,13 @@ const ACCESSORY_FACTORS = {
 // 'Seated Cable Row'...). Map variants → canonical so the derived path fires.
 // Restrictive on purpose — a miss just falls through to defaults.
 const COMPOUND_PATTERNS = {
-  'Bench Press':       /\b(bench|flat|incline)\b.*\bpress\b/i,
+  // `decline` added 2026-09-14: the alternation enumerated bench|flat|incline and
+  // silently omitted the fourth bench angle, so 'Decline Barbell Press' and 'Decline
+  // DB Press' — the only two bank entries affected, verified by running the rule over
+  // all 179 — could not register a 1RM under the canonical 'Bench Press' key, and every
+  // accessory deriving from that key lost its source on a decline-press day. A decline
+  // press is performed on a bench; excluding it was an enumeration miss, not a rule.
+  'Bench Press':       /\b(bench|flat|incline|decline)\b.*\bpress\b/i,
   'Squat':             /\bsquat\b/i,
   'Hip Thrust':        /\bhip thrust\b/i,
   'Overhead Press':    /\b(overhead|shoulder|arnold|military)\b.*\bpress\b/i,

@@ -50,7 +50,9 @@ const CHECKS = [
   { name: 'duration smoke (EPIC-8b/D28 — short-session isolation drop, byte-identical without it)', run: () => execFileSync('node', [join(scriptsDir, 'duration-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'materializer smoke (EPIC-031 authored-program render contract)', run: () => execFileSync('node', [join(scriptsDir, 'materializer-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'authored-path safety (BUG-59 — injury + equipment tier bind adopted templates)', run: () => execFileSync('node', [join(scriptsDir, 'authored-safety-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'muscle-tag vocabulary (EPIC-026 Phase 4 — closed tag set, no silent typos, exemptions written down)', run: () => execFileSync('node', [join(scriptsDir, 'muscle-vocabulary-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'slot reachability (EPIC-026 Wave 2 — no bank entry ships dead, no new orphan tags)', run: () => execFileSync('node', [join(scriptsDir, 'reachability-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'movement-pattern integrity (council R2 — table and bank compounds 1:1, no lift fails open)', run: () => execFileSync('node', [join(scriptsDir, 'movement-pattern-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'program snapshot (change detector — generated output matches committed baseline)', run: () => execFileSync('node', [join(scriptsDir, 'program-snapshot.mjs')], { stdio: 'inherit' }) },
   { name: 'doctrine conformance (Notion law — see /DOCTRINE.md)', run: () => execFileSync('node', [join(scriptsDir, 'doctrine.mjs')], { stdio: 'inherit' }) },
 ];
