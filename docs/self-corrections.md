@@ -294,3 +294,44 @@ the other is current.
 **Enforced by** judgment — not mechanically checkable today. `scripts/preflight.mjs` checking only
 `docs/WAVE-STATE.md` (not `docs/waves/*.md`) is a separate, real gap flagged to Kerwin the same
 session this entry was written, not yet fixed.
+
+## SC-10 — a new process rule is an engine claim too, and I only verified it after being asked twice
+
+**What I believed.** That writing `staleness_escalation` into `.claude/loop-config.md` — a rule
+claiming a story/Epic could be identified as stale by checking "3+ consecutive cycle snapshots"
+against "the Goal Record's own LAST_SNAPSHOT state" — was a complete, working fix once the prose
+read correctly and covered the case Kerwin described.
+
+**What was true.** It didn't compute. Checking `project-goal/SKILL.md` showed the Cycle Log only
+records aggregate counts, never per-story identity, so the rule had no data to read and was
+silently inert from the moment it was written. I only found this because Kerwin asked, twice in a
+row ("Your sure this picks up those epics?" / "Your sure that this loop now picks up those epics
+moving forward?") — not because I checked it myself before or after writing it. The first fix
+attempt, once forced to check, also turned out wrong on a second axis
+(`unblocked_dependency_recheck`'s assumption that a resolved bug's "Linked User Story" relation
+points at the story it blocks) — verified false against the real BUG-107/EPIC-18 case, corrected
+to a `notion-search` text-heuristic instead. Both corrections happened in-session, but neither was
+logged here — this entry is that missing log, written only because Kerwin's next question ("if you
+know it may happen again, let's try and stop it") forced the check that SC-03 should have already
+covered.
+
+**The gap.** SC-03 already states the rule for one category — "any claim about what the engine
+does... is produced by running it, in the same message." I treated that as scoped to program code
+(`programs.js`/`tandem.html`) and didn't apply it to a claim about what a *process rule I was
+writing into `loop-config.md`* does — even though "does this staleness check actually fire" is
+exactly the same shape of claim as "does this slot match that exercise." A rule about the loop's
+own machinery got a pass that a rule about the app's machinery would not have.
+
+> **THE RULE — SC-10.** SC-03 applies to `loop-config.md` and every other process/config file this
+> project's automation reads, not only to `programs.js`/`tandem.html`. Before a new or edited
+> mechanism there is treated as working — a staleness check, a dependency check, a prioritization
+> rule, anything that claims to compute something from a real data source (Notion schema, Cycle
+> Log fields, tracker relations) — verify it against that data source's actual current shape, in
+> the same turn it's written, the same way an engine claim gets a `node -e`. Do not wait to be
+> asked "are you sure" a second time.
+
+**Enforced by** judgment — not mechanically checkable today. No script currently diffs a claimed
+rule in `loop-config.md` against the real shape of the Notion schema or Cycle Log it depends on;
+building one is exactly the kind of "guardrail on the program, not the prompt" Kerwin flagged the
+same session as a direction for a future session, not this one (see
+`.claude/loop-config.md`'s "Future direction" note, added in this same change).

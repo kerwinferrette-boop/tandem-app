@@ -947,3 +947,32 @@ The EPIC-031 schema is live (`workout_templates`/`template_blocks`/`template_day
 **reasoning** into `program_principles` (via Supabase MCP), rebuilt **own-brand with source provenance** —
 never verbatim/trademarked content. The corpus compounds so a future phase can have the generator consume
 it. Cadence: one program per run, quality over volume. This is gated on the schema existing first.
+
+## Future direction — guardrails belong in the program, not just the prompt (2026-09-15, Kerwin)
+
+**Flagged, NOT scheduled.** Kerwin, in-session, after the `/loop` prompt was rewritten to fold in
+that session's process fixes: *"If the prompt itself can't be airtight, let's try and figure out
+some guardrails and harnesses on the program itself that can try to make it that way. Not
+something for this session, but something to keep in mind."* This section exists so the idea
+survives to whichever session Kerwin actually asks for it — it is a direction, not a task in
+flight, and should not be picked up as ambient scope creep on an unrelated cycle.
+
+**Why prose alone doesn't get there:** a `/loop` prompt is guidance for judgment; it does not
+execute and does not check itself — the same point `scripts/preflight.mjs`'s own header makes
+about the wave ledger it replaced ("Prose in a document does not execute. This script does.").
+Every process hole found in the 2026-09-14/15 session (the `staleness_escalation` mechanism wrong
+twice — see `docs/self-corrections.md` SC-10 — the `docs/WAVE-STATE.md` /
+`docs/waves/*.md` duplication, the missed same-turn wave-checkbox flip) was caught by Kerwin
+asking a question, not by any instruction catching itself. The durable version of each fix is the
+kind this project already has some of — `scripts/doctrine.mjs`, `scripts/preflight.mjs`,
+`persona_matrix`/`onboarding_lifecycle_walkthrough` under `catalog.self_generated_sources` — a
+script that can fail loud, not one more paragraph trusted to be followed.
+
+**One candidate raised in-session, not decided or scoped:** `tandem-tpm` (already `feature-loop`'s
+`existing_project_skill` for Fix/Verify, and already reconciles code state against Notion) may be
+a natural home for this class of check mechanically — e.g. auditing whether new selection/tiebreak
+code has quietly reintroduced a pattern a prior council verdict or doctrine invariant rejected
+(the `oneRmFactor`-as-primary-synergy-tiebreak concern from the 2026-09-14 council report is the
+motivating example, not the only one) — rather than a static rule sitting in a prompt hoping to be
+read. Whoever picks this up should design it against a real case the way SC-10 requires, not
+assume the shape of the check works before checking it against real data.
