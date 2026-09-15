@@ -6784,8 +6784,7 @@ async function openOneOff() {
   // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
   // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
   // Fetched at open (goal-independent) but RENDERED per goal — see renderRecencyBanner.
-  _oneoffSets = await fetchRecentSets(7);
-  _oneoffHistorySets = await fetchOneOffHistorySets();
+  [_oneoffSets, _oneoffHistorySets] = await Promise.all([fetchRecentSets(7), fetchOneOffHistorySets()]);
   renderOneOffFocusRow();
   if (oneOffState.goal) renderRecencyBanner();
 }
