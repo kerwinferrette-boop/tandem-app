@@ -404,12 +404,85 @@ batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a r
                       unilaterally per project-goal's own guardrail) and should be proposed to
                       Kerwin directly rather than added silently the next time this heuristic
                       catches a real case, as evidence for why the field would pay for itself."
+  fixing_status_retriage: "Added 2026-09-15, per Kerwin, in-session — closes a gap he spotted by
+                      asking a direct question, not one the loop caught itself: `Fixing` does not
+                      appear ANYWHERE in project-goal's Step 3 priority order (Needs-Human-
+                      unblocked > Failing > Untested > Uncatalogued), so a story stuck at Status =
+                      Fixing has no guaranteed re-visit mechanism at all — not even the FIFO
+                      treatment an ordinary Untested row gets. `Fixing` is meant to be a
+                      within-cycle transient state (feature-loop sets it while actively working a
+                      story, then Verify flips it to Resolved/Failing before the cycle ends), so a
+                      row still showing Fixing at the START of a new cycle is BY DEFINITION
+                      anomalous — either the prior cycle was interrupted mid-fix (real unfinished
+                      work), or the fix actually shipped and the tracker write that should have
+                      followed never happened (the exact D6b/BUG-106 shape from Cycle 85 the same
+                      session that forced this rule: code fully shipped and doctrine-gate-enforced,
+                      tracker row left stale).
+                      Rule: at the START of every cycle, BEFORE picking the ordinary batch, query
+                      the tracker for any row with Status = Fixing. For each: (1) read its Linked
+                      Bug/Epic and its own Evidence field for the commit(s) it names, (2) check
+                      whether that commit is actually on origin/main (`git log origin/main
+                      --oneline | grep <sha>` or equivalent) and whether npm run verify /
+                      validate:personas / the story's own Test Assertion currently pass against
+                      that shipped state, (3a) if the work is genuinely done and gates hold, this
+                      IS the story's Verify step — a fresh independent subagent re-runs the
+                      assertion per the standing Verify discipline and flips it to Resolved, same
+                      as any other story, (3b) if the work is genuinely incomplete or was never
+                      pushed, resume and finish it as this cycle's highest-priority item before any
+                      ordinary Untested row. Either branch ends with Fixing count back at 0 for that
+                      row — it never carries forward silently a second cycle. Ranks ABOVE
+                      self_generated_priority and staleness_escalation above: a row a PRIOR cycle
+                      already started is worse to leave dangling than one that was merely never
+                      started."
+  needs_human_staleness_recheck: "Added 2026-09-15, per Kerwin, in-session, prompted by him asking
+                      whether the loop would ever confirm the 16 open Needs Human rows still
+                      genuinely need him — it does not, today. unblocked_dependency_recheck above
+                      only re-surfaces a Needs Human row when a Bug & QA Log row RESOLVED THIS
+                      CYCLE cites it by ID; a row whose blocker was cleared by something OTHER than
+                      a bug resolution (a doctrine promotion, a sibling Epic shipping, a fact
+                      simply going stale with time) has no path back into rotation at all. Left
+                      unchecked this is the identical staleness_escalation failure shape (a story
+                      silently parked, escalation.reporting's own standard) just for the
+                      Needs-Human tier instead of Untested/Planned/Scoped.
+                      Rule: EVERY cycle, pick up to 5 of the Needs-Human rows whose own 'Last
+                      Rechecked' note is either absent (never rechecked — all 16 start in this
+                      state as of 2026-09-15, so this begins working through the full backlog
+                      starting the very next cycle, not waiting for a fixed count of cycles to
+                      pass) or more than 3 days old (same threshold staleness_escalation above
+                      already uses, for consistency rather than inventing a second number) — oldest
+                      last-checked (or never-checked) first. This is naturally self-throttling: once
+                      the initial 16 have each been rechecked once, a cycle with nothing due simply
+                      finds 0 candidates and reports that, the same as any other empty sweep — it
+                      does NOT mean re-litigating all 16+ every single cycle forever, only that nothing
+                      currently sits stale. Track the 'Last Rechecked' date on the row itself, or if
+                      that property doesn't exist yet, fall back to the row's own last-edited time. For
+                      each row pulled this way, run escalation.exhaust_before_parking's step (1) against
+                      each: does an
+                      already-cited source — code that has since shipped, a doctrine invariant
+                      that's since gone ACTIVE, a council verdict already on file for the same
+                      fork — resolve this outright now, even though it didn't when it was filed?
+                      If yes: this is the story's Verify step, same fresh-subagent discipline as
+                      any other, flip to Resolved. If the cited blocker is still real: leave the
+                      row as Needs Human but stamp 'Last Rechecked: <date>, still blocked on
+                      <reason>' so the NEXT sweep doesn't re-spend effort re-establishing what this
+                      one just confirmed, and report the recheck (checked/confirmed-still-blocked/
+                      resolved counts) as its own line in the cycle's Goal Record entry, same
+                      transparency standard as batch_prioritization.reporting requires for
+                      self-generated-source and unblocked-dependency finds. This does NOT relax
+                      still_needs_kerwin or safety.forbidden — a row that's still genuinely on that
+                      list stays Needs Human no matter how many times it's rechecked; this rule is
+                      about catching the ones that AREN'T anymore, not about pressuring the ones
+                      that are."
   reporting: "A cycle that has self_generated_sources-seeded, stale, or unblocked-dependency work
                       available and reports it as 0 buildable work (the same failure shape
                       catalog.self_generated_sources already names for persona_matrix/pending_
                       doctrine_sweep findings going unfiled) is incomplete, not honestly
                       conservative — same standard as escalation.exhaust_before_parking below,
-                      applied to the batch-SELECTION step instead of the fix-attempt step."
+                      applied to the batch-SELECTION step instead of the fix-attempt step. The same
+                      standard applies to fixing_status_retriage and needs_human_staleness_recheck
+                      above: a cycle that finds a Fixing row or a due staleness-recheck batch and
+                      silently skips it (rather than doing the retriage/recheck AND reporting the
+                      outcome) has failed this same bar, not stayed conservative."
 
 escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
                       # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
