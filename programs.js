@@ -1136,13 +1136,13 @@ const EXERCISE_BANK = {
     cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
-    muscleGroups:{primary:['hamstring_bicep_femoris']},
+    muscleGroups:{primary:['hamstring_biceps_femoris']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Knee flexion trains the short head of bicep femoris — the only head that cannot be reached with any hip hinge movement. Both hamstring functions (knee flexion AND hip extension) must be trained for complete development.',
     cues:['Pad just above the heel, not on the Achilles','Curl all the way up to maximum knee flexion','Do not let the hips lift off the pad','Lower slowly — do not let the weight slam']},
   'seated-leg-curl':{
     name:'Seated Leg Curl', videoId:'YyvSfVjQeL0',
-    muscleGroups:{primary:['hamstring_bicep_femoris','hamstring_semimembranous']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The seated position places hamstrings under stretch at both hip AND knee simultaneously — producing greater EMG activity than lying leg curl. A hamstring under hip-flexion tension is longer, increasing the hypertrophy stimulus.',
     cues:['Sit tall; thigh pad positioned just above the knee','Curl all the way to maximum knee flexion','Squeeze at peak — hold one count','Slow eccentric — resist the return all the way']},
