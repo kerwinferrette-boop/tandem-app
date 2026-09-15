@@ -232,6 +232,21 @@ catalog:
              question — route those through escalation.direct_ask instead). Not a standing
              every-cycle sweep like persona_matrix/onboarding_lifecycle_walkthrough above; it's
              pulled in on demand by whichever story needs it."
+      default_not_fallback: "ADDED 2026-09-14, per Kerwin, in-session, correcting a real gap
+             (see docs/self-corrections.md SC-08): the two test accounts are the DEFAULT
+             mechanism for reproducing or diagnosing an anomaly against the real app/real
+             Supabase, not a fallback reached for only when nothing else works. Outside the
+             OUTCOME RULE's own mandated npm run outcome check (which must read Kerwin's and
+             Dani's REAL accounts — that is the entire point of that gate, per
+             live_test_account_verification's scope note above), do not query
+             kerwinferrette@gmail.com's or dgaumer03@gmail.com's real history to chase a
+             program-logic question. Ask first whether the question is answerable by (a)
+             running the generator directly (buildDynamicProgram()/getProgram() with no
+             account at all — most program-structure questions are a pure function of
+             goal/day-count/tier and need zero Supabase data), or (b) the two allowlisted test
+             accounts. Use the narrowest of the three that answers the question. A real-account
+             read for anything beyond the outcome gate itself needs a stated reason, in the
+             same message as the query, for why neither (a) nor (b) suffices."
 
 wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why every Epic bigger
                       # than a one-file change was parking in Needs Human instead of getting
@@ -297,6 +312,104 @@ wave_decomposition:   # Added 2026-08-30, per the llm-council verdict on why eve
                       relation (agents/plan.md §1) before trusting that path further. Waves this
                       stage produces are no longer gated to draft-only; Fix may execute from a
                       live Wave once it exists."
+
+batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a real, named gap:
+                      # "catalogued is not the same as prioritized." Worked example that forced
+                      # this: D6b (a doctrine invariant) was found and correctly flagged on
+                      # 2026-07-22, sat untouched for 6.5 weeks because nothing surfaced PENDING
+                      # doctrine rows as work at all (closed by pending_doctrine_sweep,
+                      # 2026-09-08) — but even AFTER pending_doctrine_sweep correctly seeded it
+                      # as EPIC-54, it sat 6 MORE days as an ordinary catalogued Untested story,
+                      # competing on equal footing with the rest of the standing backlog, and
+                      # only got built because an unrelated live bug report happened to point at
+                      # it. The generic project-goal skill's Step 3 batch order (Needs-Human-
+                      # since-unblocked > Failing P0/P1 > Untested > Uncatalogued) has no sub-
+                      # ordering WITHIN "Untested" — this section adds one, since a flat FIFO/
+                      # arbitrary order inside a backlog of 100+ rows means anything can starve
+                      # indefinitely regardless of how it was found.
+  self_generated_priority: "Within the Untested tier, a story whose Source traces to one of
+                      catalog.self_generated_sources (persona_matrix, onboarding_lifecycle_
+                      walkthrough, pending_doctrine_sweep, exercise_intake_promotion) — or an
+                      Epic that subsumes one — ranks AHEAD of ordinary tracker-sourced Untested
+                      rows, not merely alongside them. These are deterministic, objective,
+                      already-vetted structural findings (loop-config's own words: 'treat it as
+                      gate-worthy as persona_matrix's own findings') — they should never lose a
+                      priority contest to an arbitrary older Bug Log row just because that row
+                      happened to be catalogued first. This does not override
+                      still_needs_kerwin/escalation below — it only changes ORDER within what the
+                      loop is already allowed to just build."
+  staleness_escalation: "CORRECTED 2026-09-14, same session — the first version of this rule
+                      said 'appears in 3+ CONSECUTIVE cycle snapshots' sourced from 'the Goal
+                      Record's own LAST_SNAPSHOT state' and claimed 'no new Notion field
+                      required.' That was asserted, not verified, and Kerwin caught it by asking
+                      'are you sure this picks up those epics moving forward?' — checking found
+                      the Cycle Log entry (project-goal SKILL.md, Step 4) only ever records
+                      AGGREGATE status COUNTS ('N Untested, M Failing'), never which specific
+                      stories were Untested. There is no data anywhere that reconstructs one
+                      story's identity across past cycles, so the original rule was uncomputable
+                      by any future cycle that tried to follow it — it would have been silently
+                      inert, the exact 'wired is not working' failure CLAUDE.md warns about,
+                      just written into config instead of code.
+                      Fixed rule, directly computable with data that already exists on every row:
+                      a story or Epic is STALE when its own Notion page's Created time (fetch the
+                      page — notion-fetch's page_last_edited_at, or the page's Created-time
+                      property where the database exposes one, e.g. Epics' 'Created' field) is
+                      more than 3 days old AND its Status is still Untested/Planned/Scoped. No
+                      cross-cycle reconstruction, no new schema — one page fetch, one date
+                      comparison, per candidate row. A stale item is force-included in the next
+                      batch, on top of (not instead of) whatever safety.max_items_per_cycle would
+                      otherwise pick. Report every stale item pulled in this way as its own line
+                      in the cycle's Goal Record entry ('stale, force-included: <story/Epic id>,
+                      created <date>, N days old') so this is visible, not quietly absorbed into
+                      the ordinary batch count."
+  unblocked_dependency_recheck: "Added 2026-09-14, per Kerwin, in-session ('fold it — I'm trying
+                      to tighten up this loop as much as I can to push real work'). Worked example
+                      that forced this: EPIC-18's story was correctly investigated (Cycle 79,
+                      2026-09-08), correctly found blocked on a real prerequisite (BUG-107 — the
+                      equipment-tier selector couldn't express 'home', which would have broken if
+                      EPIC-18 shipped as scoped), and the blocker got filed and RESOLVED (commit
+                      4943094) — but nothing ever re-checked EPIC-18 afterward. The blocker
+                      cleared; the dependent story just sat at its old status. A real prerequisite
+                      being fixed is exactly the moment a blocked item should come back into play,
+                      and nothing was watching for that moment.
+                      TESTED, not just asserted, against this exact case before writing the rule
+                      (per SC-08/the staleness_escalation correction above — verify the mechanism
+                      against real data before shipping it as a rule): the first design considered
+                      was 'when a bug resolves, walk its Linked User Story relation for stories
+                      still open.' Checked against BUG-107 and it does NOT work — BUG-107's own
+                      Linked User Story relation points to its OWN auto-generated story, not to
+                      EPIC-18's story at all. The only connection between them is TEXT: EPIC-18's
+                      story cites BUG-107's page id in its own Evidence field, and BUG-107's
+                      content separately says 'this also blocks EPIC-18 Slice 1.' A structured-
+                      relation walk would have found nothing and looked like it worked.
+                      Rule that actually matches the data: when a Bug & QA Log row transitions to
+                      Resolved, run notion-search for that bug's own ID string (e.g. 'BUG-107')
+                      across the workspace. For each OTHER page the search surfaces whose own
+                      Status is not Resolved/Shipped, open it and check whether its content
+                      references being blocked/parked/gated on this bug (the kind of citation
+                      EPIC-18's Evidence field carries). Anything that matches gets re-evaluated
+                      in the current cycle — re-run its story's Test Assertion for real, don't
+                      just flip its status on the strength of the blocker being gone — same
+                      priority tier as self_generated_priority above (ahead of ordinary Untested
+                      rows), since a cleared, real dependency is exactly the kind of deterministic
+                      signal that source already treats as gate-worthy.
+                      Known limit, stated honestly rather than glossed over: this is a text-search
+                      heuristic over free-form Evidence/content fields, not a structured
+                      dependency graph — it will miss a blocking relationship that was never
+                      written down as a citable bug ID, and could theoretically false-match a
+                      page that mentions a bug ID for an unrelated reason (re-check the actual
+                      language, not just the ID's presence, before treating a hit as real). The
+                      durable fix is a real 'Blocked By' relation field on both databases — that
+                      is a schema change (a structural decision, not something this loop makes
+                      unilaterally per project-goal's own guardrail) and should be proposed to
+                      Kerwin directly rather than added silently the next time this heuristic
+                      catches a real case, as evidence for why the field would pay for itself."
+  reporting: "A cycle that has self_generated_sources-seeded, stale, or unblocked-dependency work
+                      available and reports it as 0 buildable work (the same failure shape
+                      catalog.self_generated_sources already names for persona_matrix/pending_
+                      doctrine_sweep findings going unfiled) is incomplete, not honestly
+                      conservative — same standard as escalation.exhaust_before_parking below,
+                      applied to the batch-SELECTION step instead of the fix-attempt step."
 
 escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces most "ask Kerwin"
                       # routing for Plan/Fix with "ask the council" — Kerwin explicitly asked for
@@ -834,3 +947,32 @@ The EPIC-031 schema is live (`workout_templates`/`template_blocks`/`template_day
 **reasoning** into `program_principles` (via Supabase MCP), rebuilt **own-brand with source provenance** —
 never verbatim/trademarked content. The corpus compounds so a future phase can have the generator consume
 it. Cadence: one program per run, quality over volume. This is gated on the schema existing first.
+
+## Future direction — guardrails belong in the program, not just the prompt (2026-09-15, Kerwin)
+
+**Flagged, NOT scheduled.** Kerwin, in-session, after the `/loop` prompt was rewritten to fold in
+that session's process fixes: *"If the prompt itself can't be airtight, let's try and figure out
+some guardrails and harnesses on the program itself that can try to make it that way. Not
+something for this session, but something to keep in mind."* This section exists so the idea
+survives to whichever session Kerwin actually asks for it — it is a direction, not a task in
+flight, and should not be picked up as ambient scope creep on an unrelated cycle.
+
+**Why prose alone doesn't get there:** a `/loop` prompt is guidance for judgment; it does not
+execute and does not check itself — the same point `scripts/preflight.mjs`'s own header makes
+about the wave ledger it replaced ("Prose in a document does not execute. This script does.").
+Every process hole found in the 2026-09-14/15 session (the `staleness_escalation` mechanism wrong
+twice — see `docs/self-corrections.md` SC-10 — the `docs/WAVE-STATE.md` /
+`docs/waves/*.md` duplication, the missed same-turn wave-checkbox flip) was caught by Kerwin
+asking a question, not by any instruction catching itself. The durable version of each fix is the
+kind this project already has some of — `scripts/doctrine.mjs`, `scripts/preflight.mjs`,
+`persona_matrix`/`onboarding_lifecycle_walkthrough` under `catalog.self_generated_sources` — a
+script that can fail loud, not one more paragraph trusted to be followed.
+
+**One candidate raised in-session, not decided or scoped:** `tandem-tpm` (already `feature-loop`'s
+`existing_project_skill` for Fix/Verify, and already reconciles code state against Notion) may be
+a natural home for this class of check mechanically — e.g. auditing whether new selection/tiebreak
+code has quietly reintroduced a pattern a prior council verdict or doctrine invariant rejected
+(the `oneRmFactor`-as-primary-synergy-tiebreak concern from the 2026-09-14 council report is the
+motivating example, not the only one) — rather than a static rule sitting in a prompt hoping to be
+read. Whoever picks this up should design it against a real case the way SC-10 requires, not
+assume the shape of the check works before checking it against real data.

@@ -1,0 +1,65 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- BUG-72 Group A — the wedding-planning tables sharing Tandem's Supabase
+-- project. Last item of the BUG-72 dead-object cleanup (Groups B/C closed by
+-- migration 0008, commit c7d0fff).
+--
+-- KERWIN'S RULING (2026-09-07): "Confirm they're not in the Wedding Planning
+-- Supabase, and if they aren't, sure put them there." Checked directly —
+-- see findings below. Not applied by this session (Notion-updates-only scope;
+-- schema changes require human review/apply per loop-config.md).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ---------------------------------------------------------------------------
+-- WHAT WAS FOUND, verified by running against both live projects
+--
+-- A separate "Wedding Planning" Supabase project already exists
+-- (xrgzaovididcizstwswy, ACTIVE_HEALTHY) and already owns a real, populated
+-- `guests` table — 130 rows.
+--
+-- Tandem's project (zsvktcvqmppsshtpeljt) also has all three Group A tables,
+-- but every one of them is EMPTY:
+--
+--   select 'guests' t, count(*) c from public.guests
+--   union all select 'vendor_research', count(*) from public.vendor_research
+--   union all select 'branding_assets', count(*) from public.branding_assets;
+--   -->  guests: 0 | vendor_research: 0 | branding_assets: 0
+--
+-- All three carry RLS-enabled / zero-policy (deny-all), confirmed again here:
+--
+--   select relname, relrowsecurity, count(polname)
+--   from pg_class left join pg_policy on polrelid = pg_class.oid
+--   where relname in ('guests','vendor_research','branding_assets')
+--   group by relname, relrowsecurity;
+--   -->  all three: relrowsecurity = true, policy_count = 0
+--
+-- So there is nothing to migrate. Kerwin's instruction ("if they aren't [in
+-- Wedding Planning], put them there") was conditioned on live data existing
+-- in Tandem's copies that isn't yet in the dedicated project. It already is
+-- (guests, at minimum, with 130 real rows) and Tandem's copies never
+-- accumulated any — they are dead scaffolding from before the project split,
+-- structurally identical in kind to the Group B/C objects 0008 already
+-- dropped. `vendor_research` / `branding_assets` do not exist at all yet in
+-- Wedding Planning; since Tandem's copies are empty, there is no data to
+-- carry over when/if those are created there.
+--
+-- The correct action is therefore DROP, not MOVE — same disposition as
+-- 0008's Group C, for the same reason (dead object, RLS already denies all
+-- access, zero live security hole either way).
+-- ---------------------------------------------------------------------------
+
+drop table if exists public.guests;
+drop table if exists public.vendor_research;
+drop table if exists public.branding_assets;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- POST-MIGRATION ASSERTION
+-- ═══════════════════════════════════════════════════════════════════════════
+-- select table_name from information_schema.tables
+--   where table_schema='public' and table_name in
+--   ('guests','vendor_research','branding_assets');
+-- EXPECT: 0 rows.
+--
+-- Confirm the real data is untouched in the other project (read-only check,
+-- against xrgzaovididcizstwswy, not this one):
+--   select count(*) from public.guests;  -- EXPECT: 130 (unchanged)
+-- ═══════════════════════════════════════════════════════════════════════════

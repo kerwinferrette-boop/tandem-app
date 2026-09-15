@@ -115,7 +115,7 @@ assumed every custom template IS 12 weeks. Once duration is user-selectable with
 4-12wk range, Slice 5's actual question narrows to "what happens when a user-chosen block of ANY
 legal length ends" — the same question, correctly scoped, not a new one.
 
-- [ ] **Slice 6 — user-selectable program duration, 4-12wk (supersedes the Slice-1 hardcode).**
+- [x] **Slice 6 — user-selectable program duration, 4-12wk (supersedes the Slice-1 hardcode).**
       **Depends on:** nothing new — D7 + `DELOAD_TABLE` already cover the full range; this is a
       plumbing fix, not new science.
       **File/region:** `createCustomTemplate()` (tandem.html) — replace the hardcoded
@@ -131,7 +131,30 @@ legal length ends" — the same question, correctly scoped, not a new one.
       **should/could/did stub:** SHOULD — D7 (4-12wk), already `✅ ACTIVE` and already implemented
       engine-wide; no new citation needed. COULD — extend beyond 12wk (onboarding's 4-24 range
       technically supports it via `deloadWeeks()`'s generic fallback) — deferred, Kerwin's stated
-      examples (6, 8) are both ≤12; revisit only if asked. DID / RECONCILE — blank, for Fix.
+      examples (6, 8) are both ≤12; revisit only if asked.
+      **DID:** Added `#builderWeeks` numeric input (min=4/max=12/default=12) next to the modal's
+      name field; `openTemplateBuilder()` resets it to 12 on open; `saveCustomTemplate()` parses it,
+      re-validates 4-12 client-side, and passes `weeks` into `createCustomTemplate()`.
+      `createCustomTemplate()` now validates `input.weeks` (4-12 inclusive, defaults to 12 if
+      omitted — mirrors the days.length 2-6 pattern) and uses it for both
+      `workout_templates.duration_weeks` and `template_blocks.week_end` (was hardcoded 12 in both).
+      **Also fixed a latent correctness gap the verification step surfaced**: `cfg.weeks` — the
+      value `getPhase()`/`deloadWeeks()`/`effectiveReps()`/`getWeekTarget()` actually read at render
+      time (the template row's own `duration_weeks` column is never consulted post-adoption) — was
+      never being set by `createCustomTemplate()`. Before Slice 6 this was masked because the write
+      was always 12 and onboarding's default is commonly 12; once duration became user-selectable
+      this would have silently rendered every non-12wk custom template's deloads/phases at the WRONG
+      length. Added `cfg.weeks = weeks` alongside the existing `cfg.programSource = 'template'`
+      assignment. **Flagged, not fixed (out of Slice-6 scope):** the identical gap exists in
+      `adoptTemplate()` (library adoption, tandem.html:2828) — it also never sets `cfg.weeks` from
+      `src.duration_weeks`, so adopting a non-12wk LIBRARY template has the same latent bug today.
+      Not touched here since it's a different function/codepath than the one this Slice scope-locks
+      to; candidate for its own bug entry.
+      **RECONCILE:** did == should. Verified: (a) `npm run verify` 12/12 and
+      `npm run validate:personas` 630/630 both green after the change; (b) ran `deloadWeeks(6)` and
+      `deloadWeeks(8)` directly against `programs.js` — returned `[6]` and `[4,8]` respectively,
+      byte-identical to `DELOAD_TABLE[6]`/`DELOAD_TABLE[8]`, confirming a 6wk/8wk custom template
+      deloads exactly like an equivalent generated program of that length.
 
 ## Forbidden-ops carve-out (per `.claude/loop-config.md` safety.forbidden, 2026-08-30 council addition)
 

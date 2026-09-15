@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, MOVEMENT_PATTERN } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, MOVEMENT_PATTERN }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, MOVEMENT_PATTERN, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, MOVEMENT_PATTERN, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -71,7 +71,9 @@ const TIERS = {
   D4b: 'SCIENCE_DEFAULT', // training-age cadence scaling (PENDING)
   D5: 'SPLIT',            // never-on-primary = SAFETY; superset-required = SCIENCE_DEFAULT
   D6: 'SCIENCE_DEFAULT',  // goal volume MEV order
-  D6b: 'SCIENCE_DEFAULT', D7: 'SCIENCE_DEFAULT',
+  D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor (PENDING — measured gap, needs Kerwin's ruling on how to close it)
+  D6c: 'SCIENCE_DEFAULT', // within-block MEV->MRV ramp cadence (PENDING — needs numeric ruling, depends on D6b)
+  D7: 'SCIENCE_DEFAULT',
   D8: 'SPLIT',            // zero-supersets-on-strength-primaries = SAFETY; Maintenance MAV cap = SCIENCE_DEFAULT
   D9: 'SAFETY',           // one-off structural law (compound-first, tier-legal, dup-free)
   D10: 'SCIENCE_DEFAULT', // rep bands (overridable via cited principle, e.g. rep_floor)
@@ -1025,6 +1027,39 @@ for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
   if (f <= 0) fail('D6', `${days}d/${sex}: fat_burn produced zero working volume`);
 }
 
+// ── D6b (ACTIVE, MEV floor) — Per-muscle weekly volume meets the goal's MEV floor ──
+// Promoted 2026-09-14. Numbers: Exercise Science Research Canonical Reference §1
+// (Notion 399ca37f935b8172acaafc541b703726, the project's stated single source of
+// truth). Secondary/synergist volume counts at 0.5 credit, primary at 1.0 — Kerwin's
+// ruling, 2026-09-14, live ("is that muscle not worked out just because it's
+// secondary?"), fractional credit externally corroborated (Renaissance
+// Periodization's own direct/indirect convention). Uses computeMuscleWeeklyVolume()
+// and resolveGoalVolume() (programs.js) — the SAME functions the generator itself
+// runs, not a parallel reference implementation, so this checks what actually
+// ships. Measured before promoting (2026-09-14): the flat pre-fix GOAL_VOLUME left
+// 90/216 checks below MEV; resolveGoalVolume() (deriving sets-per-exercise from
+// each day-count's own COMPOUND-slot structure — isolation excluded so the
+// derivation stays invariant to D28's duration-based accessory pruning) plus a
+// coverage tiebreak fix (an OR-slot requesting two muscles, e.g. hamstring+
+// glute_max, was letting oneRmFactor pick a candidate covering only one — the
+// exact BUG-116 defect shape, a second symptom of the same root cause) brought
+// this to 0/270 across every goal x day-count(2-6) x sex combo.
+let d6bChecked = 0;
+for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+  for (const goal of CANONICAL_GOALS) {
+    const prog = getProgram(goal, days, 12, sex, 'full_gym', 'balanced', null, null, { week: 1, phase: 0 });
+    const vol = computeMuscleWeeklyVolume(prog, EXERCISE_BANK);
+    const mev = VOLUME_LANDMARKS[goal]?.mev;
+    if (!mev) continue;
+    for (const token of MAJOR_MUSCLE_GROUP_TOKENS) {
+      d6bChecked++;
+      const total = Object.entries(vol).filter(([tag]) => tag === token || tag.startsWith(token + '_'))
+        .reduce((sum, [, v]) => sum + v, 0);
+      if (total < mev) fail('D6b', `${goal}/${days}d/${sex}: '${token}' weekly volume ${total} sets is below the goal's MEV floor (${mev}) — primary sets at 1.0 credit, secondary at 0.5 (Kerwin's 2026-09-14 ruling, BUG-105)`);
+    }
+  }
+}
+
 // ── D11 (ACTIVE — strengthened 2026-07-30) — Monotonic progressive overload + earned-only 1RM ──
 // "Reps down, weight up." The prescribed %1RM curve must rise-or-hold every week and NEVER
 // dip outside a sanctioned D13 deload/D14 realization week — deloads are volume cuts (D4),
@@ -1103,9 +1138,217 @@ try {
   if (/\?\s*1\.025\s*:\s*0\.975/.test(tandemHtml)) {
     fail('D11', 'the scheduled ±2.5%/week 1RM ratchet is back — the working 1RM must be earned (running-max Epley), never a fixed weekly step');
   }
+
+  // ── D11 SCOPE (added 2026-09-14, Kerwin ruling 2026-09-13) ──────────────────────
+  // "It should also look to add to one-rep max calculations: weights lifted, etc."
+  // A measured lift binds the working 1RM regardless of WHICH session earned it. D9's
+  // exemption list is closed (D1/D4/D7) and D11 is not on it, so scoping the earned-only
+  // loop to the periodized program was a silent D11 violation: every set logged in a
+  // one-off was dropped on the floor because getSingleDay()'s day object is, by
+  // definition, not in `program`.
+  //
+  // These are text assertions, not behavioral ones, because reconcileWorking1RMs closes
+  // over module-level app state (currentDay, LS, calcRM) that this credential-free gate
+  // cannot stand up. The behavior itself was proven by extracting and RUNNING the
+  // function (CLAUDE.md "verify by running"): 225x5 in a one-off raised a stored 200 to
+  // 263, and a fatigued 95x3 left 263 untouched. What the gate defends is that the
+  // three structural properties that made that true cannot be quietly removed.
+  const rmFnMatch = tandemHtml.match(/function reconcileWorking1RMs\([\s\S]{0,4000}?\n {2}\}/);
+  if (!rmFnMatch) {
+    fail('D11', 'reconcileWorking1RMs() not found in tandem.html — the earned-only 1RM loop is the mechanism D11 names, so its absence is a violation, not a skipped check');
+  } else {
+    const rmFn = rmFnMatch[0];
+    // 1. The signature must still accept a day the caller names explicitly.
+    if (!/function reconcileWorking1RMs\(\s*sessionExs\s*,\s*program\s*,\s*explicitDay/.test(rmFn)) {
+      fail('D11', 'reconcileWorking1RMs() no longer takes an explicitDay parameter — without it a one-off session cannot bind a 1RM, since its day object is never in the periodized program (Kerwin ruling 2026-09-13)');
+    }
+    // 2. The explicit day must WIN over the currentDay lookup, not merely exist.
+    if (!/const day = explicitDay \|\|/.test(rmFn)) {
+      fail('D11', 'reconcileWorking1RMs() no longer prefers explicitDay over the currentDay program lookup — a one-off would resolve to a program day or to nothing');
+    }
+    // 3. The guard must stay ONE-SIDED. This is what makes crediting a non-periodized,
+    //    possibly-fatigued session safe: it can raise a stored max and can never lower
+    //    one. If this ever became two-sided, an "extra arm day" done tired would
+    //    DE-load the program — a D11 monotonicity violation by the same edit.
+    if (!/if \(best <= prior\) return;/.test(rmFn)) {
+      fail('D11', 'the one-sided working-1RM guard (`if (best <= prior) return;`) is gone — a fatigued session could now LOWER a measured max, which is the monotonicity D11 forbids and the reason a one-off is safe to credit at all');
+    }
+  }
+  // 4. The one-off finisher must actually make the call. Scope without a caller is the
+  //    "wired is not working" failure: the widened signature would sit unused.
+  if (!/reconcileWorking1RMs\(oneOffExs,\s*null,\s*oneOffState\.day\)/.test(tandemHtml)) {
+    fail('D11', 'finishOneOff() no longer feeds its sets to reconcileWorking1RMs() — a one-off\'s earned loads must bind the working 1RM (Kerwin ruling 2026-09-13)');
+  }
 } catch (e) {
   fail('D11', `could not verify monotonic overload: ${e.message}`);
 }
+
+// ── D9 SCOPE (ACTIVE — added 2026-09-14) — a one-off is a WORKOUT, never a program DAY ──
+//
+// Kerwin's ruling, 2026-09-13, verbatim: one-offs "should count towards streak/points/
+// volume, as it is a workout... However, as it pertains to the program itself, it should
+// not count as an extra day," and, of the overdue clock specifically, "overdue should
+// ignore one-offs."
+//
+// That is one rule with two obligations, and BOTH are load-bearing, so both are checked:
+//   (a) a one-off must not move program POSITION — the week counter, the day pointer, or
+//       the overdue gap; and
+//   (b) the test for "is this a program row?" must live in ONE function, because the two
+//       consumers that derive position from local history will otherwise disagree about
+//       which day he is on.
+//
+// This is not a hypothetical: syncFromCloud() hydrates tandem_history directly from
+// workout_sessions rows, and finishOneOff() writes a real completed row there, so a
+// one-off DOES reach the same array completedSessionCount() and getOverdueDays() read.
+// Before this change it was counted by both.
+let d9ScopeChecked = 0;
+try {
+  // Declared locally on purpose: the D11 block above scopes its own copy inside its own
+  // try, so reusing that name here would be a ReferenceError (the exact omission that
+  // failed this gate on 2026-09-13).
+  const tandemHtml = readFileSync(join(root, 'tandem.html'), 'utf8');
+
+  // The discriminator has one home (CLAUDE.md "one rule, one home"), and it is the same
+  // string migration 0015's partial unique index predicates on, so client and database
+  // agree on what a program day is by construction rather than by coincidence.
+  if (!/const ONEOFF_SESSION_TYPE = 'oneoff';/.test(tandemHtml)) {
+    fail('D9', "the ONEOFF_SESSION_TYPE constant is gone — the one-off discriminator must have one home and must match migration 0015's partial index predicate (session_type <> 'oneoff')");
+  } else d9ScopeChecked++;
+
+  const predMatch = tandemHtml.match(/function isProgramHistoryRow\(h\) \{[\s\S]{0,300}?\n\}/);
+  if (!predMatch) {
+    fail('D9', 'isProgramHistoryRow() not found — the "does this row count as program progress?" test must exist as one named function, not be inlined per consumer');
+  } else {
+    d9ScopeChecked++;
+    // session_type is the SOLE legal discriminator. day_type must not be tested: a
+    // one-off's day_type is a body-part word ('chest') that can equal a program day key.
+    if (!/session_type !== ONEOFF_SESSION_TYPE/.test(predMatch[0])) {
+      fail('D9', 'isProgramHistoryRow() no longer discriminates on session_type !== ONEOFF_SESSION_TYPE');
+    }
+    if (/day_type/.test(predMatch[0])) {
+      fail('D9', "isProgramHistoryRow() tests day_type — a one-off's day_type is a body-part word that can collide with a program day key; session_type is the only safe discriminator");
+    }
+  }
+
+  // Both position consumers must route through that predicate. Checked per-function body
+  // rather than file-wide, because a file-wide grep would pass if only one of them used it
+  // — and one-of-two is precisely the disagreement this invariant exists to prevent.
+  for (const [fn, why] of [
+    ['completedSessionCount', 'the week counter and day queue would count a one-off as an extra program day ("it should not count as an extra day")'],
+    ['getOverdueDays', 'an extra arm day would reset the clock that says the PRESCRIBED session is late ("overdue should ignore one-offs")'],
+  ]) {
+    // Lazy to the first brace in column 0, which for a top-level function is its own
+    // closing brace. The cap is generous because both bodies carry long provenance
+    // comments — a cap that clips the body makes the match fail and reads as "function
+    // not found", which is a FALSE failure, not a safe one.
+    const m = tandemHtml.match(new RegExp(`function ${fn}\\([\\s\\S]{0,8000}?\\n\\}`));
+    if (!m) { fail('D9', `${fn}() not found in tandem.html`); continue; }
+    if (!/isProgramHistoryRow\(/.test(m[0])) {
+      fail('D9', `${fn}() does not filter through isProgramHistoryRow() — ${why} (Kerwin ruling 2026-09-13)`);
+    } else d9ScopeChecked++;
+  }
+
+  // ── the program POINTER ─────────────────────────────────────────────────────────
+  // Three sites write tandem_current_day, and they fail differently, so they are checked
+  // differently rather than by one grep count. A count is the wrong instrument here: five
+  // one-off guards exist in the file for other reasons, so "at least three guards" stays
+  // true even after the one that matters is deleted — it would report green on the exact
+  // regression it was meant to catch. Enumerating the sites and pinning the TOTAL is the
+  // honest version: a fourth site cannot appear without a human extending this list.
+  const ptrWrites = (tandemHtml.match(/LS\.set\('tandem_current_day'/g) || []).length;
+  if (ptrWrites !== 3) {
+    fail('D9', `${ptrWrites} sites write tandem_current_day; this gate knows 3 (finishSession's local advance + syncFromCloud's lastDone + the boot-time rehydrate). A new one must be reviewed for a one-off guard and enumerated here before it ships — an unguarded pointer advance is how a one-off becomes "an extra day"`);
+  } else d9ScopeChecked++;
+
+  // Site 1 — finishSession()'s advance is guard-free BY CONSTRUCTION: it steps from
+  // currentDay, reading no session row at all, so a one-off cannot reach it. What must
+  // hold instead is that the one-off finisher never advances the pointer itself. That is
+  // the whole of "it should not count as an extra day" at the local finisher.
+  const foMatch = tandemHtml.match(/async function finishOneOff\([\s\S]{0,12000}?\n\}/);
+  if (!foMatch) {
+    fail('D9', 'finishOneOff() not found in tandem.html');
+  } else if (/LS\.set\('tandem_current_day'/.test(foMatch[0])) {
+    fail('D9', 'finishOneOff() advances tandem_current_day — a one-off "should not count as an extra day" (Kerwin ruling 2026-09-13); it must credit streak/points/volume/1RM without moving the program pointer');
+  } else d9ScopeChecked++;
+
+  // Sites 2 and 3 — both pick a session row out of newest-first data and advance past it.
+  // Unguarded, a one-off does not merely over-advance: its day_type is a body-part word
+  // that matches no program key, so findIndex returns -1 and the pointer STALLS, serving
+  // the same prescribed day twice. The guard must live inside the lookup, so each window
+  // is matched from the lookup itself rather than file-wide.
+  for (const [label, re, guard] of [
+    ['syncFromCloud()\'s lastDone', /const lastDone = sessions\?\.find\([\s\S]{0,300}?\);/, /session_type !== ONEOFF_SESSION_TYPE/],
+    ['the boot-time day rehydrate', /\.select\('session_date,day_type'\)[\s\S]{0,900}?\.maybeSingle\(\);/, /\.neq\('session_type', ONEOFF_SESSION_TYPE\)/],
+  ]) {
+    const m = tandemHtml.match(re);
+    if (!m) { fail('D9', `${label} day-pointer lookup not found — it cannot be confirmed one-off-guarded`); continue; }
+    if (!guard.test(m[0])) {
+      fail('D9', `${label} advances the program pointer from an UNFILTERED session lookup — a one-off can win it, and because its day_type matches no program key the pointer stalls and the same prescribed day is served twice (Kerwin ruling 2026-09-13)`);
+    } else d9ScopeChecked++;
+  }
+
+  // ── the JOURNAL clause (Kerwin 2026-09-14) ──────────────────────────────────────
+  // The Journal is a manual WORKOUT log, and a journaled workout is a workout, never a
+  // program day — so it must carry the SAME discriminator, or migration 0015's partial
+  // unique index stops excluding it and the position consumers start counting it.
+  const sjMatch = tandemHtml.match(/async function saveJournal\([\s\S]{0,14000}?\n\}/);
+  if (!sjMatch) {
+    fail('D9', 'saveJournal() not found in tandem.html — the Journal must be a workout log governed by D9, not a nutrition form (Kerwin ruling 2026-09-14)');
+  } else {
+    // TWO rows carry the discriminator and they are checked SEPARATELY, per window.
+    // A file-wide (or even function-wide) grep for `session_type: ONEOFF_SESSION_TYPE`
+    // is a weak instrument here and was proven so by running the regression: deleting it
+    // from the workout_sessions insert left the local-history copy behind, and the
+    // function-wide test reported GREEN on the exact defect it exists to catch.
+    for (const [label, re, why] of [
+      ['the workout_sessions insert', /sb\.from\('workout_sessions'\)\.insert\(\{[\s\S]{0,900}?\}\)/,
+       "the DB row would be a PROGRAM day: migration 0015's partial unique index would collide with a real program day on the same date, and the cloud day-pointer lookups would advance off a journal entry"],
+      ['the local-history unshift', /hist\.unshift\(\{[\s\S]{0,900}?\}\);/,
+       'the local row would be counted by isProgramHistoryRow(), moving the week counter and the overdue clock'],
+    ]) {
+      const w = sjMatch[0].match(re);
+      if (!w) { fail('D9', `saveJournal(): ${label} not found — its session_type stamp cannot be confirmed`); continue; }
+      if (!/session_type: ONEOFF_SESSION_TYPE/.test(w[0])) {
+        fail('D9', `saveJournal(): ${label} does not stamp session_type: ONEOFF_SESSION_TYPE — ${why}. A journaled workout is a workout, never a program day (Kerwin rulings 2026-09-13 / 2026-09-14)`);
+      } else d9ScopeChecked++;
+    }
+
+    // "Past date, don't count for the streak." A journaled workout is credited from its
+    // OWN date, so the streak flag must be derived from whether that date is today. A
+    // literal `true`, or the 3-arg call, silently re-credits the streak for a backdated
+    // entry — the exact regression this clause exists to prevent.
+    // Matched to the `);` terminator, not to the first `)` — the argument list contains
+    // nested calls (Math.round(...)), and a `[^)]*` cap would clip mid-argument and read
+    // as "the flag is missing" when it is present. A false failure, not a safe one.
+    const creditCall = sjMatch[0].match(/creditSessionToStreaks\([\s\S]{0,200}?\);/);
+    if (!creditCall) {
+      fail('D9', 'saveJournal() never calls creditSessionToStreaks() — points/volume/PRs must be credited through the ONE owner of the scoring rule, not inlined');
+    } else if (!/,\s*!isBackdated\s*\);$/.test(creditCall[0])) {
+      fail('D9', `saveJournal()'s streak credit is \`${creditCall[0]}\` — it must pass \`!isBackdated\` as the advanceStreak argument. "Past date, don't count for the streak." (Kerwin ruling 2026-09-14)`);
+    } else d9ScopeChecked++;
+  }
+
+  // The option must actually gate the three streak-bearing columns inside the one owner.
+  // Checked on the owner's body, not on the caller: passing advanceStreak=false and then
+  // writing last_session_date anyway is "wired, not working" — and writing it BACKWARDS
+  // is worse than not crediting, because it breaks a live streak.
+  const csMatch = tandemHtml.match(/async function creditSessionToStreaks\([\s\S]{0,6000}?\n\}/);
+  if (!csMatch) {
+    fail('D9', 'creditSessionToStreaks() not found in tandem.html');
+  } else {
+    if (!/advanceStreak\s*=\s*true/.test(csMatch[0])) {
+      fail('D9', 'creditSessionToStreaks() has no advanceStreak parameter defaulting to true — a backdated journal entry cannot be credited without advancing the streak, and defaulting it false would silently stop crediting real sessions');
+    } else d9ScopeChecked++;
+    // The UPDATE branch must assign the streak-bearing columns conditionally.
+    const guarded = /if \(advanceStreak\) \{[\s\S]{0,400}?last_session_date[\s\S]{0,200}?\n  \}/.test(csMatch[0]);
+    if (!guarded) {
+      fail('D9', "creditSessionToStreaks() writes last_session_date unconditionally — a backdated entry would move the streak date BACKWARDS and break a live streak. The three streak-bearing columns (current_streak_days, longest_streak_days, last_session_date) must be assigned only inside `if (advanceStreak)` (Kerwin ruling 2026-09-14)");
+    } else d9ScopeChecked++;
+  }
+} catch (e) {
+  fail('D9', `could not verify one-off program-position scope: ${e.message}`);
+}
+console.log(`  D9 one-off scope: ${d9ScopeChecked} structural guards verified`);
 
 // ── D12 (ACTIVE) — Multi-formula 1RM estimation, monotonic in reps ─────────────
 // A single linear formula (Epley) is accurate only to ~12 reps; the estimate must
@@ -1408,7 +1651,10 @@ if (existsSync(seedsDir)) {
 // invariant. This is what makes the F8 fix permanent rather than a one-time edit.
 try {
   const doctrineMd = readFileSync(join(root, 'DOCTRINE.md'), 'utf8');
-  const declared = [...doctrineMd.matchAll(/^\|\s*\*\*(D\d+b?)\*\*\s*\|/gm)].map(m => m[1]);
+  // [a-z]? not the earlier hardcoded 'b?' — D4b/D6b established the digit+letter
+  // sub-invariant convention, and D6c (2026-09-14) is the first ID past 'b', so the
+  // pattern must match the convention, not one letter that happened to be first.
+  const declared = [...doctrineMd.matchAll(/^\|\s*\*\*(D\d+[a-z]?)\*\*\s*\|/gm)].map(m => m[1]);
   if (declared.length === 0) fail('D16', 'could not parse the invariant table out of DOCTRINE.md');
   for (const id of declared) {
     d16Checked++;
@@ -2094,7 +2340,7 @@ let d21Checked = 0;
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
-  ['D6b', 'Per-muscle weekly volume within goal MEV..MRV band + within-block MEV→MRV ramp (Finding 3 remainder + 4)', 'per-length meso'],
+  ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b (now ACTIVE) as its real per-muscle baseline', 'needs numeric ramp cadence'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops the isolation block\'s 3rd accessory slot (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
 ];
@@ -2356,6 +2602,7 @@ console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on prima
 console.log(`  D27 continuity across regenerations — ${d27Checked} property checks`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
+console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() across the full 4-24wk range — ${d11Checked} week-steps checked`);
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);

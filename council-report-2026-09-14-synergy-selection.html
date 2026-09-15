@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Council Verdict — Synergy-Aware Exercise Selection</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --border: #e4e2dd; --text: #1f1e1c; --muted: #6b6862;
+    --accent: #7a5cff; --accent-soft: #efe9ff; --green: #1f7a4d; --green-soft: #e7f5ec;
+    --amber: #9a6b00; --amber-soft: #fff3d6; --red: #a3273b; --red-soft: #fbe9ec;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 20px 80px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { margin-bottom: 28px; }
+  .kicker { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+  h1 { font-size: 28px; margin: 6px 0 10px; line-height: 1.25; }
+  .meta { color: var(--muted); font-size: 14px; }
+  .question-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; margin: 20px 0 32px; font-size: 15px; color: #333;
+  }
+  .question-card b { color: var(--text); }
+  blockquote {
+    margin: 10px 0 0; padding: 10px 14px; border-left: 3px solid var(--accent);
+    background: var(--accent-soft); border-radius: 0 8px 8px 0; font-style: italic; font-size: 14.5px;
+  }
+  section.verdict {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 26px 26px 8px; margin-bottom: 32px;
+  }
+  section.verdict h2 {
+    font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    margin: 24px 0 10px; border-top: 1px solid var(--border); padding-top: 18px;
+  }
+  section.verdict h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  section.verdict p, section.verdict li { font-size: 15px; }
+  .rec-box {
+    background: var(--green-soft); border: 1px solid #c8e6d4; border-radius: 10px;
+    padding: 16px 18px; margin: 8px 0 20px;
+  }
+  .rec-box h3 { margin: 0 0 8px; color: var(--green); font-size: 14px; text-transform: uppercase; letter-spacing: .04em; }
+  .first-box {
+    background: var(--amber-soft); border: 1px solid #f0dca0; border-radius: 10px;
+    padding: 16px 18px; margin: 0 0 22px;
+  }
+  .first-box h3 { margin: 0 0 8px; color: var(--amber); font-size: 14px; text-transform: uppercase; letter-spacing: .04em; }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 18px 0 28px;
+  }
+  .advisor-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+    position: relative;
+  }
+  .advisor-card.top { border-color: var(--green); box-shadow: 0 0 0 1px var(--green) inset; }
+  .advisor-card.flagged { border-color: var(--red); }
+  .advisor-name { font-weight: 700; font-size: 14.5px; margin-bottom: 4px; }
+  .advisor-tag {
+    display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 8px; border-radius: 999px; margin-top: 6px;
+  }
+  .tag-top { background: var(--green-soft); color: var(--green); }
+  .tag-flag { background: var(--red-soft); color: var(--red); }
+  .advisor-stance { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .score-line { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  details {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  summary {
+    cursor: pointer; padding: 14px 18px; font-weight: 600; font-size: 14.5px;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary:after { content: "+"; font-size: 20px; color: var(--muted); font-weight: 400; }
+  details[open] summary:after { content: "–"; }
+  .details-body { padding: 0 18px 18px; font-size: 14.5px; color: #333; white-space: pre-wrap; }
+  .section-title { font-size: 19px; font-weight: 700; margin: 34px 0 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12.5px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">LLM Council Verdict</div>
+    <h1>Synergy-Aware Exercise Selection — replacing the oneRmFactor tiebreak</h1>
+    <div class="meta">Convened 2026-09-14 · Tandem program-generator architecture fork · 5 advisors, 5 peer reviews, 1 chairman synthesis</div>
+  </header>
+
+  <div class="question-card">
+    <b>The question:</b> Once a compound slot's candidate pool is correctly restricted to primary-tagged muscle matches (BUG-116, shipped), the WINNER among eligible candidates is still chosen by <code>oneRmFactor</code> — a loading-capacity number, not a coverage signal. What should replace or supplement it so selection reflects whole-program muscle-group synergy instead?
+    <blockquote>"Why is the 1RM factor the deciding factor between things getting elevated to the front of the line or not? I don't want you to decide the program based on the 1RM factor. I want you to describe it based on the synergies of all of the workouts together combined, so that all of those workouts hit major muscle groups and sub-muscle groups at a level for which they are properly attributed to best warrant the best results." — Kerwin</blockquote>
+  </div>
+
+  <div class="section-title">The Verdict</div>
+  <section class="verdict">
+
+    <div class="rec-box">
+      <h3>The Recommendation</h3>
+      <p><b>Two phases, not one.</b> Phase 1 (build now): the Outsider's scoring formula (<code>primaryContribution − overlapPenalty</code>) — independently ranked strongest by 4 of 5 reviewers — corrected to compute against a <b>per-user, per-muscle weekly volume ledger</b> instead of same-day-only visibility, so it actually answers "whole program" rather than "whole day." Precedence: eligibility filter → synergy score (new) → D20 recency → oneRmFactor (demoted to within-muscle tiebreak) → BUG-108 equipment. Resolve and cache at block-start per D1/D15 — no weekly reshuffling. Phase 2 (file separately, don't build yet): the First Principles Thinker's post-hoc validator that flags real imbalance at the next block boundary — a genuinely different, later system, not the same change.</p>
+    </div>
+
+    <div class="first-box">
+      <h3>The One Thing to Do First</h3>
+      <p>Promote <b>D6b from PENDING to ACTIVE</b> with a real citation (or an honestly-flagged unsourced engineering default, same pattern as D28) before writing any ranking code. Phase 1's ledger has nothing to compare weekly volume against until D6b's MEV/MAV bands exist as a real, doctrine-gated table. This is a research step (exercise-science-research skill, mandatory), not a code step — everything else sits on top of it.</p>
+    </div>
+
+    <h2>Where the Council Agrees</h2>
+    <ul>
+      <li><code>oneRmFactor</code> is the wrong tiebreak and must be demoted — not replaced with an equally narrow local heuristic (the Executor's <code>primaryTagCount</code> proposal was rejected by 4/5 reviewers for exactly this reason: it re-skins BUG-116's specific shape rather than answering the actual ask).</li>
+      <li>Whatever ships must respect D18 (non-empty pools, with the fallback already established), D19 (byte-identical extraction), D1/D15 (block-stability), and state its BUG-108/D20 precedence explicitly.</li>
+      <li>This is engineering judgment, not science — the source is genuinely silent on the mechanism. Label it that way; don't write it into DOCTRINE.md as a cited SCIENCE_DEFAULT clause.</li>
+      <li><b>The single most convergent finding:</b> all 5 independent peer reviewers, unprompted, flagged the same gap across all 5 proposals — none specified how the new mechanism gets verified against real generated output.</li>
+    </ul>
+
+    <h2>Where the Council Clashes</h2>
+    <p>The real fork is <b>layer</b>, not mechanism quality. The Outsider and Executor keep the fix at slot-fill time (day-level, sequential, minimal diff). The Contrarian, First Principles Thinker, and Expansionist argue slot-fill time structurally cannot deliver what Kerwin asked for — a same-day-only score is greedy local optimization wearing a synergy costume, and can pass every slot-level check while two different days both overload the same synergist muscle.</p>
+    <p>Nested inside that: the First Principles Thinker and Expansionist both independently land on "this is D6b" — but diverge on WHERE it acts. One wants a reactive post-hoc validator (flag, react at next block boundary); the other wants a proactive live-computed ledger consulted at slot-fill time. The peer review correctly caught that the proactive version has no stated D18 fallback — a "most underserved wins" rule can starve a slot the same way the unguarded primary-only filter almost did in BUG-116's own fix.</p>
+
+    <h2>Blind Spots the Council Caught</h2>
+    <ul>
+      <li>No verification plan in any of the five proposals — needs the same shape as the project's own persona sweep: generate N programs, dump per-muscle weekly volume, diff before/after.</li>
+      <li>No stated D18 fallback for a coverage-seeking mechanism — needs the identical soft-fallback pattern BUG-116's fix already established.</li>
+      <li>No mention of whether Dani's and Kerwin's independently-generated programs share any coverage state — should obviously be per-user, but that needs to be stated, not assumed.</li>
+      <li>No doctrine gate proposed for the new rule — a cross-cutting selection rule left ungated is exactly the silo "one rule, one home" exists to prevent.</li>
+    </ul>
+  </section>
+
+  <div class="section-title">Advisor Positions at a Glance</div>
+  <div class="grid">
+    <div class="advisor-card top">
+      <div class="advisor-name">The Outsider</div>
+      <div class="advisor-stance">Weighted synergy score (primaryContribution − overlapPenalty), day-fill time, full precedence order specified.</div>
+      <div class="score-line">Ranked strongest by 4 of 5 reviewers</div>
+      <span class="advisor-tag tag-top">Council's chosen mechanism</span>
+    </div>
+    <div class="advisor-card">
+      <div class="advisor-name">The Contrarian</div>
+      <div class="advisor-stance">Any per-slot score is greedy local balance, not whole-program synergy — scope mismatch with what was asked.</div>
+      <div class="score-line">Structural critique adopted into Phase 1's fix</div>
+    </div>
+    <div class="advisor-card">
+      <div class="advisor-name">The First Principles Thinker</div>
+      <div class="advisor-stance">Wrong layer entirely — build a post-hoc D6b validator, not a slot-time scorer.</div>
+      <div class="score-line">Becomes Phase 2</div>
+    </div>
+    <div class="advisor-card">
+      <div class="advisor-name">The Expansionist</div>
+      <div class="advisor-stance">Build a muscle-coverage ledger — this IS D6b's implementation, graduate it live with UI upside.</div>
+      <div class="score-line">Ledger concept adopted into Phase 1</div>
+    </div>
+    <div class="advisor-card flagged">
+      <div class="advisor-name">The Executor</div>
+      <div class="advisor-stance">Ship a two-key sort (primaryTagCount asc) Monday — fast, but doesn't measure synergy at all.</div>
+      <div class="score-line">Flagged as biggest blind spot by 4 of 5 reviewers</div>
+      <span class="advisor-tag tag-flag">Rejected mechanism</span>
+    </div>
+  </div>
+
+  <div class="section-title">Full Advisor Responses</div>
+
+  <details>
+    <summary>The Contrarian — full response</summary>
+    <div class="details-body">The proposal has a scope-mismatch that no scoring formula fixes: Kerwin asked for synergy across "all of the workouts together combined" — that's week/program-level — but the architecture on the table is still slot-by-slot, template-order, single-day fill. A "synergy score" computed at slot-fill time only knows what's already been picked earlier THAT DAY. That's not whole-program balance, it's greedy local balance with a fancier name. You can satisfy the new metric on every slot and still end up with a week where two days both lean on the same synergist muscle, because no day ever sees another day's picks. If the council blesses a per-slot synergy score without addressing this, it's solving a differently-shaped problem than the one Kerwin described and will get flagged again in three weeks as "the same bug, different symptom" — exactly the BUG-73/BUG-114 pattern this project's own rules call out, except this time at the architecture level, not the label-vocabulary level.
+
+Second flaw: the framing quietly asks for a "concrete scoring mechanism... be concrete enough to hand to an implementer" on a question the prompt itself admits the source is silent on. That's an invitation to fabricate a coefficient system and dress it up as though it resolves Kerwin's ask, when it's actually 100% engineering judgment. Fine — that's legitimately this council's job — but the deliverable must be labeled as an engineering-design choice, not smuggled into doctrine as if D6b now "covers" it. If it gets written into DOCTRINE.md as SCIENCE_DEFAULT-tier, that's a fabrication exactly as bad as inventing a rep number.
+
+Third: "minimal version that doesn't require a rewrite" is the path of least resistance and the path most likely to only fix the reported case (Day 1 shoulder slot) rather than the mechanism. Demand the minimal version still be defined at the shared comparator level, applied to every slot type, verified against actual generated output for multiple goals/day-counts — not just re-running Day 1 and calling it done.</div>
+  </details>
+
+  <details>
+    <summary>The First Principles Thinker — full response</summary>
+    <div class="details-body">Wrong question. "What's the tiebreak formula" presumes slot-fill is the right layer to solve coverage at. It isn't — it's the layer that's easiest to patch, which is a different thing.
+
+Strip it down: Kerwin's actual complaint is "does the WEEK end up hitting muscle groups proportionally." That is a property of a completed program, checked after generation — not a property you can guarantee by choosing well at each sequential slot. Sequential greedy selection literally cannot solve a joint-coverage problem correctly; every greedy algorithm on a joint-constraint problem is a heuristic that sometimes fails, no matter how clever the per-step score is. You already have the proof of this in your own bug report: BUG-116 was exactly a slot-time heuristic (muscle-tag matching) producing a program-level defect (chest overrepresented) that only became visible at the whole-program level. Replacing oneRmFactor with a "synergy score" and keeping slot-by-slot fill is the same architecture that produced BUG-116, wearing a new scoring function. You'll ship BUG-117 in three months when the new heuristic fails on some other day/goal combination, and this project's own "fix the mechanism not the instance" rule says that's the wrong kind of fix.
+
+So: don't design a scoring signal. Design a validator. Generate the day/week with a cheap deterministic tiebreak (equipment tier > D20 recency > alphabetical, whatever — it barely matters), then run a post-hoc muscle-coverage check against D6b's MEV..MRV band per muscle, per week. If coverage is out of band, that's a flagged/logged deficiency the SYSTEM can react to on the NEXT primary-block boundary (respecting D1/D15 stability), not something slot-selection silently self-corrects mid-week.
+
+This reframes D6b from "orthogonal, closest existing doctrine" to: it IS the answer. Don't invent a new synergy score — implement D6b for real, as a program-level auditor, and stop treating exercise ranking as the place coverage lives.
+
+Minimal version: log/flag imbalance. Full version, later: use the flag to reweight primary-compound selection at the next block boundary only.</div>
+  </details>
+
+  <details>
+    <summary>The Expansionist — full response</summary>
+    <div class="details-body">The council keeps asking "what's the minimal safe fix." Wrong question. The real asset Kerwin is describing — "synergies of all the workouts together combined" — isn't a tiebreak, it's a coverage model of the whole program, and once it exists it's worth far more than resolving Day 1's shoulder slot.
+
+Build it as a muscle-coverage ledger: for every muscle/sub-muscle, running weekly (and mesocycle) volume-by-role (primary-stimulus sets vs. synergist sets), computed once per day-fill as a lightweight prepass, not reinvented per slot. The tiebreak signal becomes: among primary-tag-eligible candidates, prefer whichever pulls the currently-most-underserved muscle toward its MEV/MAV band. That's not a bolt-on scorer — that's D6b (PENDING) turned live. Don't leave D6b as a parallel, unused doctrine entry while you hand-roll a separate synergy score next to it. This fork is the implementation of D6b. Ship them together and D6b graduates PENDING→ACTIVE in the same change, with a citation instead of a stub.
+
+The upside case: once you're tracking per-muscle coverage as first-class state instead of an emergent side-effect of oneRmFactor sorting, you unlock things nobody's asked for yet but will want fast — a "coverage gap" badge in the UI ("your shoulders are under-trained this block"), a competitive-strategy signal (Dani vs. Kerwin balance comparison, since this is a couples app and symmetric development is a natural feature), and a foundation for adaptive deload/volume decisions that currently have nowhere to hook in. Don't build a scoring function that only a sort comparator reads — build a coverage object that the UI can also read. That's the actual moat line in this project's own north-star: "science-backed, periodized program that a biometric layer adapts." This is the biometric layer's missing input. Build it once, expose it twice.</div>
+  </details>
+
+  <details open>
+    <summary>The Outsider — full response (chosen mechanism)</summary>
+    <div class="details-body">Recommendation: weighted synergy score wins tiebreak, computed at day-fill time, positioned above BOTH D20 recency and BUG-108 equipment, but only within a two-stage gate — don't touch the eligibility filter (that's BUG-116's job, already done), touch only what breaks ties among an already-primary-tagged pool.
+
+Mechanism: For each candidate, compute synergyScore = primaryContribution − overlapPenalty, where overlapPenalty sums, across the candidate's OTHER primary/secondary tags, how much weekly volume those muscles already receive from slots filled earlier in the same day (not week — see below). A pure dedicated mover (OHP: primary=anterior_delt only) scores near-zero penalty; a dual-tagged press (High Incline: primary=pec+delt) gets penalized proportional to how saturated pec already is from the earlier chest slot. This directly encodes Kerwin's ask — "hit muscle groups at a level properly attributed" — without inventing a new per-exercise research number the source doesn't provide.
+
+Full precedence: eligibility filter (primary-tag-only, D18-fallback-safe) → synergy score (new, primary tiebreak) → D20 recency (secondary) → oneRmFactor (tertiary, now a within-muscle quality signal, not the decider) → BUG-108 equipment (final). Recency and 1RM still matter, just demoted — this isn't a rewrite of their intent, it's a reordering, which is the minimal-diff way to satisfy the ask.
+
+Scope: DAY-fill, sequential, template-order — not a joint solver. A full joint optimizer is the "later phase," not now: it's a genuinely bigger fork with its own correctness risk, and a same-day lookback (score against slots already filled this day, in template order) captures the actual complaint (two presses same day) without redesigning the engine.
+
+D1/D15 stability: compute synergy score once at block-start slot-fill, cache the winner for the block's duration — same mechanism that already holds primary/secondary stable, don't re-score weekly.
+
+This is engineering, not science — say that explicitly in the should/could/did audit; don't dress it up with a fake citation.
+
+[Council note: the Chairman's Phase 1 recommendation takes this formula but corrects overlapPenalty to read from a per-user weekly ledger instead of same-day-only, addressing the Contrarian/First Principles objection about day-scoped visibility.]</div>
+  </details>
+
+  <details>
+    <summary>The Executor — full response (rejected mechanism)</summary>
+    <div class="details-body">Monday morning: what do you actually type into the editor?
+
+1. Scoring mechanism. Kill "synergy scoring" as a formula fantasy. Ship a two-key sort: (primaryTagCount ascending, oneRmFactor descending). An exercise whose PRIMARY tags are [anterior_delt] only sorts above one tagged [pec_major_clavicular, anterior_delt] — fewer primary claims means it's not double-dipping into a muscle another slot already owns. That's it. That's Monday's diff: one comparator function, no new data model, no new table. It's crude but it directly kills the exact BUG-116 failure mode (dual-tagged press stealing a single-purpose slot) without inventing a coverage-optimizer nobody's validated.
+
+2. Precedence. primaryTagCount asc → D20 recency → oneRmFactor desc → BUG-108 equipment. Recency stays above oneRmFactor because that's already shipped and D20-gated — don't relitigate it, just insert the new key in front of both. This is a one-line reorder in the existing comparator, not new architecture.
+
+3. Day-fill time, sequential, unchanged. Joint week/day optimization is a rewrite with no committed spec and no doctrine backing it — do not start that Monday. Ship the comparator change first, watch it in the persona sweep, and only escalate to structural if the sweep shows the greedy sequential fill still starves a muscle group.
+
+4. D1/D15 stability: comparator only runs at block-boundary selection time, same as today — no new re-roll trigger, so stability is inherited for free, not re-engineered.
+
+5. Minimal version is the whole recommendation above. "Full version" (week-level joint optimization, D6b volume-band integration) is a distinct future epic — don't scope-creep it into this fix. Write it down, don't build it now.
+
+Implementer next step: patch the sort comparator in programs.js, run validate:personas, confirm D18 pool non-empty at home tier, run doctrine gate, commit.
+
+[Council note: 4 of 5 peer reviewers independently flagged this as the biggest blind spot — primaryTagCount measures "avoids double-dipping," not synergy/coverage, and can pass Kerwin's exact complaint case while appearing to address BUG-116's shape.]</div>
+  </details>
+
+  <details>
+    <summary>Peer review highlights (all 5 reviewers)</summary>
+    <div class="details-body">Response A (Outsider) = strongest, 4 of 5 reviewers.
+Response E (Expansionist) = strongest, 1 of 5 reviewers.
+Response B (Executor) = biggest blind spot, 4 of 5 reviewers — "primaryTagCount doesn't measure coverage at all, it's a proxy for avoiding double-dipping."
+Response E (Expansionist) = biggest blind spot, 1 of 5 reviewers — "no stated D18 fallback for a coverage-seeking tiebreak."
+
+Convergent finding across ALL 5 reviewers, independently: none of the five proposals specify how the new mechanism gets verified against real generated output. Every reviewer named this, unprompted, as what the whole council missed.
+
+Secondary points raised: whether synergy state is scoped per-user (Dani vs. Kerwin); whether the new rule gets its own doctrine invariant/gate; which goal×split×day-count sweep would need to run to confirm no muscle is silently starved.</div>
+  </details>
+
+  <footer>
+    Council convened 2026-09-14 on the Tandem repository (kerwinferrette-boop/tandem-app). Full transcript: council-transcript-2026-09-14-synergy-selection.md. Filed against Notion Epic "Synergy-Aware Exercise Selection" (3dbca37f-935b-8187-a0e0-dff9703486ce).
+  </footer>
+
+</div>
+</body>
+</html>

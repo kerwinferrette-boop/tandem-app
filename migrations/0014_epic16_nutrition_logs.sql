@@ -2,12 +2,24 @@
 -- EPIC-16 — Simplified Nutrition Tracking, schema slice (Slice 1 of
 -- docs/waves/EPIC-16-WAVE-STATE.md).
 --
--- WRITTEN 2026-09-07/08, NOT APPLIED. Schema changes are human-apply-only per
--- .claude/loop-config.md; this session is Notion/docs-updates-only except for
--- the wave-decomposition files it was explicitly scoped to write. Same
--- posture as migrations/0013_bug72_groupA_wedding_tables_cleanup.sql — a
--- fully-formed, reviewable file, left for Kerwin (or whoever has DB access)
--- to apply.
+-- WRITTEN 2026-09-07/08. APPLIED to prod on Kerwin's explicit one-off
+-- authorization. Confirmed independently 2026-09-14 via live introspection
+-- (list_tables): public.nutrition_logs exists, RLS enabled, 0 rows, table
+-- comment matches this file. The POST-MIGRATION ASSERTIONS below WERE
+-- independently re-run 2026-09-14 in a rolled-back probe transaction (`set
+-- local role`/`request.jwt.claims` against the two allowlisted +test accounts,
+-- per SC-08 — no real-user data touched): anon insert denied, owner insert
+-- succeeds, cross-user SELECT returns 0 rows, a cross-user UPDATE matches and
+-- changes 0 rows (RLS-filtered no-op, confirmed by re-reading the row
+-- unchanged), and the one-row-per-user-per-day UNIQUE constraint rejects a
+-- same-day duplicate insert. All five passed; transaction rolled back, 0 rows
+-- committed. This was a raw-SQL role simulation, NOT a live supabase-js/JWT
+-- client check — that on-device gap (noted for Slice 2 below) is still open,
+-- but is now lower-priority since Slice 2 (the manual-log UI this table backs) briefly
+-- shipped as the "Journal" feature, then regressed the same day (2026-09-14)
+-- when Kerwin redirected the Journal into a manual WORKOUT log instead — this
+-- table currently has NO write path anywhere in the app. See
+-- docs/waves/EPIC-16-WAVE-STATE.md for the full correction.
 --
 -- WHAT THIS IS
 --

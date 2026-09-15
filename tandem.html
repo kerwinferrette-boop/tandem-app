@@ -1091,29 +1091,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
         <div class="ob-card-title">Training Preferences</div>
         <div class="ob-card-sub">This shapes how your coach programs and adapts your workouts daily.</div>
 
-        <!-- Equipment -->
-        <div class="ob-section">
-          <span class="ob-label">Equipment Access</span>
-          <div class="ob-toggle-row two">
-            <div class="ob-toggle" onclick="selectEquipment('full_gym',this)">
-              <div class="ob-toggle-icon" data-icon="dumbbell"></div>
-              <div class="ob-toggle-label">Full Gym</div>
-            </div>
-            <div class="ob-toggle" onclick="selectEquipment('barbell_rack',this)">
-              <div class="ob-toggle-icon" data-icon="cog"></div>
-              <div class="ob-toggle-label">Barbell + Rack</div>
-            </div>
-            <div class="ob-toggle" onclick="selectEquipment('home_dumbbells',this)">
-              <div class="ob-toggle-icon" data-icon="dumbbell"></div>
-              <div class="ob-toggle-label">Home Dumbbells</div>
-            </div>
-            <div class="ob-toggle" onclick="selectEquipment('bodyweight',this)">
-              <div class="ob-toggle-icon" data-icon="activity"></div>
-              <div class="ob-toggle-label">Bodyweight</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Muscle Emphasis -->
         <div class="ob-section">
           <span class="ob-label">Muscle Emphasis</span>
@@ -1757,31 +1734,35 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 </div>
 
-<!-- JOURNAL (EPIC-16 manual nutrition log, rebuilt 2026-09-12 as the "Today's
-     Workout" flow's Journal entry rather than a standalone dashboard side-quest
-     — Kerwin: "not worth a nutrition log at all whatsoever [on its own] ...
-     Journal" as one of the three Today's-Workout buttons. No calorie/macro math
-     — self-reported meals/protein/notes only, per EPIC-16's own Agent Context
-     Notes and the nutrition_logs schema (migrations/0014, already live). -->
+<!-- JOURNAL — manual WORKOUT log (rebuilt 2026-09-14 on Kerwin's correction:
+     "The journal it's not supposed to be a food journal. It's supposed to be:
+     These are the workouts that I did today. These are the reps that I did.
+     These are the weights that I did, record it."). Meals/protein are GONE:
+     nutrition is EPIC-4's Apple Health / MyFitnessPal pipeline, not a hand-typed
+     field ("'2 meals' has no ability to add nutritional value to the home page").
+     Date may be backdated; a backdated entry does NOT advance the streak
+     (Kerwin, 2026-09-14: "Past date, don't count for the streak."). -->
 <div class="modal-overlay" id="modal-journal" onclick="if(event.target===this)closeModal('journal')">
-  <div class="modal-sheet">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <button class="modal-close" onclick="closeModal('journal')">✕</button>
-    <div class="modal-title">Journal</div>
-    <div class="modal-sub" id="journalDateLabel">Today</div>
+    <div class="modal-title">Journal a Workout</div>
+    <div class="modal-sub">Record what you actually did — exercise, reps, weight.</div>
     <div style="margin-top:14px;">
-      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Meals logged today</label>
-      <input type="number" id="journalMeals" min="0" max="12" step="1" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;">
-    </div>
-    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
-      <label class="profile-input-label" for="journalProtein">Hit my protein target</label>
-      <input type="checkbox" id="journalProtein" style="width:20px;height:20px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Date</label>
+      <input type="date" id="journalDate" onchange="renderJournalDateNote()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-mono);font-size:14px;box-sizing:border-box;">
+      <div id="journalDateNote" class="modal-sub" style="margin-top:6px;font-size:11px;"></div>
     </div>
     <div style="margin-top:14px;">
-      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Notes</label>
-      <textarea id="journalNotes" rows="3" placeholder="However you want to remember today — no macros required." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">What did you do?</label>
+      <div id="journalRows"></div>
+      <button class="clear-btn" style="margin-top:8px;" onclick="addJournalRow()">+ Add exercise</button>
     </div>
-    <button class="profile-save-btn" style="margin-top:14px;" onclick="saveJournal()">Save</button>
+    <div style="margin-top:14px;">
+      <label class="profile-input-label" style="display:block;margin-bottom:6px;">Notes (optional)</label>
+      <textarea id="journalNotes" rows="2" placeholder="However you want to remember it." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <button class="profile-save-btn" id="journalSaveBtn" style="margin-top:14px;" onclick="saveJournal()">Save Workout</button>
   </div>
 </div>
 
@@ -1806,6 +1787,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="modal-title">Build Custom Template</div>
     <div class="modal-sub">A from-scratch program made of your own picks — 2 to 6 days, each exercise chosen from the exercise bank. Replaces your generated plan; you can switch back anytime from the Library.</div>
     <input type="text" id="builderName" class="modal-input" placeholder="Template name (e.g. My Push/Pull/Legs)" style="margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <label class="profile-input-label" for="builderWeeks">Duration (weeks)</label>
+      <input type="number" id="builderWeeks" class="modal-input" min="4" max="12" value="12" style="width:64px;">
+    </div>
     <div id="builderStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
     <div id="builderDays"></div>
     <button class="clear-btn" style="margin-bottom:10px;" onclick="addBuilderDay()">+ Add Day</button>
@@ -2022,8 +2007,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 // HERO IMAGERY — heroSrc(moment) returns the right photo for each app moment
 // ═══════════════════════════════════════════════════════
 const HERO_PHOTOS = {
-  male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg'],
-  female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg']
+  male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg','public/hero-male-5.jpg','public/hero-male-6.jpg'],
+  female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg','public/hero-female-5.jpg','public/hero-female-6.jpg']
 };
 const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3 };
 function userSexKey(){
@@ -2036,8 +2021,12 @@ function userSexKey(){
   return (s === 'f' || s === 'female') ? 'female' : 'male';
 }
 function heroSrc(moment){
-  const idx = HERO_MOMENTS[moment] != null ? HERO_MOMENTS[moment] : 0;
-  return HERO_PHOTOS[userSexKey()][idx];
+  const pool = HERO_PHOTOS[userSexKey()];
+  const base = HERO_MOMENTS[moment] != null ? HERO_MOMENTS[moment] : 0;
+  // cycle daily through the full gender pool so the whole set gets seen over time,
+  // not just a permanently-fixed photo per moment
+  const dayOffset = new Date().getDate();
+  return pool[(base + dayOffset) % pool.length];
 }
 function applyHeroImages(root){
   const sex = userSexKey();
@@ -2094,6 +2083,15 @@ let cfg = {};        // program config
 let currentDay = ''; // active day key
 let currentWeek = 1;
 const S = { restTimers:{}, swTimers:{}, swRun:{}, swSec:{}, logged:{}, sessionSets:{} };
+
+// The discriminator that separates a one-off ("Build Me a Workout") session from a
+// PROGRAM session, everywhere. It is the same string migration 0015's partial unique
+// index workout_sessions_user_date_program_key predicates on
+// (`where session_type <> 'oneoff'`), so the client and the database agree on what a
+// program day is by construction rather than by coincidence. Declared here, once,
+// because five separate paths now test it and a literal that merely happens to match
+// today is the silo CLAUDE.md's "one rule, one home" is about.
+const ONEOFF_SESSION_TYPE = 'oneoff';
 
 
 // ═══════════════════════════════════════════════════════
@@ -2406,9 +2404,18 @@ async function persistWeekTargets(names) {
 // instead of clamped. The stored all-time PR is a running max and is never lowered.
 // Recomputes week_targets for any exercise whose 1RM moved. Skips core/timed work
 // and cardio.
-function reconcileWorking1RMs(sessionExs, program) {
+//
+// `explicitDay` (EPIC-036, Kerwin ruling 2026-09-13 — "it should also look to add to
+// one-rep max calculations: weights lifted, etc."): a one-off's day object is built by
+// getSingleDay() and by definition is NOT in `program`, so the `currentDay` lookup below
+// finds nothing and every real set logged in a one-off was silently dropped on the floor.
+// D9's exemption list is closed — D1/D4/D7 only — and D11 is not on it, so a measured
+// lift binds regardless of which session earned it. Fatigue is not a reason to exclude
+// one: the guard below is one-sided (`best <= prior` returns), so a tired one-off can
+// only fail to raise the number, never lower it.
+function reconcileWorking1RMs(sessionExs, program, explicitDay = null) {
   if (!sessionExs || !Object.keys(sessionExs).length) return;
-  const day = (program || []).find(d => d.key === currentDay);
+  const day = explicitDay || (program || []).find(d => d.key === currentDay);
   if (!day) return;
   const prs = LS.get('tandem_prs') || {};
   const working = LS.get('tandem_working1rm') || {};
@@ -2628,12 +2635,39 @@ const CFG_EQ_TO_BANK = {
   full_gym:'full_gym', barbell_rack:'full_gym',
   home_dumbbells:'hotel_gym', bodyweight:'home'
 };
+// EPIC-18 Slice 1 / BUG-107 follow-up (2026-09-14): BUG-107 fixed the selector's
+// VOCABULARY gap (it can now express every bank tier CFG_EQ_TO_BANK can). It left
+// a second gap open, named in its own writeup: the selector only ever wrote
+// sessionStorage, so a user's choice never survived a closed tab, and cfg.equipment
+// (the only DURABLE source) was reachable exclusively through the onboarding
+// question this slice removes. This table is what actually closes that gap — the
+// selector's own choice now also persists through the SAME cfg.equipment/
+// users.equipment path the onboarding question used, via applySetupSelection()
+// below. Every mapping here resolves to the identical bank tier as EQ_TIER_TO_BANK
+// (verified: EQ_TIER_TO_BANK[t] === CFG_EQ_TO_BANK[EQ_TIER_TO_CFG[t]] for all 6
+// keys) — this durability path can never disagree with the live-session path.
+const EQ_TIER_TO_CFG = {
+  full_gym:'full_gym', standard_gym:'full_gym',
+  hotel_full:'home_dumbbells', hotel_small:'home_dumbbells', dumbbells:'home_dumbbells',
+  bodyweight:'bodyweight'
+};
 // Source priority: live selector (sessionStorage.eq_tier) → onboarding cfg → full_gym.
 function resolveEquipmentTier() {
   const sess = sessionStorage.getItem('eq_tier');
   if (sess && EQ_TIER_TO_BANK[sess]) return EQ_TIER_TO_BANK[sess];
   if (cfg.equipment && CFG_EQ_TO_BANK[cfg.equipment]) return CFG_EQ_TO_BANK[cfg.equipment];
   return 'full_gym';
+}
+// Best-effort reverse of EQ_TIER_TO_CFG, for display only: which selector
+// BUTTON to show active when sessionStorage.eq_tier is empty (fresh session)
+// but cfg.equipment carries a durable choice. Lossy (several selector tiers
+// collapse to the same cfg.equipment value, e.g. hotel_full/hotel_small/
+// dumbbells all → 'home_dumbbells') — picks the first match, which is fine
+// since this only drives which button LOOKS active, never which exercises
+// get selected (that's resolveEquipmentTier(), unaffected by this ambiguity).
+function selectorTierFromCfg() {
+  if (!cfg.equipment) return null;
+  return Object.keys(EQ_TIER_TO_CFG).find(k => EQ_TIER_TO_CFG[k] === cfg.equipment) || null;
 }
 // Dumbbell weight cap for hotel/small-DB tiers (0/NaN = uncapped).
 function resolveMaxDb() {
@@ -2946,6 +2980,10 @@ async function createCustomTemplate(input) {
   const days = Array.isArray(input?.days) ? input.days : [];
   // workout_templates_days_per_week_check: CHECK (days_per_week >= 2 AND <= 6).
   if (days.length < 2 || days.length > 6) throw new Error('Custom templates need 2-6 days');
+  // Slice 6 (EPIC-27 wave-state): D7 (4-12wk block duration), ✅ ACTIVE — caller-supplied,
+  // no longer hardcoded to 12. Mirrors the days.length 2-6 validation pattern above.
+  const weeks = Number.isInteger(input?.weeks) ? input.weeks : 12;
+  if (weeks < 4 || weeks > 12) throw new Error('Custom templates need 4-12 weeks');
   for (const d of days) {
     if (!d.label || !String(d.label).trim()) throw new Error('Every day needs a label');
     if (!Array.isArray(d.exercises) || !d.exercises.length) throw new Error(`Day "${d.label}" needs at least one exercise`);
@@ -2964,22 +3002,24 @@ async function createCustomTemplate(input) {
   const difficulty = EXPERIENCE_LEVELS.includes(cfg.experience) ? cfg.experience : 'intermediate';
   const slug = `custom-${uid.slice(0, 8)}-${Date.now().toString(36)}`;
 
-  // 1. Template row — 12wk single block, per docs/waves/EPIC-27-WAVE-STATE.md's
-  // council-cited verdict (D15's 8-12wk block-length doctrine).
+  // 1. Template row — single block spanning `weeks` weeks, per
+  // docs/waves/EPIC-27-WAVE-STATE.md Slice 6 (D7, 4-12wk block duration,
+  // ✅ ACTIVE — supersedes the earlier D15 miscitation for Slice 1's
+  // original hardcoded 12).
   const { data: tpl, error: te } = await sb.from('workout_templates').insert({
     name, slug, author_id: uid, is_published: false,
     parent_goal: goal, code_goal_mapping: goal,
-    duration_weeks: 12, days_per_week: days.length,
+    duration_weeks: weeks, days_per_week: days.length,
     equipment_tier: resolveEquipmentTier(), difficulty,
     science_overrides: {},
   }).select('id').single();
   if (te) throw te;
   try {
-    // 2. One non-periodized block spanning the whole 12 weeks — empty
+    // 2. One non-periodized block spanning the whole `weeks` weeks — empty
     // rep_scheme_by_week/technique_by_week is the column's own existing
     // default and already means "no periodization", zero new schema behavior.
     const { data: block, error: be } = await sb.from('template_blocks').insert({
-      template_id: tpl.id, block_order: 1, week_start: 1, week_end: 12,
+      template_id: tpl.id, block_order: 1, week_start: 1, week_end: weeks,
       name: 'Block 1',
     }).select('id').single();
     if (be) throw be;
@@ -3020,6 +3060,11 @@ async function createCustomTemplate(input) {
   const bundle = await fetchTemplateBundle(tpl.id);
   LS.set('tandem_adopted_program', bundle);
   cfg.programSource = 'template';
+  // Slice 6: cfg.weeks is what getPhase()/deloadWeeks()/effectiveReps() actually read
+  // (grep confirms `duration_weeks` on the template row itself is never consulted at
+  // render time) — without this, a custom template shorter/longer than the user's
+  // onboarding cfg.weeks would render deloads/phases sized for the WRONG length.
+  cfg.weeks = weeks;
   LS.set('tandem_cfg', cfg);
   currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
   await syncToCloud();
@@ -3049,6 +3094,8 @@ async function openTemplateBuilder() {
   openModal('builder');
   const nameInput = document.getElementById('builderName');
   if (nameInput) nameInput.value = '';
+  const weeksInput = document.getElementById('builderWeeks');
+  if (weeksInput) weeksInput.value = '12';
   builderState = { days: [
     { label: 'Day 1', exercises: [] },
     { label: 'Day 2', exercises: [] },
@@ -3230,6 +3277,10 @@ async function saveCustomTemplate(btn) {
   const nameInput = document.getElementById('builderName');
   const name = (nameInput?.value || '').trim();
   if (!name) { showToast('Name your template first'); return; }
+  const weeksInput = document.getElementById('builderWeeks');
+  const weeks = parseInt(weeksInput?.value, 10) || 12;
+  // Slice 6: D7 (4-12wk block duration, ACTIVE) — same range createCustomTemplate() enforces.
+  if (weeks < 4 || weeks > 12) { showToast('Duration must be 4-12 weeks'); return; }
   for (const d of builderState.days) {
     if (!d.exercises.length) { showToast(`"${d.label}" needs at least one exercise`); return; }
     for (const x of d.exercises) {
@@ -3240,6 +3291,7 @@ async function saveCustomTemplate(btn) {
   try {
     await createCustomTemplate({
       name,
+      weeks,
       days: builderState.days.map(d => ({
         label: d.label,
         exercises: d.exercises.map(x => ({ exercise_id: x.exercise_id, sets: x.sets, reps: x.reps, rest: x.rest, role: x.role })),
@@ -3287,6 +3339,21 @@ function applySetupSelection() {
   const maxDb = dbInput ? parseInt(dbInput.value) || 0 : 0;
   sessionStorage.setItem('eq_tier', tier);
   sessionStorage.setItem('eq_max_db', maxDb);
+  // EPIC-18 Slice 1 / BUG-107 follow-up: persist through the SAME durable path
+  // cfg.equipment/users.equipment always used (see EQ_TIER_TO_CFG above) — the
+  // onboarding equipment question is gone, so this is now the only place that
+  // choice gets saved past a closed tab.
+  if (typeof cfg === 'object' && cfg) {
+    cfg.equipment = EQ_TIER_TO_CFG[tier] || null;
+    // Write local FIRST so the choice survives a reload even if the cloud
+    // round-trip is slow, offline, or the tab closes before it resolves —
+    // every other cfg-mutation call site in this file does the same
+    // (LS.set('tandem_cfg', cfg) at onboarding build, syncFromCloud, etc.);
+    // this was the one that skipped it, which is what let a fresh session
+    // silently revert to Full Gym.
+    LS.set('tandem_cfg', cfg);
+    if (typeof syncToCloud === 'function') syncToCloud();
+  }
   document.getElementById('setupStatus').textContent = EQ_LABELS[tier] || tier;
   document.getElementById('eqActiveLabel').textContent = tier === 'full_gym'
     ? '' : `Active: ${EQ_LABELS[tier]}${maxDb ? ` · ${maxDb} lbs max` : ''}`;
@@ -3325,7 +3392,6 @@ let selectedGoal = null;
 let selectedDays = null;
 let selectedSex = null;
 let selectedExperience = null;
-let selectedEquipment = null;
 let selectedEmphasis = 'balanced';
 let selectedDuration = 60;
 let selectedWorkoutTime = null;
@@ -3433,7 +3499,7 @@ function obCanAdvance() {
       // FIX BUG 3: require explicit day selection — selectedDays init is 4 but we now init it null
       return wks >= 4 && wks <= 24 && !!selectedDays;
     }
-    case 3: return !!selectedEquipment && !!selectedWorkoutTime;
+    case 3: return !!selectedWorkoutTime;
     default: return true;
   }
 }
@@ -3469,16 +3535,6 @@ function selectSex(sex, el) {
 function selectExperience(exp, el) {
   selectedExperience = exp;
   document.querySelectorAll('.ob-toggle[onclick*="selectExperience"]').forEach(t => t.classList.remove('selected'));
-  el.classList.add('selected');
-  obUpdateNextState();
-}
-
-function selectEquipment(val, el) {
-  selectedEquipment = val;
-  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
-    if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('selected');
-  });
   el.classList.add('selected');
   obUpdateNextState();
 }
@@ -3576,7 +3632,6 @@ function populateReview() {
   const age = document.getElementById('ob-age').value || '—';
   const weeks = document.getElementById('ob-weeks').value || '12';
 
-  const equipMap = { full_gym: 'Full Gym', barbell_rack: 'Barbell + Rack', home_dumbbells: 'Home Dumbbells', bodyweight: 'Bodyweight' };
   const timeMap = { morning: 'Morning', lunch: 'Lunch', evening: 'Evening' };
   const secGoalMap = { run_5k: 'Run a 5K', '10k_steps': '10K Steps/Day', improve_mobility: 'Mobility', none: 'None' };
 
@@ -3616,10 +3671,6 @@ function populateReview() {
     <div class="review-item">
       <div class="review-item-label">Days / Week</div>
       <div class="review-item-value">${selectedDays}</div>
-    </div>
-    <div class="review-item">
-      <div class="review-item-label">Equipment</div>
-      <div class="review-item-value">${equipMap[selectedEquipment] || '—'}</div>
     </div>
     <div class="review-item">
       <div class="review-item-label">Session Length</div>
@@ -3665,7 +3716,12 @@ function buildProgram() {
     age,
     sex: selectedSex,
     experience: selectedExperience,
-    equipment: selectedEquipment,
+    // EPIC-18 Slice 1 (2026-09-14): equipment is no longer asked at onboarding —
+    // the per-workout tier selector (resolveEquipmentTier(), applySetupSelection())
+    // now durably owns it (syncs cfg.equipment + users.equipment, same as this used
+    // to). A brand-new user with no selector choice yet falls through to
+    // resolveEquipmentTier()'s 'full_gym' default, matching the selector's own
+    // default active button.
     emphasis: selectedEmphasis || 'balanced',
     workout_duration_minutes: selectedDuration,
     preferred_workout_time: selectedWorkoutTime,
@@ -3694,7 +3750,6 @@ function resetProgram() {
   selectedDays = null;
   selectedSex = null;
   selectedExperience = null;
-  selectedEquipment = null;
   selectedDuration = 60;
   selectedWorkoutTime = null;
   selectedSecondaryGoal = null;
@@ -3887,7 +3942,12 @@ function renderTracker() {
   renderSessionTimer();
   updateProgress();
 
-  const _eTier = sessionStorage.getItem('eq_tier');
+  // Mirrors resolveEquipmentTier()'s own source priority (session → cfg →
+  // full_gym) — this block previously read sessionStorage alone, so the
+  // setup card visually reverted to "Full Gym" on a fresh session even
+  // though the engine was already correctly building the durable tier's
+  // workout from cfg.equipment.
+  const _eTier = sessionStorage.getItem('eq_tier') || selectorTierFromCfg();
   const _eDb   = parseInt(sessionStorage.getItem('eq_max_db')) || 0;
   if (_eTier && _eTier !== 'full_gym') {
     document.querySelectorAll('.eq-btn').forEach(b => {
@@ -5219,7 +5279,7 @@ function skipAhead() {
           .eq('user_id', currentUser.id)
           .eq('session_date', today)
           .eq('completed', false)
-          .neq('session_type', 'oneoff')
+          .neq('session_type', ONEOFF_SESSION_TYPE)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -5266,6 +5326,67 @@ function reorderWeek() {
   renderTracker();
   showToast('Moved to the back of this week — nothing lost');
   if (typeof syncToCloud === 'function') syncToCloud();
+}
+
+// The scoring rule has ONE owner (CLAUDE.md, "one rule, one home"): 10 points for a
+// completed session + 5 per PR, with the streak advancing only across consecutive
+// calendar days. Two finishers call it — the program day's finishSession() and, per
+// Kerwin's ruling of 2026-09-13 ("one-offs should count towards streak/points/volume,
+// as it is a workout"), finishOneOff(). It was inlined in finishSession until that
+// ruling; a second copy inside the one-off path is exactly the silo that drifts.
+// Returns the streak to display on the completion card.
+//
+// `advanceStreak` (Kerwin, 2026-09-14, verbatim: "Past date, don't count for the
+// streak."): a BACKDATED journal entry is still a workout, so it still earns points,
+// volume, sessions and PRs — but it must not move the streak, because a streak is a
+// claim about consecutive days actually shown up for, and a retroactive entry cannot
+// make yesterday have happened today. When false, the three streak-bearing columns
+// (current_streak_days, longest_streak_days, last_session_date) are left untouched
+// rather than written with today's or the backdated value — writing last_session_date
+// backwards would silently BREAK a live streak, which is worse than not crediting it.
+// This is an option on the one owner, deliberately not a second copy of the rule.
+async function creditSessionToStreaks(prCount, volume, todayDate, advanceStreak = true) {
+  const sessionPoints = 10 + (prCount || 0) * 5;
+  const { data: existing } = await sb.from('streaks')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+  if (!existing) {
+    const { error: sErr } = await sb.from('streaks').insert({
+      user_id: currentUser.id,
+      current_streak_days: advanceStreak ? 1 : 0,
+      longest_streak_days: advanceStreak ? 1 : 0,
+      total_sessions: 1,
+      total_prs: prCount || 0,
+      total_volume_lbs: volume,
+      weekly_points: sessionPoints,
+      last_session_date: advanceStreak ? todayDate : null,
+      updated_at: new Date().toISOString()
+    });
+    if (sErr) throw sErr;
+    return advanceStreak ? 1 : 0;
+  }
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
+  const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
+  const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
+  const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
+  const patch = {
+    total_sessions: (existing.total_sessions || 0) + 1,
+    total_prs: (existing.total_prs || 0) + (prCount || 0),
+    total_volume_lbs: (existing.total_volume_lbs || 0) + volume,
+    weekly_points: (existing.weekly_points || 0) + sessionPoints,
+    updated_at: new Date().toISOString()
+  };
+  if (advanceStreak) {
+    patch.current_streak_days = newStreak;
+    patch.longest_streak_days = newLongest;
+    patch.last_session_date = todayDate;
+  }
+  const { error: sErr } = await sb.from('streaks').update(patch).eq('user_id', currentUser.id);
+  if (sErr) throw sErr;
+  return advanceStreak ? newStreak : (existing.current_streak_days || 0);
 }
 
 function finishSession() {
@@ -5334,7 +5455,7 @@ function finishSession() {
             .eq('user_id', currentUser.id)
             .eq('session_date', localDateStr())
             .eq('completed', false)
-            .neq('session_type', 'oneoff')
+            .neq('session_type', ONEOFF_SESSION_TYPE)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -5457,47 +5578,9 @@ function finishSession() {
           .eq('session_id', resolvedId)
           .eq('is_pr', true);
 
-        // 4. Upsert streaks — 10 pts/session + 5 pts/PR
-        const sessionPoints = 10 + (prCount || 0) * 5;
-        const { data: existing } = await sb.from('streaks')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
-        let finalStreak = 1; // EPIC-13 Step 4/Step 3: fed into the completion summary card below
-
-        if (!existing) {
-          const { error: sErr } = await sb.from('streaks').insert({
-            user_id: currentUser.id,
-            current_streak_days: 1,
-            longest_streak_days: 1,
-            total_sessions: 1,
-            total_prs: prCount || 0,
-            total_volume_lbs: totalVolume,
-            weekly_points: sessionPoints,
-            last_session_date: todayDate,
-            updated_at: new Date().toISOString()
-          });
-          if (sErr) throw sErr;
-        } else {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
-          const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
-          const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
-          const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
-          const { error: sErr } = await sb.from('streaks').update({
-            current_streak_days: newStreak,
-            longest_streak_days: newLongest,
-            total_sessions: (existing.total_sessions || 0) + 1,
-            total_prs: (existing.total_prs || 0) + (prCount || 0),
-            total_volume_lbs: (existing.total_volume_lbs || 0) + totalVolume,
-            weekly_points: (existing.weekly_points || 0) + sessionPoints,
-            last_session_date: todayDate,
-            updated_at: new Date().toISOString()
-          }).eq('user_id', currentUser.id);
-          if (sErr) throw sErr;
-          finalStreak = newStreak;
-        }
+        // 4. Upsert streaks — 10 pts/session + 5 pts/PR (creditSessionToStreaks owns it)
+        // EPIC-13 Step 4/Step 3: fed into the completion summary card below.
+        const finalStreak = await creditSessionToStreaks(prCount || 0, totalVolume, todayDate);
 
         // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
         try {
@@ -6028,16 +6111,23 @@ let _oneoffSets = null; // recent-sets read, cached for the life of the open mod
 // generated day only and is never written back to cfg.goal — a one-off must not
 // mutate the periodized program or the onboarding profile (the same "writes
 // nothing" rule the block comment above states for the day itself).
-const oneOffState = { goal: null, focus: null };
+// `day` is the getSingleDay() object this wizard last rendered. It is held because
+// finishOneOff() must hand it to reconcileWorking1RMs(): a one-off's exercises are not
+// in the periodized program, so without the day object the 1RM loop has no way to map a
+// logged set back to an exercise name (Kerwin ruling 2026-09-13 — one-offs "should also
+// look to add to one-rep max calculations"). Still transient: cleared with the rest.
+const oneOffState = { goal: null, focus: null, day: null };
 
 // Goal key for RECOVERY_PARAMS, PHASES and the goal-shaped opts below. The wizard's
 // pick wins; with no pick (or a stale/unknown one) this falls back to exactly the
 // previous behavior. 'burn_fat' is the onboarding pill's value and 'fat_burn' is the
 // canonical key — same alias weekFactor() already applies.
-function oneOffGoalKey() {
-  const raw = oneOffState.goal || cfg.goal;
+function goalKeyFor(raw) {
   const g = raw === 'burn_fat' ? 'fat_burn' : raw;
   return RECOVERY_PARAMS[g] ? g : 'build_muscle';
+}
+function oneOffGoalKey() {
+  return goalKeyFor(oneOffState.goal || cfg.goal);
 }
 
 // Card face for each focus. PRESENTATION ONLY — deliberately not in programs.js,
@@ -6089,6 +6179,7 @@ function oneOffBack() {
   if (document.getElementById('oneoffDay').innerHTML) { showOneOffStep(2); return; }
   oneOffState.goal = null;
   oneOffState.focus = null;
+  oneOffState.day = null;
   document.querySelectorAll('#oneoffGoalRow .oneoff-card, #oneoffFocusRow .oneoff-card')
     .forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   showOneOffStep(1);
@@ -6186,6 +6277,7 @@ async function openOneOff() {
   openModal('oneoff');
   oneOffState.goal = null;
   oneOffState.focus = null;
+  oneOffState.day = null;
   _oneoffSets = null;
   const finishBtn = document.getElementById('oneoffFinishBtn');
   if (finishBtn) finishBtn.style.display = 'none';
@@ -6249,7 +6341,8 @@ function renderOneOff(focus) {
     cardio: goalKey === 'fat_burn',
   });
   const host = document.getElementById('oneoffDay');
-  if (!day) { host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
+  if (!day) { oneOffState.day = null; host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
+  oneOffState.day = day; // finishOneOff() hands this to reconcileWorking1RMs
   // buildDayHTML needs a phase — it drives the rep display through effectiveReps().
   // Use the user's CURRENT phase at the PICKED goal, the same
   // getPhase(currentWeek, goal, weeks) every other call site uses. A one-off is exempt
@@ -6288,7 +6381,7 @@ async function finishOneOff() {
       session_date: localDateStr(), // BUG-018/027: local day, not UTC
       day_type: oneOffState.focus || 'oneoff',
       program_goal: oneOffGoalKey(),
-      session_type: 'oneoff', // the whole point of migrations/0015's partial index
+      session_type: ONEOFF_SESSION_TYPE, // the whole point of migrations/0015's partial index
       completed: true,
       total_volume_lbs: Math.round(totalVolume),
     }).select('id').single();
@@ -6306,9 +6399,70 @@ async function finishOneOff() {
     const { error: setsErr } = await sb.from('sets').insert(rows);
     if (setsErr) throw setsErr;
 
+    // ── Kerwin's ruling, 2026-09-13, verbatim: "one-offs should count towards
+    // streak/points/volume, as it is a workout, and it should also look to add to
+    // one-rep max calculations: weights lifted, etc." Everything below is that half of
+    // the ruling. The OTHER half — "as it pertains to the program itself, it should not
+    // count as an extra day" — is why nothing here touches tandem_current_day, the week
+    // counter, or the overdue clock (see isProgramHistoryRow()).
+    //
+    // A one-off's earned loads bind the working 1RM. `oneOffState.day` is passed
+    // explicitly because these exercises are NOT in the periodized program, so
+    // reconcileWorking1RMs' currentDay lookup would find nothing and drop every set.
+    // This is a measurement, not a schedule (D11), and the function only ever raises a
+    // stored max — a fatigued one-off cannot lower anything.
+    const oneOffExs = {};
+    oneOffIds.forEach(id => { oneOffExs[id] = sessionSetsMap[id] || []; });
+    try { reconcileWorking1RMs(oneOffExs, null, oneOffState.day); }
+    catch (rmErr) { console.warn('One-off 1RM reconcile skipped:', rmErr); }
+
+    // PRs are set by the sets_apply_1rm_and_pr() trigger on insert, so they are read
+    // back rather than computed here — the DB is the one that decided.
+    const { count: prCount } = await sb.from('sets')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id)
+      .eq('is_pr', true);
+
+    // Streak, points and cumulative volume, through the one owner of that rule.
+    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), localDateStr()); }
+    catch (stErr) { console.warn('One-off streak credit failed:', stErr); }
+
+    // The W1D1 calibration seed is offered here too: it is idempotent (its own
+    // calibration_complete guard), and a one-off may legitimately be the first session
+    // that produces a measured max. Nothing is locked in — reconcileWorking1RMs above
+    // is a running max that raises it from any later session (docs/self-corrections.md
+    // SC-08).
+    try { await computeCalibration1RMs(session.id, currentUser.id); }
+    catch (calErr) { console.warn('Calibration 1RM write skipped:', calErr); }
+
+    // Local history, so the workout is visible in the History modal like any other —
+    // it IS a workout. It carries session_type explicitly, which is what keeps it out of
+    // the program's position math (isProgramHistoryRow) while still being listed.
+    const hist = LS.get('tandem_history') || [];
+    hist.unshift({
+      id: Date.now(),
+      date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      session_date: localDateStr(),
+      week: currentWeek,
+      goal: oneOffGoalKey(),
+      day: oneOffState.focus || ONEOFF_SESSION_TYPE,
+      session_type: ONEOFF_SESSION_TYPE,
+      completed: true,
+      exercises: oneOffExs
+    });
+    if (hist.length > 100) hist.pop();
+    LS.set('tandem_history', hist);
+
     oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
-    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved`);
+    const pts = 10 + (prCount || 0) * 5;
+    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts`);
     closeModal('oneoff');
+    // The scoreboard on screen is now stale by exactly this session's points and volume.
+    // loadDashboard() is the one path that re-reads them from the cloud (showView does the
+    // same call), so without it the credit above is invisible until the next navigation —
+    // "wired is not working" if the user cannot see it.
+    if (typeof loadDashboard === 'function') loadDashboard();
+
   } catch (e) {
     console.error('finishOneOff failed:', e);
     showToast('Could not save — try again');
@@ -6318,61 +6472,180 @@ async function finishOneOff() {
 }
 
 // ═══════════════════════════════════════════════════════
-// JOURNAL — EPIC-16 manual nutrition log (rebuilt 2026-09-12 as the "Today's
-// Workout" flow's Journal button, per Kerwin's direct restructure request).
-// nutrition_logs (migrations/0014) is already live in prod: one row per user
-// per day, self-reported only — meals_logged/protein_hit/notes, no calorie or
-// macro math, per the table's own EPIC-16 comment. This is the missing UI;
-// the schema was never the gap.
+// JOURNAL — manual WORKOUT log. Kerwin, 2026-09-14, verbatim: "The journal it's
+// not supposed to be a food journal. It's supposed to be: These are the workouts
+// that I did today. These are the reps that I did. These are the weights that I
+// did, record it."
+//
+// It was a nutrition form (nutrition_logs, migrations/0014) until that correction.
+// Nutrition is NOT hand-typed here — it belongs to the Apple Health / MyFitnessPal
+// pipeline (EPIC-4); Kerwin on the field it replaced: "'2 meals' has no ability to
+// add nutritional value to the home page."
+//
+// A journaled workout is a WORKOUT, NEVER A PROGRAM DAY — the same ruling that
+// governs one-offs (2026-09-13, DOCTRINE D9/D11). So it writes session_type =
+// ONEOFF_SESSION_TYPE and reuses finishOneOff()'s exact seams rather than growing a
+// second copy of the scoring or 1RM rules: `sets` rows (the DB trigger decides PRs),
+// reconcileWorking1RMs() with an explicit synthesized day, creditSessionToStreaks(),
+// computeCalibration1RMs(). The ONE difference is the date: a backdated entry passes
+// advanceStreak=false, per "Past date, don't count for the streak."
 // ═══════════════════════════════════════════════════════
-async function openJournal() {
+let journalRowSeq = 0;
+
+function addJournalRow(prefill) {
+  const host = document.getElementById('journalRows');
+  if (!host) return;
+  const i = journalRowSeq++;
+  const row = document.createElement('div');
+  row.className = 'journal-row';
+  row.dataset.idx = i;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 54px 54px 68px 28px;gap:6px;align-items:center;margin-bottom:6px;';
+  const cell = 'padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-size:13px;box-sizing:border-box;width:100%;';
+  row.innerHTML =
+    `<input type="text" class="j-name" placeholder="Exercise" value="${prefill?.name || ''}" style="${cell}font-family:var(--font-body);">` +
+    `<input type="number" class="j-sets" min="1" max="20" step="1" placeholder="sets" value="${prefill?.sets ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<input type="number" class="j-reps" min="1" max="100" step="1" placeholder="reps" value="${prefill?.reps ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<input type="number" class="j-weight" min="0" step="0.5" placeholder="lbs" value="${prefill?.weight ?? ''}" style="${cell}font-family:var(--font-mono);">` +
+    `<button class="modal-close" style="position:static;width:28px;height:28px;font-size:14px;" title="Remove" onclick="this.closest('.journal-row').remove()">✕</button>`;
+  host.appendChild(row);
+}
+
+// The date note is the only place the streak rule is visible to the user. Without it
+// the "doesn't count for the streak" behavior would be a silent surprise — wired but
+// not working, from his side of the glass.
+function renderJournalDateNote() {
+  const note = document.getElementById('journalDateNote');
+  const picked = document.getElementById('journalDate')?.value;
+  if (!note) return;
+  if (!picked || picked === localDateStr()) { note.textContent = ''; return; }
+  note.textContent = 'Past date — this counts for points, volume, PRs and your 1RMs, but not for your streak.';
+}
+
+function openJournal() {
   openModal('journal');
-  const dateLabel = document.getElementById('journalDateLabel');
-  const mealsEl = document.getElementById('journalMeals');
-  const proteinEl = document.getElementById('journalProtein');
+  const dateEl = document.getElementById('journalDate');
   const notesEl = document.getElementById('journalNotes');
+  const host = document.getElementById('journalRows');
   const today = localDateStr(); // BUG-018/027: local day, not UTC
-  if (dateLabel) dateLabel.textContent = new Date(today + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-  if (mealsEl) mealsEl.value = '';
-  if (proteinEl) proteinEl.checked = false;
+  if (dateEl) { dateEl.value = today; dateEl.max = today; } // no future workouts — you haven't done them yet
   if (notesEl) notesEl.value = '';
-  if (!currentUser) return; // local-only session: form stays blank, Save will explain why it can't persist
-  try {
-    const { data } = await sb.from('nutrition_logs')
-      .select('meals_logged, protein_hit, notes')
-      .eq('user_id', currentUser.id)
-      .eq('log_date', today)
-      .maybeSingle();
-    if (data) {
-      if (mealsEl) mealsEl.value = data.meals_logged ?? '';
-      if (proteinEl) proteinEl.checked = !!data.protein_hit;
-      if (notesEl) notesEl.value = data.notes || '';
-    }
-  } catch (e) {
-    console.warn('Journal load failed:', e);
-  }
+  if (host) host.innerHTML = '';
+  journalRowSeq = 0;
+  addJournalRow();
+  renderJournalDateNote();
+}
+
+// Reads the rows into finishOneOff()'s set shape. One UI row = `sets` identical sets,
+// which is how people actually remember a workout ("3x8 at 185"), and it is what the
+// `sets` table wants: one row per set, numbered.
+function collectJournalSets() {
+  const out = [];   // { id, name, set, w, r, est1rm }
+  const problems = [];
+  document.querySelectorAll('#journalRows .journal-row').forEach(row => {
+    const name = (row.querySelector('.j-name')?.value || '').trim();
+    const nSets = parseInt(row.querySelector('.j-sets')?.value, 10);
+    const reps = parseInt(row.querySelector('.j-reps')?.value, 10);
+    const w = parseFloat(row.querySelector('.j-weight')?.value);
+    if (!name && !Number.isFinite(nSets) && !Number.isFinite(reps) && !Number.isFinite(w)) return; // untouched row
+    if (!name) { problems.push('every row needs an exercise name'); return; }
+    if (!Number.isInteger(nSets) || nSets < 1 || nSets > 20) { problems.push(`${name}: sets must be 1-20`); return; }
+    if (!Number.isInteger(reps) || reps < 1 || reps > 100) { problems.push(`${name}: reps must be 1-100`); return; }
+    if (!Number.isFinite(w) || w < 0) { problems.push(`${name}: weight must be a number (0 for bodyweight)`); return; }
+    const id = `oneoff-journal-${row.dataset.idx}`; // 'oneoff-' prefix: same family, same downstream handling
+    const est1rm = w > 0 ? Math.round(calcRM(w, reps)) : 0; // D12's calcRM is the ONE 1RM formula
+    for (let s = 1; s <= nSets; s++) out.push({ id, name, set: s, w, r: reps, est1rm });
+  });
+  return { sets: out, problems };
 }
 
 async function saveJournal() {
-  if (!currentUser) { showToast('Sign in to save your journal'); return; }
-  const meals = document.getElementById('journalMeals')?.value;
-  const protein = document.getElementById('journalProtein')?.checked || false;
-  const notes = document.getElementById('journalNotes')?.value || null;
+  if (!currentUser) { showToast('Sign in to save a journaled workout'); return; }
+  const { sets: allSets, problems } = collectJournalSets();
+  if (problems.length) { showToast(problems[0]); return; }
+  if (!allSets.length) { showToast('Add at least one exercise'); return; }
+
   const today = localDateStr(); // BUG-018/027: local day, not UTC
+  const sessionDate = document.getElementById('journalDate')?.value || today;
+  if (sessionDate > today) { showToast("You can't journal a workout you haven't done yet"); return; }
+  const isBackdated = sessionDate !== today;
+  const notes = (document.getElementById('journalNotes')?.value || '').trim();
+  const totalVolume = allSets.reduce((sum, s) => sum + (parseFloat(s.w) || 0) * (parseInt(s.r) || 0), 0);
+
+  const btn = document.getElementById('journalSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
-    const { error } = await sb.from('nutrition_logs').upsert({
+    const { data: session, error: sessErr } = await sb.from('workout_sessions').insert({
       user_id: currentUser.id,
-      log_date: today,
-      meals_logged: meals === '' || meals == null ? null : parseInt(meals, 10),
-      protein_hit: protein,
+      session_date: sessionDate,
+      day_type: 'journal', // a label only — session_type is the ONLY safe discriminator
+      program_goal: goalKeyFor(cfg.goal),
+      session_type: ONEOFF_SESSION_TYPE, // migrations/0015's partial index is what lets this coexist with a program day on the same date
+      completed: true,
+      total_volume_lbs: Math.round(totalVolume),
       notes: notes || null,
-    }, { onConflict: 'user_id,log_date' });
-    if (error) throw error;
-    showToast('Journal saved ✓');
+    }).select('id').single();
+    if (sessErr) throw sessErr;
+
+    const { error: setsErr } = await sb.from('sets').insert(allSets.map(s => ({
+      session_id: session.id,
+      user_id: currentUser.id,
+      exercise_name: s.name,
+      set_number: s.set,
+      weight_lbs: s.w,
+      reps: s.r,
+      estimated_1rm_lbs: s.est1rm > 0 ? s.est1rm : null,
+    })));
+    if (setsErr) throw setsErr;
+
+    // D11: earned load binds the working 1RM. These exercises are not in the periodized
+    // program, so the day is synthesized and passed explicitly — otherwise
+    // reconcileWorking1RMs' currentDay lookup finds nothing and drops every set.
+    const journalExs = {};
+    allSets.forEach(s => { (journalExs[s.id] = journalExs[s.id] || []).push(s); });
+    const journalDay = { key: 'journal', blocks: [{ exs: Object.entries(journalExs).map(([id, ss]) => ({ id, name: ss[0].name })) }] };
+    try { reconcileWorking1RMs(journalExs, null, journalDay); }
+    catch (rmErr) { console.warn('Journal 1RM reconcile skipped:', rmErr); }
+
+    // The DB trigger (sets_apply_1rm_and_pr) decided the PRs — read them back.
+    const { count: prCount } = await sb.from('sets')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id)
+      .eq('is_pr', true);
+
+    // Points/volume/sessions/PRs always; the streak ONLY if it happened today.
+    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), sessionDate, !isBackdated); }
+    catch (stErr) { console.warn('Journal streak credit failed:', stErr); }
+
+    try { await computeCalibration1RMs(session.id, currentUser.id); }
+    catch (calErr) { console.warn('Calibration 1RM write skipped:', calErr); }
+
+    const hist = LS.get('tandem_history') || [];
+    hist.unshift({
+      id: Date.now(),
+      date: new Date(sessionDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      session_date: sessionDate,
+      week: currentWeek,
+      goal: goalKeyFor(cfg.goal),
+      day: 'journal',
+      session_type: ONEOFF_SESSION_TYPE, // keeps it OUT of the program's position math (isProgramHistoryRow)
+      completed: true,
+      exercises: journalExs
+    });
+    if (hist.length > 100) hist.pop();
+    LS.set('tandem_history', hist);
+
+    const pts = 10 + (prCount || 0) * 5;
+    showToast(`${svgIcon('flame')} Logged — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts${isBackdated ? ' (streak unchanged)' : ''}`);
     closeModal('journal');
+    // The scoreboard is now stale by exactly this session's points and volume, and
+    // loadDashboard() is the only path that re-reads them: without this the credit
+    // above is invisible, i.e. wired but not working.
+    if (typeof loadDashboard === 'function') loadDashboard();
   } catch (e) {
     console.error('saveJournal failed:', e);
     showToast('Could not save — try again');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Workout'; }
   }
 }
 
@@ -6529,6 +6802,30 @@ function getWeekSchedule() {
 // slot does not. If he wants a missed day to be picked up rather than passed over, that
 // is a second change to the day cadence and it contradicts a ruling he made himself,
 // so it is surfaced for a decision instead of being silently overridden here.
+// ── isProgramHistoryRow() — the one home for "does this row count as program progress?" ──
+//
+// Kerwin's ruling, 2026-09-13: a one-off "should not count as an extra day" as it pertains
+// to the program, and, of overdue specifically, "overdue should ignore one-offs". Both
+// consumers below derive PROGRAM POSITION from local history — the week counter, the day
+// queue, and the overdue gap — so both must apply the same test, from the same function,
+// or they will disagree about where he is.
+//
+// This is not hypothetical bookkeeping: syncFromCloud() hydrates tandem_history straight
+// from workout_sessions rows, and finishOneOff() writes a real completed row there, so a
+// one-off DOES arrive in local history carrying session_type = 'oneoff'.
+//
+// session_type is the sole discriminator, matching the cloud (migration 0015's partial
+// unique index workout_sessions_user_date_program_key). `day_type` is deliberately NOT
+// tested: a one-off's day_type is a body-part word like 'chest', which can equal a
+// program day key.
+//
+// A row written before 2026-09-13 carries no session_type at all. Those are program rows
+// by construction — the one-off path could not reach history before this change — so
+// `undefined` must count, and the `!==` comparison gives exactly that.
+function isProgramHistoryRow(h) {
+  return !!h && h.session_type !== ONEOFF_SESSION_TYPE;
+}
+
 // Completed sessions on/after the program start. The single counter both the week
 // and the day-queue derive from, so they can never disagree about where he is.
 // A session the user did not finish is not volume and does not advance anything —
@@ -6539,6 +6836,7 @@ function completedSessionCount() {
   let done = 0;
   for (const h of hist) {
     if (h.completed === false) continue;
+    if (!isProgramHistoryRow(h)) continue; // a one-off is a workout, not a program day
     const raw = h.session_date || h.date;
     if (!raw) continue;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -6632,6 +6930,11 @@ function getOverdueDays() {
   let last = null;
   hist.forEach(h => {
     if (h.completed === false) return; // cloud-hydrated incomplete sessions don't count
+    // Kerwin, 2026-09-13, verbatim: "overdue should ignore one-offs." An extra arm day is
+    // a workout, but it is not the prescribed session — so it must not reset the clock
+    // that says the prescribed session is late. Same predicate completedSessionCount()
+    // applies, from the same function, so the two cannot disagree.
+    if (!isProgramHistoryRow(h)) return;
     const raw = h.session_date || h.date;
     if (!raw) return;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
@@ -6730,7 +7033,14 @@ async function syncFromCloud() {
       LS.set('tandem_lastsets', ls);
     }
     // Advance the day pointer past the last completed session
-    const lastDone = sessions?.find(s => s.completed && s.session_date);
+    // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13: a
+    // one-off "should not count as an extra day"). The filter is not cosmetic: `sessions`
+    // is newest-first, so a one-off finished after today's program day would win this
+    // find(), and its day_type is a body-part word ('chest') that matches no program key —
+    // so idx === -1 and the pointer would never advance at all. The one-off would shadow
+    // the real session and the same workout would be served again tomorrow.
+    const lastDone = sessions?.find(s => s.completed && s.session_date
+      && s.session_type !== ONEOFF_SESSION_TYPE);
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
@@ -7367,6 +7677,11 @@ function refreshAvatarPreview(){
           .select('session_date,day_type')
           .eq('user_id', currentUser.id)
           .eq('completed', true)
+          // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13).
+          // Without this, a one-off takes the single row limit(1) returns, its day_type
+          // ('chest') matches no program key, so idx === -1 and the pointer stalls — the
+          // last real day gets served twice. Same guard as syncFromCloud()'s lastDone.
+          .neq('session_type', ONEOFF_SESSION_TYPE)
           .order('session_date', { ascending: false })
           .limit(1)
           .maybeSingle();
