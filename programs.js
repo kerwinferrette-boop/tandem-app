@@ -391,7 +391,7 @@ const EXERCISE_BANK = {
     name:'Low Incline Barbell Press', videoId:'DbFgADa2PL8',
     muscleGroups:{primary:['pec_major_clavicular'],secondary:['anterior_delt','tricep']},
     emphasis:['chest','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:0.93,
-    why:'30° is the mechanically superior angle for most lifters — maximises clavicular pec recruitment while keeping the subacromial space open. EMG studies confirm 30–45° produces peak upper-chest activation.',
+    why:'30° keeps the bar path over the clavicular pec fibers while keeping the subacromial space open, avoiding the front-delt takeover that starts past ~45°.',
     cues:['Retract scapula','Lower to mid-chest','Drive through heels','Full lockout at top']},
   'high-incline-barbell-press':{
     name:'High Incline Barbell Press', videoId:null,
@@ -881,7 +881,7 @@ const EXERCISE_BANK = {
     name:'Concentration Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii']},
     emphasis:['biceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Braced elbow against inner thigh eliminates any cheating. EMG studies find concentration curl produces peak bicep activation among all dumbbell curls — fully braced position prevents any momentum or shoulder involvement.',
+    why:'Braced elbow against inner thigh eliminates any cheating — the fully braced position prevents any momentum or shoulder involvement, isolating the bicep more strictly than a standing curl.',
     cues:['Sit; elbow braced against inner thigh above the knee','Full extension at bottom — do not rest weight on floor','Supinate aggressively at the top','Squeeze and hold one count at peak']},
   'preacher-curl':{
     name:'Preacher Curl', videoId:null,
@@ -1150,7 +1150,7 @@ const EXERCISE_BANK = {
     name:'Nordic Curl', videoId:null,
     muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus']},
     emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Reduces hamstring strain injury risk by 50–70% per multiple RCTs. The eccentric-only loading at long muscle lengths is unique and irreplaceable. The single highest return-on-investment exercise in sports medicine.',
+    why:'Eccentric-only loading at long muscle lengths is a distinct stimulus from concentric hamstring work most programs never train.',
     cues:['Anchor feet under heavy object or have partner hold','Lower as slowly as possible using hamstrings — catch yourself with hands','Goal is to resist as long as possible on the way down','Beginner: use hands to help push up; advanced: pull back up with hamstrings']},
   'slider-leg-curl':{
     name:'Slider Leg Curl', videoId:null,
@@ -3219,7 +3219,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
               {id:'fb-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
-               why:'Posterior chain core work pairs perfectly with hip hinge days. Erector spinae and multifidus are the core\'s "back wall" — undertrained in almost every ab program. Direct erector work reduces lower back injury risk by 30–40% in studies.',
+               why:'Posterior chain core work pairs perfectly with hip hinge days. Erector spinae and multifidus are the core\'s "back wall" — undertrained in almost every ab program.',
                cues:['Brace abs before initiating. Neutral spine throughout.','Rise until body is straight — not hyperextended.','2-sec hold at top. 3-sec controlled lower.']},
               {id:'fb-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
                why:'McGill Big 3 staple — the only exercise that loads the lateral core (quadratus lumborum and obliques) without spinal compression. Anti-lateral flexion strength directly transfers to stability in every loaded carry and hinge movement.',
@@ -3289,7 +3289,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Hip flexion with a loaded hanging position — one of the highest-activation exercises for the rectus abdominis and hip flexors. The shoulder girdle also works to maintain the hang. Decompresses the spine after a heavy squat session.',
                cues:['Hang from bar with full shoulder extension.','Raise knees to hip height or above — controlled.','Lower slowly. 3-sec eccentric. No swinging.']},
               {id:'fb-fri-pl',   name:'Plank', badge:'core', sets:3, w:0, r:45, rest:30, compound:false, isCore:true, unit:'sec',
-               why:'Anti-extension baseline — the standard measure of core endurance. Research shows 45-second holds outperform longer holds for muscle activation efficiency. Closing the training week with a stability finisher reinforces the bracing pattern for weekend recovery.',
+               why:'Anti-extension baseline — a standard measure of core endurance. Closing the training week with a stability finisher reinforces the bracing pattern for weekend recovery.',
                cues:['Forearms under shoulders. Hips level — not sagging or piked.','Squeeze glutes and quads. Brace abs as if taking a punch.','Breathe. Do not hold breath. Full breaths throughout.']},
             ]},
             {label:'Cardio Finisher · 25 min', cardio:true, exs:[
@@ -3439,7 +3439,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
               {id:'bm-fri-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:45, compound:false, isCore:true, unit:'sec',
-               why:'Lateral core training — the one movement plane almost every program ignores. Quadratus lumborum and oblique stability directly transfer to hip stability under heavy single-leg loads like split squats (which you just did). McGill research shows this reduces lateral knee collapse by reinforcing the hip-stabilizer chain.',
+               why:'Lateral core training — the one movement plane almost every program ignores. Quadratus lumborum and oblique stability directly transfer to hip stability under heavy single-leg loads like split squats (which you just did).',
                cues:['Elbow under shoulder. Body in a straight diagonal line.','Drive hips up. Hold 40 sec each side.','Progress: add hip dips (lower and raise) to make it dynamic.']},
               {id:'bm-fri-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
                why:'Targets lower rectus abdominis through hip flexion — the area most visible in body composition change. No neck involvement, no lumbar compression. At the end of a heavy lower day the core is already warm and ready for this direct work.',
