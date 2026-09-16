@@ -540,3 +540,48 @@ schedule.
 2026-09-15) — the current durable artifact this rule produced. Whether a *future* new rule
 correctly separates audit-scope from execution-throughput is judgment, not mechanically checkable
 today.
+
+---
+
+## SC-16 — I stopped at "remove and flag" when the actual ask was "find the real answer"
+
+**What I believed.** That BUG-110's fix — deleting six fabricated "studies confirm/EMG studies/
+RCTs show" claims from `EXERCISE_BANK` `why`-strings and replacing them with the plain mechanical
+rationale — fully discharged CLAUDE.md's "never invent a number... flag the gap" rule. The
+commit's own COULD section considered finding real corroboration and rejected it: *"this session
+has no live WebSearch/WebFetch egress to verify a specific RCT or EMG study on demand."*
+
+**What was true.** Kerwin's actual instruction, given directly after reviewing that fix: *"Next
+time you find a why string that's fabricated - find the answer & note the fix, don't just note
+that one was wrong."* Removal-and-flag is the correct fallback **only after a real research
+attempt fails**, not the default move the moment a claim looks uncited. I asserted "no egress" as
+a blocking constraint without first checking whether it was actually true of the session — a
+session working the same repo today has `WebSearch`/`WebFetch` available, so the premise that
+research was impossible was itself unverified, the exact SC-03 failure ("I described what the
+engine would do instead of running it") applied to my own tool access instead of program logic.
+
+**The gap.** I treated "I cannot fabricate a citation" and "I should stop trying to find a real
+one" as the same decision. They are not: the prime directive's actual sequence is (1) exhaust the
+canonical sources (DOCTRINE.md, the Notion docs, `research-report(8).pdf`, the Exercise Science
+Framework docx/csv — all already required reading), (2) exhaust live research tools when available
+(`exercise-science-research` skill, `WebSearch`/`WebFetch` for a real citable source), and only
+after both fail (3) flag the gap and remove the unsupported number. I skipped straight to (3) on
+the strength of an unchecked assumption about tool availability, which produced a *correct but
+incomplete* fix — accurate (nothing fabricated survives), but short of what the source-first
+directive actually asks for (replace the fabrication with the real, cited answer where one exists).
+
+> **THE RULE — SC-16.** When a `why`-string (or any exercise-science claim) is found fabricated or
+> uncited, do not stop at removing it. Before settling for "flagged, unverified, removed": (1)
+> invoke `exercise-science-research` and check every canonical source it names against the specific
+> claim; (2) if a research/tool-access question is part of the reasoning (e.g. "do I have live
+> search"), verify that claim by attempting the tool call, not by asserting a limitation from
+> memory; (3) only after both genuinely fail to produce a citable answer, flag the gap in the
+> commit body and Notion row, stating explicitly what was searched and why it came up empty. A fix
+> that could have found the real number and instead only deleted the fake one is not finished.
+
+**Enforced by** judgment — not mechanically checkable today. `.claude/loop-config.md`'s
+`source_first_rigor` section and `CLAUDE.md`'s prime directive are amended in this same change to
+state the exhaust-before-flag sequence explicitly, and BUG-121 (the follow-up sweep for the
+remaining uncited-percentage claims BUG-110 deliberately left out of scope) is the first real case
+this rule applies to — the next cycle that works it must actually attempt research per steps (1)-(2)
+before removing anything.

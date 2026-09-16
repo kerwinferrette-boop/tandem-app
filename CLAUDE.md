@@ -19,7 +19,16 @@ program-logic decision:
 2. **Run the should/could/did audit** (below) and only ship when *did == should*, with a citation.
 3. **When the source is silent or ambiguous, SAY SO and flag it** — never invent a number,
    coefficient, or rule to fill the gap. Kerwin can pull more research. A flagged gap is correct;
-   a confident fabrication is the failure mode we are eliminating.
+   a confident fabrication is the failure mode we are eliminating. **Flagging is the fallback after
+   research fails, not the default move the moment a claim looks uncited** (2026-09-16, Kerwin,
+   correcting BUG-110's fix: *"find the answer & note the fix, don't just note that one was
+   wrong"* — see `docs/self-corrections.md` SC-16). Before flagging a fabricated or uncited claim:
+   (a) invoke `exercise-science-research` and check the canonical sources above for the specific
+   claim, (b) attempt live research (`WebSearch`/`WebFetch`) for a real citable source if the tools
+   are available — verify availability by trying, don't assert "no egress" from memory (SC-03's
+   rule applied to your own tool access). Only once both genuinely fail, flag the gap and state
+   plainly what was searched and why it came up empty — removing an unsupported claim is a
+   consolation, not the goal.
 4. **Invoke the `exercise-science-research` skill** for any program-engine change. It is not
    optional and does not relax when no one is watching.
 5. **When you are confused, stuck, or about to guess — escalate to a skill, do not escalate to

@@ -720,6 +720,18 @@ verification:
     - "Write the should/could/did audit (CLAUDE.md) into every program-logic commit + Notion entry.
        Run it BEFORE shipping, not after Kerwin catches the error. When the source is silent, FLAG
        the gap — never fabricate a number, coefficient, or rule."
+    - "ADDED 2026-09-16, per Kerwin, live in-session (docs/self-corrections.md SC-16): when a
+       why-string or exercise-science claim turns out fabricated/uncited, flagging-and-removing is
+       the FALLBACK after research fails, not the default response to finding one. Verbatim: 'find
+       the answer & note the fix, don't just note that one was wrong.' Required sequence before
+       flagging: (1) exercise-science-research against every canonical source for the specific
+       claim, (2) an actual attempt at live research (WebSearch/WebFetch) for a real citable source
+       if those tools are available in the session — check availability by trying the call, never by
+       asserting 'no egress' from memory or a prior session's limitation. Only once both genuinely
+       fail, flag the gap in the commit + Notion row, stating plainly what was searched and why it
+       came up empty. BUG-121 (the follow-up sweep for the remaining uncited-percentage claims
+       BUG-110 left out of scope) is the first case this applies to — the cycle that works it must
+       run this sequence per claim, not just repeat BUG-110's remove-and-flag pattern."
 
 safety:
   max_items_per_cycle: 5
