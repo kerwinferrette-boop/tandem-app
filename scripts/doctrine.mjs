@@ -1834,6 +1834,11 @@ let d19Checked = 0;
   }
 }
 
+// Shared by D20 and D29 (both walk a getSingleDay() result the same way) — one
+// helper, module scope, so the two independently-evolving blocks below never grow
+// silently-divergent copies.
+const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
+
 // ── D20 (ACTIVE) — getSingleDay SOFT-deprioritizes a recently-trained muscle ────
 // EPIC-028 (widened), 2026-08-22. `getSingleDay`'s FOCUS_SLOTS candidate selection
 // now reads opts.recentExposure ({tag: hoursSinceTrained}, PRIMARY tags only — the
@@ -1880,8 +1885,6 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
   // "fresh" and silently defeating steering).
   const isFreshLine = code.match(/const isFresh = \(e\) => freshSet && \(e\.muscleGroups\.primary \|\| \[\]\)\.some\(a => freshSet\.has\(a\)\);/);
   if (!isFreshLine) fail('D20', 'getSingleDay\'s freshness scoring no longer reads PRIMARY tags only — a secondary-tag synergist (e.g. every curl co-tagging brachialis) can silently defeat steering again');
-
-  const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
 
   for (const focus of ONEOFF_FOCUSES) {
     for (const tier of TIER_ORDER) {
@@ -2064,7 +2067,6 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
 // isFresh() build, and D27's continuity-not-filter guard).
 let d29Checked = 0;
 if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
-  const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
   let steeredAtLeastOnce = false;
 
   for (const focus of ONEOFF_FOCUSES) {
@@ -2092,12 +2094,17 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
 
       // (3) D9 structural properties must still hold.
       if (!lo || !Array.isArray(lo.blocks) || !lo.blocks.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0) produced an EMPTY session`);
+      if (!hi || !Array.isArray(hi.blocks) || !hi.blocks.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0.999999) produced an EMPTY session`);
       if (new Set(loNames).size !== loNames.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0) produced a duplicate lift`);
       if (new Set(hiNames).size !== hiNames.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0.999999) produced a duplicate lift`);
-      for (const n of loNames) {
-        const t = TIER_BY_NAME[String(n).trim().toLowerCase()];
-        if (t && TIER_ORDER.indexOf(t) > TIER_ORDER.indexOf(tier)) fail('D29', `${focus}/${tier}: "${n}" exceeds tier under history stress`);
-      }
+      const checkTierLegal = (names, label) => {
+        for (const n of names) {
+          const t = TIER_BY_NAME[String(n).trim().toLowerCase()];
+          if (t && TIER_ORDER.indexOf(t) > TIER_ORDER.indexOf(tier)) fail('D29', `${focus}/${tier}: "${n}" exceeds tier under history stress (${label})`);
+        }
+      };
+      checkTierLegal(loNames, 'rng=0');
+      checkTierLegal(hiNames, 'rng=0.999999');
 
       if (JSON.stringify(loNames) !== JSON.stringify(hiNames)) steeredAtLeastOnce = true;
     }
