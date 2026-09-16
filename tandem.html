@@ -6468,7 +6468,7 @@ async function fetchRecentSets(days = 7) {
   return data || [];
 }
 
-// D29 — cross-context history read for one-off exercise-instance variety.
+// D31 — cross-context history read for one-off exercise-instance variety.
 // Broader window than fetchRecentSets(7)'s D20 group-recency read (hours-scale) or
 // refreshLiftHistory's 56-day D27 window (session-COUNT scale, not last-N-sessions):
 // this needs the last ~4 DISTINCT session_ids regardless of goal or session_type, so
@@ -6482,7 +6482,7 @@ async function fetchOneOffHistorySets() {
     .eq('user_id', currentUser.id)
     .gte('created_at', sinceISO)
     .order('created_at', { ascending: false });
-  if (error) { console.error('[D29] fetchOneOffHistorySets failed', error); return []; }
+  if (error) { console.error('[D31] fetchOneOffHistorySets failed', error); return []; }
   return data || [];
 }
 
@@ -6546,7 +6546,7 @@ function recentMuscleLoad(sets, now = Date.now()) {
   return out;
 }
 
-// D29 (SCIENCE_DEFAULT) — cross-context "recently used exercises" signal for one-off
+// D31 (SCIENCE_DEFAULT) — cross-context "recently used exercises" signal for one-off
 // variety. NOT a science citation — Kerwin's explicit ruling (2026-09-15): "if the 4
 // workout thing isn't science, then it's not science." 4 is a logic-based default, not
 // a mechanistic threshold; sessionLimit is a plain parameter so it can be tuned without
@@ -6596,7 +6596,7 @@ function recentSetsFor(exerciseName, sets) {
 // behaves like any generated day, and it writes nothing: a one-off is explicitly
 // not part of the periodized program (D9 exempts it from D1/D4/D7 by design).
 let _oneoffSets = null; // recent-sets read, cached for the life of the open modal
-let _oneoffHistorySets = null; // D29 recent-exercise read, cached for the life of the open modal
+let _oneoffHistorySets = null; // D31 recent-exercise read, cached for the life of the open modal
 
 // Wizard state. TRANSIENT BY DESIGN: `goal` is the goal-type picked for THIS
 // generated day only and is never written back to cfg.goal — a one-off must not
@@ -6817,7 +6817,7 @@ function renderOneOff(focus) {
     // (D20's gate greps this RHS to its line end for the token RECOVERY_PARAMS —
     // hoisting the number to a variable above would pass review and fail the build.)
     recencyThresholdHours: (RECOVERY_PARAMS[goalKey] || RECOVERY_PARAMS.build_muscle).sameGroupHours,
-    // D29 (SCIENCE_DEFAULT) — cross-context variety. _oneoffHistorySets is fetched
+    // D31 (SCIENCE_DEFAULT) — cross-context variety. _oneoffHistorySets is fetched
     // once per modal-open (Step 1 above), same caching shape _oneoffSets already
     // uses for D20. Absent/null degrades to an empty Set, which getSingleDay treats
     // as varietyActive=false — the exact no-op-by-default shape D20/D27 use.

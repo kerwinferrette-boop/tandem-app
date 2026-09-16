@@ -2070,12 +2070,12 @@ function getSingleDay(focus, opts = {}) {
   // recovery window describes recovery of the TRAINED muscle, and scoring the
   // co-tagged synergists would mark nearly everything recent.
   const recentPenalty = (e) => (steeringActive && (e.muscleGroups.primary || []).some(isRecent)) ? 1 : 0;
-  // ── D29 (SCIENCE_DEFAULT) — opt-in exercise-instance variety for one-offs ──────
+  // ── D31 (SCIENCE_DEFAULT) — opt-in exercise-instance variety for one-offs ──────
   // opts.recentExerciseNames: a Set (or array, coerced below) of exercise NAMES the
   // lifter trained in their last ~4 workouts (program + one-off combined) — the exact
   // shape recentExerciseNames() produces in tandem.html. Absent/empty ⇒ varietyActive
   // is false ⇒ every code path this adds is a no-op and select() is byte-identical to
-  // pre-D29 (same "opts absent ⇒ no-op" shape D20/D27 already use). This is a SOFT
+  // pre-D31 (same "opts absent ⇒ no-op" shape D20/D27 already use). This is a SOFT
   // demotion, same class as D20/D27: it reorders an already tier-legal, injury-
   // filtered, muscle-matched pool. It can never empty a slot and never admits an
   // illegal candidate — D9/D18/D19 hold by construction, not by a runtime check.
@@ -2137,7 +2137,7 @@ function getSingleDay(focus, opts = {}) {
         const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
         if (diff !== 0) return diff;
       }
-      // D29 slots in AFTER D20's group-level recovery concern and BEFORE the
+      // D31 slots in AFTER D20's group-level recovery concern and BEFORE the
       // "which candidate is objectively better" tiebreaks below — same precedence
       // logic as recentPenalty's own comment: the biggest muscle-recovery concern
       // outranks exercise-instance variety, which outranks pure coverage/load/
@@ -2155,7 +2155,7 @@ function getSingleDay(focus, opts = {}) {
       // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
       const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
       if (eqDiff !== 0) return eqDiff;
-      // Pre-D29 callers (varietyActive false — every existing caller/test) keep the
+      // Pre-D31 callers (varietyActive false — every existing caller/test) keep the
       // exact deterministic alpha tiebreak. Only a caller that opts into variety
       // gets a genuine tie (0) here, resolved below by rng, never by this function.
       return varietyActive ? 0 : a.name.localeCompare(b.name);
@@ -2168,7 +2168,7 @@ function getSingleDay(focus, opts = {}) {
     // contiguous at the front of a correct comparison sort) and pick randomly WITHIN
     // it. This is the "randomized in order, but scientifically placed" mechanism:
     // every candidate in this group already passed D19 anchored muscle-matching, D3
-    // compound-first eligibility, tier/injury legality, D20 recovery, and D29's own
+    // compound-first eligibility, tier/injury legality, D20 recovery, and D31's own
     // recent-use demotion — randomization only ever breaks a tie among candidates the
     // science already ranks as equal.
     let end = 1;
