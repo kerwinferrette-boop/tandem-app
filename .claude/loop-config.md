@@ -552,9 +552,32 @@ escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces 
                       # source_first_rigor below — a council verdict is not a substitute for a
                       # citation, it's how a genuine judgment call the science doesn't decide gets
                       # made instead of guessed.
+  pre_ship_council_gate: "Added 2026-09-16, per Kerwin, live in-session, generalizing default_for_forks
+                      above from 'genuine forks only' to every push: 'I'm fine with it if all the gates
+                      pass green, as long as it's not a design feature... if it's simply bug fixes, or
+                      epics in terms of mapping this to this, I would defer to the LLM council first.
+                      If they reach a consensus, then go ahead and push to main.' Rule: for ANY change
+                      that is NOT a design/aesthetic change (see design_changes_hold in still_needs_kerwin
+                      below) — an ordinary bug fix, or an epic that is mechanical/mapping-shaped rather
+                      than a judgment call — run it through llm-council for a consensus verdict BEFORE
+                      push, even when no genuine implementation fork exists to force the question. This
+                      stacks with, not replaces, the standing ship gate (verify + validate:personas +
+                      onboarding walkthrough when touched): green gates AND council consensus are both
+                      required before `git push origin HEAD:main`. No consensus (the split isn't
+                      converging) routes to still_needs_kerwin per the existing 'anything the council
+                      declines to resolve' item below — do not push on a non-converging split."
   still_needs_kerwin:  # The guardrail is mechanical (this list), never "how big is this decision."
     - "everything already in safety.forbidden below, including the 2026-08-30
        scoring/matchmaking/biometric-layer addition"
+    - "design_changes_hold — ADDED 2026-09-16, per Kerwin, live in-session: any change that alters the
+       app's design/aesthetics — visual style, theming, layout, or the look-and-feel of the whole
+       product, as opposed to a functional bug fix or a mechanical/mapping-shaped epic — is held for
+       Kerwin directly, in full, regardless of green gates or an llm-council consensus. Verbatim: 'if
+       it's an epic that changes the aesthetics of the whole thing, I would hold on... if it's
+       design-based, bring it to me.' This is a mechanical routing question (does the change touch
+       visual/aesthetic surface, not just fix or map behavior), not a size judgment — when genuinely
+       ambiguous whether a change counts as 'design', treat it as design (hold) rather than guess in
+       the shippable direction."
     - "a genuine product/business call — which Epic to build at all, what a feature should feel
        like, a pricing or competitive decision — as opposed to an implementation fork inside an
        Epic Kerwin already greenlit"
@@ -862,6 +885,16 @@ Kerwin's stated backstop is that he files a Bug & QA Log note on anything he doe
 gets worked through the normal pipeline. A branch is still correct in exactly one case: a genuine
 human decision is pending (see BUG-59) — that is what `Needs Human` and
 `docs/needs-human-rulings.md` are for, and it is not a way to defer durability.
+
+**AMENDED 2026-09-16, per Kerwin, live in-session** (see `escalation.pre_ship_council_gate` and
+the new `design_changes_hold` item in `escalation.still_needs_kerwin` for the full rule): green
+gates alone are no longer sufficient for every push. Split by kind of change —
+- **Design/aesthetic change** (visual style, theming, layout, look-and-feel of the whole product):
+  hold it, full stop — bring it to Kerwin directly, never auto-ship even with green gates.
+- **Everything else** (bug fixes; mechanical/mapping-shaped epics — "map this to this"): green
+  gates are still required, AND an `llm-council` consensus is now required before every push, not
+  only when a genuine implementation fork forces the question. Consensus + green gates → push. No
+  consensus → `Needs Human`, do not push on a non-converging split.
 
 ## Loop-closure: push on verify, don't sit on the working tree
 
