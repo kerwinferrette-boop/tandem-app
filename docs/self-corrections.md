@@ -540,3 +540,59 @@ schedule.
 2026-09-15) — the current durable artifact this rule produced. Whether a *future* new rule
 correctly separates audit-scope from execution-throughput is judgment, not mechanically checkable
 today.
+## SC-16 — I promoted a proxy to an identity, one message after proving the identity was missing
+
+**What I believed.** That scoping the cloud-restore day-pointer lookup to
+`session_date >= users.program_start_date` fixed BUG-93. I wrote, verbatim: *"That's the whole bug
+and the whole fix."* Minutes earlier, in the same investigation, I had offered `template_days` as
+*"the real referent"* for a logged workout.
+
+**What was true.** Neither is an identity, and I had already established why. The verified finding
+one message before was that `workout_sessions` has **no `program_id`, no `template_id`, no
+`program_run_id`** — two runs of the same goal are indistinguishable in the schema. That fact does
+not stop being true because I found a column that happens to separate Kerwin's two runs:
+
+- `program_start_date` is a **date on `users`**, not a key on the session. Restart the same goal on
+  the same calendar day and the two runs collide; a user with no start date has no scope at all;
+  the column moves under history that was already written. It discriminates today's 26 rows, which
+  is not the same claim as "it identifies a run."
+- `template_days` gives **prescription** identity — which day the program *specifies*. It cannot
+  identify a **performance** — which run, which attempt, which day the human actually did. Kerwin
+  caught this one directly: *"Wouldn't template days just run into the same problem?"* It would.
+- The council, run on this question immediately after, reached the same conclusion independently:
+  4/5 advisors flagged the containment patch as **weaker than I had presented it**, and the peer
+  round named the root cause I never did — **`day_type` is simultaneously a historical record and a
+  cursor**, so no amount of scoping the query fixes a column doing two jobs.
+
+Kerwin named the pattern before the council confirmed it: *"I feel like 'day_type' is being a bit
+misconstrued because it barely satisfies your need for a workout id, and you like to cut corners as
+it pertains to this kind of thing. Would I be fair in saying that."* He would. It was fair.
+
+**The gap.** When I find a referent missing, I reach for the nearest existing column that separates
+the *reported* case, and then I describe the substitute using the word the real thing would have
+earned — *"the whole fix"*, *"the real referent"*. The substitution is the smaller error; the
+**totality language is the one that does damage**, because it closes the investigation. A proxy
+that distinguishes the two rows in front of me is evidence about those two rows. Identity is a
+claim about every pair of entities the system can ever hold, including the ones not in the table
+yet — and I never enumerated a single pair the proxy fails on before calling it done. This is
+CLAUDE.md's plausibility-first failure aimed at a schema instead of at exercise science, and it is
+SC-11's shape (a name standing in for verified behavior) with the name chosen by me rather than by
+a prior author.
+
+> **THE RULE — SC-16.** Once I have established that an identifier does not exist, I may not
+> promote any existing column to stand in for it in the same investigation without doing both:
+> (a) **enumerate the real pairs of entities the proxy cannot distinguish** — same goal restarted
+> same day, two attempts at one day, a null value — and write them down; and (b) label the change
+> **containment**, never a fix. A proxy is a narrowing of the blast radius and must be described as
+> one. Separately and unconditionally: **never attach a totality phrase** — *"that's the whole
+> fix"*, *"that's it"*, *"the real X"* — to a change I have not run the originally-failing case
+> against and watched pass. If the sentence would survive deleting the word "whole," delete it.
+
+**Enforced by** judgment for the totality language — not mechanically checkable. The proxy half has
+a hook that already exists: CLAUDE.md's should/could/did audit requires the **COULD** section to
+name the rejected alternatives, so a proxy identifier must be entered there *with the collisions it
+permits listed*, and **DID** must say "contains" rather than "fixes" when no identity was added.
+The durable artifact for this specific instance is
+`docs/council-report-2026-09-15-identity-model.html`, which records the real diagnosis — position
+is re-derived from an ambiguous log instead of stored — so the next session inherits the finding
+rather than the patch.
