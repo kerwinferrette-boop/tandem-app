@@ -1950,19 +1950,29 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 </div>
 
-<!-- ONE-OFF "BUILD ME A WORKOUT" (EPIC-028) -->
+<!-- ONE-OFF "BUILD ME A WORKOUT" (EPIC-028; EPIC-037 added the save/reuse steps) -->
 <div class="modal-overlay" id="modal-oneoff" onclick="if(event.target===this)closeModal('oneoff')">
   <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <button class="modal-close" onclick="closeModal('oneoff')">✕</button>
     <div class="modal-title">Build Me a Workout</div>
     <div class="modal-sub">A single session, right now. Not part of your periodized program — nothing here changes your plan or your week.</div>
-    <!-- Wizard: goal-type → focus → rendered day. The header above is persistent;
+    <!-- Wizard: entry choice → goal-type → focus → rendered day (or: entry choice
+         → saved-workout pick → rendered day). The header above is persistent;
          exactly one step below is visible at a time (showOneOffStep). -->
     <button id="oneoffBack" class="oneoff-back" style="display:none" onclick="oneOffBack()">← Back</button>
-    <div id="oneoffStep1">
+    <div id="oneoffStep0">
+      <div class="oneoff-step-cap">New session, or one that worked before?</div>
+      <button class="clear-btn" style="margin-top:10px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="oneOffChooseCreate()">✨ Create New Workout</button>
+      <button class="clear-btn" style="margin-top:8px;" onclick="oneOffChoosePull()">🔁 Pull from Saved Workouts</button>
+    </div>
+    <div id="oneoffStep1" style="display:none">
       <div class="oneoff-step-cap">What are you training for today?</div>
       <div id="oneoffGoalRow" class="oneoff-grid"></div>
+    </div>
+    <div id="oneoffStepSaved" style="display:none">
+      <div class="oneoff-step-cap">Your saved workouts</div>
+      <div id="oneoffSavedList" style="margin-top:10px;"></div>
     </div>
     <div id="oneoffStep2" style="display:none">
       <div class="oneoff-step-cap" id="oneoffFocusCap">What are you hitting?</div>
@@ -1971,6 +1981,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
     <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="finishOneOff()">Finish — Save This Workout</button>
+    <!-- Post-finish: naming + rating a template is a SEPARATE decision from logging
+         the session (finishOneOff already did that above) — shown only after a
+         successful finish, per spec (a)/(b). Skip leaves the logged session intact. -->
+    <div id="oneoffSavePrompt" style="display:none;margin-top:14px;">
+      <div class="oneoff-step-cap">Save this as a template?</div>
+      <input type="text" id="oneoffSaveName" class="modal-input" placeholder="Name this workout (e.g. Arms — Heavy)" style="margin-top:8px;">
+      <div style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);">How'd it feel? (1-7)</div>
+      <div id="oneoffRatingRow" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;"></div>
+      <button class="clear-btn" style="margin-top:10px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="saveOneOffTemplate()">Save Template</button>
+      <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('oneoff')">Skip</button>
+    </div>
   </div>
 </div>
 
@@ -6726,7 +6747,7 @@ let _oneoffSets = null; // recent-sets read, cached for the life of the open mod
 // in the periodized program, so without the day object the 1RM loop has no way to map a
 // logged set back to an exercise name (Kerwin ruling 2026-09-13 — one-offs "should also
 // look to add to one-rep max calculations"). Still transient: cleared with the rest.
-const oneOffState = { goal: null, focus: null, day: null };
+const oneOffState = { goal: null, focus: null, day: null, fromSaved: false };
 
 // Goal key for RECOVERY_PARAMS, PHASES and the goal-shaped opts below. The wizard's
 // pick wins; with no pick (or a stale/unknown one) this falls back to exactly the
@@ -6774,25 +6795,108 @@ const ONEOFF_GOALS = [
   { key: 'build_muscle', eyebrow: 'TIERED SETS · HEAVY',   title: 'Gains Season' },
 ];
 
-// Exactly one step visible. Step 3 (the rendered day) keeps step 2 on screen so the
-// focus grid stays available to re-roll a different focus without re-picking a goal.
+// Exactly one step visible. n: 0 = entry choice, 1 = goal grid, 2/3 = focus grid /
+// focus grid + rendered day (step 3 keeps step 2 on screen so the focus grid stays
+// available to re-roll a different focus without re-picking a goal), 'saved' = the
+// saved-workouts list, 'pulled' = a saved day rendered with no wizard grid behind it
+// (re-rolling a pulled template isn't a thing — there's nothing to re-roll it into).
 function showOneOffStep(n) {
+  document.getElementById('oneoffStep0').style.display = n === 0 ? '' : 'none';
   document.getElementById('oneoffStep1').style.display = n === 1 ? '' : 'none';
-  document.getElementById('oneoffStep2').style.display = n >= 2 ? '' : 'none';
-  document.getElementById('oneoffBack').style.display  = n === 1 ? 'none' : '';
-  if (n < 3) document.getElementById('oneoffDay').innerHTML = '';
+  document.getElementById('oneoffStepSaved').style.display = n === 'saved' ? '' : 'none';
+  document.getElementById('oneoffStep2').style.display = (n === 2 || n === 3) ? '' : 'none';
+  document.getElementById('oneoffBack').style.display  = n === 0 ? 'none' : '';
+  if (n !== 3 && n !== 'pulled') {
+    document.getElementById('oneoffDay').innerHTML = '';
+    document.getElementById('oneoffSavePrompt').style.display = 'none';
+  }
 }
 
 function oneOffBack() {
-  // From the rendered day, back means "pick a different focus"; from the focus grid
-  // it means "pick a different goal". One step at a time, never straight to the top.
-  if (document.getElementById('oneoffDay').innerHTML) { showOneOffStep(2); return; }
+  // Inferred from what's currently on screen, same style as before EPIC-037 —
+  // checked in order from the deepest possible state to the shallowest, since a
+  // rendered day (from either path) always leaves oneoffDay non-empty regardless
+  // of which n it was shown with.
+  if (document.getElementById('oneoffDay').innerHTML) { showOneOffStep(oneOffState.fromSaved ? 'saved' : 2); return; }
+  if (document.getElementById('oneoffStepSaved').style.display !== 'none') { showOneOffStep(0); return; }
+  if (document.getElementById('oneoffStep2').style.display !== 'none') { showOneOffStep(1); return; }
   oneOffState.goal = null;
   oneOffState.focus = null;
   oneOffState.day = null;
+  oneOffState.fromSaved = false;
   document.querySelectorAll('#oneoffGoalRow .oneoff-card, #oneoffFocusRow .oneoff-card')
     .forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+  showOneOffStep(0);
+}
+
+// EPIC-037 — the entry-choice gate (spec c): "if I click 'Generate Workout in
+// Arms,' it should go to 'Create New Workout' or 'Pull from Saved Workouts.'"
+// Lives HERE, inside openOneOff() itself, not duplicated at either of the two
+// call sites (line ~1947, line ~2008) — one shared function, one place this can
+// ever drift from.
+function oneOffChooseCreate() {
+  oneOffState.fromSaved = false;
   showOneOffStep(1);
+}
+
+async function oneOffChoosePull() {
+  if (!currentUser) { showToast('Sign in to view saved workouts'); return; }
+  oneOffState.fromSaved = true;
+  showOneOffStep('saved');
+  await renderSavedWorkoutsRow();
+}
+
+let _savedWorkouts = [];
+async function renderSavedWorkoutsRow() {
+  const host = document.getElementById('oneoffSavedList');
+  if (!host) return;
+  host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Loading…</span>`;
+  const { data, error } = await sb.from('saved_workouts')
+    .select('id,name,focus,goal,rating,created_at')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('renderSavedWorkoutsRow failed:', error);
+    host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Could not load saved workouts.</span>`;
+    return;
+  }
+  _savedWorkouts = data || [];
+  if (!_savedWorkouts.length) {
+    host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Nothing saved yet — finish a one-off and save it as a template.</span>`;
+    return;
+  }
+  host.innerHTML = _savedWorkouts.map(w => {
+    const safeName = String(w.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const faceTitle = w.focus ? oneOffFace(w.focus).title : 'Custom';
+    return `<button class="clear-btn" style="width:100%;text-align:left;padding:12px;margin-bottom:8px;" onclick="pickSavedWorkout('${w.id}')">
+      <div style="font-weight:600;">${safeName}</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px;">
+        ${faceTitle}${w.rating ? ` · Felt ${w.rating}/7` : ''}
+      </div>
+    </button>`;
+  }).join('');
+}
+
+// Re-renders a saved day AS-IS via buildDayHTML — the exact same render path a
+// freshly-generated day uses (getSingleDay's `day` shape and this table's
+// day_data are the same object), so pulling a saved workout is not a second
+// copy of the exercise-selection or rendering logic.
+async function pickSavedWorkout(id) {
+  const w = _savedWorkouts.find(x => x.id === id);
+  if (!w) return;
+  const { data, error } = await sb.from('saved_workouts').select('day_data').eq('id', id).single();
+  if (error || !data) { console.error('pickSavedWorkout failed:', error); showToast('Could not load that workout'); return; }
+  oneOffState.goal = w.goal || null;
+  oneOffState.focus = w.focus || null;
+  oneOffState.day = data.day_data;
+  oneOffState.fromSaved = true;
+  const goalKey = oneOffGoalKey();
+  const host = document.getElementById('oneoffDay');
+  host.innerHTML = buildDayHTML(oneOffState.day, getPhase(currentWeek, goalKey, cfg.weeks), goalKey);
+  showOneOffStep('pulled');
+  if (typeof renderIcons === 'function') renderIcons();
+  const finishBtn = document.getElementById('oneoffFinishBtn');
+  if (finishBtn) finishBtn.style.display = 'block';
 }
 
 // Card markup is identical between the two grids — same classes, same scrim/caption
@@ -6888,6 +6992,7 @@ async function openOneOff() {
   oneOffState.goal = null;
   oneOffState.focus = null;
   oneOffState.day = null;
+  oneOffState.fromSaved = false;
   _oneoffSets = null;
   const finishBtn = document.getElementById('oneoffFinishBtn');
   if (finishBtn) finishBtn.style.display = 'none';
@@ -6897,7 +7002,9 @@ async function openOneOff() {
     oneOffCardHTML(g.key, g, oneOffGoalPhoto(g.key), `pickOneOffGoal('${g.key}')`, 'data-oneoff-goal',
       `Build a ${g.title} workout`)).join('');
   renderOneOffFocusRow(); // no _oneoffSets yet — renders with no badges until the fetch below resolves
-  showOneOffStep(1);
+  // EPIC-037 (spec c) — land on the entry choice, not straight into the goal
+  // grid, so "Create New" vs "Pull from Saved" is the first decision every time.
+  showOneOffStep(0);
   renderRecencyBanner();
   // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
   // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
@@ -7067,12 +7174,18 @@ async function finishOneOff() {
     oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
     const pts = 10 + (prCount || 0) * 5;
     showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts`);
-    closeModal('oneoff');
     // The scoreboard on screen is now stale by exactly this session's points and volume.
     // loadDashboard() is the one path that re-reads them from the cloud (showView does the
     // same call), so without it the credit above is invisible until the next navigation —
     // "wired is not working" if the user cannot see it.
     if (typeof loadDashboard === 'function') loadDashboard();
+    // EPIC-037 (spec a/b): logging a session and saving a reusable template are
+    // separate acts (see migrations/0016's header). A workout PULLED from an
+    // existing saved template is already a saved row — re-prompting would only
+    // create a duplicate, so that path closes straight away. A freshly CREATED
+    // one-off is offered the save prompt instead of an immediate close.
+    if (oneOffState.fromSaved) closeModal('oneoff');
+    else promptSaveOneOffTemplate();
 
   } catch (e) {
     console.error('finishOneOff failed:', e);
@@ -7080,6 +7193,58 @@ async function finishOneOff() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Finish — Save This Workout'; }
   }
+}
+
+// EPIC-037 (spec a/b) — offered right after a freshly-created one-off is
+// logged (finishOneOff, above). Pre-fills a name from the focus + today's
+// date so "Skip" or a one-tap Save both leave the user with something
+// sensible; rating defaults to unset (null persists fine — column is nullable).
+let _oneoffRating = null;
+function promptSaveOneOffTemplate() {
+  _oneoffRating = null;
+  const nameInput = document.getElementById('oneoffSaveName');
+  const focusLabel = oneOffState.focus ? oneOffFace(oneOffState.focus).title : 'Workout';
+  if (nameInput) nameInput.value = `${focusLabel} — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const row = document.getElementById('oneoffRatingRow');
+  if (row) {
+    row.innerHTML = Array.from({ length: 7 }, (_, i) => i + 1).map(n =>
+      `<button type="button" class="clear-btn" data-rating="${n}" style="width:auto;padding:8px 12px;" onclick="pickOneOffRating(${n})">${n}</button>`
+    ).join('');
+  }
+  const finishBtn = document.getElementById('oneoffFinishBtn');
+  if (finishBtn) finishBtn.style.display = 'none';
+  document.getElementById('oneoffSavePrompt').style.display = 'block';
+}
+
+function pickOneOffRating(n) {
+  _oneoffRating = n;
+  document.querySelectorAll('#oneoffRatingRow [data-rating]').forEach(b => {
+    const on = Number(b.dataset.rating) === n;
+    b.style.color = on ? 'var(--accent)' : '';
+    b.style.background = on ? 'var(--accent-dim)' : '';
+    b.style.borderColor = on ? 'color-mix(in srgb,var(--accent) 30%,transparent)' : '';
+  });
+}
+
+// Writes the reusable template row. day_data is oneOffState.day AS-IS — the
+// same getSingleDay() shape buildDayHTML() already renders, so pulling this
+// back up later (pickSavedWorkout, above) needs no second render path.
+async function saveOneOffTemplate() {
+  const nameInput = document.getElementById('oneoffSaveName');
+  const name = (nameInput?.value || '').trim();
+  if (!name) { showToast('Name this workout first'); return; }
+  if (!oneOffState.day) { showToast('Nothing to save'); return; }
+  const { error } = await sb.from('saved_workouts').insert({
+    user_id: currentUser.id,
+    name,
+    focus: oneOffState.focus || null,
+    goal: oneOffGoalKey(),
+    day_data: oneOffState.day,
+    rating: _oneoffRating,
+  });
+  if (error) { console.error('saveOneOffTemplate failed:', error); showToast('Could not save template — try again'); return; }
+  showToast('Workout template saved');
+  closeModal('oneoff');
 }
 
 // ═══════════════════════════════════════════════════════
