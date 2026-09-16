@@ -729,8 +729,12 @@ verification:
        if those tools are available in the session — check availability by trying the call, never by
        asserting 'no egress' from memory or a prior session's limitation. Only once both genuinely
        fail, flag the gap in the commit + Notion row, stating plainly what was searched and why it
-       came up empty. BUG-121 (the follow-up sweep for the remaining uncited-percentage claims
-       BUG-110 left out of scope) is the first case this applies to — the cycle that works it must
+       came up empty. Any citable source found this way must clear the domain tiering added the
+       same day to exercise-science-research/SKILL.md — peer-reviewed/.edu/.gov/established sport-
+       science orgs as PRIMARY (a citation can rest on this alone), blogs/Reddit/forums as SECONDARY
+       corroboration only, never the sole basis for a claim. BUG-121 (the follow-up sweep for the
+       remaining uncited-percentage claims BUG-110 left out of scope) is the first case this applies
+       to — the cycle that works it must
        run this sequence per claim, not just repeat BUG-110's remove-and-flag pattern."
 
 safety:
