@@ -85,6 +85,7 @@ const TIERS = {
   D16: 'SAFETY',          // the override protocol itself is not overridable
   D27: 'SCIENCE_DEFAULT', // D27 continuity across program regenerations — soft reorder only
   D28: 'SCIENCE_DEFAULT', // duration-gated isolation drop — shape cited, cutoff PENDING a ruling
+  D29: 'SCIENCE_DEFAULT', // one-off exercise-instance variety — soft demotion + opt-in randomized tiebreak, same class as D20/D27
   D17: 'SAFETY',          // ACTIVE 2026-09-03 — enforced by scripts/d17-db-sweep.mjs in the
                           // credentialed production workflow, NOT here: this gate is deliberately
                           // credential-free (it runs on fork PRs), and a file-side check claiming
@@ -2049,6 +2050,62 @@ if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
   }
 } else {
   console.log('  (note: getSingleDay/FOCUS_SLOTS not available — D20 skipped)');
+}
+
+// ── D29 (ACTIVE) — getSingleDay opt-in exercise-instance variety ───────────────
+// Mirrors D20/D27's teeth exactly: (1) NO-OP backward compatibility — omitting
+// opts.recentExerciseNames must be byte-identical to a call with an explicit empty
+// array; (2) the eligible/legal pool never shrinks — D29 reorders, it never filters
+// (same guarantee D18/D20/D27 make); (3) D9's structural properties (non-empty,
+// compound-before-accessory, dup-free, tier-legal) still hold with variety active;
+// (4) the randomized tiebreak actually VARIES output across at least one focus when
+// a real tie exists and rng is forced to different extremes — catches a regression
+// where the tiebreak silently stops firing (the same failure class BUG caught D20's
+// isFresh() build, and D27's continuity-not-filter guard).
+let d29Checked = 0;
+if (typeof getSingleDay === 'function' && Array.isArray(ONEOFF_FOCUSES)) {
+  const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
+  let steeredAtLeastOnce = false;
+
+  for (const focus of ONEOFF_FOCUSES) {
+    for (const tier of TIER_ORDER) {
+      d29Checked++;
+      // (1) NO-OP — absent vs explicit-empty must agree.
+      const absent = getSingleDay(focus, { tier });
+      const explicitEmpty = getSingleDay(focus, { tier, recentExerciseNames: [] });
+      if (JSON.stringify(absent) !== JSON.stringify(explicitEmpty)) {
+        fail('D29', `${focus}/${tier}: recentExerciseNames:[] changed output vs opts absent entirely — D29 must be a strict no-op when there is no history`);
+      }
+
+      const baseNames = namesOf(absent);
+      if (!baseNames.length) continue; // D9/D18 own emptiness; nothing for D29 to say
+
+      // (2)+(4) Force every returned exercise "recent" and force rng to two extremes.
+      const lo = getSingleDay(focus, { tier, recentExerciseNames: baseNames, rng: () => 0 });
+      const hi = getSingleDay(focus, { tier, recentExerciseNames: baseNames, rng: () => 0.999999 });
+      const loNames = namesOf(lo), hiNames = namesOf(hi);
+
+      // (2) Pool size must never shrink — same exercise count as the no-history call.
+      if (loNames.length !== baseNames.length || hiNames.length !== baseNames.length) {
+        fail('D29', `${focus}/${tier}: forcing history changed the EXERCISE COUNT (base ${baseNames.length} -> lo ${loNames.length}/hi ${hiNames.length}) — D29 reorders, it must never cost a slot`);
+      }
+
+      // (3) D9 structural properties must still hold.
+      if (!lo || !Array.isArray(lo.blocks) || !lo.blocks.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0) produced an EMPTY session`);
+      if (new Set(loNames).size !== loNames.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0) produced a duplicate lift`);
+      if (new Set(hiNames).size !== hiNames.length) fail('D29', `${focus}/${tier}: maximal-history stress (rng=0.999999) produced a duplicate lift`);
+      for (const n of loNames) {
+        const t = TIER_BY_NAME[String(n).trim().toLowerCase()];
+        if (t && TIER_ORDER.indexOf(t) > TIER_ORDER.indexOf(tier)) fail('D29', `${focus}/${tier}: "${n}" exceeds tier under history stress`);
+      }
+
+      if (JSON.stringify(loNames) !== JSON.stringify(hiNames)) steeredAtLeastOnce = true;
+    }
+  }
+  if (!steeredAtLeastOnce) fail('D29', 'forcing every returned exercise "recent" with rng pinned to opposite extremes never changed getSingleDay\'s output anywhere across every focus×tier — the randomized-tiebreak mechanism appears to be disabled/dead');
+  console.log(`  D29 one-off exercise-instance variety, opt-in randomized tiebreak within the legal pool, inert by default — ${d29Checked} focus×tier checks (no-op + never-shrinks-pool + never-empty + dup-free + tier-legal + actually-varies-under-forced-history)`);
+} else {
+  console.log('  (note: getSingleDay/ONEOFF_FOCUSES not available — D29 skipped)');
 }
 
 // ── D21 — the one-off tiered-set ladder ────────────────────────────────────────
