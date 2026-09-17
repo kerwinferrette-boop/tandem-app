@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<!--
+  SCRATCH MOCKUP — NOT SHIPPED CODE. Delete before merge.
+  Three directions for the "Today's Workout" entry-point screen, per Kerwin 2026-09-15
+  ("make this full screen & hero images instead of small bars down below").
+
+  Grounded in Notion → 🥊 Competitor Tracking — UI/UX & Features:
+   · BBCOM "Choose Your Workout Experience" — "the closest real-world precedent found for
+     Kerwin's 'quick pump vs. full program, same home' positioning."
+   · Ladder "Flex workouts" — "real precedent for the exact 'quick session vs. full structured
+     program, same home' duality Tandem's home screen is now building toward."
+   · Sweat — home screen is a timeline "color-coded by workout category"; confetti/celebration.
+   · Kerwin's Chief Designer pass (2026-06-20) — "Tandem currently reads as a HUD, not a home."
+     → sentence-case Inter for WORDS, mono ONLY for numbers/data; bigger targets;
+       lose the all-caps-mono-everywhere; keep the green, lose the grid.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Today's Workout — mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070b;--s1:#101017;--s2:#17171f;--s3:#1f1f29;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --accent:#18C26A;--accent2:#3FE08C;--accent-deep:#0E7A45;
+  --accent-dim:rgba(24,194,106,0.12);--accent-glow:rgba(24,194,106,0.25);
+  --gold:#FFB020;--gold2:#FFC94D;
+  --text:#F2F2F5;--muted:#6B6B7A;--muted2:#9A9AAC;
+  /* switched Archivo/Inter -> Nunito to match the tc-card mockups' font direction
+     (onerm-bar-tc.html, muscle-heatmap-v6-tight.html) — same exploration pass, one font. */
+  --font-display:'Nunito',sans-serif;--font-body:'Nunito',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  --r-md:12px;--r-lg:16px;--r-xl:20px;
+  /* Variant C only — "warm the surface" test from the Chief Designer pass */
+  --warm-bg:#111010;--warm-s1:#1a1817;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#000;color:var(--text);font-family:var(--font-body);}
+
+/* ── mockup scaffolding (not part of the design) ───────────────────── */
+.rail{position:fixed;top:0;left:0;right:0;z-index:99;display:flex;gap:6px;
+  padding:8px 10px;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);}
+.rail button{font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--muted2);
+  background:var(--s2);border:1px solid var(--border2);border-radius:99px;padding:6px 14px;cursor:pointer;}
+.rail button.on{color:#000;background:var(--accent2);border-color:transparent;}
+.stage{padding-top:41px;}
+.variant{display:none;}
+.variant.on{display:block;}
+
+/* ── shared screen chrome ──────────────────────────────────────────── */
+.screen{position:relative;width:100%;min-height:calc(100svh - 41px);
+  display:flex;flex-direction:column;overflow:hidden;}
+.screen-head{padding:22px 20px 14px;flex:0 0 auto;position:relative;z-index:2;}
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;
+  color:var(--accent2);margin-bottom:9px;}          /* mono = DATA only */
+.h1{font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:-.01em;
+  line-height:1.08;color:#fff;}
+.sub{font-size:13.5px;color:var(--muted2);margin-top:5px;line-height:1.45;} /* sentence case */
+.x{position:absolute;top:18px;right:16px;width:34px;height:34px;border-radius:50%;
+  display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid var(--border2);
+  color:var(--muted2);font-size:15px;cursor:pointer;z-index:3;}
+
+/* ── card internals shared by all variants ─────────────────────────── */
+.card{position:relative;display:block;width:100%;border:none;text-align:left;
+  cursor:pointer;overflow:hidden;color:inherit;font:inherit;isolation:isolate;}
+.card .photo{position:absolute;inset:0;background-size:cover;background-position:center;
+  transform:scale(1.03);transition:transform .5s cubic-bezier(.2,.8,.2,1);z-index:-2;}
+.card:active .photo{transform:scale(1.07);}
+.card .scrim{position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,7,11,.18) 0%,rgba(7,7,11,.62) 52%,rgba(7,7,11,.95) 100%);}
+.card .body{position:relative;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;}
+.card h2{font-family:var(--font-display);font-size:21px;font-weight:700;color:#fff;letter-spacing:-.005em;}
+.card p{font-size:12.5px;color:rgba(255,255,255,.72);margin-top:3px;line-height:1.4;}
+.meta{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;
+  color:rgba(255,255,255,.85);margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--accent2);
+  box-shadow:0 0 8px var(--accent-glow);flex:0 0 auto;}
+.chev{position:absolute;right:18px;bottom:18px;width:30px;height:30px;border-radius:50%;
+  display:grid;place-items:center;background:rgba(255,255,255,.12);
+  backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18);font-size:13px;color:#fff;}
+/* the green rail is how "this is your plan" reads without shouting */
+.primary::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--accent2),var(--accent-deep));z-index:2;}
+
+/* ══ VARIANT A — full-bleed stack (Ladder Flex / Sweat category tiles) ══
+   2026-09-15, Kerwin: likes A's aesthetic best, wants the borders "more
+   literal" — B/C/D match the app's current softness; this leans edgier.
+   → sharp square corners (unchanged), a real 1px seam between cards instead
+     of a bare 2px gap, and the primary card's border switches to accent
+     green instead of the old left-rail-only signal, so the border itself
+     is doing the "this is your plan" work, not a decoration on top of it. */
+#vA .deck{flex:1 1 auto;display:flex;flex-direction:column;gap:1px;padding:1px 1px max(10px,env(safe-area-inset-bottom));background:var(--border2);}
+#vA .card{flex:1 1 0;min-height:150px;border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);}
+#vA .card.primary{border-color:var(--accent2);box-shadow:inset 0 0 0 1px rgba(24,194,106,.35);}
+#vA .card.primary::after{width:4px;background:linear-gradient(180deg,var(--accent2),var(--accent-deep));}
+
+/* ══ VARIANT B — hero primary + duo (BBCOM "Choose Your Experience") ══ */
+#vB .deck{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;
+  padding:0 14px max(14px,env(safe-area-inset-bottom));}
+#vB .card{border-radius:var(--r-xl);border:1px solid var(--border2);}
+#vB .hero{flex:1 1 58%;min-height:210px;}
+#vB .row{flex:1 1 42%;display:flex;gap:10px;min-height:150px;}
+#vB .row .card{flex:1 1 0;}
+#vB .row h2{font-size:17px;}
+#vB .row p{font-size:11.5px;}
+#vB .row .chev{display:none;}
+
+/* ══ VARIANT C — warm editorial rows (Pump Club warmth / Gains calm) ══ */
+#vC .screen{background:var(--warm-bg);}
+#vC .deck{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;
+  padding:4px 16px max(16px,env(safe-area-inset-bottom));justify-content:center;}
+#vC .card{display:flex;align-items:stretch;gap:0;background:var(--warm-s1);
+  border:1px solid var(--border);border-radius:var(--r-lg);min-height:104px;}
+#vC .thumb{position:relative;flex:0 0 108px;overflow:hidden;border-radius:var(--r-lg) 0 0 var(--r-lg);}
+#vC .thumb .photo{z-index:0;}
+#vC .thumb .scrim{background:linear-gradient(90deg,rgba(17,16,16,0) 55%,rgba(17,16,16,.85) 100%);z-index:1;}
+#vC .body{padding:16px 46px 16px 16px;justify-content:center;height:auto;}
+#vC .card h2{font-size:18px;}
+#vC .card p{font-size:12.5px;color:var(--muted2);}
+#vC .meta{color:var(--accent2);margin-bottom:6px;}
+#vC .chev{background:rgba(255,255,255,.06);bottom:auto;top:50%;transform:translateY(-50%);}
+#vC .primary{border-color:rgba(24,194,106,.32);background:
+  linear-gradient(90deg,rgba(24,194,106,.08),rgba(26,24,23,0) 60%),var(--warm-s1);}
+#vC .primary::after{border-radius:var(--r-lg) 0 0 var(--r-lg);}
+#vC .foot{text-align:center;font-size:11.5px;color:var(--muted);padding:10px 0 2px;}
+
+/* ══ VARIANT D — B's hierarchy + C's warmth, CENTERED text, real-button feel ══
+   Kerwin 2026-09-15: "mixture of B & C. Center the text though on the images, if I
+   click the middle of the picture I should be clicking right on the text. make it
+   seem like a real button vs. a text box."
+   → text is vertically+horizontally centered so the optical centre of the photo IS
+     the label; scrim is centre-weighted (radial) instead of bottom-heavy so the
+     middle is the legible part; every card carries an explicit pill CTA and a
+     press state, which is what separates "button" from "captioned image". */
+#vD .screen{background:var(--warm-bg);}
+#vD .deck{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;
+  padding:0 14px max(14px,env(safe-area-inset-bottom));}
+#vD .card{border-radius:var(--r-xl);border:1px solid var(--border2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09), 0 8px 22px rgba(0,0,0,.45);
+  transition:transform .13s ease, box-shadow .13s ease, border-color .13s ease;}
+#vD .card:active{transform:scale(.976);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 2px 8px rgba(0,0,0,.55);}
+#vD .hero{flex:1 1 54%;min-height:238px;}
+#vD .row{flex:1 1 46%;display:flex;gap:12px;min-height:186px;}
+#vD .row .card{flex:1 1 0;}
+/* centre-weighted scrim: darkest where the words are, lifts at the edges */
+#vD .card .scrim{background:
+  radial-gradient(118% 76% at 50% 50%,rgba(17,16,16,.34) 0%,rgba(17,16,16,.74) 56%,rgba(17,16,16,.93) 100%);}
+#vD .body{padding:14px 12px;align-items:center;justify-content:center;text-align:center;}
+/* THE LABEL IS THE BUTTON: the word is the largest thing in the card, optically
+   centred, and everything else (meta, blurb, CTA) is deliberately subordinate. */
+#vD .meta{justify-content:center;margin-bottom:11px;font-size:10px;opacity:.82;}
+#vD .card h2{font-size:38px;line-height:1.02;letter-spacing:-.028em;
+  max-width:11ch;margin:0 auto;text-wrap:balance;}
+#vD .card p{font-size:12.5px;max-width:26ch;margin:9px auto 0;color:rgba(255,255,255,.66);}
+#vD .chev{display:none;}                       /* the CTA replaces the corner chevron */
+#vD .cta{margin-top:14px;display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--font-body);font-size:12px;font-weight:600;color:#fff;
+  padding:8px 16px;border-radius:99px;background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(8px);}
+#vD .primary .cta{background:var(--accent);border-color:transparent;color:#04130b;
+  box-shadow:0 4px 14px var(--accent-glow);}
+#vD .primary{border-color:rgba(24,194,106,.34);}
+#vD .row h2{font-size:26px;max-width:8ch;letter-spacing:-.022em;}
+#vD .row p{font-size:11px;max-width:19ch;margin-top:7px;}
+#vD .row .meta{margin-bottom:9px;}
+#vD .row .cta{font-size:11px;padding:7px 13px;margin-top:11px;}
+</style>
+</head>
+<body>
+
+<div class="rail">
+  <button class="on" onclick="pick('vA',this)">A · Full-bleed stack</button>
+  <button onclick="pick('vB',this)">B · Hero + duo</button>
+  <button onclick="pick('vC',this)">C · Warm rows</button>
+  <button onclick="pick('vD',this)">D · B+C centered</button>
+</div>
+
+<div class="stage">
+
+  <!-- ══════════ A ══════════ -->
+  <section class="variant on" id="vA">
+    <div class="screen">
+      <div class="x">✕</div>
+      <div class="screen-head">
+        <div class="eyebrow">TUE · WEEK 3 OF 8</div>
+        <div class="h1">Today's workout</div>
+        <div class="sub">What are you doing right now?</div>
+      </div>
+      <div class="deck">
+        <button class="card primary">
+          <div class="photo" style="background-image:url('public/hero-male-2.jpg')"></div>
+          <div class="scrim"></div>
+          <div class="body">
+            <div class="meta"><span class="dot"></span>DAY 2 · PUSH · 6 EXERCISES</div>
+            <h2>Continue your plan</h2>
+            <p>Pick up where your program left off.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+        <button class="card">
+          <div class="photo" style="background-image:url('public/oneoff-legs.jpg')"></div>
+          <div class="scrim"></div>
+          <div class="body">
+            <div class="meta">ONE-OFF · 20–60 MIN</div>
+            <h2>Build me a workout</h2>
+            <p>Chest, legs, hinge — pick a focus and go.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+        <button class="card">
+          <div class="photo" style="background-image:url('public/oneoff-back.jpg')"></div>
+          <div class="scrim"></div>
+          <div class="body">
+            <div class="meta">MANUAL LOG</div>
+            <h2>Journal a workout</h2>
+            <p>Log something you already did.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ B ══════════ -->
+  <section class="variant" id="vB">
+    <div class="screen">
+      <div class="x">✕</div>
+      <div class="screen-head">
+        <div class="eyebrow">TUE · WEEK 3 OF 8</div>
+        <div class="h1">Today's workout</div>
+        <div class="sub">What are you doing right now?</div>
+      </div>
+      <div class="deck">
+        <button class="card primary hero">
+          <div class="photo" style="background-image:url('public/hero-male-2.jpg')"></div>
+          <div class="scrim"></div>
+          <div class="body">
+            <div class="meta"><span class="dot"></span>DAY 2 · PUSH · 6 EXERCISES · ~52 MIN</div>
+            <h2>Continue your plan</h2>
+            <p>Chest, shoulders and triceps. Built on what you lifted last week.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+        <div class="row">
+          <button class="card">
+            <div class="photo" style="background-image:url('public/oneoff-legs.jpg')"></div>
+            <div class="scrim"></div>
+            <div class="body">
+              <div class="meta">ONE-OFF</div>
+              <h2>Build me a workout</h2>
+              <p>Pick a focus, get a session.</p>
+            </div>
+          </button>
+          <button class="card">
+            <div class="photo" style="background-image:url('public/oneoff-back.jpg')"></div>
+            <div class="scrim"></div>
+            <div class="body">
+              <div class="meta">MANUAL LOG</div>
+              <h2>Journal</h2>
+              <p>Log something you already did.</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ C ══════════ -->
+  <section class="variant" id="vC">
+    <div class="screen">
+      <div class="x">✕</div>
+      <div class="screen-head">
+        <div class="eyebrow">TUE · WEEK 3 OF 8</div>
+        <div class="h1">Today's workout</div>
+        <div class="sub">What are you doing right now?</div>
+      </div>
+      <div class="deck">
+        <button class="card primary">
+          <div class="thumb">
+            <div class="photo" style="background-image:url('public/hero-male-2.jpg')"></div>
+            <div class="scrim"></div>
+          </div>
+          <div class="body">
+            <div class="meta"><span class="dot"></span>DAY 2 · PUSH · 6 EXERCISES</div>
+            <h2>Continue your plan</h2>
+            <p>Pick up where your program left off.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+        <button class="card">
+          <div class="thumb">
+            <div class="photo" style="background-image:url('public/oneoff-legs.jpg')"></div>
+            <div class="scrim"></div>
+          </div>
+          <div class="body">
+            <div class="meta">ONE-OFF · 20–60 MIN</div>
+            <h2>Build me a workout</h2>
+            <p>Chest, legs, hinge — pick a focus and go.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+        <button class="card">
+          <div class="thumb">
+            <div class="photo" style="background-image:url('public/oneoff-back.jpg')"></div>
+            <div class="scrim"></div>
+          </div>
+          <div class="body">
+            <div class="meta">MANUAL LOG</div>
+            <h2>Journal a workout</h2>
+            <p>Log something you already did.</p>
+          </div>
+          <div class="chev">→</div>
+        </button>
+        <div class="foot">Anything you log counts toward your streak.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ D — the mix ══════════ -->
+  <section class="variant" id="vD">
+    <div class="screen">
+      <div class="x">✕</div>
+      <div class="screen-head">
+        <div class="eyebrow">TUE · WEEK 3 OF 8</div>
+        <div class="h1">Today's workout</div>
+        <div class="sub">What are you doing right now?</div>
+      </div>
+      <div class="deck">
+        <button class="card primary hero">
+          <div class="photo" style="background-image:url('public/hero-male-2.jpg')"></div>
+          <div class="scrim"></div>
+          <div class="body">
+            <div class="meta"><span class="dot"></span>DAY 2 · PUSH · 6 EXERCISES · ~52 MIN</div>
+            <h2>Continue your plan</h2>
+            <p>Chest, shoulders and triceps. Built on what you lifted last week.</p>
+            <span class="cta">Start workout →</span>
+          </div>
+        </button>
+        <div class="row">
+          <button class="card">
+            <div class="photo" style="background-image:url('public/oneoff-legs.jpg')"></div>
+            <div class="scrim"></div>
+            <div class="body">
+              <div class="meta">ONE-OFF</div>
+              <h2>Build me a workout</h2>
+              <p>Pick a focus, get a session.</p>
+              <span class="cta">Choose →</span>
+            </div>
+          </button>
+          <button class="card">
+            <div class="photo" style="background-image:url('public/oneoff-back.jpg')"></div>
+            <div class="scrim"></div>
+            <div class="body">
+              <div class="meta">MANUAL LOG</div>
+              <h2>Journal</h2>
+              <p>Log something you already did.</p>
+              <span class="cta">Log it →</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+function pick(id, btn){
+  document.querySelectorAll('.variant').forEach(v=>v.classList.toggle('on', v.id===id));
+  document.querySelectorAll('.rail button').forEach(b=>b.classList.toggle('on', b===btn));
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>

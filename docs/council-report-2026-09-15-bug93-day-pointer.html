@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Council Report — BUG-93: who owns "what day is it"</title>
+<style>
+  :root{
+    --ink:#14171a; --ink2:#41484f; --ink3:#6b757e;
+    --line:#e3e6e9; --line2:#eef0f2; --bg:#fff; --panel:#fafbfc;
+    --agree:#1f7a4d; --agree-bg:#eef7f2;
+    --clash:#a8540d; --clash-bg:#fdf4ec;
+    --blind:#7a3ea1; --blind-bg:#f6f1fa;
+    --rec:#1a4d8f; --rec-bg:#eef4fb;
+    --stop:#b3261e; --stop-bg:#fdf0ef;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:820px;margin:0 auto;padding:48px 24px 90px;}
+  .kicker{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink3);}
+  h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin:10px 0 6px;}
+  .sub{color:var(--ink2);font-size:15px;margin:0 0 26px;}
+  .metabar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 34px;}
+  .tag{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;
+    border:1px solid var(--line);border-radius:99px;padding:6px 11px;color:var(--ink2);background:var(--panel);}
+  .tag.p1{color:var(--stop);border-color:#f2cfcc;background:var(--stop-bg);}
+
+  .quote{border-left:3px solid var(--line);padding:4px 0 4px 18px;margin:0 0 30px;
+    color:var(--ink2);font-size:15.5px;}
+  .quote b{color:var(--ink);font-weight:600;}
+
+  h2{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;
+    margin:42px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  h3{font-size:16.5px;margin:22px 0 7px;letter-spacing:-.01em;}
+  p{margin:0 0 13px;}
+  code{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--line2);
+    padding:1.5px 5px;border-radius:4px;color:#2a3138;}
+
+  .card{border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:0 0 14px;background:var(--panel);}
+  .card.agree{border-color:#cfe6da;background:var(--agree-bg);}
+  .card.clash{border-color:#f0dcc6;background:var(--clash-bg);}
+  .card.blind{border-color:#e3d6ef;background:var(--blind-bg);}
+  .card.rec{border-color:#cddff2;background:var(--rec-bg);}
+  .card h4{margin:0 0 7px;font-size:15px;letter-spacing:-.005em;}
+  .card p:last-child{margin-bottom:0;}
+  .card .lead{font:600 10.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+    text-transform:uppercase;margin:0 0 9px;}
+  .agree .lead{color:var(--agree)} .clash .lead{color:var(--clash)}
+  .blind .lead{color:var(--blind)} .rec .lead{color:var(--rec)}
+
+  /* alignment grid */
+  table.align{width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:13.5px;}
+  table.align th{text-align:left;font:600 10.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink3);padding:0 8px 10px 0;border-bottom:1px solid var(--line);
+    vertical-align:bottom;}
+  table.align td{padding:11px 8px 11px 0;border-bottom:1px solid var(--line2);vertical-align:top;color:var(--ink2);}
+  table.align td.who{color:var(--ink);font-weight:600;white-space:nowrap;}
+  .pos{display:inline-block;font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 8px;border-radius:5px;white-space:nowrap;}
+  .pos.a{background:#e8f1fb;color:#1a4d8f}
+  .pos.b{background:#fdf0ef;color:#b3261e}
+  .pos.derive{background:#eef7f2;color:#1f7a4d}
+  .pos.run{background:#f6f1fa;color:#7a3ea1}
+  .pos.na{background:var(--line2);color:var(--ink3)}
+
+  .spectrum{border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:0 0 20px;}
+  .spectrum .row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line2);}
+  .spectrum .row:last-child{border-bottom:0;}
+  .spectrum .lbl{flex:0 0 190px;font-weight:600;font-size:13.5px;}
+  .bar{flex:1 1 auto;height:8px;border-radius:99px;background:var(--line2);position:relative;overflow:hidden;}
+  .bar i{position:absolute;top:0;bottom:0;border-radius:99px;}
+  .n{flex:0 0 82px;text-align:right;font:600 11.5px ui-monospace,Menlo,monospace;color:var(--ink3);}
+
+  details{border:1px solid var(--line);border-radius:10px;margin:0 0 9px;background:#fff;}
+  details[open]{background:var(--panel);}
+  summary{cursor:pointer;padding:14px 18px;font-weight:600;font-size:14.5px;list-style:none;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font:400 18px/1 ui-monospace,Menlo,monospace;color:var(--ink3);}
+  details[open] summary::after{content:"–";}
+  summary .role{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink3);border:1px solid var(--line);border-radius:99px;padding:5px 9px;background:#fff;}
+  .inner{padding:2px 18px 18px;font-size:14.5px;color:var(--ink2);border-top:1px solid var(--line2);}
+  .inner p:first-child{margin-top:13px;}
+  .inner strong{color:var(--ink);}
+
+  ol.steps{margin:0;padding-left:20px;}
+  ol.steps li{margin:0 0 11px;}
+  .first{border:2px solid var(--rec);border-radius:12px;padding:22px 24px;margin:16px 0 0;background:var(--rec-bg);}
+  .first .lead{color:var(--rec)}
+  .first p{font-size:16px;color:var(--ink);}
+  footer{margin-top:54px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--ink3);}
+  @media (max-width:640px){
+    .wrap{padding:30px 18px 64px}
+    h1{font-size:25px}
+    .spectrum .lbl{flex-basis:130px;font-size:12.5px}
+    .n{flex-basis:64px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">LLM Council · Verdict</div>
+  <h1>Who owns “what day is it”?</h1>
+  <p class="sub">BUG-93 — a brand-new program opens on Day 5 (and today, Day 2), and immediately says you’re overdue.</p>
+
+  <div class="metabar">
+    <span class="tag p1">P1 · Wrong Data</span>
+    <span class="tag">Status: New since 2026-08-17</span>
+    <span class="tag">Code Fix: NOT ATTEMPTED</span>
+    <span class="tag">Reported twice</span>
+    <span class="tag">5 advisors · 5 peer reviews</span>
+  </div>
+
+  <div class="quote">
+    <b>Kerwin, 2026-08-17:</b> “I just built a new program and it starts on day 5, and also says I’m overdue? Interesting.”<br><br>
+    <b>Kerwin, 2026-09-15:</b> “I just started a new program, it showed Day 2 first for some reason as my first workout.”
+    … “that would defeat the point of starting a new program?”
+  </div>
+
+  <h2>The question put to the council</h2>
+  <p>Two things in <code>tandem.html</code> both claim to know what day it is.
+  <strong>Owner A</strong> is <code>getWeekSchedule()</code> — a date-derived 7-day calendar slot anchored on
+  <code>cfg.startDate</code>, which feeds the “Week 3 of 8 · Day 4 of 7” label and resets naturally with a new program.
+  <strong>Owner B</strong> is the localStorage key <code>tandem_current_day</code>, which selects the workout actually
+  served. B has <strong>1 reader, 3 writers, and 0 deleters</strong>. Two of its writers — near-identical duplicated
+  blocks at lines 7484 and 8119 — set the pointer from the user’s <em>entire</em> session history with no filter on
+  which program the session belonged to. So a new program inherits <code>lastDone.day_type + 1</code> from the old one.
+  Nothing clears the key when a program is created.</p>
+  <p>Aggravating context: <strong>those same two blocks were patched on 2026-09-13 for a different scoping bug</strong>
+  (excluding one-off sessions) and nobody saw the program-scope hole while editing that exact expression. The project’s
+  own doctrine says “one rule, one home” and “fix the mechanism, not the instance.” And
+  <code>scripts/doctrine.mjs</code> reads repo files only — it cannot see localStorage or Postgres, so any new
+  invariant needs an honest enforcement story.</p>
+
+  <h2>Where the advisors landed</h2>
+  <table class="align">
+    <tr>
+      <th style="width:30%">Advisor</th>
+      <th style="width:22%">Owner for “next workout”</th>
+      <th>Core position</th>
+    </tr>
+    <tr>
+      <td class="who">Contrarian</td>
+      <td><span class="pos na">verify first</span></td>
+      <td>Won’t arbitrate on unverified premises. Nobody reproduced it; “overdue” has no root cause; the cheap fix presumes a program column that may not exist.</td>
+    </tr>
+    <tr>
+      <td class="who">First&nbsp;Principles</td>
+      <td><span class="pos derive">derive it</span></td>
+      <td>Neither owner is a fact. B is a cache of a derivable value with no lifecycle. The missing concept is program identity.</td>
+    </tr>
+    <tr>
+      <td class="who">Expansionist</td>
+      <td><span class="pos run">program_run_id</span></td>
+      <td>Make a “program run” first-class. Unlocks run-over-run comparison, seasons, cross-device truth.</td>
+    </tr>
+    <tr>
+      <td class="who">Outsider</td>
+      <td><span class="pos na">wrong question</span></td>
+      <td>The defect is that the app scolds you on day one of a fresh start. “Day” means two things and the user can’t tell which.</td>
+    </tr>
+    <tr>
+      <td class="who">Executor</td>
+      <td><span class="pos derive">B, recomputed</span></td>
+      <td>Patch both queries today, extract the duplicate in the same commit, make B a self-healing cache this week.</td>
+    </tr>
+  </table>
+
+  <div class="spectrum">
+    <div class="row">
+      <div class="lbl">Strongest response</div>
+      <div class="bar"><i style="left:0;width:60%;background:#1f7a4d"></i></div>
+      <div class="n">D ×3 / B ×2</div>
+    </div>
+    <div class="row">
+      <div class="lbl">Biggest blind spot</div>
+      <div class="bar"><i style="left:0;width:100%;background:#b3261e"></i></div>
+      <div class="n">E ×5</div>
+    </div>
+    <div class="row">
+      <div class="lbl">“All five missed…” — user scoping</div>
+      <div class="bar"><i style="left:0;width:80%;background:#a8540d"></i></div>
+      <div class="n">4 of 5</div>
+    </div>
+    <div class="row">
+      <div class="lbl">“All five missed…” — backfill</div>
+      <div class="bar"><i style="left:0;width:80%;background:#a8540d"></i></div>
+      <div class="n">4 of 5</div>
+    </div>
+    <div style="margin-top:12px;font-size:12.5px;color:var(--ink3)">
+      A = Executor · B = Contrarian · C = Outsider · D = First Principles · E = Expansionist.
+      The Expansionist being unanimously flagged is rare and is the clearest signal in the round.
+    </div>
+  </div>
+
+  <h2>Where the council agrees</h2>
+
+  <div class="card agree">
+    <div class="lead">Consensus 1</div>
+    <h4>“What day is it” is genuinely two concepts — and Owner A isn’t the one in question.</h4>
+    <p>No advisor argued for collapsing them. Calendar cadence is a real, separate question with a legitimate
+    date-derived answer. <strong>Owner A stays.</strong> The entire dispute is about B.</p>
+  </div>
+
+  <div class="card agree">
+    <div class="lead">Consensus 2</div>
+    <h4><code>tandem_current_day</code> is not a source of truth. It’s a cache of a derivable fact.</h4>
+    <p>First Principles named it; the Executor independently reached the same remedy; three of five reviewers ratified it.
+    <strong>1 reader / 3 writers / 0 deleters is the diagnostic signature of cached derived state with no lifecycle.</strong>
+    That’s why it recurs — each writer hand-reconstructs a query result, and each hand-reconstruction needs its own filter list.</p>
+  </div>
+
+  <div class="card agree">
+    <div class="lead">Consensus 3</div>
+    <h4>The duplicated block is the mechanism, not the instance.</h4>
+    <p>The program-scope hole survived a 2026-09-13 edit <em>to those exact lines</em> because there were two copies.
+    That is BUG-73 → BUG-114 running a third time. Extraction into one function is a precondition for any fix,
+    not a nicety.</p>
+  </div>
+
+  <div class="card agree">
+    <div class="lead">Consensus 4</div>
+    <h4>An invariant <code>doctrine.mjs</code> can’t check is theater — a grep-level one is real.</h4>
+    <p>Every advisor who touched enforcement landed here. The enforceable form is file-shape, not runtime state.</p>
+  </div>
+
+  <h2>Where the council clashes</h2>
+
+  <div class="card clash">
+    <div class="lead">Clash 1 · resolves into one query</div>
+    <h4>Patch now, or verify first?</h4>
+    <p>The Executor wants 20 minutes of fix shipped today — a month-old P1 shouldn’t be hostage to an architecture debate.
+    The Contrarian says <strong>the patch may not exist</strong>: “scope the query by program” presumes
+    <code>workout_sessions</code> carries a program identifier, and nobody confirmed it does. Two reviewers sided with the
+    Contrarian — “A’s sequencing is the best-shipped plan, but Step 1 is unimplementable if B is right.”
+    <em>These aren’t actually in conflict — the disagreement dissolves into a ten-minute schema check nobody has run.</em></p>
+  </div>
+
+  <div class="card clash">
+    <div class="lead">Clash 2 · settled by an ordering constraint</div>
+    <h4>Delete B, or demote B?</h4>
+    <p>First Principles says delete the key entirely. The Executor says keep it as a recomputed cache, because
+    <code>day_type</code> is NOT NULL and something must write it. Review 5 settled it:
+    <strong><code>day_type</code> is written at session <em>start</em>, before any completion exists</strong> — so
+    “derive from completed sessions” cannot be the writer of the very column it reads. Mechanics go to the Executor;
+    the diagnosis stays with First Principles.</p>
+  </div>
+
+  <div class="card clash">
+    <div class="lead">Clash 3 · unanimous reviewer objection</div>
+    <h4>Fix the P1, or build the run object?</h4>
+    <p>The Expansionist wants <code>program_run_id</code> as a first-class object. <strong>All five reviewers named this
+    the biggest blind spot</strong> — not because runs are wrong, but because E answers a roadmap question while a P1 sits
+    open, and its enforcement claim (“grep that no query omits a run filter”) is unreliable against chained
+    <code>.eq()</code> builders. That would manufacture exactly the green-gate-over-dead-value confidence the doctrine warns about.</p>
+  </div>
+
+  <h2>Blind spots the peer round caught</h2>
+
+  <div class="card blind">
+    <div class="lead">Blind spot 1 · most serious</div>
+    <h4>Nobody scoped by USER. Four of five reviewers raised it independently.</h4>
+    <p>The writers read “the entire session history” — and nobody asked whether that query filters on <code>user_id</code>.
+    <code>workout_sessions</code> is shared Postgres; <code>tandem_current_day</code> is per-device localStorage.
+    <strong>If the user filter is missing or weak, Dani’s completed session can advance Kerwin’s pointer.</strong>
+    That is strictly worse than BUG-93 and it lives in the same expression.</p>
+  </div>
+
+  <div class="card blind">
+    <div class="lead">Blind spot 2</div>
+    <h4><code>day_type</code> is written before completion exists.</h4>
+    <p>“What then writes <code>day_type</code>?” has a harder answer than any advisor gave. Any design deriving next-day
+    from <em>completed</em> sessions must still name a writer for a column populated at session start.</p>
+  </div>
+
+  <div class="card blind">
+    <div class="lead">Blind spot 3</div>
+    <h4>Historical rows cannot be attributed to a run retroactively.</h4>
+    <p>Both structural answers assumed the backfill away. Program boundaries aren’t recoverable from <code>day_type</code>
+    alone. <strong>Any run-id invariant must be forward-only with an explicit legacy sentinel</strong> — never a
+    pretend-complete backfill.</p>
+  </div>
+
+  <div class="card blind">
+    <div class="lead">Blind spot 4</div>
+    <h4>The migration has a felt cost nobody specified.</h4>
+    <p>If the pointer is deleted or re-derived, a user mid-program on deploy day — Dani, right now — may be yanked back to
+    Day 1 with her history apparently gone. “It self-heals on first load” is only true once you’ve checked what first load
+    actually shows her.</p>
+  </div>
+
+  <div class="card blind">
+    <div class="lead">Blind spot 5 · ratified, never addressed by the engineers</div>
+    <h4>The word “Day” is doing two jobs and the user can’t tell which one he got.</h4>
+    <p>Kerwin <em>made the ruling</em> that “Day 4” means cycle slot on 2026-07-23 — and was still confused by it a month
+    later. That’s evidence the label doesn’t survive contact, independent of whether the pointer is correct.</p>
+  </div>
+
+  <h2>The recommendation</h2>
+
+  <div class="card rec">
+    <div class="lead">Verdict</div>
+    <h4>Side with the Contrarian on sequence and First Principles on target. Don’t pick an owner today — and don’t ship the patch today either.</h4>
+    <p>Three of five reviewers called D strongest, and D is right about the <em>diagnosis</em>. But the Contrarian is right
+    about the <em>precondition</em>, and the chair weights that higher because this project’s prime directive is
+    source-first and SC-03 is “run, don’t simulate.” <strong>A root cause established by reading is a hypothesis.</strong>
+    Specifically unexplained: the Day-2 report only follows from the Day-5 mechanism if the previous program’s last
+    completed session was <code>day1</code>. Nobody checked. It may be two bugs.</p>
+    <ol class="steps" style="margin-top:14px">
+      <li><strong>Verify three things first</strong> (one prod query, two greps): (a) does <code>workout_sessions</code>
+      carry any program/template identifier — decides whether the cheap patch exists at all; (b) do both restore queries
+      filter on <code>user_id</code> — decides whether a worse bug hides in the same expression; (c) is
+      <code>cfg.startDate</code> actually reset on new-program creation — decides whether Owner A is stale too, which
+      would invalidate the whole ownership map.</li>
+      <li><strong>Owner A keeps calendar cadence. B is demoted, not deleted.</strong> <code>tandem_current_day</code>
+      becomes a recomputed cache with a real lifecycle: one derivation function, one call site per path, an explicit
+      deleter on program creation. Its value is never trusted across a program boundary.</li>
+      <li><strong>Extraction into a single <code>resolveCurrentDay()</code> ships in the same commit as any behavior
+      fix.</strong> Two copies is how the last fix missed. Patching two sites in parallel does not satisfy “fix the
+      mechanism, not the instance.”</li>
+      <li><strong><code>program_run_id</code> is the right target — but a separate epic, forward-only, legacy
+      sentinel.</strong> The Expansionist’s product case is genuinely strong. File it; don’t bundle it into a P1.</li>
+      <li><strong>Propose an invariant on persisted-key lifecycle, not on this key.</strong> Every persisted key declares
+      an owner and a deleter; CI fails on any key written and never deleted. Grep-checkable, targets the disease class,
+      honest about what <code>doctrine.mjs</code> can see. Do <em>not</em> adopt “grep every query for a run filter.”</li>
+      <li><strong>Adopt the Outsider’s acceptance test verbatim, because Dani can run it:</strong> <em>a program with zero
+      completed sessions can never display an overdue state, and can never serve a workout other than its first.</em></li>
+    </ol>
+  </div>
+
+  <div class="first">
+    <div class="lead">The one thing to do first</div>
+    <p><strong>Query prod for Kerwin’s last completed non-one-off session and confirm its <code>day_type</code> predicts
+    the Day 2 he actually saw — and in the same pass, check whether <code>workout_sessions</code> has any
+    program-identifying column and whether both restore queries filter on <code>user_id</code>.</strong></p>
+    <p style="margin-bottom:0;font-size:14.5px;color:var(--ink2)">One query. It either confirms the hypothesis and tells
+    you whether the cheap fix exists, or it reveals a second bug and a user-scoping hole — in which case everything above
+    gets re-ordered. Nothing else should be written until that result is on screen.</p>
+  </div>
+
+  <h2>Full advisor responses</h2>
+
+  <details>
+    <summary><span>The Contrarian — “three things here are unproven”</span><span class="role">Contrarian</span></summary>
+    <div class="inner">
+      <p>Three things in this briefing are unproven, and the council is being asked to arbitrate ownership on top of them.</p>
+      <p><strong>1. Nobody reproduced this.</strong> The root cause was “established by reading the code.” This project’s
+      own prime directive is verify-by-running, and SC-03 is literally “run, don’t simulate.” A day5 pointer explains the
+      day-5 report. It does not explain today’s <strong>Day 2</strong> report unless the previous program’s last completed
+      session was <code>day1</code> — which nobody checked. Two symptom numbers may be two bugs. Pick an owner now and you
+      may ship a fix that leaves the second one live.</p>
+      <p><strong>2. The overdue symptom has no root cause at all.</strong> The briefing concedes it lives on Owner A’s side
+      and that a fresh <code>cfg.startDate</code> should produce zero overdue — and then moves on. Either
+      <code>cfg.startDate</code> is <em>not</em> actually reset on new-program creation, in which case Owner A is stale too
+      and “make A the single home” is the worst available answer, or <code>getOverdueDays()</code> reads the pointer and the
+      ownership map in this briefing is wrong. Both possibilities invalidate question 1. Answer them before answering the five.</p>
+      <p><strong>3. The one-line fix may not exist.</strong> “Scope the query by program” assumes
+      <code>workout_sessions</code> carries a program/template identifier. Nothing in the briefing says it does. If that
+      column isn’t there, the cheap patch is impossible, the real work is a schema migration plus backfill across months of
+      rows, and the honest cost comparison between “patch” and “structural fix” collapses — they’re the same project.</p>
+      <p>Question 4 is the only one that’s safe to answer today: a doctrine invariant that <code>doctrine.mjs</code> can’t
+      check is theater. A grep-level “one reader, one writer, one deleter for <code>tandem_current_day</code>” check is
+      enforceable. An invariant about runtime state is not.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The First Principles Thinker — “neither owner is a fact”</span><span class="role">First Principles</span></summary>
+    <div class="inner">
+      <p><strong>You’re asking which of two owners wins. Neither should exist, because neither is a fact.</strong></p>
+      <p>Strip it down. The app must answer one question: <em>which workout is next for this person, in this program?</em>
+      That is a <strong>derived</strong> value — a pure function of (program definition, completed sessions belonging to this
+      program). <code>tandem_current_day</code> is not a source of truth; it is a <strong>cache of a derivable fact</strong>,
+      stored in a location with no owner, no invalidation, and no lifecycle. 1 reader / 3 writers / 0 deleters is the
+      diagnostic signature of exactly that. Cached derived state doesn’t have bugs, it <em>is</em> the bug.</p>
+      <p>That reframes the history. The 2026-09-13 one-off-session filter wasn’t a fix, it was a cache-fill correction.
+      Program scope would be the second. Next will be deleted sessions, or Dani’s rows, or a mid-program day-count change.
+      You will add filters to that expression forever, because you are reconstructing a query result by hand.</p>
+      <p><strong>And the real missing concept isn’t a pointer — it’s program identity.</strong> Nothing in this system names
+      “the program Kerwin is currently enrolled in.” <code>workout_sessions</code> has <code>day_type</code> but no program
+      instance. That absence is what makes the query unscopable, and it is also why “overdue” fires on a fresh program: same
+      disease, different symptom. Both owners are downstream of one hole.</p>
+      <p>So: introduce a <strong>program instance id</strong>, stamp it on sessions going forward, derive next-day from it,
+      delete the localStorage key entirely. Owner A stays — it answers a genuinely different question (calendar cadence),
+      and now it can be scoped too.</p>
+      <p>Honest enforcement: doctrine can’t see localStorage, but it can see <em>source shape</em>. Declare a whitelist of
+      persisted keys with owner + deleter; fail CI on any key that is written and never deleted. That checks the disease,
+      not this instance.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Expansionist — “the run object opens a product”</span><span class="role">Expansionist</span></summary>
+    <div class="inner">
+      <p>The bug isn’t a bug. It’s the app telling you that <strong>a “program run” doesn’t exist as a first-class
+      object</strong>, and that absence is worth far more than the P1.</p>
+      <p>Every proposed fix — scope the query, clear the key — is a workaround for a missing <code>program_run_id</code>
+      (an enrollment: this user, this program, started this date, ended or active). Introduce it and the pointer stops being
+      ambiguous because sessions belong to a <em>run</em>, not to a user. The “which program did this session come from”
+      question answers itself, permanently, for every future query — not just this one.</p>
+      <p><strong>Run-over-run comparison.</strong> Months of <code>day_type</code> rows become “Kerwin’s Week 3 Day 2 this
+      cycle vs. last cycle.” That’s the single most motivating screen a fitness app can show, and it’s currently unbuildable
+      because history is an undifferentiated stream.</p>
+      <p><strong>Seasons.</strong> A couples competition app with no notion of a season is leaving its own genre on the
+      table. Runs = seasons = rematches, finals, a standing record between two people. That’s the moat the doctrine keeps
+      describing.</p>
+      <p><strong>Cross-device truth.</strong> Once “next workout” derives from the newest completed session <em>within the
+      active run</em>, it’s a server-derivable value. localStorage becomes a cache, not an owner. Dani’s phone and Kerwin’s
+      laptop agree for free.</p>
+      <p><strong>Enforcement you keep saying is impossible.</strong> doctrine.mjs can’t see localStorage — but it <em>can</em>
+      grep that no query against <code>workout_sessions</code> omits a run filter. That’s a file-side, mechanically checkable
+      invariant. The structural fix is the one that’s actually enforceable.</p>
+      <p>The one-line patch closes a ticket. The run object opens a product.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Outsider — “you spent day one accusing him of failure”</span><span class="role">Outsider</span></summary>
+    <div class="inner">
+      <p>Start with what the user actually said: <em>“it starts on day 5, and also says I’m overdue? Interesting.”</em>
+      That “Interesting” is politeness covering confusion. He didn’t file a state-management complaint. He said:
+      <strong>I did the hopeful thing — started a new program — and the app opened by telling me I was already behind.</strong></p>
+      <p>That’s the real defect, and it’s a product one. Day one of a new program is the single highest-motivation moment in
+      fitness software. You spent it accusing him of failure. No amount of correct pointer arithmetic fixes the feeling if
+      the app can still greet a fresh start with a scold.</p>
+      <p><strong>“Day 5” and “Day 4 of 7” are jargon.</strong> You have two internal concepts fighting, and the user is being
+      shown both, unlabeled, in the same word: “Day.” A calendar slot out of 7 and a workout number are different things, and
+      no human reading “Day 4” can tell which one they got. The 2026-07-23 ruling that “Day 4” means cycle slot is a
+      builder’s decision that is invisible to the person reading it. Kerwin ruled on it and <em>still</em> got confused a
+      month later — that’s your evidence the label doesn’t survive contact.</p>
+      <p><strong>Concretely:</strong> stop showing the raw number as the primary. Show “Next: Upper Body” and “Workout 3 of 4
+      this week.” The date can live underneath.</p>
+      <p><strong>And: “overdue” should be impossible before the user has ever missed anything.</strong> Whatever you fix
+      structurally, add a rule a non-engineer can verify — a program with zero completed sessions can never display an
+      overdue state or a workout other than its first. That’s the acceptance test, and Dani should be able to run it.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>The Executor — “Monday morning, in this order”</span><span class="role">Executor</span></summary>
+    <div class="inner">
+      <p>Monday morning, in this order. Nothing here takes more than a day.</p>
+      <p><strong>Step 1 (today, 20 minutes): stop the bleeding.</strong> Add <code>program_id</code> (or
+      <code>template_id</code> / <code>cfg.startDate</code> cutoff — whichever column already exists on
+      <code>workout_sessions</code>) to BOTH restore queries, and add <code>LS.del('tandem_current_day')</code> to the reset
+      at 5487 and to wherever a new program is committed. Ship it. BUG-93 closes today for Kerwin and Dani, who are the
+      entire user base. Do not let the architecture debate hold a P1 hostage for another month.</p>
+      <p><strong>Step 2 (same commit, non-negotiable): kill the duplicate.</strong> Those two near-identical blocks at 7484
+      and 8119 are the actual defect — the scoping hole survived a 2026-09-13 edit <em>to those exact lines</em> because
+      there were two of them. Extract one function, <code>resolveCurrentDay(sessions, prog, cfg)</code>, call it from both
+      sites. That’s a 30-line mechanical extraction with zero behavior change. If you only do Step 1 and skip this, you will
+      be back here in five weeks. BUG-73/114 already ran this experiment.</p>
+      <p><strong>Step 3 (this week): make B derived, don’t delete it.</strong> B stays as the served-workout pointer because
+      <code>workout_sessions.day_type</code> has months of rows and something must write it. But it becomes
+      <em>recomputed from session history on every load</em> rather than persisted state you trust. Then localStorage is a
+      cache, stale caches are harmless, and question 5’s migration story is “there isn’t one — it self-heals on first load.”</p>
+      <p><strong>On question 4:</strong> doctrine.mjs can’t see localStorage, but it <em>can</em> grep. A 15-line check that
+      fails if <code>tandem_current_day</code> appears in more than one write site is honest, enforceable, and buildable
+      Monday afternoon. Everything else is a comment pretending to be a gate.</p>
+      <p><strong>Skip entirely:</strong> rewriting Owner A. The overdue bug is a separate ticket. File it, don’t bundle it.</p>
+    </div>
+  </details>
+
+  <h2>Peer review highlights</h2>
+
+  <details>
+    <summary><span>All five reviews (anonymized round, mapping revealed)</span><span class="role">5 reviews</span></summary>
+    <div class="inner">
+      <p style="font-size:13px;color:var(--ink3);margin-top:14px">
+        A = Executor · B = Contrarian · C = Outsider · D = First Principles · E = Expansionist.
+        Tally — strongest: <strong>D ×3, B ×2</strong>. Biggest blind spot: <strong>E ×5 (unanimous)</strong>.
+      </p>
+      <p><strong>Review 1 — Strongest: D.</strong> The only response that both diagnoses the mechanism (cached derived state
+      with 3 writers and 0 deleters is the signature, not the symptom) and names the missing concept — program identity —
+      that explains <em>both</em> symptoms. Its whitelist enforcement is file-side, grep-checkable, and targets the disease
+      class. <strong>Blind spot: E</strong> — assumes <code>program_run_id</code> is cheap and never asks what happens to
+      months of rows with no run to belong to. <strong>All missed:</strong> nobody addressed Dani. Any derivation must filter
+      by user as well as program — an unscoped query could serve Kerwin Dani’s next workout.</p>
+      <p><strong>Review 2 — Strongest: B.</strong> The only response that refuses to arbitrate on unverified premises.
+      “D is the best <em>architecture</em> answer, but B is the correct <em>review</em> answer.” <strong>Blind spot: E</strong>
+      — its enforcement claim is false comfort: grepping for a run filter is trivially defeated by dynamic query construction
+      and doesn’t cover the localStorage key at all. <strong>All missed user scoping:</strong> nobody asked whether the
+      history read is filtered by <code>user_id</code>.</p>
+      <p><strong>Review 3 — Strongest: B.</strong> Its three objections are load-bearing. D and E both prescribe a
+      <code>program_run_id</code> — which is B’s point #3 conceded, meaning A’s “one-line patch” framing is unsafe.
+      <strong>Blind spot: E</strong> — never says what Kerwin and Dani do this week. <strong>All missed:</strong> the
+      backfill’s correctness; existing rows can’t be assigned to runs retroactively without guessing program boundaries.</p>
+      <p><strong>Review 4 — Strongest: D</strong>, with C as “the necessary companion — the only response that reads the
+      user’s actual sentence and notices the app scolds you on day one.” <strong>Blind spot: E</strong> — converts a P1 two
+      real people hit today into a roadmap for seasons. <strong>All missed the migration’s felt cost:</strong> a user
+      mid-program — Dani, right now — gets yanked back to Day 1 with her history apparently gone.</p>
+      <p><strong>Review 5 — Strongest: D</strong>, for answering the ownership question with a principle rather than a
+      preference. <strong>Blind spot: E</strong> — its grep gate is unreliable against chained <code>.eq()</code> builders;
+      “it would be exactly the green-gate-over-dead-value failure the doctrine warns about.” <strong>All missed:</strong>
+      <code>day_type</code> is NOT NULL and written at session <em>start</em>, before any completion exists, so deleting B
+      requires naming that writer. Any run invariant must be forward-only with an explicit legacy sentinel.</p>
+    </div>
+  </details>
+
+  <footer>
+    Generated 2026-09-15 · Tandem LLM Council · 5 advisors, 5 anonymized peer reviews, 1 chairman synthesis.<br>
+    Counciled: BUG-93 (P1 Wrong Data, New since 2026-08-17) — ownership of “what workout is served next.”<br>
+    Full transcript: <code>docs/council-transcript-2026-09-15-bug93-day-pointer.md</code> ·
+    This artifact is ruling <em>input</em>, not doctrine. Nothing has been committed and no code has been changed.
+  </footer>
+
+</div>
+</body>
+</html>

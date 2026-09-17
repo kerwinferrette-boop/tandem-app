@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LLM Council Verdict — "Focus this lift" engine mechanism</title>
+<style>
+  :root{
+    --bg:#fafafa;--card:#ffffff;--border:#e3e3e6;--text:#1a1a1e;--muted:#6b6b74;
+    --accent:#0e7a45;--accent-bg:#eaf7ef;--gold:#b8790a;--gold-bg:#fdf3e2;--red:#a02b2b;--red-bg:#fbeaea;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    margin:0;padding:32px 20px 60px;line-height:1.55;}
+  .wrap{max-width:820px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .subtitle{color:var(--muted);font-size:13px;margin-bottom:28px;}
+  .question-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:28px;}
+  .question-card h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 10px;}
+  .question-card p{margin:0 0 8px;font-size:14px;}
+  .question-card ol{margin:8px 0 0;padding-left:20px;font-size:14px;}
+  .verdict{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px 20px 20px;margin-bottom:28px;}
+  .verdict h2{font-size:15px;margin:20px 0 8px;padding-top:12px;border-top:1px solid var(--border);}
+  .verdict h2:first-of-type{border-top:none;margin-top:16px;}
+  .verdict p{font-size:14px;margin:0 0 8px;}
+  .recommendation{background:var(--accent-bg);border:1px solid #cdeaD9;border-radius:8px;padding:14px 16px;margin-top:6px;}
+  .nextstep{background:var(--gold-bg);border:1px solid #f2ddb0;border-radius:8px;padding:14px 16px;margin-top:6px;}
+  .blindspot{background:var(--red-bg);border:1px solid #f0cccc;border-radius:8px;padding:14px 16px;margin-top:6px;}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:28px;}
+  .adv{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;font-size:11.5px;}
+  .adv .name{font-weight:700;margin-bottom:6px;display:block;}
+  .adv.strongest{border-color:var(--accent);background:var(--accent-bg);}
+  .adv.blindspot{border-color:var(--red);background:var(--red-bg);}
+  .adv .tag{display:block;margin-top:6px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .adv.strongest .tag{color:var(--accent);font-weight:700;}
+  .adv.blindspot .tag{color:var(--red);font-weight:700;}
+  details{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;padding:0;}
+  summary{cursor:pointer;padding:12px 16px;font-size:13.5px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  summary::-webkit-details-marker{display:none;}
+  summary::after{content:'+';color:var(--muted);font-weight:400;}
+  details[open] summary::after{content:'–';}
+  .details-body{padding:0 16px 16px;font-size:13.5px;color:#333;}
+  .section-label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:36px 0 10px;}
+  footer{color:var(--muted);font-size:12px;margin-top:36px;border-top:1px solid var(--border);padding-top:14px;}
+  code{background:#f0f0f2;padding:1px 5px;border-radius:4px;font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>LLM Council Verdict</h1>
+  <div class="subtitle">"Focus this lift" engine mechanism &mdash; Tandem &middot; 2026-09-16</div>
+
+  <div class="question-card">
+    <h2>The Question</h2>
+    <p>Two things the "Focus this lift" feature cannot ship without, that no canonical Tandem source
+    (DOCTRINE.md, Notion, repo research) answers:</p>
+    <ol>
+      <li><strong>Simultaneous-focus cap</strong> &mdash; how many muscle groups can a user flag "focus" at once?</li>
+      <li><strong>Mechanism</strong> &mdash; does focusing ADD volume on top of the program, or REDISTRIBUTE it away from other muscles?</li>
+    </ol>
+  </div>
+
+  <div class="section-label">Advisor Alignment</div>
+  <div class="grid">
+    <div class="adv"><span class="name">Contrarian</span>Flagged MEV&ne;maintenance as the load-bearing risk</div>
+    <div class="adv strongest"><span class="name">First Principles</span>Redistribution as physical necessity; cap is emergent<span class="tag">Strongest</span></div>
+    <div class="adv"><span class="name">Expansionist</span>Redistribution as a trust-building, visible feature</div>
+    <div class="adv"><span class="name">Outsider</span><code>FOCUS_SLOTS</code> naming collision + invisible-redistribution UX risk</div>
+    <div class="adv blindspot"><span class="name">Executor</span>Hardcode cap=2, reuse MEV as maintenance, ship Monday<span class="tag">Blind spot</span></div>
+  </div>
+
+  <div class="verdict">
+    <h2>Where the Council Agrees</h2>
+    <p>The only currently-gated volume bound in Tandem is the MEV floor (D6b) &mdash; MAV/MRV are documented
+    but ungated, so pure addition has no ceiling to push against. <strong>Redistribution is the only
+    mechanism consistent with the system as it exists today</strong> &mdash; not a preference, a constraint.
+    All 5 peer reviewers independently named the First Principles Thinker's response strongest, and the
+    Executor's plan as the one that actually violates the Prime Directive.</p>
+
+    <h2>Where the Council Clashes</h2>
+    <p>Not mechanism &mdash; posture. Executor wants to ship now assuming MEV-as-maintenance is "close
+    enough"; Contrarian calls that the load-bearing unverified risk in the whole feature. Expansionist
+    wants redistribution surfaced as a differentiated, transparent trust feature; Outsider warns that
+    invisible redistribution leaves users (and Kerwin) unable to explain why other lifts got lighter.</p>
+
+    <h2>Blind Spots the Council Caught</h2>
+    <div class="blindspot"><strong>Feature-level:</strong> Executor's plan silently treats a growth-minimum
+    landmark (MEV) as a validated maintenance-dose target &mdash; "exactly the confident fabrication
+    CLAUDE.md's prime directive forbids," per multiple reviewers.</div>
+    <div class="blindspot" style="margin-top:8px;"><strong>Process-level (caught only in peer review):</strong>
+    No advisor, and no version of this question's framing, actually did a <em>targeted</em> check of
+    Notion's Exercise Science Schema v0.5 or Periodization spec for a maintenance-volume or
+    specialization-block concept. Every argument here rests on a corroboration-only blog + code reading +
+    first-principles biology. <strong>This verdict is not yet doctrine-ready on process grounds alone.</strong></div>
+
+    <h2>The Recommendation</h2>
+    <div class="recommendation">Ship the engine mechanism as <strong>redistribution, not addition</strong>,
+    with the cap treated as <strong>emergent</strong>: however many muscles can be dropped to their MEV
+    floor while still leaving enough weekly capacity to meaningfully elevate the focused muscle(s). Do not
+    hardcode a cap constant. Do not reuse <code>VOLUME_LANDMARKS</code>'s MEV value as a maintenance target
+    without a citation &mdash; treat it as an open variable pending the Notion check. If a source is found,
+    name the new table <code>MAINTENANCE_LANDMARKS</code> rather than overloading MEV silently. Wire into
+    <code>computeMuscleWeeklyVolume()</code>; add the missing D20/D27-equivalent tiebreak inside
+    <code>buildDynamicProgram()</code>'s <code>bank()</code>. Avoid the <code>FOCUS_SLOTS</code> naming
+    collision. Surface redistribution transparently in the UI &mdash; this can ship in the same PR without
+    waiting on the doctrine question.</div>
+
+    <h2>The One Thing to Do First</h2>
+    <div class="nextstep">Read Exercise Science Schema v0.5 and the Periodization spec specifically for a
+    maintenance-volume or specialization-block concept &mdash; not a general sweep, a targeted search by name.
+    If found, cite it and set the dose accordingly. If confirmed silent, that silence is itself the artifact
+    to record, and the next move is another <code>llm-council</code> round to rule on the
+    <code>MAINTENANCE_LANDMARKS</code> numeric default &mdash; not a guess, not MEV-reuse.</div>
+  </div>
+
+  <div class="section-label">Full Advisor Responses</div>
+
+  <details>
+    <summary>The Contrarian</summary>
+    <div class="details-body">The feature has a fatal unverified parameter &mdash; nothing validates that
+    Tandem's MEV floor can double as a "maintenance dose" for de-prioritized muscles. MEV is a growth
+    minimum, not a validated maintenance minimum; treating them as interchangeable is an unstated
+    assumption at the center of the whole feature. Also flagged safety/incoherence risk from an unbounded
+    simultaneous-focus count.</div>
+  </details>
+
+  <details open>
+    <summary>The First Principles Thinker (strongest)</summary>
+    <div class="details-body">Reframed both sub-questions as one physical-constraint argument: fixed
+    weekly training capacity + the only currently-gated bound (MEV floor) means redistribution is the
+    only internally coherent mechanism &mdash; pure addition has no ceiling to push against (MAV/MRV
+    ungated) and would silently blow past volume landmarks or session length. Under redistribution, the
+    "cap" isn't an independent number to invent &mdash; it's emergent: however many muscles can be dropped
+    to their MEV floor while still leaving enough weekly capacity to elevate the focused muscle(s)
+    meaningfully.</div>
+  </details>
+
+  <details>
+    <summary>The Expansionist</summary>
+    <div class="details-body">Framed "Focus this lift" as competitive differentiation for Tandem's
+    science-backed-adaptive-program moat &mdash; a well-executed, transparently-shown redistribution
+    ("we're trimming X to grow Y this block") could become a trust-building feature, not just a filter
+    toggle. Argued not to under-scope UI ambition even with a conservative engine mechanism.</div>
+  </details>
+
+  <details>
+    <summary>The Outsider</summary>
+    <div class="details-body">No Tandem context. Flagged that "Focus this lift" as a product name collides
+    with the pre-existing, unrelated <code>FOCUS_SLOTS</code> table &mdash; a real trap for a future
+    engineer or Kerwin reading a diff. Also raised a naive-user question: if redistribution happens
+    invisibly, what explains to the user why their other lifts got lighter &mdash; a UX/communication
+    requirement, not just an engine one.</div>
+  </details>
+
+  <details open>
+    <summary>The Executor (biggest blind spot)</summary>
+    <div class="details-body">Ship fast &mdash; hardcode <code>FOCUS_CAP = 2</code>, drop non-focused
+    muscles to their existing <code>VOLUME_LANDMARKS</code> MEV value as the "maintenance dose," ship
+    Monday. Treated MEV as good enough to double as maintenance without further justification.</div>
+  </details>
+
+  <div class="section-label">Peer Review Highlights</div>
+  <details>
+    <summary>3 convergent findings (unanimous across all 5 reviewers)</summary>
+    <div class="details-body">
+      <p><strong>#1</strong> &mdash; First Principles Thinker named strongest by all 5: the only response
+      collapsing both sub-questions into one physical-constraint argument, making the cap emergent rather
+      than invented.</p>
+      <p><strong>#2</strong> &mdash; Executor named biggest blind spot by all 5: its plan silently treats a
+      growth-minimum landmark as a validated maintenance target &mdash; called "exactly the confident
+      fabrication CLAUDE.md's prime directive forbids."</p>
+      <p><strong>#3</strong> &mdash; "What did everyone miss": no advisor, and no version of the question's
+      framing, actually checked Exercise Science Schema v0.5 or the Periodization spec for a
+      maintenance-volume or specialization-block concept before reasoning. Everyone reasoned from a
+      corroboration-only blog, code inspection, and first-principles biology only.</p>
+    </div>
+  </details>
+
+  <footer>
+    Generated 2026-09-16 by the <code>llm-council</code> skill, escalated per CLAUDE.md's dual escalation
+    path from <code>docs/research/focus-flag-exercise-science.md</code>. Full transcript:
+    <code>council-transcript-2026-09-16-focus-flag.md</code>. This verdict is a recommendation, not yet a
+    ratified <code>/DOCTRINE.md</code> invariant &mdash; see "The One Thing to Do First."
+  </footer>
+
+</div>
+</body>
+</html>
