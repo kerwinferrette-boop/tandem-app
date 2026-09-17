@@ -2070,6 +2070,27 @@ function getSingleDay(focus, opts = {}) {
   // recovery window describes recovery of the TRAINED muscle, and scoring the
   // co-tagged synergists would mark nearly everything recent.
   const recentPenalty = (e) => (steeringActive && (e.muscleGroups.primary || []).some(isRecent)) ? 1 : 0;
+  // ── D31 (SCIENCE_DEFAULT) — opt-in exercise-instance variety for one-offs ──────
+  // opts.recentExerciseNames: a Set (or array, coerced below) of exercise NAMES the
+  // lifter trained in their last ~4 workouts (program + one-off combined) — the exact
+  // shape recentExerciseNames() produces in tandem.html. Absent/empty ⇒ varietyActive
+  // is false ⇒ every code path this adds is a no-op and select() is byte-identical to
+  // pre-D31 (same "opts absent ⇒ no-op" shape D20/D27 already use). This is a SOFT
+  // demotion, same class as D20/D27: it reorders an already tier-legal, injury-
+  // filtered, muscle-matched pool. It can never empty a slot and never admits an
+  // illegal candidate — D9/D18/D19 hold by construction, not by a runtime check.
+  //
+  // NOT a science claim. research-report(8) is silent on exercise-variation cadence
+  // (see D27's identical disclosure); the ~4-workout window is Kerwin's explicit
+  // product ruling, not a mechanistic threshold ("if the 4 workout thing isn't
+  // science, then it's not science" — 2026-09-15).
+  const recentNamesRaw = opts.recentExerciseNames;
+  const recentNames = (recentNamesRaw && typeof recentNamesRaw.has === 'function' && typeof recentNamesRaw[Symbol.iterator] === 'function') ? recentNamesRaw
+    : (Array.isArray(recentNamesRaw) && recentNamesRaw.length) ? new Set(recentNamesRaw)
+    : null;
+  const varietyActive = !!(recentNames && recentNames.size);
+  const exercisePenalty = (e) => (varietyActive && recentNames.has(e.name)) ? 1 : 0;
+  const rng = (varietyActive && typeof opts.rng === 'function') ? opts.rng : Math.random;
   // deterministic candidate pool — identical sort to bank(), PLUS the two optional
   // D20 ranks ahead of the existing oneRmFactor/alpha tiebreak. Both REORDER only:
   // freshGroups only ever WIDENS the legal pool (groups ∪ freshGroups) and
@@ -2105,31 +2126,55 @@ function getSingleDay(focus, opts = {}) {
     // after D20's recency (an established, unrelated precedence this doesn't
     // disturb) but before oneRmFactor, matching bank()'s placement.
     const coverageCount = (e) => g.filter(gr => primaryOnlyMatch(e, [gr])).length;
-    return pool
-      .sort((a, b) => {
-        // WITHIN-token demotion first: it is the direct measure of "this exact
-        // candidate trains a muscle you just trained." A fresh alternate-group
-        // candidate scores 0 here anyway, so putting this first never overrides
-        // the widening — the two ranks agree wherever they both have an opinion.
-        const rp = recentPenalty(a) - recentPenalty(b);
-        if (rp !== 0) return rp;
-        if (freshSet) {
-          const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
-          if (diff !== 0) return diff;
-        }
-        if (g.length > 1) {
-          const covDiff = coverageCount(b) - coverageCount(a);
-          if (covDiff !== 0) return covDiff;
-        }
-        if (a.oneRmFactor != null || b.oneRmFactor != null) {
-          const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
-          if (diff !== 0) return diff;
-        }
-        // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
-        const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
-        if (eqDiff !== 0) return eqDiff;
-        return a.name.localeCompare(b.name);
-      })[0] || null;
+    const cmp = (a, b) => {
+      // WITHIN-token demotion first: it is the direct measure of "this exact
+      // candidate trains a muscle you just trained." A fresh alternate-group
+      // candidate scores 0 here anyway, so putting this first never overrides
+      // the widening — the two ranks agree wherever they both have an opinion.
+      const rp = recentPenalty(a) - recentPenalty(b);
+      if (rp !== 0) return rp;
+      if (freshSet) {
+        const diff = (isFresh(b) ? 1 : 0) - (isFresh(a) ? 1 : 0); // fresh (matches a non-recent alt group) ranks first
+        if (diff !== 0) return diff;
+      }
+      // D31 slots in AFTER D20's group-level recovery concern and BEFORE the
+      // "which candidate is objectively better" tiebreaks below — same precedence
+      // logic as recentPenalty's own comment: the biggest muscle-recovery concern
+      // outranks exercise-instance variety, which outranks pure coverage/load/
+      // equipment convenience.
+      const ep = exercisePenalty(a) - exercisePenalty(b);
+      if (ep !== 0) return ep;
+      if (g.length > 1) {
+        const covDiff = coverageCount(b) - coverageCount(a);
+        if (covDiff !== 0) return covDiff;
+      }
+      if (a.oneRmFactor != null || b.oneRmFactor != null) {
+        const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
+        if (diff !== 0) return diff;
+      }
+      // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
+      const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
+      if (eqDiff !== 0) return eqDiff;
+      // Pre-D31 callers (varietyActive false — every existing caller/test) keep the
+      // exact deterministic alpha tiebreak. Only a caller that opts into variety
+      // gets a genuine tie (0) here, resolved below by rng, never by this function.
+      return varietyActive ? 0 : a.name.localeCompare(b.name);
+    };
+    const sorted = pool.sort(cmp);
+    if (!sorted.length) return null;
+    if (!varietyActive) return sorted[0];
+    // Collect the contiguous leading group tied with sorted[0] on every deterministic
+    // key above (cmp is a valid total preorder over those keys, so ties are
+    // contiguous at the front of a correct comparison sort) and pick randomly WITHIN
+    // it. This is the "randomized in order, but scientifically placed" mechanism:
+    // every candidate in this group already passed D19 anchored muscle-matching, D3
+    // compound-first eligibility, tier/injury legality, D20 recovery, and D31's own
+    // recent-use demotion — randomization only ever breaks a tie among candidates the
+    // science already ranks as equal.
+    let end = 1;
+    while (end < sorted.length && cmp(sorted[0], sorted[end]) === 0) end++;
+    const tiedGroup = sorted.slice(0, end);
+    return tiedGroup[Math.floor(rng() * tiedGroup.length)] || tiedGroup[0];
   };
   // Starting weight: the SAME owner the weekly engine uses. This was its own sex-blind
   // table that ignored the NSCA matrix and oneRmFactor entirely, so the one-off handed a
