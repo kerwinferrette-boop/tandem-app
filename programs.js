@@ -640,7 +640,7 @@ const EXERCISE_BANK = {
     cues:['One hand on end of bar; stand at 45° to anchor','Press in an arc from chest height to eye level','Keep elbow in tight to body throughout','Rotate trunk slightly as you press for full shoulder flexion']},
   'shrug-barbell':{
     name:'Barbell Shrug', videoId:null,
-    muscleGroups:{primary:['upper_trap']},
+    muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Upper trapezius training matters for shoulder aesthetics and neck posture. Heavy shrugs — not the light prehab variety — are the most direct stimulus for upper trap mass.',
     cues:['Straight arms throughout — do not bend the elbows','Shrug straight UP — not rolling the shoulders (which can damage AC joint)','Hold at peak for 1 second','Lower fully — a full stretch at the bottom matters']},
@@ -658,7 +658,7 @@ const EXERCISE_BANK = {
     cues:['Chest against the pad, handles at shoulder height','Lead with the elbows, driving the hands apart and back','Squeeze the shoulder blades together at the peak','Control the return; keep a soft, fixed elbow bend throughout']},
   'db-shrug':{
     name:'DB Shrug', videoId:null,
-    muscleGroups:{primary:['upper_trap']},
+    muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front, and available anywhere a pair of dumbbells is. The direct stimulus for upper-trap mass and a fuller yoke.',
     cues:['Dumbbells at the sides, arms straight, shoulders relaxed to start','Shrug straight up toward the ears — do not roll the shoulders','Hold the top squeeze for one count','Lower to a full stretch at the bottom before the next rep']},
@@ -674,7 +674,7 @@ const EXERCISE_BANK = {
     // accepted for the barbell/DB entries above, plus (b) the general band-modality-equivalence
     // meta-analysis — not a band-shrug-specific citation. Flagged per CLAUDE.md rather than invented.
     name:'Band Shrug', videoId:null,
-    muscleGroups:{primary:['upper_trap']},
+    muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull, needing no equipment beyond a band.',
     cues:['Stand on the band with both feet, one handle in each hand','Arms straight throughout — do not bend the elbows','Shrug straight UP toward the ears — do not roll the shoulders','Hold the top squeeze for one count, then lower to a full stretch']},
@@ -793,13 +793,13 @@ const EXERCISE_BANK = {
     cues:['Hinge at hip to 45° over the bar','Neutral grip handles, pull to lower chest','Squeeze hard at peak — hold one count','Lower until full arm extension; let lats stretch']},
   'reverse-fly':{
     name:'Reverse Fly', videoId:null,
-    muscleGroups:{primary:['posterior_delt','rhomboid']},
+    muscleGroups:{primary:['posterior_delt','rhomboid'],secondary:['middle_trap','lower_trap']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Posterior delt isolation without cable required. Critical for scapular retraction strength and shoulder health. Best performed at high reps with light weight.',
     cues:['Hinge forward until torso nearly parallel to floor','Start with arms hanging straight down','Lift in a wide arc to shoulder height','Do not swing — reduce weight if you are']},
   'band-pull-apart':{
     name:'Band Pull-Apart', videoId:null,
-    muscleGroups:{primary:['posterior_delt','rhomboid','external_rotator']},
+    muscleGroups:{primary:['posterior_delt','rhomboid','external_rotator'],secondary:['middle_trap','lower_trap']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The simplest tool for external rotation and posterior delt health. Constant band tension mirrors the load profile of cable face pulls without any machine.',
     cues:['Hold band at shoulder height, arms extended','Pull the band apart until it touches your chest','Squeeze shoulder blades together at peak','Controlled return — band tension all the way back to start']},
@@ -879,7 +879,7 @@ const EXERCISE_BANK = {
     cues:['Cable at ankle height behind you','Step forward until arm is stretched behind hip','Curl forward; elbow stays anchored at the hip','Squeeze at full contraction — do not release tension']},
   'concentration-curl':{
     name:'Concentration Curl', videoId:null,
-    muscleGroups:{primary:['bicep_brachii']},
+    muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Braced elbow against inner thigh eliminates any cheating — the fully braced position prevents any momentum or shoulder involvement, isolating the bicep more strictly than a standing curl.',
     cues:['Sit; elbow braced against inner thigh above the knee','Full extension at bottom — do not rest weight on floor','Supinate aggressively at the top','Squeeze and hold one count at peak']},
@@ -958,37 +958,37 @@ const EXERCISE_BANK = {
   // ── TRICEPS ───────────────────────────────────────────
   'tricep-rope-pushdown':{
     name:'Tricep Rope Pushdown', videoId:'2-LAMcpzODU',
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','push','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Lateral and medial tricep head isolation. The rope allows wrists to flare outward at lockout, adding a final squeeze that straight-bar pushdowns prevent. These two heads are most visible from behind and make the arm look bigger in shirts.',
     cues:['Elbows pinned to sides — forearms are the only moving part','Flare the rope ends outward at lockout for peak contraction','Control the return — do not let the rope pull elbows forward','Slight forward lean is fine; do not bend at the hips']},
   'tricep-overhead-extension':{
     name:'Tricep Overhead Extension', videoId:'nRiJVZDpdL0',
-    muscleGroups:{primary:['tricep_long_head']},
+    muscleGroups:{primary:['tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'The long head of the tricep is 55% of total tricep mass and is ONLY fully activated in overhead position. Most programs do only pushdowns, leaving the biggest head undertrained. Without overhead extension, half your tricep potential is untapped.',
     cues:['Hold one dumbbell with both hands overhead (diamond grip)','Elbows point to the ceiling — do not flare','Lower behind the head until forearms are parallel','Press back up through the elbows — do not swing']},
   'skull-crusher':{
     name:'Skull Crusher', videoId:null,
-    muscleGroups:{primary:['tricep_long_head','tricep_medial']},
+    muscleGroups:{primary:['tricep_long_head','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The lying EZ-bar variation loads the long head in a lengthened position (elbow overhead relative to torso) while allowing heavier loads than dumbbell overhead extensions. Gold standard for tricep mass work.',
     cues:['Lie on bench, bar above lower chest to start','Lower to forehead or behind head by bending elbows only','Keep upper arms vertical — elbows do not drift toward feet','Press back up; do not let the bar drift into a press']},
   'cable-overhead-extension':{
     name:'Cable Overhead Extension', videoId:null,
-    muscleGroups:{primary:['tricep_long_head']},
+    muscleGroups:{primary:['tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Constant cable tension through the full overhead range — the peak stretch position has full load, unlike dumbbells. Best performed facing away from the cable stack.',
     cues:['Face away from cable, rope at head height','Lean forward slightly; elbows beside the head','Extend to full lockout overhead','Lower slowly until maximum stretch — do not rush the negative']},
   'db-kickback':{
     name:'DB Kickback', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Fully extends the elbow against gravity at a position where the tricep is maximally shortened. Better than cable for lateral head contraction quality.',
     cues:['Hinge forward, upper arm parallel to floor throughout','Only the forearm moves — hinge at the elbow','Extend until arm is fully straight — hold one count','Lower slowly; resist the temptation to swing']},
   'straight-bar-pushdown':{
     name:'Straight-Bar Pushdown', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','push','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The fixed straight bar keeps the forearms pronated and lets a lifter push heavier than the rope, driving the lateral and medial heads with more absolute load. The heavy-loading complement to the rope pushdown for tricep thickness.',
     cues:['Straight or slightly-bent bar at upper-chest height','Elbows pinned to the sides — only the forearms move','Extend to a full lockout and squeeze the triceps','Control the return; do not let the elbows drift up']},
@@ -1000,7 +1000,7 @@ const EXERCISE_BANK = {
     cues:['Hands on the bench edge behind you, legs out front','Lower by bending the elbows straight back — keep them tucked','Descend until the upper arms are parallel to the floor','Press back to a full lockout; keep the hips close to the bench']},
   'tricep-dip-machine':{
     name:'Tricep Dip Machine', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial','tricep_long_head']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial','tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','push','upper_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The seated dip machine loads all three triceps heads through a full pressing range with a fixed, back-supported path — letting a lifter push close to failure safely and progress in small increments. A joint-friendly heavy triceps option late in a session.',
     cues:['Sit tall, back against the pad, hands on the handles','Press down to a full elbow lockout — drive through the triceps','Squeeze at the bottom for one count','Return under control to a 90° elbow; do not let the stack slam']},
@@ -1018,7 +1018,7 @@ const EXERCISE_BANK = {
     cues:['Lie on a bench, close (shoulder-width) grip','Lower the bar toward the upper chest/neck with elbows drifting forward','Stop at the bottom shelf position, then press back up','Keep it strict — heavier than a skull crusher, lighter than a close-grip press']},
   'single-arm-cable-kickback':{
     name:'Single-Arm Cable Kickback', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The cable holds tension at the fully-shortened lockout where a dumbbell kickback goes weightless — giving a hard peak contraction on the lateral and medial heads, one arm at a time to correct side-to-side deficits.',
     cues:['Low pulley, hinge forward, upper arm parallel to the floor and fixed','Extend only the forearm to a full lockout — the elbow does not move','Squeeze hard at full extension against the constant cable tension','Control the return; keep the torso still, do not swing']},
@@ -1044,19 +1044,19 @@ const EXERCISE_BANK = {
     cues:['Do not lock out the knees at the top — maintain tension','Lower until thighs are 90° or below','Feet centred on platform for balanced quad loading','Back flat against pad; do not round the lower back at the bottom']},
   'leg-extension':{
     name:'Leg Extension', videoId:'YyvSfVjQeL0',
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis','quad_vastus']},
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The only isolation exercise for the quadriceps. The rectus femoris (bi-articular quad head) is placed under stretch here that compound movements cannot achieve. Essential for complete quad development.',
     cues:['Adjust pad to sit just above ankle — not on the foot','Slow to full extension; do not kick','Hold at the top for one second — peak quad contraction','Lower slowly — the eccentric matters as much as the lift']},
   'sissy-squat':{
     name:'Sissy Squat', videoId:null,
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus']},
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher requiring nothing but bodyweight.',
     cues:['Hold a support for balance; rise onto the balls of the feet','Drive knees forward and lean the torso back in one line','Lower until you feel a deep quad stretch — hips stay open','Squeeze the quads to return; add a plate hugged to the chest to progress']},
   'reverse-nordic':{
     name:'Reverse Nordic', videoId:null,
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus']},
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience with zero equipment.',
     cues:['Kneel tall, hips fully extended, core braced','Lean the whole body back in a straight line from knees to head','Lower as far as quad control allows — no hip bend','Pull back up with the quads; hold a wall or band to assist if needed']},
@@ -1136,31 +1136,31 @@ const EXERCISE_BANK = {
     cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
-    muscleGroups:{primary:['hamstring_biceps_femoris']},
+    muscleGroups:{primary:['hamstring_biceps_femoris'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Knee flexion trains the short head of bicep femoris — the only head that cannot be reached with any hip hinge movement. Both hamstring functions (knee flexion AND hip extension) must be trained for complete development.',
     cues:['Pad just above the heel, not on the Achilles','Curl all the way up to maximum knee flexion','Do not let the hips lift off the pad','Lower slowly — do not let the weight slam']},
   'seated-leg-curl':{
     name:'Seated Leg Curl', videoId:'YyvSfVjQeL0',
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The seated position places hamstrings under stretch at both hip AND knee simultaneously — producing greater EMG activity than lying leg curl. A hamstring under hip-flexion tension is longer, increasing the hypertrophy stimulus.',
     cues:['Sit tall; thigh pad positioned just above the knee','Curl all the way to maximum knee flexion','Squeeze at peak — hold one count','Slow eccentric — resist the return all the way']},
   'nordic-curl':{
     name:'Nordic Curl', videoId:null,
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Eccentric-only loading at long muscle lengths is a distinct stimulus from concentric hamstring work most programs never train.',
     cues:['Anchor feet under heavy object or have partner hold','Lower as slowly as possible using hamstrings — catch yourself with hands','Goal is to resist as long as possible on the way down','Beginner: use hands to help push up; advanced: pull back up with hamstrings']},
   'slider-leg-curl':{
     name:'Slider Leg Curl', videoId:null,
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Replicates the machine leg curl with only a towel or furniture slider. Lying glute-bridge position keeps the hips extended while the knees flex, loading the hamstrings concentrically and eccentrically — a true knee-flexion isolation when no machine exists.',
     cues:['Lie supine, heels on sliders/towels, hips lifted to a bridge','Keep hips up throughout — do not let them sag','Extend legs out under control, then curl heels back to the glutes','Both legs together to start; single-leg to progress']},
   'good-morning':{
     name:'Good Morning', videoId:null,
-    muscleGroups:{primary:['hamstring','erector_spinae','glute_max']},
+    muscleGroups:{primary:['hamstring','erector_spinae','glute_max'],secondary:['rectus_abdominis']},
     emphasis:['hamstrings','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Simultaneously trains hamstring and erector at long muscle lengths under heavy load — rare among exercises. The erector strengthening component is the primary benefit for anyone prone to lower back fatigue in the big lifts.',
     cues:['Bar on upper back, feet shoulder-width','Hip hinge: push hips back, not down','Keep knees soft (not locked out)','Rise by driving hips forward — same pattern as RDL']},
@@ -1192,13 +1192,13 @@ const EXERCISE_BANK = {
   // ── GLUTES ────────────────────────────────────────────
   'hip-thrust':{
     name:'Hip Thrust', videoId:'SEdqd1n0cvg',
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Greatest glute EMG activation of any exercise. The fully shortened position at peak (hip fully extended) is unique — squats and deadlifts never achieve full hip extension under load. Trains the glute in its most powerful position.',
     cues:['Upper back on bench, shoulder blades on edge','Drive through heels, not toes','Tuck chin to chest — do not hyperextend the neck','Squeeze glutes aggressively at top; do not hyperextend the lower back']},
   'barbell-hip-thrust':{
     name:'Barbell Hip Thrust', videoId:null,
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Allows load progression far beyond dumbbell — advanced lifters can hip thrust 300+ lbs. For maximum glute development, the barbell is the only viable option once dumbbell loading becomes insufficient.',
     cues:['Use a barbell pad or folded mat for hip comfort','Bar sits in the hip crease throughout','Drive through the entire foot, not the heel only','Full lockout: core braced, glutes squeezed, do not arch the lower back']},
@@ -1210,7 +1210,7 @@ const EXERCISE_BANK = {
     cues:['Ankle cuff attached; face the cable stack','Slight forward lean, hands on the stack for support','Kick straight back until hip is fully extended — no lateral rotation','Squeeze at peak; lower with resistance']},
   'abductor-machine':{
     name:'Abductor Machine', videoId:'GKumTNiuCLY',
-    muscleGroups:{primary:['glute_medius','glute_minimus']},
+    muscleGroups:{primary:['glute_medius','glute_minimus'],secondary:['tensor_fasciae_latae']},
     emphasis:['glutes','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Glute medius and minimus are lateral hip stabilisers — their weakness causes knee valgus, IT band syndrome, and hip drop during running. The most targeted way to build these muscles.',
     cues:['Sit upright — do not lean back to recruit hip flexors','Drive knees apart from the hip, not the knee','Full range: start with knees together, drive as wide as possible','Slow return — the eccentric builds as much as the drive']},
@@ -1222,7 +1222,7 @@ const EXERCISE_BANK = {
     cues:['Feet 2× shoulder-width; toes point 45° outward','Push hips back — same hinge pattern as conventional RDL','Let bar travel in a straight vertical line','Drive knees out over toes as you stand']},
   'glute-bridge':{
     name:'Glute Bridge', videoId:null,
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available. Can be loaded with a plate across the hips.',
     cues:['Supine on floor, feet flat and close to hips','Drive through heels; lift hips until body is a plank','Squeeze glutes hard at top — hold two counts','Lower with control; do not drop hips to the floor between reps']},
@@ -1234,7 +1234,7 @@ const EXERCISE_BANK = {
     cues:['Supine, one foot flat, the other leg extended','Drive through the planted heel; keep hips level — no tilt','Squeeze the glute hard at the top for two counts','Lower with control; complete all reps, then switch sides']},
   'banded-hip-abduction':{
     name:'Banded Hip Abduction', videoId:null,
-    muscleGroups:{primary:['glute_medius','glute_minimus']},
+    muscleGroups:{primary:['glute_medius','glute_minimus'],secondary:['tensor_fasciae_latae']},
     emphasis:['glutes','lower_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band replaces the abductor machine with near-identical isolation anywhere.',
     cues:['Loop a mini-band just above the knees','Standing or side-lying, drive the knee out against the band','Keep the pelvis still — move only at the hip','Slow return; never let the band snap the leg back']},
@@ -1258,7 +1258,7 @@ const EXERCISE_BANK = {
     cues:['Feet wider than shoulders, toes turned out ~30°','Hold one dumbbell between the legs, chest tall','Sit straight down, driving the knees out over the toes','Squeeze the glutes hard to stand; keep the torso upright']},
   'frog-pump':{
     name:'Frog Pump', videoId:null,
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['adductor']},
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The soles-together, knees-out position pre-shortens the glutes so every rep peaks in deep hip extension with minimal quad or hamstring contribution — a high-rep glute burnout that isolates the glute max better than most bridges, no equipment needed.',
     cues:['Lie on your back, soles of the feet together, knees dropped wide','Drive the hips up by squeezing the glutes — heels stay together','Pause and squeeze hard at the top','Lower with control; keep the reps quick and continuous for the pump']},
@@ -1266,37 +1266,37 @@ const EXERCISE_BANK = {
   // ── CALVES ────────────────────────────────────────────
   'standing-calf-raise':{
     name:'Standing Calf Raise', videoId:'gwLzBJYoWlA',
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The gastrocnemius is bi-articular — it crosses both the ankle and knee. Straight-knee position fully recruits both heads. This is the primary exercise for calf mass.',
     cues:['Full stretch at the bottom: heel below platform level','Rise to maximum height on tiptoe','Pause one count at the top — no bouncing','Slow descent — 3-count lower']},
   'seated-calf-raise':{
     name:'Seated Calf Raise', videoId:'JbyjNymZsfQ',
-    muscleGroups:{primary:['soleus','calf']},
+    muscleGroups:{primary:['soleus','calf'],secondary:['gastrocnemius']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Bent-knee position slackens the gastrocnemius, isolating the soleus underneath. The soleus is slow-twitch dominant — it responds best to high reps (15–25). A thick soleus widens the calf visually from all angles.',
     cues:['Pad just above the knee, not on the kneecap','Full stretch at the bottom','Rise to maximum height; pause one count','High reps are more effective here than heavy weight']},
   'leg-press-calf-raise':{
     name:'Leg Press Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Allows very heavy plantarflexion loading with no spinal compression. Fixed platform provides consistent ROM. Useful when the standing calf raise machine is occupied.',
     cues:['Only toes and ball of foot on the platform — heels hang off','Press to full plantarflexion (tiptoe position)','Lower until heels are below the platform level','High reps, slow tempo — calves are built with volume']},
   'single-leg-calf-raise':{
     name:'Single-Leg Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Doubles the eccentric load versus bilateral — providing 2× the resistance with bodyweight alone. Progressed by adding a loaded backpack, holding a dumbbell, or increasing tempo.',
     cues:['Stand on one foot on a step edge — heel hanging off','Lower to full stretch position','Rise to max height; single-leg focus prevents compensation','If too easy, add load; if too hard, hold a wall lightly']},
   'db-standing-calf-raise':{
     name:'DB Standing Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Brings external load to the straight-knee calf raise without a machine — a dumbbell in each hand plus a step edge fully recruits both gastrocnemius heads. A simple free-weight answer to the standing calf machine.',
     cues:['Stand tall on a step edge, balls of feet on, heels hanging','Hold a dumbbell in each hand, arms relaxed at sides','Full stretch at the bottom, then rise to maximum tiptoe height','Pause one count at the top; 3-count lower — no bouncing']},
   'smith-machine-calf-raise':{
     name:'Smith Machine Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The fixed Smith bar lets a lifter load standing calf raises heavily and safely with just a block under the toes — a straight-knee plantarflexion that fully recruits both gastrocnemius heads when a dedicated calf machine is unavailable.',
     cues:['Balls of the feet on a block or plate, bar across the upper traps','Full stretch at the bottom — heels drop below the block','Rise to maximum height on the toes; pause one count','Slow 3-count descent — build calves with controlled volume']},
@@ -1316,13 +1316,13 @@ const EXERCISE_BANK = {
     cues:['Forearms on floor, elbows under shoulders','Body in a straight line from head to heels','Squeeze glutes and abs simultaneously','Breathe normally — if you cannot breathe, reduce the duration']},
   'side-plank':{
     name:'Side Plank', videoId:null, unit:'sec', secs:45,
-    muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius']},
+    muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius'],secondary:['transverse_abdominis']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'McGill Big 3 staple — the only exercise that loads the lateral core (QL and obliques) without spinal compression. QL weakness is the most overlooked contributor to lower back pain.',
     cues:['Elbow directly under shoulder','Hips stacked — do not let the top hip rotate forward','Straight line from head through feet','Keep neck neutral — do not let the head drop']},
   'bird-dog':{
     name:'Bird Dog', videoId:null,
-    muscleGroups:{primary:['erector_spinae','glute_max','transverse_abdominis']},
+    muscleGroups:{primary:['erector_spinae','glute_max','transverse_abdominis'],secondary:['oblique_external']},
     emphasis:['core','full_body'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'McGill Big 3 exercise — simultaneously trains lumbar extensors, glute max, and contralateral rotator coordination without any spinal compression.',
     cues:['Start on all fours, spine neutral','Extend opposite arm and leg simultaneously','Do not let the hip rotate or the lower back arch','Pause at full extension for two counts; reset with control']},
@@ -1334,7 +1334,7 @@ const EXERCISE_BANK = {
     cues:['Start on knees; wheel directly under shoulders','Roll out keeping hips down — do not let the back arch','Roll to maximum range before your back starts to arch','Pull back in with lats AND abs — both are working']},
   'cable-crunch':{
     name:'Cable Crunch', videoId:null,
-    muscleGroups:{primary:['rectus_abdominis']},
+    muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external']},
     emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
     why:'The only weighted abs exercise with constant resistance through the full ROM. Allows progressive overload on the rectus abdominis — you can add load every week.',
     cues:['Kneel facing the cable, hands behind your neck (not pulling)','Crunch by flexing the spine — do not hip hinge','Round the upper back; bring sternum toward the pelvis','Slow return — the eccentric phase is 70% of the benefit']},
@@ -1352,13 +1352,13 @@ const EXERCISE_BANK = {
     cues:['Lie flat; curl the knees to the chest by tilting the pelvis — not just lifting the knees','Lower back should press into the floor throughout','Slow and controlled — not momentum-based','Progress by adding a pause at peak tilt']},
   'pallof-press':{
     name:'Pallof Press', videoId:null,
-    muscleGroups:{primary:['transverse_abdominis','oblique_internal','oblique_external']},
+    muscleGroups:{primary:['transverse_abdominis','oblique_internal','oblique_external'],secondary:['anterior_delt']},
     emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
     why:'Anti-rotation core exercise — the cable pulls the body sideways and the core resists that rotation. Exactly the demand placed on the core in rotational sports and under asymmetric loads.',
     cues:['Cable at chest height; stand perpendicular to it','Press hands straight out from chest; resist the lateral pull','Keep hips square — the fight is between the cable and your core','Hold extended position for two counts; controlled throughout']},
   'russian-twist':{
     name:'Russian Twist', videoId:null,
-    muscleGroups:{primary:['oblique_external','oblique_internal']},
+    muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['hip_flexor']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'Trains the obliques through rotation — the pattern that generates punching power, throwing velocity, and athletic rotation. Progressed with a medicine ball, weight plate, or dumbbell.',
     cues:['Sit at 45° with feet elevated (harder) or on floor (easier)','Rotate from the torso, not just the arms','Touch the floor beside each hip each rep','Brace the core throughout — do not let the spine collapse']},
@@ -1468,25 +1468,25 @@ const EXERCISE_BANK = {
     cues:['Land softly, knees soft on impact','Full arm extension overhead each rep','Steady rhythm — this is Zone 2, not a sprint','20+ min continuous, or interval with High Knees']},
   'high-knees':{
     name:'High Knees', videoId:null,
-    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['hip_flexor','calf']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
     why:'Zero-equipment hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work with no equipment required.',
     cues:['Drive knees to hip height, quick cadence','Land on the balls of the feet','Pump the arms to maintain rhythm','Moderate, sustainable pace for Zone 2 duration']},
   'incline-treadmill':{
     name:'Incline Treadmill', videoId:null,
-    muscleGroups:{primary:['glute_max','hamstring','calf']},
+    muscleGroups:{primary:['glute_max','hamstring','calf'],secondary:['hip_flexor']},
     emphasis:['lower_body','full_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
     why:'Zone 2 cardio at 10–15% incline elevates glute and hamstring activation dramatically versus flat walking. Low impact preserves recovery capacity while still stimulating aerobic adaptation.',
     cues:['Incline 10–15%, pace 3–3.5 mph for Zone 2','Do not hold the rails — swing the arms naturally','Heart rate 60–70% of max for fat oxidation zone','Duration 20–25 min: long enough for mitochondrial adaptation']},
   'stationary-bike':{
     name:'Stationary Bike', videoId:null,
-    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['calf']},
     emphasis:['lower_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
     why:'Zero impact on joints — ideal when legs are sore from squats and lunges. Cycle ergometers produce excellent Zone 2 cardio data in sports science research. Widely available in most gyms.',
     cues:['Seat height: slight knee bend at bottom of pedal stroke','Moderate resistance — not easy spinning, not grinding','Heart rate 60–70% of max','20 minutes minimum for meaningful aerobic benefit']},
   'elliptical':{
     name:'Elliptical', videoId:null,
-    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['anterior_delt']},
     emphasis:['lower_body','full_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
     why:'Mimics a running stride with zero impact. The arm poles add upper body engagement and increase total energy expenditure by 10–15% versus leg-only use.',
     cues:['Use the arm poles — they increase caloric burn and stabilise the trunk','Do not lean on the machine — maintain your own posture','Moderate resistance and pace — this is not a sprint','Zone 2 heart rate target: 60–70% of max']},
@@ -1507,7 +1507,7 @@ const EXERCISE_BANK = {
   // .claude/loop-config.md self_generated_sources.exercise_intake_promotion) ──
   'band-external-rotation':{
     name:'Band External Rotation', videoId:null,
-    muscleGroups:{primary:['external_rotator']},
+    muscleGroups:{primary:['external_rotator'],secondary:['posterior_delt']},
     emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Trains external rotation at the shoulder joint itself rather than at the shoulder blade. Pull-aparts and face pulls retract the scapula; this rotates the humerus inside the socket, which is a different job and the one the bank currently has no dedicated entry for. Band tension stays constant through a range where a dumbbell gives almost nothing at the start, which is why rehab-side coaching keeps it at the front of shoulder work. The source is explicit that the upper arm must stay pinned at the side — a rolled towel under the arm is its recommended fix — because letting the elbow drift away converts the movement into something that is no longer pure external rotation.',
     cues:['Anchor the band at about elbow height and stand side-on, working arm on the outside','Elbow bent to 90 degrees and tucked at your side; a rolled towel under the arm keeps it there','Rotate the forearm away from your stomach — the upper arm does not move','Control the band all the way back; do not let it snap your hand to your belly']},
