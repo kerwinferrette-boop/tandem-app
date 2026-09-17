@@ -2333,7 +2333,7 @@ const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 // presented as law. See scripts/duration-smoke.mjs for the regression guard.
 const SHORT_SESSION_MAX_MINUTES = 45; // UNSOURCED engineering default — see D28 above.
 
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes) {
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs) {
   const exp = normalizeExperience(experience);
   // Short session ⇒ drop the isolation block's 3rd slot (acc3), same mechanism
   // EPIC-8a already proved for beginner tier. `undefined`/`null`/non-finite stays
@@ -2342,6 +2342,13 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   const isShortSession = Number.isFinite(durationMinutes) && durationMinutes < SHORT_SESSION_MAX_MINUTES;
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
+  // D32 (EPIC-8c, programs.js's one home for the cardio-finisher rule — see getProgram's
+  // weightDeltaLbs comment for the citation). Men's fat_burn Zone 2 is OPTIONAL (skipped)
+  // unless weight delta > 20 lb; women's fat_burn Zone 2 is never gated by delta. Scoped
+  // to fat_burn ONLY — the source's note is under "Men's/Women's fat burn note" and says
+  // nothing about build_muscle or transform, so those goals stay unconditional (unchanged).
+  const skipFatBurnCardio = goal === 'fat_burn' && !isFemale
+    && weightDeltaLbs !== null && weightDeltaLbs <= 20;
   // Rotation context drives variety over time: week rotates accessories; phase
   // rotates primary compounds (stable within a mesocycle to preserve overload
   // tracking). Selection itself is priority-ordered, not seeded/random — see
@@ -2677,7 +2684,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       if (compExs.length) blocks.push({label:'Compound Block', exs:compExs});
       if (accExs.length)  blocks.push({label:'Accessory Block', exs:accExs});
       if (coreExs.length) blocks.push({label:'Core Block', exs:coreExs});
-      if (cardioEx) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
+      if (cardioEx && !skipFatBurnCardio) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
         makeEx(cardioEx, tmpl.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
 
       // EPIC-8a: drop-set flagging happens once, in getProgram(), AFTER the
@@ -2723,7 +2730,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (shoulderExs.length) saBlocks.push({label:'Shoulder Block', exs:shoulderExs});
     if (armExs.length)      saBlocks.push({label:'Arms Block', exs:armExs});
     if (saCoreExs.length)   saBlocks.push({label:'Core Block', exs:saCoreExs});
-    if (saCardioEx) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
+    if (saCardioEx && !skipFatBurnCardio) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
       makeEx(saCardioEx, sa.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
     if (saBlocks.length) {
       // EPIC-8a: see note above — drop-set flagging is applied once, in
@@ -3208,7 +3215,7 @@ function materializeTemplate(tpl, week, opts) {
   return applyDeload(days, { week: wk }, T);
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weight, targetWeight) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
@@ -3216,6 +3223,20 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   const fat = goal === 'fat_burn';
   const muscle = goal === 'build_muscle';
   const transform = goal === 'transform';
+
+  // D32 (EPIC-8c) — weight-delta cardio scaling for fat_burn. Programming Architecture
+  // Reference (Notion 37aca37f935b811b90c7c880631c66a8, Part 2): "Men's fat burn note:
+  // Cardio is supplementary to resistance training. Zone 2 finishers are optional unless
+  // weight delta > 20 lbs." / "Women's fat burn note: Cardio is more structurally
+  // integrated than in men's programs. Zone 2 finishers 3-4x/week." — no delta condition
+  // for women, so women's cardio is never gated by delta. `weightDeltaLbs` is null when
+  // either input is missing/non-finite (e.g. no goal weight on file) — deliberately NOT
+  // treated as "delta is 0 lb", since that would silently strip an every-day block the
+  // app has always shown for users who simply haven't entered a goal weight yet. See
+  // buildDynamicProgram for where this actually gates the block. Numbered D32, not D29:
+  // D29/D30 are reserved by the merged muscle-tag-vocabulary branch's D31 row (see
+  // DOCTRINE.md D31 for that collision's own account).
+  const weightDeltaLbs = (Number.isFinite(weight) && Number.isFinite(targetWeight)) ? Math.abs(weight - targetWeight) : null;
 
   // Per-day program definitions
   const programs = {
@@ -4462,7 +4483,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
   // helpers above are initialized — calling them from the top of getProgram hit
   // their temporal dead zone (TDZ).
-  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, durationMinutes);
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs);
   if (generated) {
     // EPIC-8a: applied AFTER the 2/3/5-day wrappers + injury prune, on the
     // final day array — the wrappers recombine exercises from multiple base
