@@ -1,0 +1,51 @@
+name: Deploy Supabase Edge Functions
+
+# BUG-90: expand-and-log-bug was only ever edited by hand in the Supabase
+# dashboard, so the deployed code and the git history could silently drift
+# apart with no review trail. This makes `main` the single source of truth:
+# push a change under supabase/functions/**, it deploys itself. Nobody should
+# ever need to open the dashboard editor or run `supabase functions deploy`
+# by hand again — if they do, the next push here will overwrite it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+    inputs:
+      smoke_test_report_id:
+        description: 'user_bug_reports.id to fire a real OPTIONS+POST test against (skips deploy). Leave empty for a normal manual deploy.'
+        required: false
+        type: string
+
+jobs:
+  smoke-test:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.smoke_test_report_id != ''
+    name: One-off live smoke test (manual only, not part of normal deploys)
+    runs-on: ubuntu-latest
+    steps:
+      - name: OPTIONS preflight
+        run: |
+          curl -sS -i -X OPTIONS "https://zsvktcvqmppsshtpeljt.supabase.co/functions/v1/expand-and-log-bug" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Origin: https://tandem-fitness-tracker.netlify.app"
+      - name: Real POST
+        run: |
+          curl -sS -i -X POST "https://zsvktcvqmppsshtpeljt.supabase.co/functions/v1/expand-and-log-bug" \
+            -H "Content-Type: application/json" \
+            -d "{\"report_id\":\"${{ github.event.inputs.smoke_test_report_id }}\"}"
+
+  deploy:
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.smoke_test_report_id == ''
+    name: Deploy changed functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy all functions in supabase/functions
+        run: supabase functions deploy --project-ref zsvktcvqmppsshtpeljt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
