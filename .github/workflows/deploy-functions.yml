@@ -1,0 +1,29 @@
+name: Deploy Supabase Edge Functions
+
+# BUG-90: expand-and-log-bug was only ever edited by hand in the Supabase
+# dashboard, so the deployed code and the git history could silently drift
+# apart with no review trail. This makes `main` the single source of truth:
+# push a change under supabase/functions/**, it deploys itself. Nobody should
+# ever need to open the dashboard editor or run `supabase functions deploy`
+# by hand again — if they do, the next push here will overwrite it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy changed functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy all functions in supabase/functions
+        run: supabase functions deploy --project-ref zsvktcvqmppsshtpeljt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
