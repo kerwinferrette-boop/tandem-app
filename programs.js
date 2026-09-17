@@ -2333,6 +2333,77 @@ const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 // presented as law. See scripts/duration-smoke.mjs for the regression guard.
 const SHORT_SESSION_MAX_MINUTES = 45; // UNSOURCED engineering default — see D28 above.
 
+// ── ACCESSORY ROTATION DEPTH — BUG-108b (2026-09-17) ─────────────────────────
+// Notion BUG-108b `3d8ca37f935b817d8f4fd8d7ec82d1de`; D1 (accessory stability
+// within a mesocycle) + D15 (its own text already states the target cadence).
+//
+// SHOULD (D15, ACTIVE, verbatim): "the closest-pattern accessory per slot (acc1)
+// rotates ~every 4-6 weeks; remaining isolation accessories rotate ~every 2-3
+// weeks (block boundary, D1's existing cadence)." pick() never implemented that
+// as a WALL-CLOCK cadence — it walked `rotPhase`, the index into scaledPhases()'s
+// output, and PHASES[goal].length === 4 for every one of the 3 goals (verified:
+// fat_burn/build_muscle/transform each define exactly 4 phase objects), so
+// `rotPhase` only ever took 4 distinct values (0-3) NO MATTER HOW LONG THE
+// PROGRAM IS — a 4wk program and a 24wk program both walked the identical
+// 4-slot cycle, because scaledPhases() stretches the SAME 4 phases to fill T
+// weeks rather than adding more of them. This is the exact defect D15's own
+// comment on primaryBlockIndex (below) already named and fixed for primary/
+// secondary compounds ("Keyed on the WEEK, not the phase, because... `phase`
+// is always 4 scaled themes regardless of T") — but that fix was never
+// extended to acc1/acc2/acc3/acc4/core/cardio, which still walked the raw
+// phase index. Consequence, measured (fresh sweep, goal x days x sex x tier x
+// T{12,24}, every week 1..T, methodology + numbers in the BUG-108b commit
+// body): a same-muscle isolation/core candidate pool of more than ~4 tier-
+// legal entries only ever exposed its first 2-4 sorted ranks — 17 of 100
+// isolation+core EXERCISE_BANK entries never selected, PERMANENTLY, regardless
+// of program length. (The remaining 31 of that sweep's 48 total never-selected
+// entries are compound/primary-secondary, which IS supposed to stay near-fixed
+// per D15's 8-12wk floor — out of this bug's scope, unchanged by this fix.)
+// Untouched by BUG-94/108's equipment-availability tiebreak (5e1d5fc): that
+// fix re-ranks candidates WITHIN whatever rank the rotation index reaches; it
+// cannot help a rank the index can never reach at all.
+//
+// COULD, considered and rejected:
+//   - A deloadWeeks()-derived mesocycle-boundary index (the same mechanism
+//     D15/primaryBlockIndex uses for compounds), tried first: it scales depth
+//     even further (~12 distinct values at T=24 vs this fix's 8), but it also
+//     changes accessory rotation CADENCE at T=12 away from the doctrine gate's
+//     own D1 check (scripts/doctrine.mjs holds `phase` fixed and varies
+//     `week` across each of 4 fixed 3-week thirds of a 12wk program — the
+//     literal encoding of D15's "~2-3wk" cadence at the length every existing
+//     gate/snapshot exercises) — caught by RUNNING `npm run verify`, not by
+//     reasoning about it: 40 D1 "changed within the block" failures. Rejected
+//     in favor of the fix below, which reproduces that exact T=12 cadence
+//     bit-for-bit and only changes behavior at T != 12, where nothing
+//     currently asserts a specific cadence.
+//   - Simple `week % pool.length` (walk one position per calendar week):
+//     rejected — re-rolls an accessory EVERY week, violating D1's "stable
+//     within a mesocycle, never re-rolled weekly" outright.
+//   - Scale the step size to each SLOT's own pool.length (e.g. "cycle through
+//     the whole pool by week T"): rejected — pool size varies per slot/tier/
+//     muscle (anywhere from 2 to 10+ candidates), so the cadence would
+//     silently differ slot-to-slot and session-to-session with no cited
+//     number behind any of it — an invented mechanism, and it would fight
+//     D15's own explicit "~4-6wk"/"~2-3wk" cadence text with a different,
+//     uncited one.
+//
+// DID: replace the fixed-4-COUNT phase index with a fixed-WEEKS-PER-ROTATION
+// cadence, computed directly from `week` — the same "wall-clock, not scaled
+// theme-count" correction D15/primaryBlockIndex already made for compounds,
+// but expressed as a constant duration rather than a mesocycle-boundary walk
+// (see the rejected alternative above for why). The two constants are the
+// SAME numbers the old `rotPhase`-derived code already produced at the T=12
+// default — not invented, just no longer capped as T grows:
+//   ACC_PHASE_WEEKS = 3  — matches scaledPhases's 12wk/4-phase = 3wk-per-phase
+//     split D15 cites as "~2-3 weeks" for acc2/acc3/acc4/core/cardio.
+//   ACC1_PHASE_WEEKS = 6 — matches the old `Math.floor(rotPhase / 2)`, which
+//     at T=12 changed acc1 every 6 weeks (two 3wk phases per acc1 rotation) —
+//     D15's cited "~4-6 weeks" for acc1.
+// Verified bit-identical at T=12 (the length scripts/doctrine.mjs's D1 check
+// and scripts/program-snapshot.mjs's baseline both exercise): `node
+// scripts/program-snapshot.mjs` after this change (see commit body).
+const ACC_PHASE_WEEKS = 3;
+const ACC1_PHASE_WEEKS = 6;
 function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs) {
   const exp = normalizeExperience(experience);
   // Short session ⇒ drop the isolation block's 3rd slot (acc3), same mechanism
@@ -2349,13 +2420,27 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   // nothing about build_muscle or transform, so those goals stay unconditional (unchanged).
   const skipFatBurnCardio = goal === 'fat_burn' && !isFemale
     && weightDeltaLbs !== null && weightDeltaLbs <= 20;
-  // Rotation context drives variety over time: week rotates accessories; phase
-  // rotates primary compounds (stable within a mesocycle to preserve overload
-  // tracking). Selection itself is priority-ordered, not seeded/random — see
-  // bank()'s sort and pick() below.
+  // Rotation context drives variety over time. As of BUG-108b (2026-09-17)
+  // accessory roles (acc1/acc2/acc3/acc4/core/cardio) are keyed on the caller's
+  // WALL-CLOCK `week` via a FIXED weeks-per-rotation cadence (ACC1_PHASE_WEEKS /
+  // ACC_PHASE_WEEKS below) instead of `rotation.phase` — the index into
+  // scaledPhases()'s output, which is always exactly 4 entries per goal
+  // (PHASES[goal].length === 4 for all 3 goals) NO MATTER HOW LONG the program
+  // is, because scaledPhases() STRETCHES those same 4 phases to fill T weeks
+  // rather than adding more of them. That capped every accessory rotation at
+  // ~4 distinct ranks forever, regardless of real program length — see the
+  // comment above ACC1_PHASE_WEEKS for the full SHOULD/COULD/DID. The two
+  // constants below are chosen to reproduce EXACTLY the old rotPhase-derived
+  // cadence at the T=12 default (scaledPhases splits a 12wk program into four
+  // 3wk phases; Math.floor(rotPhase/2) changed acc1 every 6wk) — so nothing
+  // changes for the length every existing gate (doctrine.mjs's D1 check,
+  // program-snapshot's baseline) exercises; only T != 12 now gets the deeper
+  // rotation D15's own text already promised. Primary/secondary compounds are
+  // unaffected — they already rotate on the WEEK via primaryBlockIndex (D15).
+  // Selection itself stays priority-ordered, not seeded/random — see bank()'s
+  // sort and pick() below.
   const rot = rotation || {};
   const rotWeek  = Number.isFinite(rot.week)  ? rot.week  : 1;
-  const rotPhase = Number.isFinite(rot.phase) ? rot.phase : 0;
   const tierOrder = ['home','hotel_gym','full_gym'];
   const reqIdx = tierOrder.indexOf(tier || 'full_gym');
 
@@ -2433,10 +2518,13 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
   // Deterministic, priority-ordered selection — no hashing, nothing random.
   // Emphasis preference narrows the pool first; within the resulting
-  // (already priority-sorted) pool, primary/secondary compounds walk the
-  // list by mesocycle phase and accessories walk it by week — purposeful
-  // variety over time/program segment, always landing on the next-best
-  // candidate in the scientifically-ordered list rather than an arbitrary one.
+  // (already priority-sorted) pool, every role now walks the list by the
+  // caller's WALL-CLOCK week — primary/secondary via primaryBlockIndex's
+  // mesocycle-boundary walk (D15), accessories via the fixed ACC_PHASE_WEEKS/
+  // ACC1_PHASE_WEEKS cadence (D1/D15, BUG-108b 2026-09-17 — see the comment
+  // above ACC1_PHASE_WEEKS) — purposeful variety over time/program segment,
+  // always landing on the next-best candidate in the scientifically-ordered
+  // list rather than an arbitrary one.
   const pick = (cands, slot, tmpl) => {
     if (!cands.length) return null;
     let pool = cands;
@@ -2470,8 +2558,12 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     const role = slot && slot.role;
     let block;
     if (role === 'primary' || role === 'secondary') block = primaryBlockIndex(rotWeek, weeks);
-    else if (role === 'acc1') block = Math.floor(rotPhase / 2);
-    else block = rotPhase;
+    // BUG-108b: acc1/acc2/acc3/acc4/core/cardio now walk a fixed wall-clock
+    // cadence (ACC1_PHASE_WEEKS / ACC_PHASE_WEEKS, declared above
+    // buildDynamicProgram) instead of `rotPhase`, the fixed-4-count phase
+    // index that capped rotation depth regardless of program length.
+    else if (role === 'acc1') block = Math.floor((rotWeek - 1) / ACC1_PHASE_WEEKS);
+    else block = Math.floor((rotWeek - 1) / ACC_PHASE_WEEKS);
 
     // ── D27 — CONTINUITY ACROSS PROGRAM REGENERATIONS ────────────────────────
     // The defect (measured, 2026-09-03): D15 holds primary/secondary compounds for
@@ -2653,7 +2745,10 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       // getProgram() across 12 weeks: 100% Elliptical for full_gym/hotel_gym,
       // 100% High Knees for home). Every other non-primary category (core,
       // acc2/acc3 isolation) already rotates through pick()'s existing
-      // block=rotPhase path (D15's ~2-3wk cadence, ACTIVE) — cardio was the one
+      // block=Math.floor((week-1)/ACC_PHASE_WEEKS) path (D15's ~2-3wk cadence,
+      // ACTIVE — BUG-108b 2026-09-17 rekeyed this from the fixed-4-count
+      // `rotPhase` to a fixed wall-clock cadence so depth scales with T; see
+      // ACC_PHASE_WEEKS above buildDynamicProgram) — cardio was the one
       // category that bypassed it. Fix: route cardio through the same pick(),
       // same cadence, no new rule invented.
       const cardioPool = bank({groups:tmpl.cardioGroups, cat:'cardio', excl:[...used]});
