@@ -552,9 +552,32 @@ escalation:           # Added 2026-08-30, per the llm-council verdict. Replaces 
                       # source_first_rigor below — a council verdict is not a substitute for a
                       # citation, it's how a genuine judgment call the science doesn't decide gets
                       # made instead of guessed.
+  pre_ship_council_gate: "Added 2026-09-16, per Kerwin, live in-session, generalizing default_for_forks
+                      above from 'genuine forks only' to every push: 'I'm fine with it if all the gates
+                      pass green, as long as it's not a design feature... if it's simply bug fixes, or
+                      epics in terms of mapping this to this, I would defer to the LLM council first.
+                      If they reach a consensus, then go ahead and push to main.' Rule: for ANY change
+                      that is NOT a design/aesthetic change (see design_changes_hold in still_needs_kerwin
+                      below) — an ordinary bug fix, or an epic that is mechanical/mapping-shaped rather
+                      than a judgment call — run it through llm-council for a consensus verdict BEFORE
+                      push, even when no genuine implementation fork exists to force the question. This
+                      stacks with, not replaces, the standing ship gate (verify + validate:personas +
+                      onboarding walkthrough when touched): green gates AND council consensus are both
+                      required before `git push origin HEAD:main`. No consensus (the split isn't
+                      converging) routes to still_needs_kerwin per the existing 'anything the council
+                      declines to resolve' item below — do not push on a non-converging split."
   still_needs_kerwin:  # The guardrail is mechanical (this list), never "how big is this decision."
     - "everything already in safety.forbidden below, including the 2026-08-30
        scoring/matchmaking/biometric-layer addition"
+    - "design_changes_hold — ADDED 2026-09-16, per Kerwin, live in-session: any change that alters the
+       app's design/aesthetics — visual style, theming, layout, or the look-and-feel of the whole
+       product, as opposed to a functional bug fix or a mechanical/mapping-shaped epic — is held for
+       Kerwin directly, in full, regardless of green gates or an llm-council consensus. Verbatim: 'if
+       it's an epic that changes the aesthetics of the whole thing, I would hold on... if it's
+       design-based, bring it to me.' This is a mechanical routing question (does the change touch
+       visual/aesthetic surface, not just fix or map behavior), not a size judgment — when genuinely
+       ambiguous whether a change counts as 'design', treat it as design (hold) rather than guess in
+       the shippable direction."
     - "a genuine product/business call — which Epic to build at all, what a feature should feel
        like, a pricing or competitive decision — as opposed to an implementation fork inside an
        Epic Kerwin already greenlit"
@@ -697,6 +720,22 @@ verification:
     - "Write the should/could/did audit (CLAUDE.md) into every program-logic commit + Notion entry.
        Run it BEFORE shipping, not after Kerwin catches the error. When the source is silent, FLAG
        the gap — never fabricate a number, coefficient, or rule."
+    - "ADDED 2026-09-16, per Kerwin, live in-session (docs/self-corrections.md SC-16): when a
+       why-string or exercise-science claim turns out fabricated/uncited, flagging-and-removing is
+       the FALLBACK after research fails, not the default response to finding one. Verbatim: 'find
+       the answer & note the fix, don't just note that one was wrong.' Required sequence before
+       flagging: (1) exercise-science-research against every canonical source for the specific
+       claim, (2) an actual attempt at live research (WebSearch/WebFetch) for a real citable source
+       if those tools are available in the session — check availability by trying the call, never by
+       asserting 'no egress' from memory or a prior session's limitation. Only once both genuinely
+       fail, flag the gap in the commit + Notion row, stating plainly what was searched and why it
+       came up empty. Any citable source found this way must clear the domain tiering added the
+       same day to exercise-science-research/SKILL.md — peer-reviewed/.edu/.gov/established sport-
+       science orgs as PRIMARY (a citation can rest on this alone), blogs/Reddit/forums as SECONDARY
+       corroboration only, never the sole basis for a claim. BUG-121 (the follow-up sweep for the
+       remaining uncited-percentage claims BUG-110 left out of scope) is the first case this applies
+       to — the cycle that works it must
+       run this sequence per claim, not just repeat BUG-110's remove-and-flag pattern."
 
 safety:
   max_items_per_cycle: 5
@@ -862,6 +901,16 @@ Kerwin's stated backstop is that he files a Bug & QA Log note on anything he doe
 gets worked through the normal pipeline. A branch is still correct in exactly one case: a genuine
 human decision is pending (see BUG-59) — that is what `Needs Human` and
 `docs/needs-human-rulings.md` are for, and it is not a way to defer durability.
+
+**AMENDED 2026-09-16, per Kerwin, live in-session** (see `escalation.pre_ship_council_gate` and
+the new `design_changes_hold` item in `escalation.still_needs_kerwin` for the full rule): green
+gates alone are no longer sufficient for every push. Split by kind of change —
+- **Design/aesthetic change** (visual style, theming, layout, look-and-feel of the whole product):
+  hold it, full stop — bring it to Kerwin directly, never auto-ship even with green gates.
+- **Everything else** (bug fixes; mechanical/mapping-shaped epics — "map this to this"): green
+  gates are still required, AND an `llm-council` consensus is now required before every push, not
+  only when a genuine implementation fork forces the question. Consensus + green gates → push. No
+  consensus → `Needs Human`, do not push on a non-converging split.
 
 ## Loop-closure: push on verify, don't sit on the working tree
 

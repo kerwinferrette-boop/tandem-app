@@ -36,6 +36,23 @@ Program logic is governed by these, in priority order. Open the relevant one(s) 
    (Renaissance Periodization, NSCA, Schoenfeld/Baz-Valle meta-analyses, ACSM position stands) and
    cite the URL. Do NOT treat a random blog as authority.
 
+   **Domain tiering (2026-09-16, Kerwin, live in-session):** *"filter to .edu, .org, or other
+   typically verified domains instead of blog posts, Reddit, etc. Not saying to not use blog posts
+   and Reddit, but take what they're saying as a secondary source versus a primary source."*
+   - **PRIMARY (a citation can rest on this alone):** peer-reviewed journals and their DOIs/PubMed
+     entries, `.edu` sources, `.gov` sources (NIH/NLM/ACSM-affiliated), and established sport-science
+     orgs' own publications (NSCA, ACSM, Renaissance Periodization's own research summaries,
+     published meta-analyses e.g. Schoenfeld/Baz-Valle). Prefer the primary study/position-stand
+     itself over a summary of it when both are reachable.
+   - **SECONDARY (corroboration only, never the sole basis for a citation):** blogs, Reddit, forum
+     threads, coaching-brand marketing pages, YouTube descriptions. These can point toward a primary
+     source (a blog citing the actual RCT) or add color, but the `why`-string's citation must resolve
+     to a PRIMARY source above — if a secondary source's claim can't be traced to one, treat the
+     claim as unverified, not confirmed.
+   - When a WebSearch result set is mostly secondary-tier, that is itself a signal the claim may be
+     folklore (the exact BUG-110 failure mode) — say so in the SHOULD/COULD writeup rather than
+     citing the loudest secondary hit.
+
 If, after Steps 1-3, the source does not answer the question: **STOP. Flag the gap to Kerwin
 explicitly** ("the research doesn't specify X; options are A/B; I recommend A but this needs a
 source before we lock it"). He can pull more research. Never fabricate a number or rule.
