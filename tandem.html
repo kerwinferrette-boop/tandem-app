@@ -1644,6 +1644,25 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </div>
 
+    <!-- Body Composition — EPIC-6 (weight_lbs/body_fat_pct land in health_snapshots via
+         the same ingest-health-snapshot pipeline as Activity/Nutrition). The 7-day
+         weight figure is a ROLLING AVERAGE computed HERE, on read, from the raw
+         health_snapshots rows (loadWeightTrend()) — never a materialized table
+         (weight_trend was deleted under BUG-72 for being exactly that: a duplicate of
+         truth that could drift from the rows it summarized). Body fat is today's
+         snapshot reading, same source as every other ring on this page. -->
+    <span class="dash-section-label">Body</span>
+    <div class="dash-nutrition" id="dashBodySection">
+      <div class="dash-nut-cell">
+        <div class="dash-nut-val" id="dashBodyWeightVal">—</div>
+        <div class="dash-nut-label">7-Day Avg Weight</div>
+      </div>
+      <div class="dash-nut-cell">
+        <div class="dash-nut-val" id="dashBodyFatVal">—</div>
+        <div class="dash-nut-label">Body Fat %</div>
+      </div>
+    </div>
+
     <!-- Competition -->
     <span class="dash-section-label">This Week</span>
     <div class="dash-competition">
@@ -8011,8 +8030,25 @@ const dashboardData = {
   leaderboard: [],     // competition_leaderboard rows (up to 2)
   dailyWins: {},       // { 'YYYY-MM-DD': 'mine' | 'theirs' | 'both' }
   medals: [],
-  streak: null          // EPIC-13 Step 4: own current_streak_days, independent of partner pairing
+  streak: null,          // EPIC-13 Step 4: own current_streak_days, independent of partner pairing
+  weightTrend7d: null    // EPIC-6: 7-day rolling avg of health_snapshots.weight_lbs, computed on read
 };
+
+// EPIC-6 — 7-day rolling weight average, computed ON READ from the raw health_snapshots
+// rows every dashboard load. Deliberately NOT a materialized/cached table: weight_trend
+// was deleted under BUG-72 for being exactly that (a duplicate of truth that can drift
+// from the rows it summarizes). Returns null (not 0) when there is no weight data in the
+// window, so renderDashboard can render "—" instead of a misleading average of nothing.
+async function loadWeightTrend(uid) {
+  const start = new Date();
+  start.setDate(start.getDate() - 6); // today + prior 6 days = a 7-day window
+  const { data: rows } = await sb.from('health_snapshots')
+    .select('weight_lbs, snapshot_date')
+    .eq('user_id', uid)
+    .gte('snapshot_date', localDateStr(start));
+  const weights = (rows || []).map(r => r.weight_lbs).filter(w => w != null && Number.isFinite(+w)).map(Number);
+  return weights.length ? weights.reduce((sum, w) => sum + w, 0) / weights.length : null;
+}
 
 function applyColorTakeover() {
   const myRow = dashboardData.leaderboard.find(r => r.user_id === currentUser?.id);
@@ -8038,6 +8074,9 @@ async function loadDashboard() {
     const { data: snap } = await sb.from('health_snapshots')
       .select('*').eq('user_id', uid).eq('snapshot_date', today).maybeSingle();
     dashboardData.health = snap || null;
+
+    // 1b. EPIC-6 — 7-day rolling weight average, computed on read (see loadWeightTrend)
+    dashboardData.weightTrend7d = await loadWeightTrend(uid);
 
     // 2. Current user targets + partner_id
     const { data: userRow } = await sb.from('users')
@@ -8119,6 +8158,7 @@ async function refreshDashboard() {
     const { data: snap } = await sb.from('health_snapshots')
       .select('*').eq('user_id', currentUser.id).eq('snapshot_date', today).maybeSingle();
     dashboardData.health = snap || null;
+    dashboardData.weightTrend7d = await loadWeightTrend(currentUser.id); // EPIC-6
     applyColorTakeover();
     renderDashboard();
     showToast(snap ? 'Health data refreshed ✓' : 'No new data yet');
@@ -8167,6 +8207,19 @@ function renderDashboard() {
     const valEl = document.getElementById(r.valId);
     if (valEl) valEl.textContent = r.fmt(r.val);
   });
+
+  // EPIC-6 — Body: 7-day rolling avg weight (computed on read, see loadWeightTrend)
+  // + today's body-fat reading, same source (h) as every ring above.
+  const bodyWeightEl = document.getElementById('dashBodyWeightVal');
+  if (bodyWeightEl) {
+    const wt = dashboardData.weightTrend7d;
+    bodyWeightEl.textContent = wt != null ? wt.toFixed(1) + ' lbs' : '—';
+  }
+  const bodyFatEl = document.getElementById('dashBodyFatVal');
+  if (bodyFatEl) {
+    const bf = h?.body_fat_pct;
+    bodyFatEl.textContent = bf != null ? (+bf).toFixed(1) + '%' : '—';
+  }
 
   // Competition scoreboard
   const lb = dashboardData.leaderboard;
