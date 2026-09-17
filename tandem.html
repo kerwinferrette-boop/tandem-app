@@ -6754,6 +6754,24 @@ async function fetchRecentSets(days = 7) {
   return data || [];
 }
 
+// D31 — cross-context history read for one-off exercise-instance variety.
+// Broader window than fetchRecentSets(7)'s D20 group-recency read (hours-scale) or
+// refreshLiftHistory's 56-day D27 window (session-COUNT scale, not last-N-sessions):
+// this needs the last ~4 DISTINCT session_ids regardless of goal or session_type, so
+// it reads session_id (fetchRecentSets does not) and uses a generous 60-day floor so
+// an infrequent lifter's last 4 sessions aren't silently cut off by a tight date window.
+async function fetchOneOffHistorySets() {
+  if (!currentUser?.id) return [];
+  const sinceISO = new Date(Date.now() - 60 * 86400000).toISOString();
+  const { data, error } = await sb.from('sets')
+    .select('exercise_name, session_id, created_at')
+    .eq('user_id', currentUser.id)
+    .gte('created_at', sinceISO)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('[D31] fetchOneOffHistorySets failed', error); return []; }
+  return data || [];
+}
+
 // Projection C (D27) — { exerciseName: distinctTrainingDayCount }.
 // Keyed on the BANK ENTRY's display name, resolved through bankIndexByName() so a
 // legacy slug-keyed row and its display name collapse to one lift rather than
@@ -6814,6 +6832,36 @@ function recentMuscleLoad(sets, now = Date.now()) {
   return out;
 }
 
+// D31 (SCIENCE_DEFAULT) — cross-context "recently used exercises" signal for one-off
+// variety. NOT a science citation — Kerwin's explicit ruling (2026-09-15): "if the 4
+// workout thing isn't science, then it's not science." 4 is a logic-based default, not
+// a mechanistic threshold; sessionLimit is a plain parameter so it can be tuned without
+// touching the call site. Combines program AND one-off history automatically — both
+// finishSession() and finishOneOff() write to the same `sets` table, so no session_type
+// filter is applied here (the union is the point, per Kerwin: "tie in the persons
+// program and where they are in recently completed workouts there").
+// Resolves through bankIndexByName(), same as liftSessionCounts (D27) and
+// recentMuscleLoad (D20) — one resolution rule, one home, so a legacy slug-keyed row
+// and its display name collapse to a single lift instead of two.
+// Input contract: `sets` must be fetchOneOffHistorySets()'s output shape — pre-sorted
+// newest-first by created_at and including `session_id`. fetchRecentSets() omits
+// session_id, so feeding its output here silently returns an empty Set (no error).
+function recentExerciseNames(sets, sessionLimit = 4) {
+  const idx = bankIndexByName();
+  const orderedSessionIds = [];
+  for (const s of sets || []) {
+    if (s.session_id && !orderedSessionIds.includes(s.session_id)) orderedSessionIds.push(s.session_id);
+  }
+  const trackedSessions = new Set(orderedSessionIds.slice(0, sessionLimit));
+  const names = new Set();
+  for (const s of sets || []) {
+    if (!trackedSessions.has(s.session_id)) continue;
+    const e = idx[String(s.exercise_name || '').toLowerCase()];
+    if (e && e.name) names.add(e.name);
+  }
+  return names;
+}
+
 // Projection B (EPIC-027) — that one lift's recent sets, newest first (the fetch
 // already ordered them). Resolves slug and display name to the same bank entry so
 // legacy slug-keyed rows are not silently dropped from a lift's history.
@@ -6834,6 +6882,7 @@ function recentSetsFor(exerciseName, sets) {
 // behaves like any generated day, and it writes nothing: a one-off is explicitly
 // not part of the periodized program (D9 exempts it from D1/D4/D7 by design).
 let _oneoffSets = null; // recent-sets read, cached for the life of the open modal
+let _oneoffHistorySets = null; // D31 recent-exercise read, cached for the life of the open modal
 
 // Wizard state. TRANSIENT BY DESIGN: `goal` is the goal-type picked for THIS
 // generated day only and is never written back to cfg.goal — a one-off must not
@@ -7091,6 +7140,7 @@ async function openOneOff() {
   oneOffState.day = null;
   oneOffState.fromSaved = false;
   _oneoffSets = null;
+  _oneoffHistorySets = null;
   const finishBtn = document.getElementById('oneoffFinishBtn');
   if (finishBtn) finishBtn.style.display = 'none';
   // Built on every open, so a sex changed in the profile modal is reflected the next
@@ -7106,7 +7156,7 @@ async function openOneOff() {
   // 7 days is a FETCH HORIZON, not a threshold — it only has to comfortably span
   // the largest RECOVERY_PARAMS window (48h). The threshold itself is D20's, below.
   // Fetched at open (goal-independent) but RENDERED per goal — see renderRecencyBanner.
-  _oneoffSets = await fetchRecentSets(7);
+  [_oneoffSets, _oneoffHistorySets] = await Promise.all([fetchRecentSets(7), fetchOneOffHistorySets()]);
   renderOneOffFocusRow();
   if (oneOffState.goal) renderRecencyBanner();
 }
@@ -7139,6 +7189,11 @@ function renderOneOff(focus) {
     // (D20's gate greps this RHS to its line end for the token RECOVERY_PARAMS —
     // hoisting the number to a variable above would pass review and fail the build.)
     recencyThresholdHours: (RECOVERY_PARAMS[goalKey] || RECOVERY_PARAMS.build_muscle).sameGroupHours,
+    // D31 (SCIENCE_DEFAULT) — cross-context variety. _oneoffHistorySets is fetched
+    // once per modal-open (Step 1 above), same caching shape _oneoffSets already
+    // uses for D20. Absent/null degrades to an empty Set, which getSingleDay treats
+    // as varietyActive=false — the exact no-op-by-default shape D20/D27 use.
+    recentExerciseNames: recentExerciseNames(_oneoffHistorySets || []),
     // The goal's SHAPE. Both opts have existed in getSingleDay since D9 and were
     // never passed by any caller, so every goal produced a structurally identical
     // day. Per the 5-Goal Taxonomy (D5): Transform is antagonist-superset driven and
