@@ -6604,6 +6604,28 @@ async function syncPRs() {
   if (error) console.warn('PR sync error:', error);
 }
 
+// BUG-8 fix: buildIdentityAvatar() (the SVG renderer, via profileState) reads gender/
+// skinTone/bodyType/hair ONLY from LS 'tandem_profile' — it never sees Supabase directly.
+// saveProfileAvatar() writes users.avatar_gender/avatar_skin_tone/avatar_body_type/
+// avatar_hair_style, but no cloud-restore path ever copied those columns back into
+// 'tandem_profile', so a fresh login/new device always rendered the built-in male
+// default regardless of the user's saved avatar_gender. This is the single home for
+// that copy — both restoreFromCloud() and syncFromCloud() call it (see CLAUDE.md
+// "Fix the mechanism, not the instance": BUG-73/BUG-114 is exactly what happens when a
+// fix like this lands in only one of the paths that share the defect).
+// Read-only from Supabase, additive only: never clobbers a value already set locally
+// (so an in-progress local edit always wins), and never writes to Supabase.
+function mergeAvatarFieldsFromCloud(row) {
+  if (!row) return;
+  const p = LS.get('tandem_profile') || {};
+  let changed = false;
+  if (row.avatar_gender && !p.gender) { p.gender = row.avatar_gender; changed = true; }
+  if (row.avatar_skin_tone && !p.skinTone) { p.skinTone = row.avatar_skin_tone; changed = true; }
+  if (row.avatar_body_type && !p.bodyType) { p.bodyType = row.avatar_body_type; changed = true; }
+  if (row.avatar_hair_style && !p.hair) { p.hair = row.avatar_hair_style; changed = true; }
+  if (changed) LS.set('tandem_profile', p);
+}
+
 async function restoreFromCloud() {
   if (!currentUser) { closeModal('history'); showView('auth'); return; }
   setSyncStatus('syncing');
@@ -6655,6 +6677,7 @@ async function restoreFromCloud() {
     // Config
     const { data: configData } = await sb.from('users')
       .select('*').eq('id', uid).single();
+    mergeAvatarFieldsFromCloud(configData); // BUG-8: hydrate avatar_* independent of tandem_cfg gate below
     if (configData && !LS.get('tandem_cfg')) {
       LS.set('tandem_cfg', {
         goal: configData.program_goal,
@@ -7825,6 +7848,7 @@ async function syncFromCloud() {
   try {
     const uid = currentUser.id;
     const { data: userData } = await sb.from('users').select('*').eq('id', uid).maybeSingle();
+    mergeAvatarFieldsFromCloud(userData); // BUG-8: hydrate avatar_* even if this account has no program yet
     if (!userData?.program_goal) return false;
     cfg = {
       goal: userData.program_goal,
