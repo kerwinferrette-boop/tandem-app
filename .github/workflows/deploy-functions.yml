@@ -13,9 +13,31 @@ on:
     paths:
       - 'supabase/functions/**'
   workflow_dispatch:
+    inputs:
+      smoke_test_report_id:
+        description: 'user_bug_reports.id to fire a real OPTIONS+POST test against (skips deploy). Leave empty for a normal manual deploy.'
+        required: false
+        type: string
 
 jobs:
+  smoke-test:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.smoke_test_report_id != ''
+    name: One-off live smoke test (manual only, not part of normal deploys)
+    runs-on: ubuntu-latest
+    steps:
+      - name: OPTIONS preflight
+        run: |
+          curl -sS -i -X OPTIONS "https://zsvktcvqmppsshtpeljt.supabase.co/functions/v1/expand-and-log-bug" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Origin: https://tandem-fitness-tracker.netlify.app"
+      - name: Real POST
+        run: |
+          curl -sS -i -X POST "https://zsvktcvqmppsshtpeljt.supabase.co/functions/v1/expand-and-log-bug" \
+            -H "Content-Type: application/json" \
+            -d "{\"report_id\":\"${{ github.event.inputs.smoke_test_report_id }}\"}"
+
   deploy:
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.smoke_test_report_id == ''
     name: Deploy changed functions
     runs-on: ubuntu-latest
     steps:
