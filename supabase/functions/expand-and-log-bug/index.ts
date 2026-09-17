@@ -124,15 +124,22 @@ Deno.serve(async (req: Request) => {
       })
     }
 
+    // caaf2179-c4e4-4ce1-9a32-eb46ffdbd6a0 is the Bug & QA Log's DATA SOURCE id
+    // (collection://...), not the database page's own id (56397626-...). The
+    // old 2022-06-28 API's `database_id` parent predates Notion's data-source
+    // model and doesn't resolve a data-source id — every call 404'd with
+    // "Could not find database", which reads exactly like a sharing/permission
+    // problem but never was one. Bumped to the data-source-aware API version
+    // and parent type so the id we actually have matches what we send.
     const notionRes = await fetch('https://api.notion.com/v1/pages', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${Deno.env.get('NOTION_TOKEN')}`,
         'Content-Type': 'application/json',
-        'Notion-Version': '2022-06-28'
+        'Notion-Version': '2025-09-03'
       },
       body: JSON.stringify({
-        parent: { database_id: 'caaf2179-c4e4-4ce1-9a32-eb46ffdbd6a0' },
+        parent: { data_source_id: 'caaf2179-c4e4-4ce1-9a32-eb46ffdbd6a0' },
         properties: notionProperties,
         children: notionChildren
       })
