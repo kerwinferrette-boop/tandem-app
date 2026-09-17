@@ -247,6 +247,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--s1);
   color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
 .session-timer-live svg{color:var(--accent);width:14px;height:14px;}
+/* EPIC-19 Slice 1 — advisory-only pacing text appended into the same live-timer
+   row. Pure display; see renderSessionPace() for the read-only computation. */
+.session-timer-pace{font-size:12px;color:var(--muted);letter-spacing:0;}
+.session-timer-pace.pace-ahead{color:var(--green);}
+.session-timer-pace.pace-behind{color:var(--amber);}
 
 /* ═══════════════════════════════
    PROGRESS BAR
@@ -4408,14 +4413,79 @@ function renderSessionTimer() {
     const start = Number(startTime);
     const tick = () => {
       const el = document.getElementById('sessionTimerDisplay');
-      if (el) el.textContent = fmtSessionElapsed(Date.now() - start);
+      const elapsedMs = Date.now() - start;
+      if (el) el.textContent = fmtSessionElapsed(elapsedMs);
+      renderSessionPace(elapsedMs);
     };
-    row.innerHTML = `<div class="session-timer-live">${svgIcon('clock')}<span id="sessionTimerDisplay"></span></div>`;
+    row.innerHTML = `<div class="session-timer-live">${svgIcon('clock')}<span id="sessionTimerDisplay"></span><span class="session-timer-pace" id="sessionTimerPace"></span></div>`;
     tick();
     _sessionTimerInterval = setInterval(tick, 1000);
   } else {
     row.innerHTML = `<button class="session-timer-start" onclick="startWorkoutTimer()">${svgIcon('clock')} Start Workout</button>`;
   }
+}
+
+// ═══════════════════════════════════════════════════════
+// EPIC-19 Slice 1 — advisory-only pacing (Notion "EPIC-19-workout-pacing-timer",
+// 2026-09-08 audit decomposition). Pure display layer: reads the SAME
+// tandem_session_start_time this file already persists for the elapsed clock
+// above, and cfg.workout_duration_minutes (users.workout_duration_minutes,
+// already synced into cfg at onboarding — see cfg init ~line 3297, the
+// onboarding-review write ~line 4275, and the load-back round trips
+// ~line 6491/7763; getProgram() also reads it at ~line 3056 for the
+// unrelated EPIC-8b short-session isolation-drop rule in programs.js —
+// this slice does not touch that path or any programs.js file).
+// It writes NOTHING (no new Supabase column, no localStorage key beyond what
+// already existed), and never mutates the rest-timer's countdown or which
+// sets/exercises render — it only derives text from state those systems
+// already expose (S.restTimers / .ex-card.completed) and appends it into the
+// existing session-timer-row markup above. If workout_duration_minutes is
+// unset (no onboarding preference given), computeSessionPace() returns null
+// and the row falls back to elapsed-only display — the pre-existing baseline
+// behavior — rather than showing garbage or throwing.
+// ═══════════════════════════════════════════════════════
+function computeSessionPace(elapsedMs) {
+  const totalPlanned = Number(cfg && cfg.workout_duration_minutes);
+  if (!Number.isFinite(totalPlanned) || totalPlanned <= 0) return null; // graceful degrade: no preference set
+  const elapsedMin = elapsedMs / 60000;
+  const remainingMin = totalPlanned - elapsedMin;
+  const view = currentDay ? document.getElementById('wv-' + currentDay) : null;
+  const cards = view ? view.querySelectorAll('.ex-card') : [];
+  const total = cards.length;
+  const done = Array.from(cards).filter(c => c.classList.contains('completed')).length;
+  // Linear expectation: at this point in elapsed time, done/total of the
+  // planned exercises should be complete. Compare the ACTUAL elapsed time to
+  // the time that progress "should" have taken under a straight-line pace.
+  let paceDeltaMin = null; // +ahead of pace, -behind pace
+  if (total > 0) {
+    const expectedElapsedMinForProgress = (done / total) * totalPlanned;
+    paceDeltaMin = expectedElapsedMinForProgress - elapsedMin;
+  }
+  return { remainingMin, paceDeltaMin };
+}
+
+function renderSessionPace(elapsedMs) {
+  const el = document.getElementById('sessionTimerPace');
+  if (!el) return;
+  const pace = computeSessionPace(elapsedMs);
+  el.classList.remove('pace-ahead', 'pace-behind');
+  if (!pace) { el.textContent = ''; return; } // no duration preference — elapsed-only, degrade gracefully
+  const remainMin = Math.round(Math.abs(pace.remainingMin));
+  const remainTxt = pace.remainingMin >= 0 ? `${remainMin} min left` : `${remainMin} min over`;
+  let paceTxt = '';
+  if (pace.paceDeltaMin !== null) {
+    const deltaMin = Math.round(Math.abs(pace.paceDeltaMin));
+    if (deltaMin < 1) {
+      paceTxt = ' · on pace';
+    } else if (pace.paceDeltaMin > 0) {
+      paceTxt = ` · ${deltaMin} min ahead of pace`;
+      el.classList.add('pace-ahead');
+    } else {
+      paceTxt = ` · ${deltaMin} min behind pace`;
+      el.classList.add('pace-behind');
+    }
+  }
+  el.textContent = `· ${remainTxt}${paceTxt}`;
 }
 
 // Explicit Start tap. Reuses startOrResumeSession() (idempotent — resumes a
@@ -6281,6 +6351,10 @@ function updateProgress() {
   document.getElementById('progFill').style.width = pct + '%';
   document.getElementById('progLabel').textContent = `${done} of ${total} exercises`;
   document.getElementById('progPct').textContent = pct + '%';
+  // EPIC-19 Slice 1: refresh the pace indicator immediately on progress change
+  // (logging/unlogging a set) rather than waiting up to 1s for the next tick.
+  const _startTime = localStorage.getItem('tandem_session_start_time');
+  if (_startTime) renderSessionPace(Date.now() - Number(_startTime));
 }
 
 function toggleMob(el) {
