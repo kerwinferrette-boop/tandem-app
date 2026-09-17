@@ -616,13 +616,13 @@ const EXERCISE_BANK = {
     cues:['Lie face down; arms straight out to the sides (T position)','Thumbs pointing up (external rotation)','Lift arms by squeezing shoulder blades — height matters less than contraction','Lower slowly; repeat with full range of motion']},
   'upright-row':{
     name:'Upright Row', videoId:null,
-    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['shoulders','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The upright row is one of the few compound shoulder exercises — it loads lateral delt AND upper trap simultaneously. Wide grip (outside shoulder-width) reduces shoulder impingement risk and shifts load toward lateral delt.',
     cues:['Wide grip: hands just outside shoulder-width','Pull bar up toward chin — elbows lead and rise above wrists','Stop when hands reach lower chest height — no higher','Lower under control; do not drop the bar']},
   'cable-upright-row':{
     name:'Cable Upright Row', videoId:null,
-    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep']},
+    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep_brachii']},
     emphasis:['shoulders','upper_body'], equipment:'cable', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Cable version of the upright row with constant tension through the full ROM — particularly useful at the bottom of the movement where barbell tension is low. Attach a wide bar or EZ-bar to keep the shoulder-friendly wide grip.',
     cues:['Set cable at floor level, wide grip bar attachment','Pull up toward chin, elbows lead','Do not pull above lower chest level — protect AC joint','Slow the eccentric; the cable makes it easy to cheat on the way down']},
@@ -706,13 +706,13 @@ const EXERCISE_BANK = {
   // ── BACK / VERTICAL PULL ──────────────────────────────
   'lat-pulldown':{
     name:'Lat Pulldown', videoId:'CAwf7n6Luuc',
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Machine-guided path allows maximum lat loading with a low technique barrier. The primary vertical pull for users who cannot yet do pull-ups — trains the same lat, teres major, and bicep pattern at any strength level.',
     cues:['Wide grip, slight backward lean — not upright','Lead with the elbows pulling to back pockets','Squeeze lats at the bottom — not the arms','Full stretch at top: let scapula elevate slightly']},
   'pull-up':{
     name:'Pull-Up', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid','core']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid','core']},
     emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Full-body tension, scapular control, grip strength, and core anti-extension all activate simultaneously. Once achievable for multiple clean reps, pull-ups should replace or complement lat pulldown.',
     cues:['Dead hang starting position — no kip','Depress and retract scapula BEFORE pulling','Drive elbows toward back pockets','Chin over bar — not just nose over bar']},
@@ -724,7 +724,7 @@ const EXERCISE_BANK = {
     cues:['Supinated grip (palms toward face)','Full dead hang at bottom','Elbows drive down and in toward hips','Chin clears bar — pause at top']},
   'table-inverted-row':{
     name:'Table Inverted Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
     emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
     why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
     cues:['Lie under a sturdy table, hands gripping the edge, body straight','Pull chest toward the table edge, squeezing shoulder blades together','Keep the body rigid — no hip sag','Lower under control; walk feet further out to increase difficulty']},
@@ -749,13 +749,13 @@ const EXERCISE_BANK = {
     cues:['Anchor the band overhead (door anchor or high point), arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
   'neutral-grip-lat-pulldown':{
     name:'Neutral-Grip Lat Pulldown', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','rhomboid','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The neutral (palms-facing) grip keeps the shoulder in its strongest, most impingement-free position and biases the lower lat fibres, allowing a longer pull to the sternum. A shoulder-friendly vertical pull for lifters who feel the wide-grip pulldown in the front of the shoulder.',
     cues:['Neutral parallel handle, slight backward lean','Drive the elbows down and in toward the hip pockets','Pull the handle to the upper chest; squeeze the lats at the bottom','Let the scapula rise under control at the top for a full stretch']},
   'assisted-pull-up':{
     name:'Assisted Pull-Up', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','rhomboid','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Counterweight assistance lets a lifter train the exact pull-up movement pattern before they can do bodyweight reps — building the scapular control and lat strength that bands or lat pulldowns only approximate. The bridge from pulldown to a true pull-up.',
     cues:['Kneel or stand on the assist pad; set enough help for 8–10 clean reps','Start from a full dead hang; depress and retract the scapula first','Drive the elbows down and pull the chest toward the bar','Lower under control to a full hang — reduce the assistance as you get stronger']},
@@ -763,31 +763,31 @@ const EXERCISE_BANK = {
   // ── BACK / HORIZONTAL PULL ────────────────────────────
   'seated-cable-row':{
     name:'Seated Cable Row', videoId:'UCXxvVItLoM',
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt','lower_trap']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt','lower_trap']},
     emphasis:['back','pull','upper_body'], equipment:'cable', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Constant cable tension across the full horizontal range. The bilateral seated position allows heavy loading; hip-to-shoulder bracing mirrors deadlift mechanics.',
     cues:['Sit tall, slight forward lean only at stretch','Drive elbows back to hips — not flared out','Squeeze rhomboids at full retraction','Let scapula protract at the stretch — do not shrug']},
   'dumbbell-row':{
     name:'Dumbbell Row', videoId:'pYcpY20QaE8',
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Unilateral loading reveals side-to-side strength asymmetries. The braced knee-on-bench position stabilises the spine, making this the safest heavy horizontal pull for newer lifters.',
     cues:['Plant knee and same-side hand on bench','Back flat — do not rotate the torso to row','Drive elbow straight back, not out to the side','Touch the weight to the ribcage at the top']},
   'barbell-row':{
     name:'Barbell Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep','posterior_delt','erector_spinae']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep_brachii','posterior_delt','erector_spinae']},
     emphasis:['back','pull','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The most demanding horizontal pull — requires total posterior chain engagement to hold the hip hinge under load. No other back exercise builds erector, rhomboid, and mid-trap thickness simultaneously.',
     cues:['Hip hinge to 45° — not bent over 90°','Bar stays over mid-foot','Drive elbows to the ceiling, not behind you','Lower under control — the eccentric builds as much mass as the pull']},
   'single-arm-db-row':{
     name:'Single-Arm DB Row', videoId:'pYcpY20QaE8',
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Removes bilateral deficit and forces true unilateral contraction. Greater range of motion than barbell row and safe for any lower back sensitivity.',
     cues:['Support non-working side on bench or box','Drive elbow back and up','Keep spine neutral — do not twist','Full extension at bottom for maximum lat stretch']},
   't-bar-row':{
     name:'T-Bar Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Allows the heaviest horizontal pull loading of any machine variation. Neutral grip reduces bicep involvement, keeping more load on the lat and rhomboids.',
     cues:['Hinge at hip to 45° over the bar','Neutral grip handles, pull to lower chest','Squeeze hard at peak — hold one count','Lower until full arm extension; let lats stretch']},
@@ -811,7 +811,7 @@ const EXERCISE_BANK = {
     cues:['Chest firmly on the pad, feet planted','Drive the elbows back, leading with the elbows not the hands','Squeeze the shoulder blades together hard at the top','Let the arms extend fully and the scapula protract at the stretch']},
   'pendlay-row':{
     name:'Pendlay Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep','posterior_delt','erector_spinae']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep_brachii','posterior_delt','erector_spinae']},
     emphasis:['back','pull','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Each rep starts dead-stopped from the floor with a flat, parallel torso — eliminating the stretch reflex and momentum so the mid-back must generate the pull explosively from a full stop. Builds rowing power and back thickness a touch-and-go barbell row cannot.',
     cues:['Hinge to a torso parallel with the floor, back flat','Bar starts on the floor each rep — reset the position every time','Pull explosively to the lower chest, elbows driving up','Lower under control back to the floor; do not bounce or round the back']},
@@ -829,13 +829,13 @@ const EXERCISE_BANK = {
     cues:['Lie across or along a bench, both hands cupping one dumbbell','Lower the weight back over the head with soft, fixed elbows','Feel a deep stretch across the lats and ribs at the bottom','Pull it back over the chest by driving with the lats — not the arms']},
   'kroc-row':{
     name:'Kroc Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt','upper_trap']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt','upper_trap']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'A heavy, high-rep single-arm dumbbell row that intentionally allows a little body English to move maximal load for 15–20 reps — building back thickness, grip, and work capacity to failure. The go-to burnout row when the goal is maximum back stimulus and grip overload.',
     cues:['Brace a hand/knee on a bench; use a heavy dumbbell','Row explosively to the hip, allowing a slight controlled torso rotation','Drive the elbow high and back; full stretch at the bottom','Use straps if grip fails first; keep the lower back braced, never rounded under the load']},
   'machine-high-row':{
     name:'Machine High Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['rhomboid','bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['rhomboid','bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The downward-angled, chest-supported pull biases the upper lats and teres while the pad removes all lower-back and hinge demand — letting a lifter row heavy with a fixed path and independent handles that correct side-to-side imbalances.',
     cues:['Chest on the pad, grip the handles overhead-and-out','Pull down and back, driving the elbows toward the hips','Squeeze the lats and shoulder blades at the bottom','Let the arms extend fully at the top for a complete stretch']},
@@ -1450,7 +1450,19 @@ const EXERCISE_BANK = {
   // ── CARDIO / CONDITIONING ─────────────────────────────
   'jumping-jacks':{
     name:'Jumping Jacks', videoId:null,
-    muscleGroups:{primary:['full_body','glute_max'],secondary:['calf']},
+    // 'full_body' removed 2026-09-17 (EPIC-41 Half 1): not an anatomical term, and it broke the
+    // bank's own convention for every other cardio entry (high-knees/stationary-bike/elliptical/
+    // rower all tag real generic muscle-group parents, never a non-muscle sentinel). Retagged to
+    // match: calf (the plyometric jump/landing driver) and glute_medius (hip ABduction on the
+    // leg-spread — not glute_max/hip extension, which jumping jacks does not perform) as primary,
+    // anterior_delt (overhead arm raise) added as primary; quad/hip_flexor/glute_max as secondary
+    // stabilizers. Sourced by triangulating multiple independent exercise-reference summaries
+    // (NASM exercise library category; Horton Barbell, Gymkee, WorkoutLabs, Parade coaching
+    // write-ups) that converge on the same primary/secondary split — SECONDARY-tier corroboration
+    // per exercise-science-research's domain tiering (no peer-reviewed EMG study on jumping jacks
+    // specifically was found), used because the primary-tier literature is silent on this specific
+    // bodyweight movement, not in place of it.
+    muscleGroups:{primary:['calf','glute_medius','anterior_delt'],secondary:['quad','hip_flexor','glute_max']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
     why:'Zero-equipment full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
     cues:['Land softly, knees soft on impact','Full arm extension overhead each rep','Steady rhythm — this is Zone 2, not a sprint','20+ min continuous, or interval with High Knees']},
@@ -1480,7 +1492,7 @@ const EXERCISE_BANK = {
     cues:['Use the arm poles — they increase caloric burn and stabilise the trunk','Do not lean on the machine — maintain your own posture','Moderate resistance and pace — this is not a sprint','Zone 2 heart rate target: 60–70% of max']},
   'rower':{
     name:'Rower', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep','hamstring','erector_spinae']},
+    muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep_brachii','hamstring','erector_spinae']},
     emphasis:['full_body','back','lower_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
     why:'Engages 86% of muscle mass — more than any other cardio machine. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
     cues:['Drive order: LEGS → LEAN BACK → ARMS; reverse on recovery','Drive hard through the heels at the catch','Do not open the hips until the handle passes the knees','Damper setting 4–6 for aerobic work; higher is not better']},
@@ -1501,13 +1513,16 @@ const EXERCISE_BANK = {
     cues:['Anchor the band at about elbow height and stand side-on, working arm on the outside','Elbow bent to 90 degrees and tucked at your side; a rolled towel under the arm keeps it there','Rotate the forearm away from your stomach — the upper arm does not move','Control the band all the way back; do not let it snap your hand to your belly']},
   'lateral-step-down':{
     name:'Lateral Step-Down', videoId:null,
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis'],secondary:['glute_max','glute_medius']},
+    // quad_vastus co-tag added 2026-09-17 (EPIC-41 Half 1) for consistency with every other
+    // quad_vastus_lateralis/medialis entry in the bank (EPIC-026 §6B.3: 'quad_vastus' is already a
+    // live request token with no tag behind it on entries missing this co-tag).
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus'],secondary:['glute_max','glute_medius']},
     emphasis:['quads','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
     why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a zero-equipment single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
     cues:['Stand on a 6-7 inch step with all the weight through the working leg','Reach the free leg out to the side and tap the heel down - do not push off it','Let the working knee travel forward; that range is what you are training','Slow and controlled on the way down; hold a wall or rail if balance is the limiter']},
   'band-row':{
     name:'Band Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'compound', oneRmFactor:null,
     why:'The first band compound in the bank and the only home-tier pull whose resistance can be dialed down. Table Inverted Row loads by body angle, which sets a hard floor a deconditioned or rehabbing lifter may not clear; a band starts near zero and scales by band choice and anchor distance. Horizontal pulling is also the least shoulder-demanding pull pattern, so it is the right entry point before any overhead work.',
     cues:['Anchor the band at chest height to a sturdy object or door','Sit or stand tall, arms extended, slight tension at the start','Start the pull with the shoulder blade, then let the elbow follow','Drive elbows back toward the hips, not flared wide','Control the return all the way out - keep tension the whole range']},
