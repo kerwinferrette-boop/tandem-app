@@ -3077,7 +3077,14 @@ function getActiveProgram() {
   // EPIC-8b (docs/waves/EPIC-8-WAVE-STATE.md Slice 1): thread the already-captured
   // onboarding duration preference (selectDuration(), ob-card-3) through so short
   // sessions drop the isolation block. Undefined/null is byte-identical to before.
-  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience, _liftHistory, cfg.workout_duration_minutes);
+  // EPIC-8c (D29): thread current/goal weight through so getProgram can compute the
+  // weight-delta cardio gate for fat_burn (Programming Architecture Reference, Part 2 —
+  // see programs.js getProgram's weightDeltaLbs comment for the exact citation). cfg's
+  // two onboarding/restore flows disagree on the goal-weight field name (targetWeight
+  // vs goalWeight); read both so either flow's data reaches the gate. Neither being
+  // finite leaves weightDeltaLbs null, which getProgram treats as "unknown" and keeps
+  // cardio on — no regression for users who haven't entered a goal weight.
+  return getProgram(cfg.goal, cfg.days, cfg.weeks, cfg.sex, resolveEquipmentTier(), cfg.emphasis, cfg.injuries, resolveMaxDb(), rotationContext(), cfg.experience, _liftHistory, cfg.workout_duration_minutes, cfg.weight, (cfg.targetWeight ?? cfg.goalWeight));
 }
 
 // ═══ EPIC-031 — PROGRAM LIBRARY (browse / adopt / revert) ═══
@@ -5009,6 +5016,18 @@ const sessionSetsMap = {};
 let currentCloudSessionId = null;
 let sessionStartTime = null;
 const sessionPrCache = {}; // exerciseName → best est1rm seen this session; prevents async PR double-count
+// BUG-16 Part A: correcting a mistyped set (un-logging it, or removing an added
+// row via deleteSet) previously only cleared local/DOM state — the row the
+// fire-and-forget realtime insert below already wrote to Supabase `sets` was
+// never touched, so it sat there orphaned forever (the source of the ~83
+// duplicate-row prod cleanup this bug also drove). These two maps let an
+// un-log/delete find and remove that exact row:
+//   cloudSetRowIds[exId][setIndex]  -> the `sets.id` the insert returned
+//   pendingSetInserts["exId:i"]     -> the in-flight insert Promise, if any,
+//     so a fast correct-then-undo can't race past a still-inserting row and
+//     leave it behind — see deleteCloudSetRow() below.
+const cloudSetRowIds = {};
+const pendingSetInserts = {};
 
 async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
@@ -5132,9 +5151,20 @@ function logSet(id, i) {
       prs[prExName] = est1rm;                 // C7: write by canonical name
       if (prExName !== id) delete prs[id];    // C7: retire any legacy id-keyed entry
       LS.set('tandem_prs', prs);
-      // EPIC-9: a true PR also lifts the working 1RM (never lowers it)
+      // EPIC-9: a true PR also lifts the working 1RM (never lowers it).
+      // BUG-16 Part B (Kerwin: "the 1rm stored should always just be the
+      // highest one kept from the session"): the old `wk1[prExName] &&` guard
+      // required an entry to ALREADY exist before this would ever write one,
+      // so a PR on an exercise with no prior working1RM (first time it's ever
+      // logged) never seeded it here — tandem_prs above updated correctly,
+      // but tandem_working1rm silently didn't, until reconcileWorking1RMs()
+      // caught up at Finish. Verified by running the exact 185x8/195x10/155x7
+      // sequence: tandem_prs picked 195x10 correctly, tandem_working1rm.rm
+      // stayed unset. Default the missing case to 0, same as `prev` above,
+      // so ANY real PR seeds-or-raises it instead of only ever raising one
+      // that already exists.
       const wk1 = LS.get('tandem_working1rm') || {};
-      if (wk1[prExName] && est1rm > wk1[prExName].rm) {
+      if (est1rm > (wk1[prExName]?.rm ?? 0)) {
         wk1[prExName] = { rm: est1rm, date: localDateStr(), dir: 'pr' };
         LS.set('tandem_working1rm', wk1);
       }
@@ -5159,7 +5189,12 @@ function logSet(id, i) {
 
     // Fire-and-forget real-time set sync to Supabase
     if (currentUser) {
-      (async () => {
+      // BUG-16 Part A: stash the insert's promise so an un-log/delete of this
+      // exact set (see deleteCloudSetRow below) can await it before deleting —
+      // otherwise a fast correct-then-fix could race past a still-in-flight
+      // insert and leave the row behind regardless of the delete call.
+      const insertKey = `${id}:${i}`;
+      const insertPromise = (async () => {
         try {
           const sessionUUID = await startOrResumeSession();
           // Human-readable name from DOM card heading
@@ -5200,6 +5235,11 @@ function logSet(id, i) {
             is_pr: isPr
           }).select('id').single();
           if (setErr) throw setErr;
+          // BUG-16 Part A: remember this row's id, keyed by the exact (exercise
+          // id, set index) that produced it, so un-logging/deleting THIS set
+          // can delete THIS row instead of leaving it orphaned in `sets`.
+          if (!cloudSetRowIds[id]) cloudSetRowIds[id] = {};
+          cloudSetRowIds[id][i] = insertedSet.id;
           // PR bookkeeping — only the highest est-1RM set this session stays flagged
           if (isPr) {
             // Retroactively unflag the prior PR set so we don't double-count
@@ -5221,16 +5261,51 @@ function logSet(id, i) {
           }
         } catch(e) {
           console.error('Set sync error:', e);
+        } finally {
+          delete pendingSetInserts[insertKey];
         }
       })();
+      pendingSetInserts[insertKey] = insertPromise;
     }
   } else {
     btn.classList.remove('logged','pr-set');
     wEl.classList.remove('done','pr'); rEl.classList.remove('done','pr');
+    // BUG-16 Part A: un-logging a set (correcting a mistype) previously only
+    // cleared this local/DOM state — the row the fire-and-forget insert above
+    // already wrote to Supabase `sets` was never deleted, orphaning it. Delete
+    // it now.
+    deleteCloudSetRow(id, i);
   }
 
   checkExComplete(id);
   updateProgress();
+}
+
+// BUG-16 Part A: deletes the Supabase `sets` row for one exact (exercise id,
+// set index) pair, if logSet()'s realtime insert above ever created one.
+// Called from the un-log branch of logSet() and from deleteSet() — the two
+// paths that previously cleared local/DOM state and silently left the synced
+// row behind (the mechanism behind the prod duplicate-row buildup this bug
+// tracks; the actual prod cleanup is a separate step, see BUG-16 Notion entry).
+// Awaits any in-flight insert for this exact pair first so a fast
+// correct-then-undo can't race past it — best-effort beyond that (matches the
+// fire-and-forget posture of the insert it's undoing): offline, or an
+// exercise never synced (one-offs skip this path entirely, see above), is a
+// silent no-op rather than an error.
+async function deleteCloudSetRow(id, i) {
+  const insertKey = `${id}:${i}`;
+  const pending = pendingSetInserts[insertKey];
+  if (pending) { try { await pending; } catch (e) { /* insert's own catch already logged it */ } }
+  const rowId = cloudSetRowIds[id]?.[i];
+  if (rowId == null) return; // never synced — nothing to delete
+  delete cloudSetRowIds[id][i];
+  if (!currentUser) return;
+  try {
+    const { error } = await sb.from('sets').delete().eq('id', rowId).eq('user_id', currentUser.id);
+    if (error) throw error;
+  } catch (e) {
+    console.error('Set delete sync error:', e);
+  }
 }
 
 function addSet(id, w, r, unit) {
@@ -5257,6 +5332,9 @@ function deleteSet(id, i, btn) {
   row.remove();
   if (loggedSetsMap[id]) loggedSetsMap[id].splice(i, 1);
   if (sessionSetsMap[id]) sessionSetsMap[id] = sessionSetsMap[id].filter(s => s.set !== i + 1);
+  // BUG-16 Part A: same orphan-row fix as the un-log branch of logSet() —
+  // removing a set locally must also delete the Supabase row it was synced to.
+  deleteCloudSetRow(id, i);
   updateProgress();
 }
 
