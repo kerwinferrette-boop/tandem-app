@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Council Report — claims-on-origin.mjs (SC-18)</title>
+<style>
+  :root {
+    --ink: #1c1c1e;
+    --muted: #6b6b70;
+    --border: #e2e2e6;
+    --bg: #ffffff;
+    --panel: #f7f7f9;
+    --accent: #2f6fed;
+    --agree: #1c8a4a;
+    --clash: #b8860b;
+    --blind: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    line-height: 1.55;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+  .question-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 32px;
+    font-size: 0.97rem;
+  }
+  .question-box strong { display: block; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  h2 {
+    font-size: 1.1rem;
+    margin-top: 36px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2.agree { border-color: var(--agree); color: var(--agree); }
+  h2.clash { border-color: var(--clash); color: var(--clash); }
+  h2.blind { border-color: var(--blind); color: var(--blind); }
+  h2.rec { border-color: var(--accent); color: var(--accent); }
+  .verdict-section p { margin: 8px 0; }
+  .next-step {
+    background: #eef4ff;
+    border: 1px solid #c9dbff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 14px;
+    font-weight: 500;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 16px 0 8px;
+  }
+  .advisor-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+  .advisor-card .name { font-weight: 600; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    margin-top: 6px;
+  }
+  .tag.ship { background: #dff5e5; color: var(--agree); }
+  .tag.strongest { background: #eef4ff; color: var(--accent); }
+  .tag.blindspot { background: #fdeaea; color: var(--blind); }
+  details {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 10px;
+    padding: 10px 16px;
+    background: var(--panel);
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 4px 0;
+  }
+  details[open] summary { margin-bottom: 8px; }
+  details p { font-size: 0.9rem; margin: 8px 0; }
+  .post-council {
+    background: #f0fbf3;
+    border: 1px solid #bfe8cb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 30px;
+  }
+  .post-council h2 { border: none; color: var(--agree); margin-top: 0; padding-bottom: 0; }
+  code {
+    background: #eee;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Council Verdict — claims-on-origin.mjs (SC-18)</h1>
+<div class="meta">Tandem · Part 0 durability gate · 2026-09-17 · 5 advisors + peer review + chairman</div>
+
+<div class="question-box">
+  <strong>The question</strong>
+  Should Tandem ship <code>scripts/claims-on-origin.mjs</code> (+ <code>npm run claims:check</code>) —
+  a gate that checks whether a commit sha is an ancestor of <code>origin/main</code> — plus SC-18 and a
+  loop-config.md rule requiring every Notion "In Fix/Resolved" status write to pass this check first?
+  Context: BUG-49 and BUG-57's Notion pages both described completed, gate-green fixes that turned out
+  to not exist on any remote ref. Small, mechanical, non-design change; gates already green; no app
+  code touched.
+</div>
+
+<h2 class="agree">Where the Council Agrees</h2>
+<div class="verdict-section">
+  <p><strong>Ship it.</strong> All five advisors converge even after cataloguing real gaps — cheap,
+  mechanical, zero app-code touched, closes a hole that has bitten Tandem twice.</p>
+  <p>Unanimous weak point: <code>merge-base --is-ancestor</code> is <em>necessary but not
+  sufficient</em>. It proves a sha exists on <code>origin/main</code> — not that the sha implements
+  the claimed fix, survives a rebase, or is actually deployed. And a check that's <em>invocable</em>
+  but not <em>invoked at the moment of the status transition</em> is the same "wired but not working"
+  pattern this repo already warns about (EPIC-8a's <code>rest_seconds</code>).</p>
+</div>
+
+<h2 class="clash">Where the Council Clashes</h2>
+<div class="verdict-section">
+  <p><strong>Scope, not shippability.</strong> The Expansionist wants this generalized immediately
+  into "claims must be provable against reality" infrastructure everywhere (CI wiring, audits,
+  program-snapshot, doctrine promotions). Every other advisor and all 5 peer reviewers push back —
+  generalizing before the narrow fix is even proven is premature.</p>
+  <p><strong>Secondary:</strong> the First Principles Thinker argues the ordering is backwards —
+  resolution should <em>require</em> a sha as evidence first, with <code>claims:check</code> as
+  confirmation, not a pre-flight habit. Not resolved by the group.</p>
+</div>
+
+<h2 class="blind">Blind Spots the Council Caught</h2>
+<div class="verdict-section">
+  <p>All 5 peer reviewers independently caught what all 5 advisors missed: <strong>nobody proposed
+  actually running the script against a real uncommitted/unpushed sha to confirm it fails
+  loudly.</strong> "We wrote a check" ≠ "we verified the check catches the thing."</p>
+  <p>Related: no advisor made "does failure actually block the Notion write, or is it just a
+  documented habit" a hard shipping blocker — which is the entire point of the change.</p>
+</div>
+
+<h2 class="rec">The Recommendation</h2>
+<div class="verdict-section">
+  <p>Ship, scoped to exactly BUG-49/57's failure mode — not the Expansionist's broader vision. Two
+  concrete pre-merge requirements: (1) prove the script fails loudly on a real never-pushed sha, in
+  the commit body; (2) state the enforcement mechanism honestly in loop-config.md (enforced vs.
+  procedural). No CI wiring / audit gating / doctrine-promotion gating bundled into this change.</p>
+</div>
+
+<div class="next-step">
+  The One Thing to Do First: run <code>claims-on-origin.mjs</code> against a real sha and confirm it
+  rejects with a clear failure — write that result into SC-18 and the commit as verification
+  evidence.
+</div>
+
+<h2>Advisor Positions</h2>
+<div class="grid">
+  <div class="advisor-card"><div class="name">Contrarian</div>Ship, but enforcement + scope gaps flagged</div>
+  <div class="advisor-card"><div class="name">First Principles</div>Ship — treats symptom, not root cause</div>
+  <div class="advisor-card"><div class="name">Expansionist</div>Ship — wants it generalized <span class="tag blindspot">Biggest blind spot</span></div>
+  <div class="advisor-card"><div class="name">Outsider</div>Ship — "verify by running" not yet done</div>
+  <div class="advisor-card"><div class="name">Executor</div>Ship today <span class="tag strongest">Strongest response</span></div>
+</div>
+
+<h2>Full Advisor Responses</h2>
+
+<details>
+<summary>The Contrarian</summary>
+<p>This gate checks the wrong thing at the wrong time. <code>git merge-base --is-ancestor</code> only
+proves a commit exists on the remote — it says nothing about whether it implements the claimed fix.
+BUG-49/57 failed because someone wrote "done" without citing a sha at all. Real gap: does the Notion
+write path even require a sha field before status flips? If optional, this ships as decoration.</p>
+<p>Second hole: timing — a sha can stop being an ancestor after a force-push/rebase and nothing
+re-verifies it. Third: who runs this, and can it be skipped? A script that's invocable but not wired
+into the actual write is exactly the "green gate asserting a dead value" pattern CLAUDE.md warns
+about. Before shipping: confirm the sha field is mandatory and wired into the actual write.</p>
+</details>
+
+<details>
+<summary>The First Principles Thinker</summary>
+<p>The question that matters isn't "does the script check ancestry correctly" but "why did anyone
+believe a commit existed before checking?" BUG-49/57 were a social/procedural failure — a status
+field used to record intent-that-feels-done, not verified-done. <code>git log</code> was always
+available; nobody ran it.</p>
+<p>Ship it anyway — cheap, mechanical, converts a manual lapse into an automatic one. But the real fix
+is upstream: resolution should require a sha as evidence; the script should confirm, not gate. One
+gap: doesn't catch a reverted commit or an undeployed one (Netlify build failure) — ancestor-of-
+origin/main is necessary, not sufficient.</p>
+</details>
+
+<details>
+<summary>The Expansionist</summary>
+<p>Ship it — but this is bigger than BUG-49/57. It's the first piece of "claims must be provable
+against reality" infrastructure Tandem needs everywhere: the doctrine gate can't see the database,
+the preview-server false negative, SC-03's "run don't simulate" — all the same disease.</p>
+<p>Extend the ancestor-check idea to the should/could/did audit itself and to
+<code>program-snapshot.mjs</code>'s baseline hash. Make <code>claims:check</code> a required CI step,
+not just a local script. Gate every status transition that asserts existence-on-remote, including
+Epic "Done" and doctrine PENDING→ACTIVE promotions.</p>
+</details>
+
+<details>
+<summary>The Outsider</summary>
+<p>I don't know what BUG-49/57 are and don't need to. Someone claimed work was "done" and it wasn't
+saved anywhere durable. The fix is boringly standard version-control hygiene. Ship it.</p>
+<p>But: "gates are green" is invoked as reassurance for a fix to "gate-greenness lied to us twice" —
+that's circular. Did anyone actually reproduce the BUG-49/57 scenario against this new script and
+watch it fail loudly? "We wrote a check" ≠ "we verified the check catches the thing" — this project's
+own "verify by running, not reading" rule should apply here too.</p>
+</details>
+
+<details>
+<summary>The Executor</summary>
+<p>Ship it. Monday-morning-shippable in an hour. The build: <code>git merge-base --is-ancestor</code>
+wrapped in a script, an npm alias, two doc edits — no logic beyond that.</p>
+<p>Real gaps, not theory: where does the sha come from at the call site (manual vs. automated Notion
+write)? <code>origin/main</code> needs a fresh <code>git fetch</code> or stale local refs give a false
+pass. Both fixable in the same PR. Ship today.</p>
+</details>
+
+<h2>Peer Review Highlights</h2>
+<details>
+<summary>Convergent findings (5/5 reviewers)</summary>
+<p><strong>Strongest response:</strong> The Executor — turned criticism into a concrete, testable
+checklist while still committing to ship.</p>
+<p><strong>Biggest blind spot:</strong> The Expansionist — proposed scope expansion before confirming
+the narrow fix works; "premature generalization dressed as ambition," a reversal of the project's own
+"fix the mechanism, not the instance" principle.</p>
+<p><strong>What everyone missed:</strong> nobody proposed testing the script against a real
+never-committed sha to confirm it fails loudly, and nobody made "does failure actually block the
+Notion write" a hard shipping blocker.</p>
+</details>
+
+<div class="post-council">
+<h2>Post-Council Execution (same session)</h2>
+<p>Both recommendation items completed before commit:</p>
+<p>1. Live 3-case test: real merged sha (pass) / real local-only unpushed commit (fails "not an
+ancestor") / fake sha (fails "not a known commit") — all correct.</p>
+<p>2. <code>loop-config.md</code> rule 6 amended to state plainly that the check is <strong>procedural
+</strong>, not automatically enforced — no single controlled Notion-write code path exists to call it
+for you.</p>
+<p>Shipped scoped to exactly the council's recommendation — no CI wiring, audit gating, or
+doctrine-promotion gating bundled in.</p>
+</div>
+
+<footer>
+  Generated 2026-09-17 · Full transcript: council-transcript-2026-09-17-claims-on-origin.md ·
+  Committed as <code>4934d30</code>
+</footer>
+
+</body>
+</html>
