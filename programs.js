@@ -1908,8 +1908,39 @@ function flagDropSet(day) {
 // by the render layer (buildDayHTML) from the user's PRs/calibration, same as any
 // generated day — so a one-off still prescribes at the lifter's real strength.
 // ═══════════════════════════════════════════════════════
+// BUG (Kerwin, 2026-09-14, live report — "why is Decline & Flat back to back like
+// that on the same day?"): chest's two 'compound' slots below were BYTE-IDENTICAL
+// requests (['pec_major','pec','compound'] twice), so the comparator only ever
+// chose WHICH duplicate pec-press filled the day — no candidate pool could ever
+// return two DIFFERENT patterns from one repeated request. Checked every other
+// FOCUS_SLOTS entry's compound pair for the same defect (identical group-tuple
+// requested twice in one category): back ('lat_dorsi' vs 'lat_dorsi'+'rhomboid'),
+// legs ('quad' vs 'hamstring'+'glute_max'), shoulders (one compound slot only),
+// push ('pec_major'+'pec' vs 'anterior_delt'+'lateral_delt'), pull ('lat_dorsi'
+// vs 'lat_dorsi'+'rhomboid') — chest is the ONLY entry asking for the same tuple
+// twice; the others already request genuinely different muscle groups per slot.
+// Fix: chest[1] now asks for anterior_delt/lateral_delt (a vertical press), the
+// exact pairing FOCUS_SLOTS.push's own second compound slot already uses without
+// issue — not an invented pairing, matching the app's own existing pattern. A
+// chest-focus day keeps its identity through chest[2] (pec isolation) and
+// chest[3] (tricep) and gains the overhead press it never had.
+// Citation for WHY two same-pattern presses in one session is undesirable
+// (mechanism only, not the rule itself — no source mandates "never twice", see
+// docs/council-science-application-2026-09-14.md R2 and
+// docs/citation-verification-2026-09-14.md Q2 for the full verification): ACSM
+// 2009 Position Stand (PMID 19204579), Exercise Order — "multiple-joint exercise
+// ... performance declines significantly when these exercises are performed
+// later ... rather than early in a workout."
+// SCOPE, stated honestly: this is the getSingleDay() one-off path only. The
+// weekly buildDynamicProgram() engine has an analogous but DIFFERENT-shaped
+// defect (TEMPLATES.day2's secondary slot requests 'quad', which can collide
+// with day4's 'quad' primary once a 3-day split merges both days into one
+// session) — its safe fix needs a real movement-pattern-uniqueness check in the
+// comparator (a naive group-tuple swap there would just trade this exact bug for
+// a new one, since day2's own primary and secondary would end up requesting the
+// same hip-hinge pattern twice). Not fixed here; flagged as its own follow-up.
 const FOCUS_SLOTS = {
-  chest:     [['pec_major','pec','compound'],['pec_major','pec','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
+  chest:     [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
   back:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['lat_dorsi','','isolation'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation']],
   legs:      [['quad','','compound'],['hamstring','glute_max','compound'],['quad_rectus_femoris','quad_vastus','isolation'],['hamstring','','isolation'],['gastrocnemius','calf','isolation']],
   shoulders: [['anterior_delt','lateral_delt','compound'],['lateral_delt','','isolation'],['posterior_delt','rhomboid','isolation'],['anterior_delt','','isolation'],['upper_trap','','isolation']],
