@@ -649,3 +649,39 @@ state the exhaust-before-flag sequence explicitly, and BUG-121 (the follow-up sw
 remaining uncited-percentage claims BUG-110 deliberately left out of scope) is the first real case
 this rule applies to — the next cycle that works it must actually attempt research per steps (1)-(2)
 before removing anything.
+
+---
+
+## SC-18 — a Notion status described a fix that existed nowhere on origin
+
+**What I believed.** That BUG-49 and BUG-57's Notion pages (2026-09-08), both showing a status of
+completed/gate-green work with a full should/could/did in the page body, described real, shippable
+fixes.
+
+**What was true.** Neither fix exists on any ref `origin/main` has ever pointed at. BUG-49's fix
+string (`exercise_name: s.name || id`) is absent from every remote branch — `tandem.html:5213`
+still reads `exercise_name: id` on 2026-09-16. BUG-57's buggy filter
+(`.filter(name => best1RMs[name] > (existingMap[name] || 0))`) is still live at `tandem.html:2805`
+on `main`. Both were done in a working tree that was never committed — this is SC-01/SC-12's
+"private note mistaken for a durable one" failure, but discovered one step further downstream:
+not caught at the next session's start, but written into the human-facing tracker as if it had
+landed, where it sat uncorrected for over a week.
+
+**The gap.** Nothing checks the boundary between "a Notion row says Resolved" and "a commit
+`origin/main` actually contains exists." `scripts/preflight.mjs` checks the CURRENT checkout for
+unpushed work, but a Notion status is a claim made possibly by a different session, in a working
+tree that may no longer exist — preflight has no way to see it, and nothing else was looking either.
+A status field and a commit graph were allowed to disagree indefinitely because no gate reads both.
+
+> **THE RULE — SC-18.** A Notion status of In Fix / code-complete / Resolved must cite a commit sha
+> that `git merge-base --is-ancestor <sha> origin/main` confirms is actually reachable from
+> `origin/main`. No sha on origin = the fix does not exist; the status stays New/Investigating,
+> regardless of how complete the page's prose reads. Run the check before writing the status, not
+> after a future session discovers the gap.
+
+**Enforced by** `scripts/claims-on-origin.mjs` (`npm run claims:check -- <sha>`) — exits non-zero if
+any given sha is not a known ancestor of `origin/main` (verified live against a merged sha, an
+unmerged-branch sha, and a fake sha — all three behaved correctly before this was trusted).
+`.claude/loop-config.md`'s ship section now runs it before any Notion status write. Honest limit:
+it proves the sha is *reachable*, not that its diff contains the specifically claimed fix — pair it
+with a grep for the fix string itself, the way this entry's own investigation did.

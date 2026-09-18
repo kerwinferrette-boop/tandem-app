@@ -996,6 +996,22 @@ Standing rules, derived from that failure:
 5. **Schema and code can drift apart.** Before rebuilding anything that migrates, CHECK
    THE LIVE DB FIRST (`list_tables`) — re-applying an applied migration or re-seeding seeded rows
    duplicates published data.
+6. **Rule 4 is now mechanically checkable, not just judgment — but the check itself is still
+   PROCEDURAL, not automatically enforced.** ADDED 2026-09-17, per Kerwin, after BUG-49 and
+   BUG-57's Notion pages both described completed, gate-green fixes that existed on no remote ref
+   (docs/self-corrections.md SC-18). Before writing In Fix / code-complete / Resolved to any Notion
+   row, run `npm run claims:check -- <sha>` for every sha the status cites. A non-zero exit means
+   the fix does not exist yet on `origin/main` — the status stays New/Investigating, regardless of
+   how complete the page's prose reads. This does not replace rule 4's symbol-grep (the sha check
+   proves reachability, not that the diff contains the claimed fix) — do both.
+   **Honest limit (self-corrections.md's own condition #3, applied to this rule):** nothing calls
+   `claims-on-origin.mjs` automatically. There is no single controlled code path that writes a
+   Notion status — the write is a manual/agent action — so this is a discipline the session must
+   remember to run, not a gate that blocks a bad write from happening. Verified live 2026-09-17: the
+   script correctly PASSES a sha on `origin/main`, correctly FAILS a real local-only unpushed commit
+   ("not an ancestor"), and correctly FAILS a nonexistent sha ("not a known commit") — the mechanism
+   works when invoked. If this rule is ever violated again, the fix is not "the script was wrong,"
+   it's "the invocation step was skipped" — do not re-litigate the script.
 
 ## commit vs push — the distinction that matters (2026-07-28, Kerwin)
 
