@@ -999,7 +999,7 @@ Standing rules, derived from that failure:
 6. **Rule 4 is now mechanically checkable, not just judgment — but the check itself is still
    PROCEDURAL, not automatically enforced.** ADDED 2026-09-17, per Kerwin, after BUG-49 and
    BUG-57's Notion pages both described completed, gate-green fixes that existed on no remote ref
-   (docs/self-corrections.md SC-18). Before writing In Fix / code-complete / Resolved to any Notion
+   (docs/self-corrections.md SC-19). Before writing In Fix / code-complete / Resolved to any Notion
    row, run `npm run claims:check -- <sha>` for every sha the status cites. A non-zero exit means
    the fix does not exist yet on `origin/main` — the status stays New/Investigating, regardless of
    how complete the page's prose reads. This does not replace rule 4's symbol-grep (the sha check

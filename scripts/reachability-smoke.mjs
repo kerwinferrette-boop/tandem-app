@@ -63,6 +63,15 @@ const OPEN_GAPS = {
     psoas:             'secondary-only descriptive tag — correct that no slot targets it',
     serratus_anterior: 'secondary-only descriptive tag — correct that no slot targets it (§6 "keep but exclude")',
     supraspinatus:     'secondary-only descriptive tag — correct that no slot targets it (§6 "keep but exclude")',
+    // EPIC-41 Half 2 (2026-09-17) backfill introduced three new secondary-only tags for
+    // real, cited synergist muscles the bank had no vocabulary for at all. Same class (i)
+    // as core/psoas/serratus_anterior/supraspinatus above — descriptive involvement, not a
+    // muscle any slot should independently target (no FOCUS_SLOTS/TEMPLATES entry asks for
+    // a dedicated anconeus/levator-scapulae/TFL day, and none should — these are synergists
+    // of an already-targeted primary, not a training focus of their own).
+    anconeus:            'secondary-only descriptive tag (triceps synergist in elbow extension, "trivial" independent contribution per the cited source) — Kenhub anconeus muscle entry; Apaydin et al., PMC5331076, Applied Bionics and Biomechanics 2016',
+    levator_scapulae:    'secondary-only descriptive tag (upper-trapezius synergist in scapular elevation/shrugging) — ScienceDirect Topics "Levator Scapulae Muscle" overview; Ackland & Pandy, PMC6856649, shoulder musculoskeletal model',
+    tensor_fasciae_latae:'secondary-only descriptive tag (gluteus medius/minimus synergist in hip abduction) — StatPearls NBK499870 "Tensor Fasciae Latae Muscle"; PMID 2621137 "The functional anatomy of tensor fasciae latae and gluteus medius and minimus"',
     // (ii) primary tag, but every carrier is reachable via a sibling tag — no lost inventory.
     //      EPIC-026 §6: "Do NOT rename delts, traps, or the calf family… the benefit is a
     //      parent ['delt']/['trap'] slot no template wants and the science argues against."

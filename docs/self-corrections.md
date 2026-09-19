@@ -652,7 +652,58 @@ before removing anything.
 
 ---
 
-## SC-18 — a Notion status described a fix that existed nowhere on origin
+## SC-18 — I fought a shared checkout's dirty state with `git stash`/`merge` instead of stepping out of it
+
+**What I believed.** That the primary checkout (`/home/user/tandem-app`, branch
+`claude/tender-wozniak-c6yhis`) was mine alone for the duration of an EPIC-4/EPIC-6 session, so
+finding it dirty (uncommitted `programs.js`/`scripts/doctrine.mjs` D29/EPIC-8c WIP, HEAD 17 commits
+behind `origin/main`) was a one-time cleanup problem I could resolve in place with `git stash` +
+`git merge --ff-only`, then keep editing `tandem.html` there.
+
+**What was true.** It is not mine alone. `git worktree list` showed another session already had a
+worktree open (`wt-epic41`, branch `epic41-muscle-taxonomy`), and `git stash list` in the same
+checkout held **six** near-identical prior entries — "pre-existing uncommitted D29/EPIC-8c WIP...
+found dirty again... not mine to resolve" — each written by a *different* past session hitting the
+exact same thing and stashing it again rather than ever landing or discarding it. Proof it was live,
+not archaeological: mid-task, `origin/main`'s tip moved out from under me (`ce07a49` "EPIC-8c: gate
+fat_burn cardio finisher" landed, then `3a2a0c8` "Fix BUG-16" landed on top of that) while I was
+still working — another session was actively committing to `main` concurrently. And my own edit to
+`tandem.html` (the EPIC-6 "Body" section) **vanished** from the working tree after a `git merge
+--ff-only` attempt aborted with a conflict — I never fully root-caused whether that was the merge's
+own rollback or the other session touching the same file, and did not need to: either way, mutating
+a checkout something else might be writing to, mid-operation, is the failure, regardless of which
+write clobbered which.
+
+**The gap.** I read "the checkout has stale/dirty files" as a state to fix, when it was evidence of
+an actor I could not see. `git stash`/`git merge` are safe when a checkout is truly idle; I never
+checked whether it was before running them, and the six-deep stash pile of identically-worded prior
+attempts was sitting right there in `git stash list` as exactly that signal, unread until after the
+fact.
+
+> **THE RULE — SC-18.** Before running any `git stash`, `merge`, `reset`, or `checkout` against a
+> long-lived shared checkout (not one this session created), run `git worktree list` and `git stash
+> list` first. More than one worktree, or a stash whose message says a prior session already found
+> and preserved the same dirty state, means the checkout is contended — stop mutating it in place.
+> Create an isolated `git worktree` off `origin/<default-branch>` (a plain `git worktree add`, not
+> the `EnterWorktree` tool, which is reserved for when a worktree was explicitly requested) and do
+> all edits, gate runs, and the eventual commit/push there instead. Re-fetch immediately before that
+> push (SC-01/SC-12) regardless — a contended checkout is exactly where the remote tip is most
+> likely to have moved since the worktree was created.
+
+**Enforced by** judgment — not mechanically checkable today. No script currently checks
+`git worktree list`/`git stash list` before a git-mutating command; the nearest mechanical proxy is
+that this session's actual recovery (creating `epic4-6-worktree` off `origin/main` once the
+contention was noticed) is the durable artifact — the EPIC-4/EPIC-6 commit landed clean from
+isolation, and the pre-existing D29/EPIC-8c stash entries were left untouched rather than resolved
+or discarded.
+
+---
+
+## SC-19 — a Notion status described a fix that existed nowhere on origin
+
+*(Renumbered from SC-18 at merge time, 2026-09-18 — two sessions independently claimed SC-18 off the
+same baseline; this entry lost the slot. See docs/self-corrections.md's own SC-17 note for the same
+merge-collision pattern happening once before.)*
 
 **What I believed.** That BUG-49 and BUG-57's Notion pages (2026-09-08), both showing a status of
 completed/gate-green work with a full should/could/did in the page body, described real, shippable
@@ -673,15 +724,18 @@ unpushed work, but a Notion status is a claim made possibly by a different sessi
 tree that may no longer exist — preflight has no way to see it, and nothing else was looking either.
 A status field and a commit graph were allowed to disagree indefinitely because no gate reads both.
 
-> **THE RULE — SC-18.** A Notion status of In Fix / code-complete / Resolved must cite a commit sha
+> **THE RULE — SC-19.** A Notion status of In Fix / code-complete / Resolved must cite a commit sha
 > that `git merge-base --is-ancestor <sha> origin/main` confirms is actually reachable from
 > `origin/main`. No sha on origin = the fix does not exist; the status stays New/Investigating,
 > regardless of how complete the page's prose reads. Run the check before writing the status, not
 > after a future session discovers the gap.
 
 **Enforced by** `scripts/claims-on-origin.mjs` (`npm run claims:check -- <sha>`) — exits non-zero if
-any given sha is not a known ancestor of `origin/main` (verified live against a merged sha, an
-unmerged-branch sha, and a fake sha — all three behaved correctly before this was trusted).
-`.claude/loop-config.md`'s ship section now runs it before any Notion status write. Honest limit:
-it proves the sha is *reachable*, not that its diff contains the specifically claimed fix — pair it
-with a grep for the fix string itself, the way this entry's own investigation did.
+any given sha is not a known ancestor of `origin/main` (verified live against a real merged sha, a
+real local-only unpushed commit, and a fake sha — all three behaved correctly, 2026-09-17). Honest
+limit, stated per this file's own condition #3: the enforcement is *procedural*, not automatic —
+nothing calls the script for you, since there is no single controlled Notion-write code path;
+`.claude/loop-config.md`'s durability section names this explicitly rather than implying a gate that
+isn't there. It also only proves the sha is *reachable*, not that its diff contains the specifically
+claimed fix — pair it with a grep for the fix string itself, the way this entry's own investigation
+did.

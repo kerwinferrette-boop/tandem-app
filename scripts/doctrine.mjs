@@ -124,6 +124,7 @@ const TIERS = {
   // A sex-blind default is a 73% over-prescription for half the userbase, and a dead
   // lookup key is a silent one: a miss returns undefined and the caller falls through.
   D26: 'SAFETY',          // one sex-aware seed-weight owner; no lookup key may name a non-existent exercise
+  D32: 'SCIENCE_DEFAULT', // fat_burn cardio finisher gated by sex + weight delta (men: optional <=20lb; women: never gated)
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -1053,6 +1054,53 @@ for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
         .reduce((sum, [, v]) => sum + v, 0);
       if (total < mev) fail('D6b', `${goal}/${days}d/${sex}: '${token}' weekly volume ${total} sets is below the goal's MEV floor (${mev}) — primary sets at 1.0 credit, secondary at 0.5 (Kerwin's 2026-09-14 ruling, BUG-105)`);
     }
+  }
+}
+
+// ── D32 (ACTIVE, EPIC-8c) — Weight-delta cardio scaling, fat_burn ONLY ──────────
+// Programming Architecture Reference (Notion 37aca37f935b811b90c7c880631c66a8, Part 2,
+// verified live via notion-fetch 2026-09-17): "Men's fat burn note: Cardio is
+// supplementary to resistance training. Zone 2 finishers are optional unless weight
+// delta > 20 lbs. Muscle mass is the primary metabolic driver." / "Women's fat burn
+// note: Cardio is more structurally integrated than in men's programs. Zone 2
+// finishers 3-4x/week." — the women's note carries NO delta condition, so women's
+// cardio is never gated by delta; only men's is. Scoped to fat_burn ONLY — this text
+// sits under "Men's/Women's fat burn note" specifically, and Part 2 makes no cardio
+// claim for build_muscle or transform, so those stay unconditional (unchanged).
+// Unknown delta (getProgram called without weight/targetWeight, as every pre-EPIC-8c
+// call site does) is deliberately NOT treated as delta=0 — that would silently strip
+// a block the app has always shown for users with no goal weight on file — so it
+// keeps cardio ON, same as delta > 20. Numbered D32, not D29/D30/D31: those are
+// claimed by the (now-merged) muscle-tag-vocabulary branch's exercise-variety work
+// (see DOCTRINE.md's D31 row for that collision's own account).
+let d32Checked = 0;
+const dayHasCardio = (day) => (day.blocks || []).some(b => b.cardio && (b.exs || []).length > 0);
+const allDaysHaveCardio = (p) => (p || []).length > 0 && (p || []).every(dayHasCardio);
+for (const days of DAYS) {
+  for (const delta of [0, 10, 20]) {
+    d32Checked++;
+    const p = getProgram('fat_burn', days, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 - delta);
+    if ((p || []).some(dayHasCardio)) fail('D32', `fat_burn/${days}d/male delta=${delta}lb: cardio finisher present on at least one day — should be skipped everywhere (optional, delta <= 20lb)`);
+  }
+  for (const delta of [21, 50]) {
+    d32Checked++;
+    const p = getProgram('fat_burn', days, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 - delta);
+    if (!allDaysHaveCardio(p)) fail('D32', `fat_burn/${days}d/male delta=${delta}lb: cardio finisher missing on some day — required (delta > 20lb)`);
+  }
+  for (const delta of [0, 10, 20, 21, 50]) {
+    d32Checked++;
+    const p = getProgram('fat_burn', days, 12, 'female', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 - delta);
+    if (!allDaysHaveCardio(p)) fail('D32', `fat_burn/${days}d/female delta=${delta}lb: cardio finisher missing — women's fat_burn cardio must never be gated by weight delta`);
+  }
+  for (const sex of ['male', 'female']) {
+    d32Checked++;
+    const p = getProgram('fat_burn', days, 12, sex, 'full_gym', 'balanced', null, null, { week: 1, phase: 0 });
+    if (!allDaysHaveCardio(p)) fail('D32', `fat_burn/${days}d/${sex} unknown delta (no weight/targetWeight supplied): cardio finisher missing — an unset goal weight must not silently strip the block`);
+  }
+  for (const goal of ['build_muscle', 'transform']) for (const sex of ['male', 'female']) {
+    d32Checked++;
+    const p = getProgram(goal, days, 12, sex, 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200);
+    if (!allDaysHaveCardio(p)) fail('D32', `${goal}/${days}d/${sex} delta=0lb: cardio finisher missing — D32 is scoped to fat_burn only, ${goal} must stay unconditional`);
   }
 }
 
@@ -2455,6 +2503,7 @@ console.log(`  D27 continuity across regenerations — ${d27Checked} property ch
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);
+console.log(`  D32 fat_burn cardio finisher gated by sex + weight delta (men optional <=20lb, women never gated, unknown delta keeps cardio on, build_muscle/transform unaffected) — ${d32Checked} day-count×sex×delta checks`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() across the full 4-24wk range — ${d11Checked} week-steps checked`);
 console.log(`  D12 multi-formula 1RM (Epley/Mayhew), monotonic in reps — ${d12Checked} checks`);

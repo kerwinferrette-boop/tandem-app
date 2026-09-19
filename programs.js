@@ -616,13 +616,13 @@ const EXERCISE_BANK = {
     cues:['Lie face down; arms straight out to the sides (T position)','Thumbs pointing up (external rotation)','Lift arms by squeezing shoulder blades — height matters less than contraction','Lower slowly; repeat with full range of motion']},
   'upright-row':{
     name:'Upright Row', videoId:null,
-    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['shoulders','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The upright row is one of the few compound shoulder exercises — it loads lateral delt AND upper trap simultaneously. Wide grip (outside shoulder-width) reduces shoulder impingement risk and shifts load toward lateral delt.',
     cues:['Wide grip: hands just outside shoulder-width','Pull bar up toward chin — elbows lead and rise above wrists','Stop when hands reach lower chest height — no higher','Lower under control; do not drop the bar']},
   'cable-upright-row':{
     name:'Cable Upright Row', videoId:null,
-    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep']},
+    muscleGroups:{primary:['lateral_delt','upper_trap'],secondary:['bicep_brachii']},
     emphasis:['shoulders','upper_body'], equipment:'cable', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Cable version of the upright row with constant tension through the full ROM — particularly useful at the bottom of the movement where barbell tension is low. Attach a wide bar or EZ-bar to keep the shoulder-friendly wide grip.',
     cues:['Set cable at floor level, wide grip bar attachment','Pull up toward chin, elbows lead','Do not pull above lower chest level — protect AC joint','Slow the eccentric; the cable makes it easy to cheat on the way down']},
@@ -640,7 +640,7 @@ const EXERCISE_BANK = {
     cues:['One hand on end of bar; stand at 45° to anchor','Press in an arc from chest height to eye level','Keep elbow in tight to body throughout','Rotate trunk slightly as you press for full shoulder flexion']},
   'shrug-barbell':{
     name:'Barbell Shrug', videoId:null,
-    muscleGroups:{primary:['upper_trap']},
+    muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Upper trapezius training matters for shoulder aesthetics and neck posture. Heavy shrugs — not the light prehab variety — are the most direct stimulus for upper trap mass.',
     cues:['Straight arms throughout — do not bend the elbows','Shrug straight UP — not rolling the shoulders (which can damage AC joint)','Hold at peak for 1 second','Lower fully — a full stretch at the bottom matters']},
@@ -658,7 +658,7 @@ const EXERCISE_BANK = {
     cues:['Chest against the pad, handles at shoulder height','Lead with the elbows, driving the hands apart and back','Squeeze the shoulder blades together at the peak','Control the return; keep a soft, fixed elbow bend throughout']},
   'db-shrug':{
     name:'DB Shrug', videoId:null,
-    muscleGroups:{primary:['upper_trap']},
+    muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front, and available anywhere a pair of dumbbells is. The direct stimulus for upper-trap mass and a fuller yoke.',
     cues:['Dumbbells at the sides, arms straight, shoulders relaxed to start','Shrug straight up toward the ears — do not roll the shoulders','Hold the top squeeze for one count','Lower to a full stretch at the bottom before the next rep']},
@@ -674,7 +674,7 @@ const EXERCISE_BANK = {
     // accepted for the barbell/DB entries above, plus (b) the general band-modality-equivalence
     // meta-analysis — not a band-shrug-specific citation. Flagged per CLAUDE.md rather than invented.
     name:'Band Shrug', videoId:null,
-    muscleGroups:{primary:['upper_trap']},
+    muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull, needing no equipment beyond a band.',
     cues:['Stand on the band with both feet, one handle in each hand','Arms straight throughout — do not bend the elbows','Shrug straight UP toward the ears — do not roll the shoulders','Hold the top squeeze for one count, then lower to a full stretch']},
@@ -706,13 +706,13 @@ const EXERCISE_BANK = {
   // ── BACK / VERTICAL PULL ──────────────────────────────
   'lat-pulldown':{
     name:'Lat Pulldown', videoId:'CAwf7n6Luuc',
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Machine-guided path allows maximum lat loading with a low technique barrier. The primary vertical pull for users who cannot yet do pull-ups — trains the same lat, teres major, and bicep pattern at any strength level.',
     cues:['Wide grip, slight backward lean — not upright','Lead with the elbows pulling to back pockets','Squeeze lats at the bottom — not the arms','Full stretch at top: let scapula elevate slightly']},
   'pull-up':{
     name:'Pull-Up', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid','core']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid','core']},
     emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Full-body tension, scapular control, grip strength, and core anti-extension all activate simultaneously. Once achievable for multiple clean reps, pull-ups should replace or complement lat pulldown.',
     cues:['Dead hang starting position — no kip','Depress and retract scapula BEFORE pulling','Drive elbows toward back pockets','Chin over bar — not just nose over bar']},
@@ -724,7 +724,7 @@ const EXERCISE_BANK = {
     cues:['Supinated grip (palms toward face)','Full dead hang at bottom','Elbows drive down and in toward hips','Chin clears bar — pause at top']},
   'table-inverted-row':{
     name:'Table Inverted Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','posterior_delt','rhomboid']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
     emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
     why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
     cues:['Lie under a sturdy table, hands gripping the edge, body straight','Pull chest toward the table edge, squeezing shoulder blades together','Keep the body rigid — no hip sag','Lower under control; walk feet further out to increase difficulty']},
@@ -749,13 +749,13 @@ const EXERCISE_BANK = {
     cues:['Anchor the band overhead (door anchor or high point), arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
   'neutral-grip-lat-pulldown':{
     name:'Neutral-Grip Lat Pulldown', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','rhomboid','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The neutral (palms-facing) grip keeps the shoulder in its strongest, most impingement-free position and biases the lower lat fibres, allowing a longer pull to the sternum. A shoulder-friendly vertical pull for lifters who feel the wide-grip pulldown in the front of the shoulder.',
     cues:['Neutral parallel handle, slight backward lean','Drive the elbows down and in toward the hip pockets','Pull the handle to the upper chest; squeeze the lats at the bottom','Let the scapula rise under control at the top for a full stretch']},
   'assisted-pull-up':{
     name:'Assisted Pull-Up', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep','rhomboid','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Counterweight assistance lets a lifter train the exact pull-up movement pattern before they can do bodyweight reps — building the scapular control and lat strength that bands or lat pulldowns only approximate. The bridge from pulldown to a true pull-up.',
     cues:['Kneel or stand on the assist pad; set enough help for 8–10 clean reps','Start from a full dead hang; depress and retract the scapula first','Drive the elbows down and pull the chest toward the bar','Lower under control to a full hang — reduce the assistance as you get stronger']},
@@ -763,43 +763,43 @@ const EXERCISE_BANK = {
   // ── BACK / HORIZONTAL PULL ────────────────────────────
   'seated-cable-row':{
     name:'Seated Cable Row', videoId:'UCXxvVItLoM',
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt','lower_trap']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt','lower_trap']},
     emphasis:['back','pull','upper_body'], equipment:'cable', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Constant cable tension across the full horizontal range. The bilateral seated position allows heavy loading; hip-to-shoulder bracing mirrors deadlift mechanics.',
     cues:['Sit tall, slight forward lean only at stretch','Drive elbows back to hips — not flared out','Squeeze rhomboids at full retraction','Let scapula protract at the stretch — do not shrug']},
   'dumbbell-row':{
     name:'Dumbbell Row', videoId:'pYcpY20QaE8',
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Unilateral loading reveals side-to-side strength asymmetries. The braced knee-on-bench position stabilises the spine, making this the safest heavy horizontal pull for newer lifters.',
     cues:['Plant knee and same-side hand on bench','Back flat — do not rotate the torso to row','Drive elbow straight back, not out to the side','Touch the weight to the ribcage at the top']},
   'barbell-row':{
     name:'Barbell Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep','posterior_delt','erector_spinae']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep_brachii','posterior_delt','erector_spinae']},
     emphasis:['back','pull','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The most demanding horizontal pull — requires total posterior chain engagement to hold the hip hinge under load. No other back exercise builds erector, rhomboid, and mid-trap thickness simultaneously.',
     cues:['Hip hinge to 45° — not bent over 90°','Bar stays over mid-foot','Drive elbows to the ceiling, not behind you','Lower under control — the eccentric builds as much mass as the pull']},
   'single-arm-db-row':{
     name:'Single-Arm DB Row', videoId:'pYcpY20QaE8',
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Removes bilateral deficit and forces true unilateral contraction. Greater range of motion than barbell row and safe for any lower back sensitivity.',
     cues:['Support non-working side on bench or box','Drive elbow back and up','Keep spine neutral — do not twist','Full extension at bottom for maximum lat stretch']},
   't-bar-row':{
     name:'T-Bar Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Allows the heaviest horizontal pull loading of any machine variation. Neutral grip reduces bicep involvement, keeping more load on the lat and rhomboids.',
     cues:['Hinge at hip to 45° over the bar','Neutral grip handles, pull to lower chest','Squeeze hard at peak — hold one count','Lower until full arm extension; let lats stretch']},
   'reverse-fly':{
     name:'Reverse Fly', videoId:null,
-    muscleGroups:{primary:['posterior_delt','rhomboid']},
+    muscleGroups:{primary:['posterior_delt','rhomboid'],secondary:['middle_trap','lower_trap']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Posterior delt isolation without cable required. Critical for scapular retraction strength and shoulder health. Best performed at high reps with light weight.',
     cues:['Hinge forward until torso nearly parallel to floor','Start with arms hanging straight down','Lift in a wide arc to shoulder height','Do not swing — reduce weight if you are']},
   'band-pull-apart':{
     name:'Band Pull-Apart', videoId:null,
-    muscleGroups:{primary:['posterior_delt','rhomboid','external_rotator']},
+    muscleGroups:{primary:['posterior_delt','rhomboid','external_rotator'],secondary:['middle_trap','lower_trap']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The simplest tool for external rotation and posterior delt health. Constant band tension mirrors the load profile of cable face pulls without any machine.',
     cues:['Hold band at shoulder height, arms extended','Pull the band apart until it touches your chest','Squeeze shoulder blades together at peak','Controlled return — band tension all the way back to start']},
@@ -811,7 +811,7 @@ const EXERCISE_BANK = {
     cues:['Chest firmly on the pad, feet planted','Drive the elbows back, leading with the elbows not the hands','Squeeze the shoulder blades together hard at the top','Let the arms extend fully and the scapula protract at the stretch']},
   'pendlay-row':{
     name:'Pendlay Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep','posterior_delt','erector_spinae']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid','lower_trap'],secondary:['bicep_brachii','posterior_delt','erector_spinae']},
     emphasis:['back','pull','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Each rep starts dead-stopped from the floor with a flat, parallel torso — eliminating the stretch reflex and momentum so the mid-back must generate the pull explosively from a full stop. Builds rowing power and back thickness a touch-and-go barbell row cannot.',
     cues:['Hinge to a torso parallel with the floor, back flat','Bar starts on the floor each rep — reset the position every time','Pull explosively to the lower chest, elbows driving up','Lower under control back to the floor; do not bounce or round the back']},
@@ -829,13 +829,13 @@ const EXERCISE_BANK = {
     cues:['Lie across or along a bench, both hands cupping one dumbbell','Lower the weight back over the head with soft, fixed elbows','Feel a deep stretch across the lats and ribs at the bottom','Pull it back over the chest by driving with the lats — not the arms']},
   'kroc-row':{
     name:'Kroc Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt','upper_trap']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt','upper_trap']},
     emphasis:['back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'A heavy, high-rep single-arm dumbbell row that intentionally allows a little body English to move maximal load for 15–20 reps — building back thickness, grip, and work capacity to failure. The go-to burnout row when the goal is maximum back stimulus and grip overload.',
     cues:['Brace a hand/knee on a bench; use a heavy dumbbell','Row explosively to the hip, allowing a slight controlled torso rotation','Drive the elbow high and back; full stretch at the bottom','Use straps if grip fails first; keep the lower back braced, never rounded under the load']},
   'machine-high-row':{
     name:'Machine High Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi'],secondary:['rhomboid','bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi'],secondary:['rhomboid','bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The downward-angled, chest-supported pull biases the upper lats and teres while the pad removes all lower-back and hinge demand — letting a lifter row heavy with a fixed path and independent handles that correct side-to-side imbalances.',
     cues:['Chest on the pad, grip the handles overhead-and-out','Pull down and back, driving the elbows toward the hips','Squeeze the lats and shoulder blades at the bottom','Let the arms extend fully at the top for a complete stretch']},
@@ -879,7 +879,7 @@ const EXERCISE_BANK = {
     cues:['Cable at ankle height behind you','Step forward until arm is stretched behind hip','Curl forward; elbow stays anchored at the hip','Squeeze at full contraction — do not release tension']},
   'concentration-curl':{
     name:'Concentration Curl', videoId:null,
-    muscleGroups:{primary:['bicep_brachii']},
+    muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Braced elbow against inner thigh eliminates any cheating — the fully braced position prevents any momentum or shoulder involvement, isolating the bicep more strictly than a standing curl.',
     cues:['Sit; elbow braced against inner thigh above the knee','Full extension at bottom — do not rest weight on floor','Supinate aggressively at the top','Squeeze and hold one count at peak']},
@@ -958,37 +958,37 @@ const EXERCISE_BANK = {
   // ── TRICEPS ───────────────────────────────────────────
   'tricep-rope-pushdown':{
     name:'Tricep Rope Pushdown', videoId:'2-LAMcpzODU',
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','push','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Lateral and medial tricep head isolation. The rope allows wrists to flare outward at lockout, adding a final squeeze that straight-bar pushdowns prevent. These two heads are most visible from behind and make the arm look bigger in shirts.',
     cues:['Elbows pinned to sides — forearms are the only moving part','Flare the rope ends outward at lockout for peak contraction','Control the return — do not let the rope pull elbows forward','Slight forward lean is fine; do not bend at the hips']},
   'tricep-overhead-extension':{
     name:'Tricep Overhead Extension', videoId:'nRiJVZDpdL0',
-    muscleGroups:{primary:['tricep_long_head']},
+    muscleGroups:{primary:['tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'The long head of the tricep is 55% of total tricep mass and is ONLY fully activated in overhead position. Most programs do only pushdowns, leaving the biggest head undertrained. Without overhead extension, half your tricep potential is untapped.',
     cues:['Hold one dumbbell with both hands overhead (diamond grip)','Elbows point to the ceiling — do not flare','Lower behind the head until forearms are parallel','Press back up through the elbows — do not swing']},
   'skull-crusher':{
     name:'Skull Crusher', videoId:null,
-    muscleGroups:{primary:['tricep_long_head','tricep_medial']},
+    muscleGroups:{primary:['tricep_long_head','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The lying EZ-bar variation loads the long head in a lengthened position (elbow overhead relative to torso) while allowing heavier loads than dumbbell overhead extensions. Gold standard for tricep mass work.',
     cues:['Lie on bench, bar above lower chest to start','Lower to forehead or behind head by bending elbows only','Keep upper arms vertical — elbows do not drift toward feet','Press back up; do not let the bar drift into a press']},
   'cable-overhead-extension':{
     name:'Cable Overhead Extension', videoId:null,
-    muscleGroups:{primary:['tricep_long_head']},
+    muscleGroups:{primary:['tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Constant cable tension through the full overhead range — the peak stretch position has full load, unlike dumbbells. Best performed facing away from the cable stack.',
     cues:['Face away from cable, rope at head height','Lean forward slightly; elbows beside the head','Extend to full lockout overhead','Lower slowly until maximum stretch — do not rush the negative']},
   'db-kickback':{
     name:'DB Kickback', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Fully extends the elbow against gravity at a position where the tricep is maximally shortened. Better than cable for lateral head contraction quality.',
     cues:['Hinge forward, upper arm parallel to floor throughout','Only the forearm moves — hinge at the elbow','Extend until arm is fully straight — hold one count','Lower slowly; resist the temptation to swing']},
   'straight-bar-pushdown':{
     name:'Straight-Bar Pushdown', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','push','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The fixed straight bar keeps the forearms pronated and lets a lifter push heavier than the rope, driving the lateral and medial heads with more absolute load. The heavy-loading complement to the rope pushdown for tricep thickness.',
     cues:['Straight or slightly-bent bar at upper-chest height','Elbows pinned to the sides — only the forearms move','Extend to a full lockout and squeeze the triceps','Control the return; do not let the elbows drift up']},
@@ -1000,7 +1000,7 @@ const EXERCISE_BANK = {
     cues:['Hands on the bench edge behind you, legs out front','Lower by bending the elbows straight back — keep them tucked','Descend until the upper arms are parallel to the floor','Press back to a full lockout; keep the hips close to the bench']},
   'tricep-dip-machine':{
     name:'Tricep Dip Machine', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial','tricep_long_head']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial','tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','push','upper_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The seated dip machine loads all three triceps heads through a full pressing range with a fixed, back-supported path — letting a lifter push close to failure safely and progress in small increments. A joint-friendly heavy triceps option late in a session.',
     cues:['Sit tall, back against the pad, hands on the handles','Press down to a full elbow lockout — drive through the triceps','Squeeze at the bottom for one count','Return under control to a 90° elbow; do not let the stack slam']},
@@ -1018,7 +1018,7 @@ const EXERCISE_BANK = {
     cues:['Lie on a bench, close (shoulder-width) grip','Lower the bar toward the upper chest/neck with elbows drifting forward','Stop at the bottom shelf position, then press back up','Keep it strict — heavier than a skull crusher, lighter than a close-grip press']},
   'single-arm-cable-kickback':{
     name:'Single-Arm Cable Kickback', videoId:null,
-    muscleGroups:{primary:['tricep_lateral','tricep_medial']},
+    muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The cable holds tension at the fully-shortened lockout where a dumbbell kickback goes weightless — giving a hard peak contraction on the lateral and medial heads, one arm at a time to correct side-to-side deficits.',
     cues:['Low pulley, hinge forward, upper arm parallel to the floor and fixed','Extend only the forearm to a full lockout — the elbow does not move','Squeeze hard at full extension against the constant cable tension','Control the return; keep the torso still, do not swing']},
@@ -1044,19 +1044,19 @@ const EXERCISE_BANK = {
     cues:['Do not lock out the knees at the top — maintain tension','Lower until thighs are 90° or below','Feet centred on platform for balanced quad loading','Back flat against pad; do not round the lower back at the bottom']},
   'leg-extension':{
     name:'Leg Extension', videoId:'YyvSfVjQeL0',
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis','quad_vastus']},
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The only isolation exercise for the quadriceps. The rectus femoris (bi-articular quad head) is placed under stretch here that compound movements cannot achieve. Essential for complete quad development.',
     cues:['Adjust pad to sit just above ankle — not on the foot','Slow to full extension; do not kick','Hold at the top for one second — peak quad contraction','Lower slowly — the eccentric matters as much as the lift']},
   'sissy-squat':{
     name:'Sissy Squat', videoId:null,
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus']},
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher requiring nothing but bodyweight.',
     cues:['Hold a support for balance; rise onto the balls of the feet','Drive knees forward and lean the torso back in one line','Lower until you feel a deep quad stretch — hips stay open','Squeeze the quads to return; add a plate hugged to the chest to progress']},
   'reverse-nordic':{
     name:'Reverse Nordic', videoId:null,
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus']},
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience with zero equipment.',
     cues:['Kneel tall, hips fully extended, core braced','Lean the whole body back in a straight line from knees to head','Lower as far as quad control allows — no hip bend','Pull back up with the quads; hold a wall or band to assist if needed']},
@@ -1136,31 +1136,31 @@ const EXERCISE_BANK = {
     cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
-    muscleGroups:{primary:['hamstring_biceps_femoris']},
+    muscleGroups:{primary:['hamstring_biceps_femoris'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Knee flexion trains the short head of bicep femoris — the only head that cannot be reached with any hip hinge movement. Both hamstring functions (knee flexion AND hip extension) must be trained for complete development.',
     cues:['Pad just above the heel, not on the Achilles','Curl all the way up to maximum knee flexion','Do not let the hips lift off the pad','Lower slowly — do not let the weight slam']},
   'seated-leg-curl':{
     name:'Seated Leg Curl', videoId:'YyvSfVjQeL0',
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The seated position places hamstrings under stretch at both hip AND knee simultaneously — producing greater EMG activity than lying leg curl. A hamstring under hip-flexion tension is longer, increasing the hypertrophy stimulus.',
     cues:['Sit tall; thigh pad positioned just above the knee','Curl all the way to maximum knee flexion','Squeeze at peak — hold one count','Slow eccentric — resist the return all the way']},
   'nordic-curl':{
     name:'Nordic Curl', videoId:null,
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Eccentric-only loading at long muscle lengths is a distinct stimulus from concentric hamstring work most programs never train.',
     cues:['Anchor feet under heavy object or have partner hold','Lower as slowly as possible using hamstrings — catch yourself with hands','Goal is to resist as long as possible on the way down','Beginner: use hands to help push up; advanced: pull back up with hamstrings']},
   'slider-leg-curl':{
     name:'Slider Leg Curl', videoId:null,
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus']},
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Replicates the machine leg curl with only a towel or furniture slider. Lying glute-bridge position keeps the hips extended while the knees flex, loading the hamstrings concentrically and eccentrically — a true knee-flexion isolation when no machine exists.',
     cues:['Lie supine, heels on sliders/towels, hips lifted to a bridge','Keep hips up throughout — do not let them sag','Extend legs out under control, then curl heels back to the glutes','Both legs together to start; single-leg to progress']},
   'good-morning':{
     name:'Good Morning', videoId:null,
-    muscleGroups:{primary:['hamstring','erector_spinae','glute_max']},
+    muscleGroups:{primary:['hamstring','erector_spinae','glute_max'],secondary:['rectus_abdominis']},
     emphasis:['hamstrings','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Simultaneously trains hamstring and erector at long muscle lengths under heavy load — rare among exercises. The erector strengthening component is the primary benefit for anyone prone to lower back fatigue in the big lifts.',
     cues:['Bar on upper back, feet shoulder-width','Hip hinge: push hips back, not down','Keep knees soft (not locked out)','Rise by driving hips forward — same pattern as RDL']},
@@ -1192,13 +1192,13 @@ const EXERCISE_BANK = {
   // ── GLUTES ────────────────────────────────────────────
   'hip-thrust':{
     name:'Hip Thrust', videoId:'SEdqd1n0cvg',
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'Greatest glute EMG activation of any exercise. The fully shortened position at peak (hip fully extended) is unique — squats and deadlifts never achieve full hip extension under load. Trains the glute in its most powerful position.',
     cues:['Upper back on bench, shoulder blades on edge','Drive through heels, not toes','Tuck chin to chest — do not hyperextend the neck','Squeeze glutes aggressively at top; do not hyperextend the lower back']},
   'barbell-hip-thrust':{
     name:'Barbell Hip Thrust', videoId:null,
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'Allows load progression far beyond dumbbell — advanced lifters can hip thrust 300+ lbs. For maximum glute development, the barbell is the only viable option once dumbbell loading becomes insufficient.',
     cues:['Use a barbell pad or folded mat for hip comfort','Bar sits in the hip crease throughout','Drive through the entire foot, not the heel only','Full lockout: core braced, glutes squeezed, do not arch the lower back']},
@@ -1210,7 +1210,7 @@ const EXERCISE_BANK = {
     cues:['Ankle cuff attached; face the cable stack','Slight forward lean, hands on the stack for support','Kick straight back until hip is fully extended — no lateral rotation','Squeeze at peak; lower with resistance']},
   'abductor-machine':{
     name:'Abductor Machine', videoId:'GKumTNiuCLY',
-    muscleGroups:{primary:['glute_medius','glute_minimus']},
+    muscleGroups:{primary:['glute_medius','glute_minimus'],secondary:['tensor_fasciae_latae']},
     emphasis:['glutes','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Glute medius and minimus are lateral hip stabilisers — their weakness causes knee valgus, IT band syndrome, and hip drop during running. The most targeted way to build these muscles.',
     cues:['Sit upright — do not lean back to recruit hip flexors','Drive knees apart from the hip, not the knee','Full range: start with knees together, drive as wide as possible','Slow return — the eccentric builds as much as the drive']},
@@ -1222,7 +1222,7 @@ const EXERCISE_BANK = {
     cues:['Feet 2× shoulder-width; toes point 45° outward','Push hips back — same hinge pattern as conventional RDL','Let bar travel in a straight vertical line','Drive knees out over toes as you stand']},
   'glute-bridge':{
     name:'Glute Bridge', videoId:null,
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available. Can be loaded with a plate across the hips.',
     cues:['Supine on floor, feet flat and close to hips','Drive through heels; lift hips until body is a plank','Squeeze glutes hard at top — hold two counts','Lower with control; do not drop hips to the floor between reps']},
@@ -1234,7 +1234,7 @@ const EXERCISE_BANK = {
     cues:['Supine, one foot flat, the other leg extended','Drive through the planted heel; keep hips level — no tilt','Squeeze the glute hard at the top for two counts','Lower with control; complete all reps, then switch sides']},
   'banded-hip-abduction':{
     name:'Banded Hip Abduction', videoId:null,
-    muscleGroups:{primary:['glute_medius','glute_minimus']},
+    muscleGroups:{primary:['glute_medius','glute_minimus'],secondary:['tensor_fasciae_latae']},
     emphasis:['glutes','lower_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band replaces the abductor machine with near-identical isolation anywhere.',
     cues:['Loop a mini-band just above the knees','Standing or side-lying, drive the knee out against the band','Keep the pelvis still — move only at the hip','Slow return; never let the band snap the leg back']},
@@ -1258,7 +1258,7 @@ const EXERCISE_BANK = {
     cues:['Feet wider than shoulders, toes turned out ~30°','Hold one dumbbell between the legs, chest tall','Sit straight down, driving the knees out over the toes','Squeeze the glutes hard to stand; keep the torso upright']},
   'frog-pump':{
     name:'Frog Pump', videoId:null,
-    muscleGroups:{primary:['glute_max']},
+    muscleGroups:{primary:['glute_max'],secondary:['adductor']},
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The soles-together, knees-out position pre-shortens the glutes so every rep peaks in deep hip extension with minimal quad or hamstring contribution — a high-rep glute burnout that isolates the glute max better than most bridges, no equipment needed.',
     cues:['Lie on your back, soles of the feet together, knees dropped wide','Drive the hips up by squeezing the glutes — heels stay together','Pause and squeeze hard at the top','Lower with control; keep the reps quick and continuous for the pump']},
@@ -1266,37 +1266,37 @@ const EXERCISE_BANK = {
   // ── CALVES ────────────────────────────────────────────
   'standing-calf-raise':{
     name:'Standing Calf Raise', videoId:'gwLzBJYoWlA',
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The gastrocnemius is bi-articular — it crosses both the ankle and knee. Straight-knee position fully recruits both heads. This is the primary exercise for calf mass.',
     cues:['Full stretch at the bottom: heel below platform level','Rise to maximum height on tiptoe','Pause one count at the top — no bouncing','Slow descent — 3-count lower']},
   'seated-calf-raise':{
     name:'Seated Calf Raise', videoId:'JbyjNymZsfQ',
-    muscleGroups:{primary:['soleus','calf']},
+    muscleGroups:{primary:['soleus','calf'],secondary:['gastrocnemius']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Bent-knee position slackens the gastrocnemius, isolating the soleus underneath. The soleus is slow-twitch dominant — it responds best to high reps (15–25). A thick soleus widens the calf visually from all angles.',
     cues:['Pad just above the knee, not on the kneecap','Full stretch at the bottom','Rise to maximum height; pause one count','High reps are more effective here than heavy weight']},
   'leg-press-calf-raise':{
     name:'Leg Press Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Allows very heavy plantarflexion loading with no spinal compression. Fixed platform provides consistent ROM. Useful when the standing calf raise machine is occupied.',
     cues:['Only toes and ball of foot on the platform — heels hang off','Press to full plantarflexion (tiptoe position)','Lower until heels are below the platform level','High reps, slow tempo — calves are built with volume']},
   'single-leg-calf-raise':{
     name:'Single-Leg Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Doubles the eccentric load versus bilateral — providing 2× the resistance with bodyweight alone. Progressed by adding a loaded backpack, holding a dumbbell, or increasing tempo.',
     cues:['Stand on one foot on a step edge — heel hanging off','Lower to full stretch position','Rise to max height; single-leg focus prevents compensation','If too easy, add load; if too hard, hold a wall lightly']},
   'db-standing-calf-raise':{
     name:'DB Standing Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
     why:'Brings external load to the straight-knee calf raise without a machine — a dumbbell in each hand plus a step edge fully recruits both gastrocnemius heads. A simple free-weight answer to the standing calf machine.',
     cues:['Stand tall on a step edge, balls of feet on, heels hanging','Hold a dumbbell in each hand, arms relaxed at sides','Full stretch at the bottom, then rise to maximum tiptoe height','Pause one count at the top; 3-count lower — no bouncing']},
   'smith-machine-calf-raise':{
     name:'Smith Machine Calf Raise', videoId:null,
-    muscleGroups:{primary:['gastrocnemius','calf']},
+    muscleGroups:{primary:['gastrocnemius','calf'],secondary:['soleus']},
     emphasis:['lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The fixed Smith bar lets a lifter load standing calf raises heavily and safely with just a block under the toes — a straight-knee plantarflexion that fully recruits both gastrocnemius heads when a dedicated calf machine is unavailable.',
     cues:['Balls of the feet on a block or plate, bar across the upper traps','Full stretch at the bottom — heels drop below the block','Rise to maximum height on the toes; pause one count','Slow 3-count descent — build calves with controlled volume']},
@@ -1316,13 +1316,13 @@ const EXERCISE_BANK = {
     cues:['Forearms on floor, elbows under shoulders','Body in a straight line from head to heels','Squeeze glutes and abs simultaneously','Breathe normally — if you cannot breathe, reduce the duration']},
   'side-plank':{
     name:'Side Plank', videoId:null, unit:'sec', secs:45,
-    muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius']},
+    muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius'],secondary:['transverse_abdominis']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'McGill Big 3 staple — the only exercise that loads the lateral core (QL and obliques) without spinal compression. QL weakness is the most overlooked contributor to lower back pain.',
     cues:['Elbow directly under shoulder','Hips stacked — do not let the top hip rotate forward','Straight line from head through feet','Keep neck neutral — do not let the head drop']},
   'bird-dog':{
     name:'Bird Dog', videoId:null,
-    muscleGroups:{primary:['erector_spinae','glute_max','transverse_abdominis']},
+    muscleGroups:{primary:['erector_spinae','glute_max','transverse_abdominis'],secondary:['oblique_external']},
     emphasis:['core','full_body'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'McGill Big 3 exercise — simultaneously trains lumbar extensors, glute max, and contralateral rotator coordination without any spinal compression.',
     cues:['Start on all fours, spine neutral','Extend opposite arm and leg simultaneously','Do not let the hip rotate or the lower back arch','Pause at full extension for two counts; reset with control']},
@@ -1334,7 +1334,7 @@ const EXERCISE_BANK = {
     cues:['Start on knees; wheel directly under shoulders','Roll out keeping hips down — do not let the back arch','Roll to maximum range before your back starts to arch','Pull back in with lats AND abs — both are working']},
   'cable-crunch':{
     name:'Cable Crunch', videoId:null,
-    muscleGroups:{primary:['rectus_abdominis']},
+    muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external']},
     emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
     why:'The only weighted abs exercise with constant resistance through the full ROM. Allows progressive overload on the rectus abdominis — you can add load every week.',
     cues:['Kneel facing the cable, hands behind your neck (not pulling)','Crunch by flexing the spine — do not hip hinge','Round the upper back; bring sternum toward the pelvis','Slow return — the eccentric phase is 70% of the benefit']},
@@ -1352,13 +1352,13 @@ const EXERCISE_BANK = {
     cues:['Lie flat; curl the knees to the chest by tilting the pelvis — not just lifting the knees','Lower back should press into the floor throughout','Slow and controlled — not momentum-based','Progress by adding a pause at peak tilt']},
   'pallof-press':{
     name:'Pallof Press', videoId:null,
-    muscleGroups:{primary:['transverse_abdominis','oblique_internal','oblique_external']},
+    muscleGroups:{primary:['transverse_abdominis','oblique_internal','oblique_external'],secondary:['anterior_delt']},
     emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
     why:'Anti-rotation core exercise — the cable pulls the body sideways and the core resists that rotation. Exactly the demand placed on the core in rotational sports and under asymmetric loads.',
     cues:['Cable at chest height; stand perpendicular to it','Press hands straight out from chest; resist the lateral pull','Keep hips square — the fight is between the cable and your core','Hold extended position for two counts; controlled throughout']},
   'russian-twist':{
     name:'Russian Twist', videoId:null,
-    muscleGroups:{primary:['oblique_external','oblique_internal']},
+    muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['hip_flexor']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
     why:'Trains the obliques through rotation — the pattern that generates punching power, throwing velocity, and athletic rotation. Progressed with a medicine ball, weight plate, or dumbbell.',
     cues:['Sit at 45° with feet elevated (harder) or on floor (easier)','Rotate from the torso, not just the arms','Touch the floor beside each hip each rep','Brace the core throughout — do not let the spine collapse']},
@@ -1450,37 +1450,49 @@ const EXERCISE_BANK = {
   // ── CARDIO / CONDITIONING ─────────────────────────────
   'jumping-jacks':{
     name:'Jumping Jacks', videoId:null,
-    muscleGroups:{primary:['full_body','glute_max'],secondary:['calf']},
+    // 'full_body' removed 2026-09-17 (EPIC-41 Half 1): not an anatomical term, and it broke the
+    // bank's own convention for every other cardio entry (high-knees/stationary-bike/elliptical/
+    // rower all tag real generic muscle-group parents, never a non-muscle sentinel). Retagged to
+    // match: calf (the plyometric jump/landing driver) and glute_medius (hip ABduction on the
+    // leg-spread — not glute_max/hip extension, which jumping jacks does not perform) as primary,
+    // anterior_delt (overhead arm raise) added as primary; quad/hip_flexor/glute_max as secondary
+    // stabilizers. Sourced by triangulating multiple independent exercise-reference summaries
+    // (NASM exercise library category; Horton Barbell, Gymkee, WorkoutLabs, Parade coaching
+    // write-ups) that converge on the same primary/secondary split — SECONDARY-tier corroboration
+    // per exercise-science-research's domain tiering (no peer-reviewed EMG study on jumping jacks
+    // specifically was found), used because the primary-tier literature is silent on this specific
+    // bodyweight movement, not in place of it.
+    muscleGroups:{primary:['calf','glute_medius','anterior_delt'],secondary:['quad','hip_flexor','glute_max']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
     why:'Zero-equipment full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
     cues:['Land softly, knees soft on impact','Full arm extension overhead each rep','Steady rhythm — this is Zone 2, not a sprint','20+ min continuous, or interval with High Knees']},
   'high-knees':{
     name:'High Knees', videoId:null,
-    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['hip_flexor','calf']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
     why:'Zero-equipment hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work with no equipment required.',
     cues:['Drive knees to hip height, quick cadence','Land on the balls of the feet','Pump the arms to maintain rhythm','Moderate, sustainable pace for Zone 2 duration']},
   'incline-treadmill':{
     name:'Incline Treadmill', videoId:null,
-    muscleGroups:{primary:['glute_max','hamstring','calf']},
+    muscleGroups:{primary:['glute_max','hamstring','calf'],secondary:['hip_flexor']},
     emphasis:['lower_body','full_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
     why:'Zone 2 cardio at 10–15% incline elevates glute and hamstring activation dramatically versus flat walking. Low impact preserves recovery capacity while still stimulating aerobic adaptation.',
     cues:['Incline 10–15%, pace 3–3.5 mph for Zone 2','Do not hold the rails — swing the arms naturally','Heart rate 60–70% of max for fat oxidation zone','Duration 20–25 min: long enough for mitochondrial adaptation']},
   'stationary-bike':{
     name:'Stationary Bike', videoId:null,
-    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['calf']},
     emphasis:['lower_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
     why:'Zero impact on joints — ideal when legs are sore from squats and lunges. Cycle ergometers produce excellent Zone 2 cardio data in sports science research. Widely available in most gyms.',
     cues:['Seat height: slight knee bend at bottom of pedal stroke','Moderate resistance — not easy spinning, not grinding','Heart rate 60–70% of max','20 minutes minimum for meaningful aerobic benefit']},
   'elliptical':{
     name:'Elliptical', videoId:null,
-    muscleGroups:{primary:['quad','glute_max','hamstring']},
+    muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['anterior_delt']},
     emphasis:['lower_body','full_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
     why:'Mimics a running stride with zero impact. The arm poles add upper body engagement and increase total energy expenditure by 10–15% versus leg-only use.',
     cues:['Use the arm poles — they increase caloric burn and stabilise the trunk','Do not lean on the machine — maintain your own posture','Moderate resistance and pace — this is not a sprint','Zone 2 heart rate target: 60–70% of max']},
   'rower':{
     name:'Rower', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep','hamstring','erector_spinae']},
+    muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep_brachii','hamstring','erector_spinae']},
     emphasis:['full_body','back','lower_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
     why:'Engages 86% of muscle mass — more than any other cardio machine. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
     cues:['Drive order: LEGS → LEAN BACK → ARMS; reverse on recovery','Drive hard through the heels at the catch','Do not open the hips until the handle passes the knees','Damper setting 4–6 for aerobic work; higher is not better']},
@@ -1495,19 +1507,22 @@ const EXERCISE_BANK = {
   // .claude/loop-config.md self_generated_sources.exercise_intake_promotion) ──
   'band-external-rotation':{
     name:'Band External Rotation', videoId:null,
-    muscleGroups:{primary:['external_rotator']},
+    muscleGroups:{primary:['external_rotator'],secondary:['posterior_delt']},
     emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'Trains external rotation at the shoulder joint itself rather than at the shoulder blade. Pull-aparts and face pulls retract the scapula; this rotates the humerus inside the socket, which is a different job and the one the bank currently has no dedicated entry for. Band tension stays constant through a range where a dumbbell gives almost nothing at the start, which is why rehab-side coaching keeps it at the front of shoulder work. The source is explicit that the upper arm must stay pinned at the side — a rolled towel under the arm is its recommended fix — because letting the elbow drift away converts the movement into something that is no longer pure external rotation.',
     cues:['Anchor the band at about elbow height and stand side-on, working arm on the outside','Elbow bent to 90 degrees and tucked at your side; a rolled towel under the arm keeps it there','Rotate the forearm away from your stomach — the upper arm does not move','Control the band all the way back; do not let it snap your hand to your belly']},
   'lateral-step-down':{
     name:'Lateral Step-Down', videoId:null,
-    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis'],secondary:['glute_max','glute_medius']},
+    // quad_vastus co-tag added 2026-09-17 (EPIC-41 Half 1) for consistency with every other
+    // quad_vastus_lateralis/medialis entry in the bank (EPIC-026 §6B.3: 'quad_vastus' is already a
+    // live request token with no tag behind it on entries missing this co-tag).
+    muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus'],secondary:['glute_max','glute_medius']},
     emphasis:['quads','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
     why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a zero-equipment single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
     cues:['Stand on a 6-7 inch step with all the weight through the working leg','Reach the free leg out to the side and tap the heel down - do not push off it','Let the working knee travel forward; that range is what you are training','Slow and controlled on the way down; hold a wall or rail if balance is the limiter']},
   'band-row':{
     name:'Band Row', videoId:null,
-    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep','posterior_delt']},
+    muscleGroups:{primary:['lat_dorsi','rhomboid'],secondary:['bicep_brachii','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'compound', oneRmFactor:null,
     why:'The first band compound in the bank and the only home-tier pull whose resistance can be dialed down. Table Inverted Row loads by body angle, which sets a hard floor a deconditioned or rehabbing lifter may not clear; a band starts near zero and scales by band choice and anchor distance. Horizontal pulling is also the least shoulder-demanding pull pattern, so it is the right entry point before any overhead work.',
     cues:['Anchor the band at chest height to a sturdy object or door','Sit or stand tall, arms extended, slight tension at the start','Start the pull with the shoulder blade, then let the elbow follow','Drive elbows back toward the hips, not flared wide','Control the return all the way out - keep tension the whole range']},
@@ -1893,8 +1908,39 @@ function flagDropSet(day) {
 // by the render layer (buildDayHTML) from the user's PRs/calibration, same as any
 // generated day — so a one-off still prescribes at the lifter's real strength.
 // ═══════════════════════════════════════════════════════
+// BUG (Kerwin, 2026-09-14, live report — "why is Decline & Flat back to back like
+// that on the same day?"): chest's two 'compound' slots below were BYTE-IDENTICAL
+// requests (['pec_major','pec','compound'] twice), so the comparator only ever
+// chose WHICH duplicate pec-press filled the day — no candidate pool could ever
+// return two DIFFERENT patterns from one repeated request. Checked every other
+// FOCUS_SLOTS entry's compound pair for the same defect (identical group-tuple
+// requested twice in one category): back ('lat_dorsi' vs 'lat_dorsi'+'rhomboid'),
+// legs ('quad' vs 'hamstring'+'glute_max'), shoulders (one compound slot only),
+// push ('pec_major'+'pec' vs 'anterior_delt'+'lateral_delt'), pull ('lat_dorsi'
+// vs 'lat_dorsi'+'rhomboid') — chest is the ONLY entry asking for the same tuple
+// twice; the others already request genuinely different muscle groups per slot.
+// Fix: chest[1] now asks for anterior_delt/lateral_delt (a vertical press), the
+// exact pairing FOCUS_SLOTS.push's own second compound slot already uses without
+// issue — not an invented pairing, matching the app's own existing pattern. A
+// chest-focus day keeps its identity through chest[2] (pec isolation) and
+// chest[3] (tricep) and gains the overhead press it never had.
+// Citation for WHY two same-pattern presses in one session is undesirable
+// (mechanism only, not the rule itself — no source mandates "never twice", see
+// docs/council-science-application-2026-09-14.md R2 and
+// docs/citation-verification-2026-09-14.md Q2 for the full verification): ACSM
+// 2009 Position Stand (PMID 19204579), Exercise Order — "multiple-joint exercise
+// ... performance declines significantly when these exercises are performed
+// later ... rather than early in a workout."
+// SCOPE, stated honestly: this is the getSingleDay() one-off path only. The
+// weekly buildDynamicProgram() engine has an analogous but DIFFERENT-shaped
+// defect (TEMPLATES.day2's secondary slot requests 'quad', which can collide
+// with day4's 'quad' primary once a 3-day split merges both days into one
+// session) — its safe fix needs a real movement-pattern-uniqueness check in the
+// comparator (a naive group-tuple swap there would just trade this exact bug for
+// a new one, since day2's own primary and secondary would end up requesting the
+// same hip-hinge pattern twice). Not fixed here; flagged as its own follow-up.
 const FOCUS_SLOTS = {
-  chest:     [['pec_major','pec','compound'],['pec_major','pec','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
+  chest:     [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
   back:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['lat_dorsi','','isolation'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation']],
   legs:      [['quad','','compound'],['hamstring','glute_max','compound'],['quad_rectus_femoris','quad_vastus','isolation'],['hamstring','','isolation'],['gastrocnemius','calf','isolation']],
   shoulders: [['anterior_delt','lateral_delt','compound'],['lateral_delt','','isolation'],['posterior_delt','rhomboid','isolation'],['anterior_delt','','isolation'],['upper_trap','','isolation']],
@@ -2318,7 +2364,78 @@ const ONEOFF_FOCUSES = Object.keys(FOCUS_SLOTS);
 // presented as law. See scripts/duration-smoke.mjs for the regression guard.
 const SHORT_SESSION_MAX_MINUTES = 45; // UNSOURCED engineering default — see D28 above.
 
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes) {
+// ── ACCESSORY ROTATION DEPTH — BUG-108b (2026-09-17) ─────────────────────────
+// Notion BUG-108b `3d8ca37f935b817d8f4fd8d7ec82d1de`; D1 (accessory stability
+// within a mesocycle) + D15 (its own text already states the target cadence).
+//
+// SHOULD (D15, ACTIVE, verbatim): "the closest-pattern accessory per slot (acc1)
+// rotates ~every 4-6 weeks; remaining isolation accessories rotate ~every 2-3
+// weeks (block boundary, D1's existing cadence)." pick() never implemented that
+// as a WALL-CLOCK cadence — it walked `rotPhase`, the index into scaledPhases()'s
+// output, and PHASES[goal].length === 4 for every one of the 3 goals (verified:
+// fat_burn/build_muscle/transform each define exactly 4 phase objects), so
+// `rotPhase` only ever took 4 distinct values (0-3) NO MATTER HOW LONG THE
+// PROGRAM IS — a 4wk program and a 24wk program both walked the identical
+// 4-slot cycle, because scaledPhases() stretches the SAME 4 phases to fill T
+// weeks rather than adding more of them. This is the exact defect D15's own
+// comment on primaryBlockIndex (below) already named and fixed for primary/
+// secondary compounds ("Keyed on the WEEK, not the phase, because... `phase`
+// is always 4 scaled themes regardless of T") — but that fix was never
+// extended to acc1/acc2/acc3/acc4/core/cardio, which still walked the raw
+// phase index. Consequence, measured (fresh sweep, goal x days x sex x tier x
+// T{12,24}, every week 1..T, methodology + numbers in the BUG-108b commit
+// body): a same-muscle isolation/core candidate pool of more than ~4 tier-
+// legal entries only ever exposed its first 2-4 sorted ranks — 17 of 100
+// isolation+core EXERCISE_BANK entries never selected, PERMANENTLY, regardless
+// of program length. (The remaining 31 of that sweep's 48 total never-selected
+// entries are compound/primary-secondary, which IS supposed to stay near-fixed
+// per D15's 8-12wk floor — out of this bug's scope, unchanged by this fix.)
+// Untouched by BUG-94/108's equipment-availability tiebreak (5e1d5fc): that
+// fix re-ranks candidates WITHIN whatever rank the rotation index reaches; it
+// cannot help a rank the index can never reach at all.
+//
+// COULD, considered and rejected:
+//   - A deloadWeeks()-derived mesocycle-boundary index (the same mechanism
+//     D15/primaryBlockIndex uses for compounds), tried first: it scales depth
+//     even further (~12 distinct values at T=24 vs this fix's 8), but it also
+//     changes accessory rotation CADENCE at T=12 away from the doctrine gate's
+//     own D1 check (scripts/doctrine.mjs holds `phase` fixed and varies
+//     `week` across each of 4 fixed 3-week thirds of a 12wk program — the
+//     literal encoding of D15's "~2-3wk" cadence at the length every existing
+//     gate/snapshot exercises) — caught by RUNNING `npm run verify`, not by
+//     reasoning about it: 40 D1 "changed within the block" failures. Rejected
+//     in favor of the fix below, which reproduces that exact T=12 cadence
+//     bit-for-bit and only changes behavior at T != 12, where nothing
+//     currently asserts a specific cadence.
+//   - Simple `week % pool.length` (walk one position per calendar week):
+//     rejected — re-rolls an accessory EVERY week, violating D1's "stable
+//     within a mesocycle, never re-rolled weekly" outright.
+//   - Scale the step size to each SLOT's own pool.length (e.g. "cycle through
+//     the whole pool by week T"): rejected — pool size varies per slot/tier/
+//     muscle (anywhere from 2 to 10+ candidates), so the cadence would
+//     silently differ slot-to-slot and session-to-session with no cited
+//     number behind any of it — an invented mechanism, and it would fight
+//     D15's own explicit "~4-6wk"/"~2-3wk" cadence text with a different,
+//     uncited one.
+//
+// DID: replace the fixed-4-COUNT phase index with a fixed-WEEKS-PER-ROTATION
+// cadence, computed directly from `week` — the same "wall-clock, not scaled
+// theme-count" correction D15/primaryBlockIndex already made for compounds,
+// but expressed as a constant duration rather than a mesocycle-boundary walk
+// (see the rejected alternative above for why). The two constants are the
+// SAME numbers the old `rotPhase`-derived code already produced at the T=12
+// default — not invented, just no longer capped as T grows:
+//   ACC_PHASE_WEEKS = 3  — matches scaledPhases's 12wk/4-phase = 3wk-per-phase
+//     split D15 cites as "~2-3 weeks" for acc2/acc3/acc4/core/cardio.
+//   ACC1_PHASE_WEEKS = 6 — matches the old `Math.floor(rotPhase / 2)`, which
+//     at T=12 changed acc1 every 6 weeks (two 3wk phases per acc1 rotation) —
+//     D15's cited "~4-6 weeks" for acc1.
+// Verified bit-identical at T=12 (the length scripts/doctrine.mjs's D1 check
+// and scripts/program-snapshot.mjs's baseline both exercise): `node
+// scripts/program-snapshot.mjs` after this change (see commit body).
+const ACC_PHASE_WEEKS = 3;
+const ACC1_PHASE_WEEKS = 6;
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs) {
   const exp = normalizeExperience(experience);
   // Short session ⇒ drop the isolation block's 3rd slot (acc3), same mechanism
   // EPIC-8a already proved for beginner tier. `undefined`/`null`/non-finite stays
@@ -2327,13 +2444,34 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   const isShortSession = Number.isFinite(durationMinutes) && durationMinutes < SHORT_SESSION_MAX_MINUTES;
   const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
-  // Rotation context drives variety over time: week rotates accessories; phase
-  // rotates primary compounds (stable within a mesocycle to preserve overload
-  // tracking). Selection itself is priority-ordered, not seeded/random — see
-  // bank()'s sort and pick() below.
+  // D32 (EPIC-8c, programs.js's one home for the cardio-finisher rule — see getProgram's
+  // weightDeltaLbs comment for the citation). Men's fat_burn Zone 2 is OPTIONAL (skipped)
+  // unless weight delta > 20 lb; women's fat_burn Zone 2 is never gated by delta. Scoped
+  // to fat_burn ONLY — the source's note is under "Men's/Women's fat burn note" and says
+  // nothing about build_muscle or transform, so those goals stay unconditional (unchanged).
+  const skipFatBurnCardio = goal === 'fat_burn' && !isFemale
+    && weightDeltaLbs !== null && weightDeltaLbs <= 20;
+  // Rotation context drives variety over time. As of BUG-108b (2026-09-17)
+  // accessory roles (acc1/acc2/acc3/acc4/core/cardio) are keyed on the caller's
+  // WALL-CLOCK `week` via a FIXED weeks-per-rotation cadence (ACC1_PHASE_WEEKS /
+  // ACC_PHASE_WEEKS below) instead of `rotation.phase` — the index into
+  // scaledPhases()'s output, which is always exactly 4 entries per goal
+  // (PHASES[goal].length === 4 for all 3 goals) NO MATTER HOW LONG the program
+  // is, because scaledPhases() STRETCHES those same 4 phases to fill T weeks
+  // rather than adding more of them. That capped every accessory rotation at
+  // ~4 distinct ranks forever, regardless of real program length — see the
+  // comment above ACC1_PHASE_WEEKS for the full SHOULD/COULD/DID. The two
+  // constants below are chosen to reproduce EXACTLY the old rotPhase-derived
+  // cadence at the T=12 default (scaledPhases splits a 12wk program into four
+  // 3wk phases; Math.floor(rotPhase/2) changed acc1 every 6wk) — so nothing
+  // changes for the length every existing gate (doctrine.mjs's D1 check,
+  // program-snapshot's baseline) exercises; only T != 12 now gets the deeper
+  // rotation D15's own text already promised. Primary/secondary compounds are
+  // unaffected — they already rotate on the WEEK via primaryBlockIndex (D15).
+  // Selection itself stays priority-ordered, not seeded/random — see bank()'s
+  // sort and pick() below.
   const rot = rotation || {};
   const rotWeek  = Number.isFinite(rot.week)  ? rot.week  : 1;
-  const rotPhase = Number.isFinite(rot.phase) ? rot.phase : 0;
   const tierOrder = ['home','hotel_gym','full_gym'];
   const reqIdx = tierOrder.indexOf(tier || 'full_gym');
 
@@ -2411,10 +2549,13 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
   // Deterministic, priority-ordered selection — no hashing, nothing random.
   // Emphasis preference narrows the pool first; within the resulting
-  // (already priority-sorted) pool, primary/secondary compounds walk the
-  // list by mesocycle phase and accessories walk it by week — purposeful
-  // variety over time/program segment, always landing on the next-best
-  // candidate in the scientifically-ordered list rather than an arbitrary one.
+  // (already priority-sorted) pool, every role now walks the list by the
+  // caller's WALL-CLOCK week — primary/secondary via primaryBlockIndex's
+  // mesocycle-boundary walk (D15), accessories via the fixed ACC_PHASE_WEEKS/
+  // ACC1_PHASE_WEEKS cadence (D1/D15, BUG-108b 2026-09-17 — see the comment
+  // above ACC1_PHASE_WEEKS) — purposeful variety over time/program segment,
+  // always landing on the next-best candidate in the scientifically-ordered
+  // list rather than an arbitrary one.
   const pick = (cands, slot, tmpl) => {
     if (!cands.length) return null;
     let pool = cands;
@@ -2448,8 +2589,12 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     const role = slot && slot.role;
     let block;
     if (role === 'primary' || role === 'secondary') block = primaryBlockIndex(rotWeek, weeks);
-    else if (role === 'acc1') block = Math.floor(rotPhase / 2);
-    else block = rotPhase;
+    // BUG-108b: acc1/acc2/acc3/acc4/core/cardio now walk a fixed wall-clock
+    // cadence (ACC1_PHASE_WEEKS / ACC_PHASE_WEEKS, declared above
+    // buildDynamicProgram) instead of `rotPhase`, the fixed-4-count phase
+    // index that capped rotation depth regardless of program length.
+    else if (role === 'acc1') block = Math.floor((rotWeek - 1) / ACC1_PHASE_WEEKS);
+    else block = Math.floor((rotWeek - 1) / ACC_PHASE_WEEKS);
 
     // ── D27 — CONTINUITY ACROSS PROGRAM REGENERATIONS ────────────────────────
     // The defect (measured, 2026-09-03): D15 holds primary/secondary compounds for
@@ -2631,7 +2776,10 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       // getProgram() across 12 weeks: 100% Elliptical for full_gym/hotel_gym,
       // 100% High Knees for home). Every other non-primary category (core,
       // acc2/acc3 isolation) already rotates through pick()'s existing
-      // block=rotPhase path (D15's ~2-3wk cadence, ACTIVE) — cardio was the one
+      // block=Math.floor((week-1)/ACC_PHASE_WEEKS) path (D15's ~2-3wk cadence,
+      // ACTIVE — BUG-108b 2026-09-17 rekeyed this from the fixed-4-count
+      // `rotPhase` to a fixed wall-clock cadence so depth scales with T; see
+      // ACC_PHASE_WEEKS above buildDynamicProgram) — cardio was the one
       // category that bypassed it. Fix: route cardio through the same pick(),
       // same cadence, no new rule invented.
       const cardioPool = bank({groups:tmpl.cardioGroups, cat:'cardio', excl:[...used]});
@@ -2662,7 +2810,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       if (compExs.length) blocks.push({label:'Compound Block', exs:compExs});
       if (accExs.length)  blocks.push({label:'Accessory Block', exs:accExs});
       if (coreExs.length) blocks.push({label:'Core Block', exs:coreExs});
-      if (cardioEx) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
+      if (cardioEx && !skipFatBurnCardio) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
         makeEx(cardioEx, tmpl.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
 
       // EPIC-8a: drop-set flagging happens once, in getProgram(), AFTER the
@@ -2708,7 +2856,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     if (shoulderExs.length) saBlocks.push({label:'Shoulder Block', exs:shoulderExs});
     if (armExs.length)      saBlocks.push({label:'Arms Block', exs:armExs});
     if (saCoreExs.length)   saBlocks.push({label:'Core Block', exs:saCoreExs});
-    if (saCardioEx) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
+    if (saCardioEx && !skipFatBurnCardio) saBlocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
       makeEx(saCardioEx, sa.key+'-card', {sets:1, duration:22, cardioOnly:true, unit:'sec', r:1})]});
     if (saBlocks.length) {
       // EPIC-8a: see note above — drop-set flagging is applied once, in
@@ -3193,7 +3341,7 @@ function materializeTemplate(tpl, week, opts) {
   return applyDeload(days, { week: wk }, T);
 }
 
-function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes) {
+function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weight, targetWeight) {
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
@@ -3201,6 +3349,20 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   const fat = goal === 'fat_burn';
   const muscle = goal === 'build_muscle';
   const transform = goal === 'transform';
+
+  // D32 (EPIC-8c) — weight-delta cardio scaling for fat_burn. Programming Architecture
+  // Reference (Notion 37aca37f935b811b90c7c880631c66a8, Part 2): "Men's fat burn note:
+  // Cardio is supplementary to resistance training. Zone 2 finishers are optional unless
+  // weight delta > 20 lbs." / "Women's fat burn note: Cardio is more structurally
+  // integrated than in men's programs. Zone 2 finishers 3-4x/week." — no delta condition
+  // for women, so women's cardio is never gated by delta. `weightDeltaLbs` is null when
+  // either input is missing/non-finite (e.g. no goal weight on file) — deliberately NOT
+  // treated as "delta is 0 lb", since that would silently strip an every-day block the
+  // app has always shown for users who simply haven't entered a goal weight yet. See
+  // buildDynamicProgram for where this actually gates the block. Numbered D32, not D29:
+  // D29/D30 are reserved by the merged muscle-tag-vocabulary branch's D31 row (see
+  // DOCTRINE.md D31 for that collision's own account).
+  const weightDeltaLbs = (Number.isFinite(weight) && Number.isFinite(targetWeight)) ? Math.abs(weight - targetWeight) : null;
 
   // Per-day program definitions
   const programs = {
@@ -4447,7 +4609,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
   // helpers above are initialized — calling them from the top of getProgram hit
   // their temporal dead zone (TDZ).
-  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, durationMinutes);
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs);
   if (generated) {
     // EPIC-8a: applied AFTER the 2/3/5-day wrappers + injury prune, on the
     // final day array — the wrappers recombine exercises from multiple base

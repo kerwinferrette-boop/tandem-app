@@ -2,7 +2,7 @@
 /**
  * claims-on-origin.mjs — a Notion status claim needs a commit origin/main actually has.
  *
- * WHY THIS EXISTS (docs/self-corrections.md SC-18; filed 2026-09-17, Kerwin present)
+ * WHY THIS EXISTS (docs/self-corrections.md SC-19; filed 2026-09-17, Kerwin present)
  *
  * BUG-49 and BUG-57's Notion pages (2026-09-08) both described completed, gate-green
  * fixes. Neither fix exists on any remote ref. BUG-49's fix string (`s.name || id`) is
@@ -120,7 +120,7 @@ if (allOk) {
   console.log(`  All ${results.length} sha(s) confirmed on origin/main — safe to write the Notion status.\n`);
   process.exit(0);
 } else {
-  console.log('  At least one claimed sha is NOT on origin/main. Per docs/self-corrections.md SC-18:');
+  console.log('  At least one claimed sha is NOT on origin/main. Per docs/self-corrections.md SC-19:');
   console.log('  the fix does not exist yet. Do not write In Fix / code-complete / Resolved to Notion');
   console.log('  until every cited sha passes this check.\n');
   process.exit(1);

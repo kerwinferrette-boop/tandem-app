@@ -3,6 +3,13 @@
 **Date:** 2026-09-17
 **Question owner:** Kerwin (present, session authorized)
 
+> **Renumbering note (2026-09-18, at merge with origin/main):** this session and a concurrent one
+> both independently claimed the SC-18 slot in `docs/self-corrections.md`. The council discussion
+> below, held before the collision was discovered, refers throughout to "SC-18" — left as-is since
+> it's a historical record of what was actually said. The rule it produced now lives at **SC-19**
+> in `docs/self-corrections.md`; `.claude/loop-config.md` and `scripts/claims-on-origin.mjs` were
+> updated to cite SC-19. Nothing in the council's reasoning or verdict changed.
+
 ## Original question
 
 Should Tandem ship this change: a new mechanical gate `scripts/claims-on-origin.mjs`
