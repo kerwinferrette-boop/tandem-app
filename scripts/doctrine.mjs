@@ -85,10 +85,22 @@ const TIERS = {
   D16: 'SAFETY',          // the override protocol itself is not overridable
   D27: 'SCIENCE_DEFAULT', // D27 continuity across program regenerations — soft reorder only
   D28: 'SCIENCE_DEFAULT', // duration-gated isolation drop — shape cited, cutoff PENDING a ruling
+  D29: 'SAFETY',          // oneRmFactor is load-estimation only, never a selection/ranking key — no
+                          // override exists (2026-09-18, landed directly on main; see D29's own check
+                          // block below for the reconciliation with claude/muscle-tag-vocabulary's
+                          // original unmerged R1, which this supersedes rather than collides with —
+                          // that branch never merged, so no renumbering collision materialized).
+  D30: 'SCIENCE_DEFAULT', // no two compound exercises share a movement pattern in one session
+                          // (council R2) — ENGINEERING_DEFAULT per its own source, same tier class as
+                          // D1/D28. PENDING: FOCUS_SLOTS.chest's instance is fixed without this
+                          // invariant; the comparator-level mechanism for the remaining TEMPLATES.day2/
+                          // day4 case is not yet built. See its PENDING row for the full account.
   D31: 'SCIENCE_DEFAULT', // one-off exercise-instance variety — soft demotion + opt-in randomized tiebreak, same class as D20/D27.
-                          // Numbered D31 not D29: claude/muscle-tag-vocabulary's unmerged 2026-09-14
-                          // council ruling already claims D29/D30 off the same D28 baseline — renumbered
-                          // to stay collision-free regardless of merge order.
+                          // Numbered D31 not D29 at the time it shipped (2026-09-15): claude/muscle-tag-
+                          // vocabulary's still-unmerged 2026-09-14 council ruling claimed D29/D30 off the
+                          // same D28 baseline, so D31 stayed collision-free regardless of merge order. D29
+                          // has since landed directly on main (above) via a fresh implementation, not that
+                          // branch's — the numbering held, no renumbering was needed after all.
   D17: 'SAFETY',          // ACTIVE 2026-09-03 — enforced by scripts/d17-db-sweep.mjs in the
                           // credentialed production workflow, NOT here: this gate is deliberately
                           // credential-free (it runs on fork PRs), and a file-side check claiming
@@ -2454,6 +2466,7 @@ const PENDING = [
   ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b (now ACTIVE) as its real per-muscle baseline', 'needs numeric ramp cadence'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops the isolation block\'s 3rd accessory slot (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
+  ['D30', 'No two COMPOUND exercises of the same movement pattern in one session (council ruling R2, docs/council-science-application-2026-09-14.md, ENGINEERING_DEFAULT — the corpus does not support a citation for the rule itself, only its mechanism, ACSM 2009 PMID 19204579 Exercise Order). FOCUS_SLOTS.chest\'s literal byte-identical-slot instance was fixed directly (2026-09-18, commit 39d2187) without this invariant. The remaining, confirmed-still-live case — buildDynamicProgram\'s TEMPLATES.day2 secondary slot (\'quad\') colliding with day4\'s primary (\'quad\') once a 3-day split merges both days — needs the full movement-pattern-uniqueness comparator mechanism (MOVEMENT_PATTERN table + patternClash, present on the unmerged claude/muscle-tag-vocabulary branch but built against a now-stale snapshot of main) re-authored against current main\'s primaryOnlyMatch/coverageCount/D27/D31 comparator chain, not transplanted.', 'needs the movement-pattern comparator mechanism built against current main'],
 ];
 
 // ── D27 (SCIENCE_DEFAULT) — continuity across program regenerations ───────────
@@ -2490,6 +2503,67 @@ let d27Checked = 0;
   }
 }
 
+// ── D29 (SAFETY) — oneRmFactor is a load-estimation coefficient, never a ───────
+// selection/ranking key. Council ruling R1 (docs/council-science-application-
+// 2026-09-14.md) + reconciliation against this file's own primaryOnlyMatch/
+// coverageCount (docs/council-r1-reconciliation-2026-09-18.md): "one coefficient,
+// one semantic role, readable only by the subsystem that owns that role."
+// oneRmFactor's owner is load derivation (seedWeight, programs.js). Two checks,
+// deliberately not one — a text ban alone is "beatable by hoisting into a named
+// helper a comparator then calls" (the council's own stated weakness):
+//   1. BEHAVIORAL — perturb every EXERCISE_BANK entry's oneRmFactor to an extreme,
+//      deterministic value (9999) and re-run getProgram across a goal×days×sex×
+//      tier sweep. If oneRmFactor is truly absent from every selection/ranking
+//      path, NOT ONE generated exercise name may change — proved by RUNNING the
+//      engine (SC-03), never by reading the comparator source.
+//   2. STRUCTURAL — a property-READ count, not a `.sort(` grep (which a hoisted
+//      helper would evade). programs.js may contain exactly ONE `.oneRmFactor`
+//      read (seedWeight's own `e.oneRmFactor || 1.0`) — any second read site,
+//      wherever it lives, changes this count and fails the gate, forcing a
+//      conscious doctrine update rather than a silent regression. tandem.html's
+//      count is pinned too (render-layer load-scaling — startW recompute on a
+//      phase-substituted exercise, and a before/after weight ratio — pre-existing,
+//      not part of selection, but drift there should still be visible here).
+let d29Checked = 0;
+{
+  const stripComments = s => s.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const goals = ['fat_burn', 'build_muscle', 'transform'];
+  const dayCounts = [2, 3, 4, 5, 6];
+  const sexes = ['male', 'female'];
+  const tiers = ['home', 'hotel_gym', 'full_gym'];
+  const names = (p) => (p.days || p).flatMap(d => (d.blocks || []).flatMap(b => (b.exs || []).map(e => e.name)));
+
+  const baseline = {};
+  for (const goal of goals) for (const days of dayCounts) for (const sex of sexes) for (const tier of tiers) {
+    d29Checked++;
+    baseline[`${goal}|${days}|${sex}|${tier}`] = names(getProgram(goal, days, 8, sex, tier, null, [], 100));
+  }
+
+  const originalFactors = new Map();
+  for (const e of Object.values(EXERCISE_BANK)) {
+    if (e.oneRmFactor != null) { originalFactors.set(e, e.oneRmFactor); e.oneRmFactor = 9999; }
+  }
+  for (const goal of goals) for (const days of dayCounts) for (const sex of sexes) for (const tier of tiers) {
+    d29Checked++;
+    const perturbed = names(getProgram(goal, days, 8, sex, tier, null, [], 100));
+    const before = baseline[`${goal}|${days}|${sex}|${tier}`];
+    if (JSON.stringify(before) !== JSON.stringify(perturbed))
+      fail('D29', `perturbing oneRmFactor to an extreme value changed the generated program at ${goal}/${days}d/${sex}/${tier} — oneRmFactor is still influencing selection somewhere`);
+  }
+  for (const [e, v] of originalFactors) e.oneRmFactor = v; // restore — this EXERCISE_BANK instance is reused by later checks
+
+  const programsSrc = stripComments(code);
+  const tandemHtmlSrc = stripComments(readFileSync(join(root, 'tandem.html'), 'utf8'));
+  const programsReads = (programsSrc.match(/\.oneRmFactor\b/g) || []).length;
+  const tandemReads = (tandemHtmlSrc.match(/\.oneRmFactor\b/g) || []).length;
+  d29Checked++;
+  if (programsReads !== 1)
+    fail('D29', `programs.js has ${programsReads} .oneRmFactor read site(s), expected exactly 1 (seedWeight's own load-derivation read) — a new reader was added without a doctrine update`);
+  d29Checked++;
+  if (tandemReads !== 6)
+    fail('D29', `tandem.html has ${tandemReads} .oneRmFactor read site(s), expected exactly 6 (known render-layer load-scaling reads) — a new reader was added without a doctrine update`);
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────────
 console.log(`DOCTRINE CONFORMANCE — Notion law is enforced here (mirror: /DOCTRINE.md)\n`);
 console.log(`Active checks:`);
@@ -2500,6 +2574,7 @@ console.log(`  D4  deloads per Part B length table — ${d4Checked} deload weeks
 console.log(`  D7  per-length mesocycle layout matches spec Part B verbatim — ${d7Checked} lengths pinned`);
 console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
 console.log(`  D27 continuity across regenerations — ${d27Checked} property checks`);
+console.log(`  D29 oneRmFactor is load-estimation only, never a selection/ranking key (council R1) — ${d29Checked} checks (630-combo-representative perturb-and-diff + programs.js/tandem.html read-site counts pinned)`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);

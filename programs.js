@@ -2026,6 +2026,40 @@ const ONEOFF_CARDIO_GROUPS = ['full_body','glute_max'];
 const EQUIPMENT_AVAILABILITY_RANK = { barbell:0, machine:0, cable:0, dumbbell:1, band:2, bodyweight:2 };
 const equipmentAvailabilityRank = (e) => EQUIPMENT_AVAILABILITY_RANK[e.equipment] ?? 1;
 
+// ── FREE-WEIGHT RANK — 2026-09-18, council ruling R1 + reconciliation ───────────
+// (docs/council-science-application-2026-09-14.md, docs/council-r1-reconciliation-
+// 2026-09-14.md). Landed the SAME commit as removing oneRmFactor from selection,
+// not after it — running the removal alone first (measured, not assumed) showed it
+// systematically loses the free-weight chest press: 30 of 90 sampled full_gym
+// combos swapped their only free-weight compound press for Cable Chest Press,
+// because without oneRmFactor, cable and barbell tie on equipmentAvailabilityRank
+// (both 0) and the alphabet ("Cable..." < "Decline.../Flat...") silently decided.
+// Shipping that gap even briefly would reintroduce the exact failure this rank
+// exists to prevent, so both land together.
+//
+// SHOULD. ACSM 2009 Position Stand, "Progression Models in Resistance Training for
+// Healthy Adults" (PMID 19204579), *Free Weights and Machines*, quoted verbatim:
+//   Evidence category A — "For novice to intermediate training, it is recommended
+//     that free-weight and machine exercises are included."
+//   Evidence category C — "For advanced RT, it is recommended that emphasis be
+//     placed on free-weight exercises with machine exercises used to compliment
+//     program needs."
+// Mechanism the stand gives for the latter: "machine exercises have demonstrated
+// less neural activation when matched for intensity for most comparisons to
+// free-weight exercises," and free weights "result in a pattern of intra- and
+// intermuscular coordination that mimics the movement requirements of a specific
+// task."
+//
+// SCOPE — ranks *equipment*, nothing else, and only breaks a tie WITHIN one
+// equipmentAvailabilityRank class: {barbell,machine,cable}=0, {dumbbell}=1,
+// {band,bodyweight}=2. Runs AFTER equipmentAvailabilityRank, so it can only ever
+// reorder candidates that already tied there — Kerwin's 2026-09-13 bodyweight-vs-
+// gear ordering is untouched by construction. Machines are not excluded (Evidence
+// A requires them included) — this only demotes them behind free weights when
+// both are otherwise tied, never removes them from the pool.
+const FREE_WEIGHT_RANK = { barbell:0, dumbbell:0, machine:1, cable:1, band:1, bodyweight:1 };
+const freeWeightRank = (e) => FREE_WEIGHT_RANK[e.equipment] ?? 1;
+
 function getSingleDay(focus, opts = {}) {
   const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
   const slots = FOCUS_SLOTS[key];
@@ -2061,6 +2095,19 @@ function getSingleDay(focus, opts = {}) {
   // groupsMatch itself (one rule, one home) on a shallow copy with `secondary`
   // stripped — the anchoring rule (D19) is untouched, not re-implemented.
   const primaryOnlyMatch = (e, groups) => groupsMatch({ muscleGroups: { primary: e.muscleGroups.primary, secondary: [] } }, groups);
+  // PRIMARY-MATCH RANK — 2026-09-18, council ruling R1 + reconciliation (see
+  // FREE_WEIGHT_RANK's declaration above for the doc citations). Reuses
+  // primaryOnlyMatch directly (one rule, one home) rather than a parallel
+  // anchored-matching copy. For COMPOUND slots this is a NO-OP: primaryOnlyMatch
+  // already filters the pool to primary-match-only (with its own empty-pool
+  // fallback), so every surviving candidate scores identically here — confirmed
+  // by trace: when the strict filter's pool is empty, every fallback survivor is
+  // synergist-only by definition, so this still ties uniformly. Its real, non-
+  // redundant effect is on isolation/core/cardio slots, which primaryOnlyMatch's
+  // `cat !== 'compound'` guard skips filtering entirely — those pools still
+  // legally admit synergist-only candidates, and this is the only mechanism that
+  // ever demotes one below a primary-match candidate for that category.
+  const primaryMatchRank = (e, groups) => primaryOnlyMatch(e, groups) ? 0 : 1;
   // ── D20 (EPIC-028) — per-muscle recency SOFT de-prioritization ─────────────
   // opts.recentExposure: { muscleTag: hoursSinceLastTrained } — the exact shape
   // recentMuscleLoad() (tandem.html, EPIC-027/028 shared read path) produces,
@@ -2194,13 +2241,25 @@ function getSingleDay(focus, opts = {}) {
         const covDiff = coverageCount(b) - coverageCount(a);
         if (covDiff !== 0) return covDiff;
       }
-      if (a.oneRmFactor != null || b.oneRmFactor != null) {
-        const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
-        if (diff !== 0) return diff;
-      }
+      // NO oneRmFactor RANK HERE — removed 2026-09-18 per council ruling R1
+      // (docs/council-science-application-2026-09-14.md) + its reconciliation
+      // against this file's own primaryOnlyMatch/coverageCount
+      // (docs/council-r1-reconciliation-2026-09-18.md). oneRmFactor is a LOAD-
+      // ESTIMATION COEFFICIENT ("what fraction of this implement's baseline 1RM
+      // does this lift move?") — it says nothing about which muscle a lift
+      // trains, so it may not decide a selection tiebreak. Its only remaining
+      // reader is defW()/seedWeight() (load derivation, its actual owning role).
+      // Enforced by D29.
+      // PRIMARY-MATCH — see primaryMatchRank's declaration. No-op for compound
+      // slots (primaryOnlyMatch already filtered); live for isolation/core/cardio.
+      const pm = primaryMatchRank(a, g) - primaryMatchRank(b, g);
+      if (pm !== 0) return pm;
       // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
       const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
       if (eqDiff !== 0) return eqDiff;
+      // FREE-WEIGHT — ACSM 2009 (PMID 19204579). See freeWeightRank's declaration.
+      const fw = freeWeightRank(a) - freeWeightRank(b);
+      if (fw !== 0) return fw;
       // Pre-D31 callers (varietyActive false — every existing caller/test) keep the
       // exact deterministic alpha tiebreak. Only a caller that opts into variety
       // gets a genuine tie (0) here, resolved below by rng, never by this function.
@@ -2489,19 +2548,17 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   // See identical fix + rationale on getSingleDay's primaryOnlyMatch above
   // (Kerwin, 2026-09-14 — "two pressing sets back to back makes no sense").
   const primaryOnlyMatch = (e, groups) => groupsMatch({ muscleGroups: { primary: e.muscleGroups.primary, secondary: [] } }, groups);
-  // GEN-fix (exercise-selection mechanism): bank() now returns a candidate
-  // pool in a fixed, explainable priority order instead of raw EXERCISE_BANK
-  // object-insertion order. Compounds (oneRmFactor is non-null) rank by
-  // relative loading capacity descending — the same biomechanical signal
-  // baseW() already uses to set starting weight, so the "primary" choice for
-  // a muscle group is whichever compound the bank itself already claims has
-  // the highest load ceiling / most direct recruitment. Isolation/core/cardio
-  // have no oneRmFactor (there's no single "best" accessory variant backed
-  // by evidence the same way) — those rank alphabetically, purely so the
-  // pool order is deterministic and independent of where a new bank entry
-  // happens to be inserted. Either way, adding an exercise to the bank can
-  // no longer silently reassign exercises in unrelated, already-generated
-  // programs — the fragility that caused the C7 regression.
+  // See identical fix + rationale on getSingleDay's primaryMatchRank above.
+  const primaryMatchRank = (e, groups) => primaryOnlyMatch(e, groups) ? 0 : 1;
+  // GEN-fix (exercise-selection mechanism): bank() returns a candidate pool in a
+  // fixed, explainable priority order instead of raw EXERCISE_BANK object-
+  // insertion order, so adding an exercise to the bank can no longer silently
+  // reassign exercises in unrelated, already-generated programs (the fragility
+  // that caused the C7 regression). Priority order is now coverageCount ->
+  // primaryMatchRank -> equipmentAvailabilityRank -> freeWeightRank -> name —
+  // see each rank's own declaration; oneRmFactor is no longer a ranking input
+  // at all (2026-09-18, council ruling R1 — see the comment on that removal
+  // below), only a load-estimation input read by defW()/seedWeight().
   const bank = ({groups, cat, excl=[]}) => {
     const eligible = (e) => tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name);
     // SOFT fallback — see identical rationale on getSingleDay's select() above:
@@ -2531,13 +2588,21 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
           const covDiff = coverageCount(b) - coverageCount(a);
           if (covDiff !== 0) return covDiff;
         }
-        if (a.oneRmFactor != null || b.oneRmFactor != null) {
-          const diff = (b.oneRmFactor ?? 0) - (a.oneRmFactor ?? 0);
-          if (diff !== 0) return diff;
-        }
+        // NO oneRmFactor RANK HERE — removed 2026-09-18, rule-identical to
+        // select()'s copy above. See that declaration + docs/council-r1-
+        // reconciliation-2026-09-18.md for the full reasoning. Enforced by D29.
+        // PRIMARY-MATCH — rule-identical to select()'s copy above, via the SHARED
+        // shape (primaryMatchRank). No-op for compound (primaryOnlyMatch already
+        // filtered); live for isolation/core/cardio.
+        const pm = primaryMatchRank(a, groups) - primaryMatchRank(b, groups);
+        if (pm !== 0) return pm;
         // BUG-108/BUG-94 tiebreak — see the comment above getSingleDay's declaration.
         const eqDiff = equipmentAvailabilityRank(a) - equipmentAvailabilityRank(b);
         if (eqDiff !== 0) return eqDiff;
+        // FREE-WEIGHT — rule-identical to select()'s copy above, via the SHARED
+        // freeWeightRank helper. ACSM 2009 (PMID 19204579); see its declaration.
+        const fw = freeWeightRank(a) - freeWeightRank(b);
+        if (fw !== 0) return fw;
         return a.name.localeCompare(b.name);
       });
   };
