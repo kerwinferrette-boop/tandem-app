@@ -2983,24 +2983,88 @@ function resolveGoalVolume(program, goal) {
     ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e : ({ ...e, sets: e.compound ? 1 : 0 })),
   })) }));
   const slotWeight = computeMuscleWeeklyVolume(probe, EXERCISE_BANK);
-  const weights = MAJOR_MUSCLE_GROUP_TOKENS
-    .map(token => Object.entries(slotWeight)
+  // BUG-122 fix (2026-09-21): `needed` used to be ONE global scalar, driven by
+  // whichever major muscle was worst-served, and applied to EVERY exercise in the
+  // whole program regardless of which muscle it actually targets. On an asymmetric
+  // split (5-day transform: push gets 1 compound chest slot/wk, pull gets 2 back
+  // slots/wk) that meant chest's own correction (needed=10 to clear its MEV from a
+  // single weekly touch) got stamped onto every back/leg/arm exercise too — a
+  // well-served muscle with 4-6x chest's weekly exposure inflated to the SAME 10
+  // sets/exercise, producing ~50+ working sets in a single session. research-report
+  // (8).pdf §1: "Weekly volume targets: 10-20+ sets per muscle group per week,
+  // distributed across 3-5 sessions" / "Higher frequency (4-5 days/week) distributes
+  // volume across more sessions" — nothing supports one muscle's floor-correction
+  // bleeding into every other muscle's sets. Fix: derive `needed` PER MAJOR MUSCLE
+  // GROUP so each exercise is sized to what ITS OWN target actually needs, not the
+  // worst case anywhere in the program. `byMuscle` is keyed by MAJOR_MUSCLE_GROUP_TOKENS.
+  const byMuscle = {};
+  for (const token of MAJOR_MUSCLE_GROUP_TOKENS) {
+    const w = Object.entries(slotWeight)
       .filter(([tag]) => tag === token || tag.startsWith(token + '_'))
-      .reduce((sum, [, v]) => sum + v, 0))
-    .filter(w => w > 0);
+      .reduce((sum, [, v]) => sum + v, 0);
+    if (w > 0) byMuscle[token] = Math.max(base.compound, base.isolation, Math.ceil(landmark.mev / w));
+  }
+  const weights = Object.values(byMuscle);
   if (!weights.length) return base;
-  // The WORST-served major muscle sets the sets-per-exercise floor — every
-  // other muscle clears MEV for free once the tightest constraint is met.
-  const worstSlotWeight = Math.min(...weights);
-  const needed = Math.max(base.compound, base.isolation, Math.ceil(landmark.mev / worstSlotWeight));
-  return { compound: needed, isolation: needed };
+  return { compound: base.compound, isolation: base.isolation, byMuscle };
 }
+// BUG-122 follow-up (2026-09-21, same day, llm-council pre-ship review — 4 of 5
+// advisors independently flagged the first version of this fix as the SAME bug
+// at a narrower scope): giving every exercise that touches an under-served
+// muscle the full per-muscle `needed` count still double(or triple)-counts a
+// muscle hit by MULTIPLE slots in one session (e.g. a compound AND an
+// isolation exercise both targeting chest each independently getting sets
+// sized to clear the full weekly MEV — crediting ~2x MEV in one day). SHOULD:
+// research-report(8).pdf §1, "Weekly volume targets: 10-20+ sets per muscle
+// group per week" is a WEEKLY total, not a per-slot one. COULD (rejected):
+// keep the static per-muscle map and cap total sessions instead — doesn't
+// generalize, still needs a running total to know when a muscle is already
+// satisfied. DID: applyGoalVolume now assigns sets in program (day/block)
+// order while tracking each muscle's running CREDITED total (primary 1.0 /
+// secondary 0.5, the same accounting D6b's own doctrine check uses on the
+// final output) and only requests enough additional sets to close what's
+// STILL short of that muscle's MEV — a second slot touching an
+// already-satisfied muscle falls back to the flat per-goal base instead of
+// re-requesting the full correction. This is the SAME running-credit
+// accounting computeMuscleWeeklyVolume() uses to grade the final output, so
+// the two can't drift apart the way a separately-derived static map could.
 function applyGoalVolume(program, goal) {
+  const base = GOAL_VOLUME[goal];
+  const landmark = VOLUME_LANDMARKS[goal];
   const cfg = resolveGoalVolume(program, goal);
-  if (!cfg || !Array.isArray(program)) return program;
+  if (!cfg || !base || !Array.isArray(program)) return program;
+  if (!landmark || !cfg.byMuscle) {
+    return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
+      ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e
+        : ({ ...e, sets: e.compound ? cfg.compound : cfg.isolation })),
+    })) }));
+  }
+  const byName = {};
+  for (const e of Object.values(EXERCISE_BANK || {})) if (e && e.name) byName[e.name] = e;
+  const credited = {}; // running per-token credit (primary 1.0 / secondary 0.5) assigned so far this pass
   return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
-    ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e
-      : ({ ...e, sets: e.compound ? cfg.compound : cfg.isolation })),
+    ...b, exs: (b.exs || []).map(e => {
+      if (e.isCore || e.cardioOnly) return e;
+      const fallback = e.compound ? cfg.compound : cfg.isolation;
+      const entry = byName[e.name];
+      const primaryTokens = entry ? MAJOR_MUSCLE_GROUP_TOKENS.filter(t =>
+        (entry.muscleGroups.primary || []).some(m => m === t || m.startsWith(t + '_'))) : [];
+      const secondaryTokens = entry ? MAJOR_MUSCLE_GROUP_TOKENS.filter(t =>
+        (entry.muscleGroups.secondary || []).some(m => m === t || m.startsWith(t + '_'))) : [];
+      const tokens = [...new Set([...primaryTokens, ...secondaryTokens])];
+      if (!tokens.length) return { ...e, sets: fallback };
+      let sets = fallback;
+      for (const t of tokens) {
+        const weight = primaryTokens.includes(t) ? 1.0 : 0.5;
+        const remaining = landmark.mev - (credited[t] || 0);
+        if (remaining > 0) sets = Math.max(sets, Math.ceil(remaining / weight));
+      }
+      for (const t of tokens) {
+        const weight = primaryTokens.includes(t) ? 1.0 : 0.5;
+        credited[t] = (credited[t] || 0) + sets * weight;
+      }
+      return { ...e, sets };
+    }),
   })) }));
 }
 
