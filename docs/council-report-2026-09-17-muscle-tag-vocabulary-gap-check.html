@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Council Report — muscle-tag-vocabulary D30 gap-check (2026-09-17)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --muted: #6b6b6b; --border: #e2e2e2; --bg: #ffffff;
+    --accent-agree: #2f7d4f; --accent-clash: #b3541e; --accent-blind: #7c3aed;
+    --accent-rec: #1d4ed8; --card-bg: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink); background: var(--bg); margin: 0; line-height: 1.55;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 32px; }
+  header .eyebrow { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; }
+  header h1 { font-size: 24px; margin: 8px 0 12px; }
+  header .question { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 14.5px; color: #333; }
+  h2 { font-size: 18px; margin-top: 40px; border-left: 4px solid var(--ink); padding-left: 10px; }
+  .agree h2 { border-color: var(--accent-agree); }
+  .clash h2 { border-color: var(--accent-clash); }
+  .blind h2 { border-color: var(--accent-blind); }
+  .rec h2 { border-color: var(--accent-rec); }
+  section p, section li { font-size: 15px; }
+  section ol, section ul { padding-left: 22px; }
+  code { background: #f0f0f0; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  .callout {
+    border: 1px solid var(--accent-rec); background: #eff4ff; border-radius: 8px;
+    padding: 16px 18px; margin-top: 14px;
+  }
+  .callout strong { color: var(--accent-rec); }
+  .facts {
+    border: 1px dashed #999; border-radius: 8px; padding: 16px 18px; margin: 28px 0;
+    background: #fffbea;
+  }
+  .facts h3 { margin-top: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: #7a5c00; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 18px 0 8px; }
+  .advisor-chip {
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; text-align: center; font-size: 12.5px; background: var(--card-bg);
+  }
+  .advisor-chip .name { font-weight: 600; display: block; margin-bottom: 4px; }
+  .advisor-chip.winner { border-color: var(--accent-agree); background: #eefaf1; }
+  .winner-badge { display: block; font-size: 11px; color: var(--accent-agree); margin-top: 4px; }
+  details {
+    border: 1px solid var(--border); border-radius: 8px; margin: 10px 0; padding: 0;
+    background: var(--card-bg); overflow: hidden;
+  }
+  details summary {
+    cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 14.5px;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; font-weight: 400; color: var(--muted); }
+  details[open] summary::after { content: "–"; }
+  details .body { padding: 4px 16px 16px; font-size: 14.5px; color: #333; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">LLM Council · Gap-check · 2026-09-17</div>
+  <h1>Does <code>claude/muscle-tag-vocabulary</code> hold a real, worth-salvaging gap?</h1>
+  <div class="question">
+    Tandem's D30 doctrine invariant ("no two COMPOUND exercises of the same movement pattern in one session") is <strong>PENDING</strong>, not ACTIVE — it has one point-fixed instance (FOCUS_SLOTS.chest) and one confirmed-still-live instance (TEMPLATES.day2/day4 'quad' collision). A stale, unmerged branch built a full <code>MOVEMENT_PATTERN</code> table + <code>patternClash</code> comparator mechanism that main never got. Is re-authoring this against current main worth it, or is it fine to leave as future work?
+  </div>
+</header>
+
+<section class="rec">
+  <h2>The Verdict, Up Front</h2>
+  <div class="callout">
+    <strong>Re-author it — narrower than any single advisor proposed.</strong> Extract the branch's 72-exercise movement-pattern table as pure data, re-insert a fresh <code>patternClash</code> into main's <em>current</em> comparator chain (a prior, unrelated council session already proved this composition works, at branch tip <code>1ae6ea5</code>), fix the confirmed day2/day4 collision as proof, and flip D30 from PENDING to ACTIVE in <code>doctrine.mjs</code> in the same commit. Reject "leave as future work" — a PENDING invariant with a confirmed live violation and zero enforcing gate is an open hole, not a neutral backlog item.
+  </div>
+</section>
+
+<div class="facts">
+  <h3>Facts verified directly against the live repo (not advisor speculation)</h3>
+  <ul>
+    <li><code>docs/council-r1-reconciliation-2026-09-18.md</code> is a real prior council session on this same branch's separate D29 question. It already verified, via <code>git show</code>, that branch tip <code>1ae6ea5</code> contained a <em>working, composed</em> <code>patternClash</code> alongside <code>primaryMatchRank</code>/<code>equipmentAvailabilityRank</code>/<code>freeWeightRank</code>.</li>
+    <li>That prior council's shipped recommendation added <code>primaryMatchRank</code>/<code>equipmentAvailabilityRank</code>/<code>freeWeightRank</code> to main — confirmed present in current <code>programs.js</code> today — but deliberately left <code>patternClash</code> out.</li>
+    <li><code>patternClash</code> still does not exist anywhere in current <code>programs.js</code> (zero matches). The D30 gap is real, current, and unaddressed.</li>
+    <li>Main's actual current chain is one step further evolved than any advisor's snapshot: <code>primaryOnlyMatch → coverageCount → primaryMatchRank → equipmentAvailabilityRank → freeWeightRank</code>. Per the branch's own proven ordering, <code>patternClash</code> belongs between <code>coverageCount</code> and <code>primaryMatchRank</code>.</li>
+  </ul>
+</div>
+
+<section class="agree">
+  <h2>Where the Council Agrees</h2>
+  <p>All five advisors converge: <strong>do not raw-merge the branch.</strong> Its integration code is stale, main has moved on, and a wholesale merge would delete real shipped work. Four of five also agree the 72-exercise classification table itself is worth carrying forward as data, decoupled from the branch's dead comparator logic. And there's unanimous, if implicit, agreement that "leave as documented future work" undersells the gap — this is a named, cited, doctrine-registered defect with a second confirmed live instance, not a hypothetical.</p>
+</section>
+
+<section class="clash">
+  <h2>Where the Council Clashes</h2>
+  <div class="grid">
+    <div class="advisor-chip"><span class="name">Contrarian</span>Question is a "decoy" — extract data, done</div>
+    <div class="advisor-chip"><span class="name">First Principles</span>Redesign from scratch, don't port</div>
+    <div class="advisor-chip"><span class="name">Expansionist</span>Turn it into a full taxonomy investment</div>
+    <div class="advisor-chip"><span class="name">Outsider</span>Take the table, write the connector fresh</div>
+    <div class="advisor-chip winner"><span class="name">Executor</span>Scoped, timeboxed, plan<span class="winner-badge">Picked strongest by all 5 reviewers</span></div>
+  </div>
+  <p>The real fork is <strong>scope</strong>, not salvage-vs-defer. The Expansionist's antagonist-pairing/weekly-balancing taxonomy pitch was flagged by 4 of 5 reviewers as uncited scope creep that abandons the actual question — a separate, legitimate idea that belongs in its own council pass, not this bugfix. The First Principles Thinker's "derive pattern-membership from <code>coverageCount</code>" idea was caught as factually wrong by Reviewer 4: <code>coverageCount</code> measures muscle-group coverage, a different axis entirely from movement pattern. Even the Executor — the consensus strongest response — targeted a comparator chain now confirmed one step behind main's real current shape.</p>
+</section>
+
+<section class="blind">
+  <h2>Blind Spots the Council Caught</h2>
+  <p>Every advisor and 4 of 5 reviewers worked from a stale snapshot of main's shape — none knew <code>primaryMatchRank</code>/<code>equipmentAvailabilityRank</code>/<code>freeWeightRank</code> had already shipped from a prior, unrelated council session on this same branch, or that a working composed <code>patternClash</code> already existed and was verified at branch tip <code>1ae6ea5</code>. Only Reviewer 5 caught this by checking git history. This reframes the whole problem: it's not "design or port from scratch," it's <strong>"re-verify and re-insert a mechanism already proven to compose correctly."</strong></p>
+  <p>Second, independently-surfaced blind spot (3 of 5 reviewers): D30 is currently <code>PENDING</code> in <code>doctrine.mjs</code> — meaning <strong>no gate enforces it today</strong>. Per this repo's own D17 principle, an unenforced invariant sitting in code is a live silent gap, not a neutral deferral. CLAUDE.md requires promoting PENDING → ACTIVE in the same change that makes it true; no advisor's plan included this step.</p>
+</section>
+
+<h2>Advisor Responses (full text)</h2>
+
+<details>
+  <summary>The Contrarian — "this whole council question is a decoy"</summary>
+  <div class="body">
+    <p>Every fact in this setup checks out — I pulled <code>doctrine.mjs</code> directly and the D30 entry says almost verbatim what's in the prompt, including "needs... re-authored against current main... not transplanted." That makes the actual dispute smaller than it's being sold as, and that's my objection: this whole council question is a decoy.</p>
+    <p>Nobody serious says yes to porting stale integration code into a comparator chain that's since evolved past it — doctrine.mjs already says "not transplanted." There's no live debate on the integration code. Dressing this up as a two-sided dilemma manufactures deliberation where none is needed.</p>
+    <p>The real decision hiding underneath — is the TABLE DATA worth extracting even though the code around it is dead — also isn't hard: extracting a static classification table costs nothing near what a full merge costs.</p>
+    <p>The bigger tell: this is the second live D30 violation, not a hypothetical. "Only one scenario so far" undercounts by construction, because nobody has run the full goal×days×sex×tier sweep against <code>patternClash</code> logic to find the others. The correct move per "fix the mechanism, not the instance" is to run that sweep before concluding it's a one-off. Nobody proposed that.</p>
+  </div>
+</details>
+
+<details>
+  <summary>The First Principles Thinker — "you're asking a porting question, not the real question"</summary>
+  <div class="body">
+    <p>The question as framed is "salvage the branch or defer it" — that's a merge-logistics question dressed up as an engineering decision. Strip it back further: what is D30 actually for? D30 exists so a session doesn't stack two compounds hitting the same movement pattern — that's a property of the <em>output</em> of exercise selection, not any particular data structure.</p>
+    <p>Given main's comparator chain has since evolved a ranking concept the branch never had, a static classification table may not even be the right shape anymore. You may not need a table at all if pattern-membership can be derived from the same signals <code>coverageCount</code> already computes.</p>
+    <p>So the real question isn't "port the table or not" — it's "what is the minimal, general check that guarantees D30 holds, expressed in terms of the comparator chain as it exists TODAY." Design that fresh; use the branch's table only as a citation-checked data source.</p>
+  </div>
+</details>
+
+<details>
+  <summary>The Expansionist — "the collision fix is the excuse, the taxonomy is the prize"</summary>
+  <div class="body">
+    <p>The frame here is wrong-sized. Everyone's arguing about whether this is worth doing to fix one 3-day-split collision — the least interesting reason to do it. The MOVEMENT_PATTERN table is a classification of the entire compound exercise vocabulary — a taxonomy asset, not a bugfix asset.</p>
+    <p>Once 72 compounds are pattern-classified you get antagonist-pairing logic, weekly pattern-frequency balancing (nothing stops a whole week overloading vertical_push and starving hinge), and the missing vocabulary layer for the biometric adaptation layer — the actual moat.</p>
+    <p>Re-author the table now, while it's cheap, decoupled from any specific comparator, as a standalone data asset with its own smoke test — before more comparator-chain evolutions make the port cost even higher.</p>
+  </div>
+</details>
+
+<details>
+  <summary>The Outsider — "a 90%-finished fix is rotting on a branch nobody's touching"</summary>
+  <div class="body">
+    <p>I don't know what any of these acronyms mean, and I think that's the point of asking me. Stripped of jargon: you have a known bug fixed for one case, a second confirmed unfixed case, and an abandoned branch with a real general fix whose code doesn't talk to current main.</p>
+    <p>That's not a hard call. You take the one thing from that branch that isn't code — the classification table, since it's just data — and throw away the comparator logic since it's provably obsolete. Write the connector fresh, today. A day of work, closing both cases with one mechanism instead of two patches.</p>
+    <p>Calling this "future work" is the wrong frame — you're leaving a second copy of a bug you already found sitting in production.</p>
+  </div>
+</details>
+
+<details open>
+  <summary>The Executor — consensus strongest response</summary>
+  <div class="body">
+    <p>Monday morning: don't merge the branch, don't cherry-pick misfit integration code. In under an hour:</p>
+    <ol>
+      <li>Copy the 72-exercise MOVEMENT_PATTERN table as a flat data literal — 15 minutes, survives drift untouched.</li>
+      <li>Write a NEW <code>patternClash</code> function against current main's actual comparator chain, citing D30/R2 in the commit.</li>
+      <li>Fix the ONE known live case (day2/day4 'quad' collision) as proof it works, resolving the PENDING doctrine note.</li>
+      <li>Port the smoke test's <em>intent</em> against the CURRENT bank, not the branch's stale copy.</li>
+    </ol>
+    <p>Half a day of work, not a research project. Salvage the data, rewrite ~50 lines, ship the one real fix.</p>
+  </div>
+</details>
+
+<h2>Peer Review Highlights</h2>
+<details>
+  <summary>All 5 reviewers on strongest / blind spot / what everyone missed</summary>
+  <div class="body">
+    <p><strong>Unanimous on strongest:</strong> The Executor (D) — the only response with a concrete, scoped, timeboxed, falsifiable plan tied directly to <code>doctrine.mjs</code>'s own PENDING note language.</p>
+    <p><strong>Biggest blind spot (split):</strong> 3 of 5 reviewers picked the Expansionist (B) for unscoped taxonomy scope-creep with no citation; 2 of 5 picked the First Principles Thinker (A) for being philosophically clean but operationally useless, including a factual error (conflating <code>coverageCount</code>'s muscle-group axis with movement-pattern classification).</p>
+    <p><strong>What all five advisors missed (new finding, surfaced independently by 2+ reviewers):</strong> D30 must be promoted from PENDING to ACTIVE in <code>doctrine.mjs</code> in the same change that fixes it, per CLAUDE.md's own non-negotiable rule — and leaving D30 PENDING is not a neutral deferral, since it currently has zero enforcing gate (a live D17-shaped silent gap).</p>
+    <p><strong>Reviewer 5's unique finding</strong> (independently verified against the repo): a prior, unrelated council session (<code>docs/council-r1-reconciliation-2026-09-18.md</code>) already found the branch's tip commit <code>1ae6ea5</code> contains a working, composed <code>patternClash</code> — meaning this is a "re-verify a known-good shape" problem, not a from-scratch design problem.</p>
+  </div>
+</details>
+
+<footer>
+  Council convened 2026-09-17 via the <code>llm-council</code> skill: 5 advisor sub-agents → 5 anonymized peer-review sub-agents → 1 chairman synthesis. Full transcript: <code>docs/council-transcript-2026-09-17-muscle-tag-vocabulary-gap-check.md</code>.
+</footer>
+
+</div>
+</body>
+</html>
