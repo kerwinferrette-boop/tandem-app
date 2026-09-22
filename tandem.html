@@ -2985,9 +2985,24 @@ const EQ_TIER_TO_CFG = {
   bodyweight:'bodyweight'
 };
 // Source priority: live selector (sessionStorage.eq_tier) → onboarding cfg → full_gym.
+// BUG-118: the session override is only honored while sessionStorage.eq_tier_baseline
+// (the cfg.equipment value applySetupSelection() saw AT THE MOMENT it wrote eq_tier —
+// see that function below) still matches the LIVE cfg.equipment. If they've diverged —
+// e.g. syncFromCloud() rehydrated cfg.equipment to a different durable account value
+// (new login/device/session) without this tab's knowledge, since syncFromCloud() never
+// touches sessionStorage — the override is stale and we fall through to the live
+// cfg.equipment instead of silently serving a different account's/an earlier tab
+// state's equipment tier. A missing baseline (sessionStorage.getItem returns null —
+// either never set, or set by pre-fix code that didn't know to write it) is treated as
+// NOT fresh, deliberately fail-safe: we have no evidence the override still applies, so
+// we don't extend it trust. This does NOT change priority order — a genuinely fresh
+// session override (baseline still matches) still wins over cfg.equipment, preserving
+// the legitimate "I'm at a hotel today" one-tab feature.
 function resolveEquipmentTier() {
   const sess = sessionStorage.getItem('eq_tier');
-  if (sess && EQ_TIER_TO_BANK[sess]) return EQ_TIER_TO_BANK[sess];
+  const baseline = sessionStorage.getItem('eq_tier_baseline');
+  const baselineFresh = baseline !== null && baseline === (cfg.equipment || '');
+  if (sess && EQ_TIER_TO_BANK[sess] && baselineFresh) return EQ_TIER_TO_BANK[sess];
   if (cfg.equipment && CFG_EQ_TO_BANK[cfg.equipment]) return CFG_EQ_TO_BANK[cfg.equipment];
   return 'full_gym';
 }
@@ -3893,6 +3908,15 @@ function applySetupSelection() {
   // choice gets saved past a closed tab.
   if (typeof cfg === 'object' && cfg) {
     cfg.equipment = EQ_TIER_TO_CFG[tier] || null;
+    // BUG-118: stash cfg.equipment AS OF this session override, so
+    // resolveEquipmentTier() can later tell whether the override is still
+    // trustworthy. If cfg.equipment changes underneath this tab (durably, via
+    // syncFromCloud() on a later login/device) without this baseline changing,
+    // resolveEquipmentTier() sees the mismatch and falls through to the live
+    // cfg.equipment instead of the stale tier. Never edits syncFromCloud() itself —
+    // this only ever reads its OUTPUT (the live cfg.equipment), same as
+    // resolveEquipmentTier() already did before this fix.
+    sessionStorage.setItem('eq_tier_baseline', cfg.equipment || '');
     // Write local FIRST so the choice survives a reload even if the cloud
     // round-trip is slow, offline, or the tab closes before it resolves —
     // every other cfg-mutation call site in this file does the same
@@ -3901,6 +3925,12 @@ function applySetupSelection() {
     // silently revert to Full Gym.
     LS.set('tandem_cfg', cfg);
     if (typeof syncToCloud === 'function') syncToCloud();
+  } else {
+    // No cfg yet (pre-onboarding tap, shouldn't normally happen but stay
+    // consistent) — record an empty baseline so a later resolveEquipmentTier()
+    // call (once cfg exists) never compares against a stale leftover baseline
+    // from a different tier/account.
+    sessionStorage.setItem('eq_tier_baseline', '');
   }
   document.getElementById('setupStatus').textContent = EQ_LABELS[tier] || tier;
   document.getElementById('eqActiveLabel').textContent = tier === 'full_gym'
