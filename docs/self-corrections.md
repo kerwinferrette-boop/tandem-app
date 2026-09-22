@@ -780,3 +780,50 @@ above). The mitigation applied this cycle was narrower and honest about its limi
 "KNOWN LIMITATION" paragraph naming the undetected case plainly, and citing this same cycle's live
 use of the read-side rule (BUG-93/BUG-118's prompt fields) as the actual runtime evidence for that
 half — rather than claiming both halves were runtime-verified when only one was.
+
+---
+
+## SC-21 — I re-read SC-18 as background and still committed its exact mistake
+
+**What I believed.** That because `scripts/preflight.mjs` reported a clean working tree
+(`0 changed path(s)`) and `HEAD` up to date with `origin/main` at the very start of this session,
+the primary checkout (`/home/user/tandem-app`) was safe to keep editing directly, in place, for the
+whole BUG-118 fix — without re-checking `git worktree list`/`git stash list` immediately before the
+first edit, even though I had just read SC-18 (this same file, this same session's context load)
+stating that exact checklist as the rule.
+
+**What was true.** The checkout was contended. Partway through my edit, ~140 uncommitted lines of a
+different session's BUG-93 R1-R5 WIP (`isBeforeProgramStart`, `cfg.startEpoch`, the queue-priority
+rewrite in `renderProgramViews()`) appeared in the same `tandem.html` I was editing — present at
+neither my session-start preflight nor `HEAD`, so it was written by a concurrent process mid-session.
+I only discovered this because `npm run verify` failed on two checks (`D9`, lastsets churn smoke)
+my two-line diff could not plausibly cause, and `git diff --stat` showed 142 insertions where I had
+written roughly 20. Cross-checking `git worktree list` and `HEAD:tandem.html` at that point (i.e.
+*after* the damage, not before) confirmed the contamination and let me cleanly reverse my own two
+edits and redo the fix in an isolated worktree — but the check that would have caught this
+*before* I ever touched the shared file was sitting in this exact document, already written, from
+an earlier session's identical mistake.
+
+**The gap.** I treated "I have read SC-18" as equivalent to "I applied SC-18's checklist," which is
+the same substitution SC-16 already named for a different rule (removal-and-flag vs. actually
+researching) — reading a corrective rule is not the same act as running the check it prescribes at
+the moment it prescribes it (before the first mutating command against a long-lived checkout). A
+clean `preflight.mjs` snapshot at session start is a fact about that instant (SC-01/SC-05/SC-12's
+family), and SC-18 exists specifically because a shared checkout can go from idle to contended
+between that instant and the moment an edit lands — checking once at start and never again defeats
+the rule's whole purpose.
+
+> **THE RULE — SC-21.** Reading a self-correction in this file at session start satisfies nothing by
+> itself. For SC-18 specifically: before the FIRST edit to a long-lived shared checkout (not one this
+> session created), run `git worktree list` AND `git stash list` at that moment, not from memory of
+> what preflight said minutes earlier — and if any edit's actual `git diff --stat` ever comes back
+> larger than what was written, or a standing gate fails on a check the intended diff could not
+> plausibly touch, treat that as a live contention signal immediately (not after further
+> investigation) and stop mutating the checkout in place until an isolated `git worktree` is
+> confirmed clean.
+
+**Enforced by** judgment — not mechanically checkable today, same honest limit SC-18 itself states.
+The mechanical proxy that actually caught this instance was noticing an unexplained gate failure and
+an unexplained diff-size mismatch and treating both as signal rather than noise — worth naming
+explicitly as the trigger, since "the gates failed in a way my change can't explain" is a concrete,
+checkable-by-a-human-reading-output signal even though no script currently raises it automatically.
