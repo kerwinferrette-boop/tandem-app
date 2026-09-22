@@ -53,6 +53,7 @@ const CHECKS = [
   { name: 'slot reachability (EPIC-026 Wave 2 — no bank entry ships dead, no new orphan tags)', run: () => execFileSync('node', [join(scriptsDir, 'reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'program snapshot (change detector — generated output matches committed baseline)', run: () => execFileSync('node', [join(scriptsDir, 'program-snapshot.mjs')], { stdio: 'inherit' }) },
   { name: 'doctrine conformance (Notion law — see /DOCTRINE.md)', run: () => execFileSync('node', [join(scriptsDir, 'doctrine.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-128 bottom-nav pin smoke (Playwright — nav stays pinned through scroll + under an open modal)', run: () => execFileSync('node', [join(scriptsDir, 'bug128-bottomnav-pin-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];

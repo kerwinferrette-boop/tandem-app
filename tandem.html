@@ -721,7 +721,26 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .pr-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(7,7,11,.96);
+/* BUG-128: position:fixed was already correct (do not touch it) — the reported
+   "does not stay fixed" symptom is the well-documented mobile dynamic-toolbar
+   class of bug: `bottom:0` on a position:fixed element is computed against a
+   containing block whose size can differ from what is actually visible while
+   a mobile browser's address-bar/toolbar is animating in or out, and Safari's
+   own floating bottom chrome (iOS 15+) can additionally sit on top of a plain
+   bottom:0 bar. This does not reproduce in a fixed-size headless viewport
+   (confirmed live, scripts/bug128-bottomnav-pin-smoke.mjs — the bar stays
+   pinned through a full scroll there), which is expected: headless Chromium
+   has no dynamic toolbar to mis-measure against. `env(safe-area-inset-bottom)`
+   is the standard, spec-level (Baseline-supported) anchor for exactly this
+   "fixed bottom bar vs. mobile browser chrome" case — see web.dev's own
+   viewport-units guidance ("a good example of using the svh unit would be to
+   define the height of a fixed bottom bar") and the same env()-based pattern
+   documented for Safari 15's bottom tab bars. Second `bottom` declaration
+   wins where env() is supported; the first is the fallback for browsers that
+   don't support it — same value (0) as today when the inset is 0, so this
+   does not change the bar's resting position on any device without a bottom
+   safe-area inset. */
+.bottom-nav{position:fixed;bottom:0;bottom:env(safe-area-inset-bottom,0);left:0;right:0;background:rgba(7,7,11,.96);
   backdrop-filter:blur(20px);border-top:1px solid var(--border);
   display:flex;padding:9px 14px 22px;gap:7px;z-index:300;max-width:580px;margin:0 auto;}
 .bnav-btn{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--s1);
