@@ -38,6 +38,15 @@ if (startIdx === -1) { console.error('could not find saveSetLS'); process.exit(1
 const endIdx = html.indexOf('\n}', startIdx);
 const saveSetLSSrc = html.slice(startIdx, endIdx + 2);
 
+// BUG-93/R2 (2026-09-2x): saveSetLS() now routes its 'today' cache key through
+// localDateStr() instead of a raw toISOString().split('T')[0] (the same UTC-rollover
+// class of bug BUG-018/027 already fixed for session_date). This smoke test extracts
+// and runs the real saveSetLS(), so it must also extract the real localDateStr() it
+// now calls — same "no re-implementation" discipline as the rest of this file.
+const localDateStrMatch = html.match(/function localDateStr\([\s\S]*?\n\}/);
+if (!localDateStrMatch) { console.error('could not find localDateStr'); process.exit(1); }
+const localDateStrSrc = localDateStrMatch[0];
+
 // ── 2. Run it against an in-memory LS stub ──
 const store = {};
 const LS = {
@@ -45,7 +54,7 @@ const LS = {
   set: (k, v) => { store[k] = JSON.parse(JSON.stringify(v)); },
 };
 const ctx = vm.createContext({ LS, Date, Math, JSON });
-vm.runInContext(saveSetLSSrc + '\nthis.saveSetLS = saveSetLS;', ctx);
+vm.runInContext(`${localDateStrSrc}\n${saveSetLSSrc}\nthis.saveSetLS = saveSetLS;`, ctx);
 const saveSetLS = ctx.saveSetLS;
 
 // ── 3. Churn scenario ──

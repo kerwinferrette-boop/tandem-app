@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Council Report — BUG-93 ship review</title>
+<style>
+  :root {
+    --ink: #1c1c1e;
+    --muted: #6b6b70;
+    --border: #e2e2e6;
+    --bg: #ffffff;
+    --panel: #f7f7f9;
+    --accent: #2f6fed;
+    --agree: #1c8a4a;
+    --clash: #b8860b;
+    --blind: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    line-height: 1.55;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+  .question-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 32px;
+    font-size: 0.97rem;
+  }
+  .question-box strong { display: block; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .mechanism-note {
+    background: #fff7e6;
+    border: 1px solid #f0d999;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 0.9rem;
+  }
+  h2 {
+    font-size: 1.1rem;
+    margin-top: 36px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2.agree { border-color: var(--agree); color: var(--agree); }
+  h2.clash { border-color: var(--clash); color: var(--clash); }
+  h2.blind { border-color: var(--blind); color: var(--blind); }
+  h2.rec { border-color: var(--accent); color: var(--accent); }
+  .verdict-section p, .verdict-section li { margin: 8px 0; }
+  .next-step {
+    background: #eef4ff;
+    border: 1px solid #c9dbff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 14px;
+    font-weight: 500;
+  }
+  .gates {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 16px 0 28px;
+  }
+  .gate {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .gate .num { font-size: 1.3rem; font-weight: 700; color: var(--agree); }
+  .gate .label { font-size: 0.78rem; color: var(--muted); }
+  details {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin: 10px 0;
+  }
+  summary { cursor: pointer; font-weight: 600; }
+  .lens-label { display: inline-block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); margin-bottom: 4px; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Council Report — BUG-93 ship review</h1>
+<div class="meta">2026-09-22 · program start / day pointer · pre-ship review of the shipped fix
+(fourth pass on this bug — see the 2026-09-15 diagnosis council this one builds on)</div>
+
+<div class="mechanism-note">
+<strong>Mechanism, stated plainly:</strong> this session had no tool available to spawn isolated
+sub-agent processes, so the five-lens review below was produced by one reasoning process working
+through each lens adversarially against the real diff and real gate output — not five independent,
+blind sub-agent calls. Named here rather than presented as the full skill mechanism. See the
+transcript's Clash 1 for how the chairman weighted this.
+</div>
+
+<div class="question-box">
+<strong>Question brought to the council</strong>
+Does the shipped BUG-93 fix (queue-owns-the-day, local dates everywhere, start-pointer reset on
+adopt/create, honest same-day refinement, revert recomputes overdue without resetting the week)
+actually conform to Kerwin's rulings and the 2026-09-15 diagnosis council's verdict — and is
+anything here a fork that needs Kerwin directly rather than shipping on green gates + consensus?
+</div>
+
+<div class="gates">
+  <div class="gate"><div class="num">13/13</div><div class="label">npm run verify</div></div>
+  <div class="gate"><div class="num">630/630</div><div class="label">validate:personas</div></div>
+  <div class="gate"><div class="num">0</div><div class="label">walkthrough:onboarding findings</div></div>
+</div>
+
+<h2 class="agree">Where the Council Agrees</h2>
+<div class="verdict-section">
+<ul>
+<li>The fix is architecturally <strong>stronger than the prior council's literal prescription</strong>:
+recomputation-on-every-render (what shipped in <code>renderProgramViews()</code>) dominates
+"extract one shared function and call it from three sites" (what was prescribed 2026-09-15),
+because it doesn't depend on every future writer remembering to call anything.</li>
+<li>Gates are real, re-verified after a same-day rebase onto a concurrently-shipped sibling fix
+(BUG-118), clean auto-merge, re-run green.</li>
+<li>The R5 same-day refinement is honestly scoped, but needed one more guard (added during this
+review — see below) before its silent-fallback risk was actually closed rather than just disclosed.</li>
+<li>The second-device revert-overdue gap is real but bounded to one render cycle — now named
+explicitly in the shipped code comment, not left as an abstract "residual gap."</li>
+</ul>
+</div>
+
+<h2 class="clash">Where the Council Clashes</h2>
+<div class="verdict-section">
+<p><strong>Clash 1 — is a one-session five-lens review equivalent to the skill's five-subagent
+design?</strong> No, and that's stated rather than concealed. The chairman's response: this stands
+as a real, substantive review satisfying the letter and much of the spirit of
+<code>pre_ship_council_gate</code>, but a genuine 5-subagent run on this same diff is still owed
+whenever subagent tooling is available — filed as a note, not a blocker.</p>
+<p><strong>Clash 2 — does diverging from "extract <code>resolveCurrentDay()</code>, non-negotiable"
+need a new ruling?</strong> No. The 2026-09-15 council's own diagnosis was "cached derived state
+with no invalidation lifecycle" — recomputation-on-read IS an invalidation lifecycle, arguably the
+more complete one. Extraction was the <em>mechanism</em> proposed to reach that remedy, not the
+remedy itself; a stronger mechanism for the same remedy is conformance, not deviation. Resolved
+without Kerwin — a citable engineering chain, not a product fork.</p>
+</div>
+
+<h2 class="blind">Blind Spots the Council Caught</h2>
+<div class="verdict-section">
+<ul>
+<li>The R5 refinement's silent-fallback risk (a future local-history write with a non-numeric
+<code>id</code> would quietly fall back to the weaker date-only test, no warning) had no floor
+assertion until this review — closed by adding a source-level check to
+<code>program-start-smoke.mjs</code>, proven to catch the exact regression by mutation-testing it.</li>
+<li>The second-device revert scenario was disclosed abstractly but never stated concretely — now a
+plain sentence in <code>revertToGenerated()</code>'s own comment.</li>
+</ul>
+</div>
+
+<h2 class="rec">The Recommendation</h2>
+<div class="verdict-section">
+<p><strong>Ship it.</strong> Consensus, not a split — no lens argued to hold the push for Kerwin;
+every concern raised was actionable within the same change and was closed before this report was
+finalized (the R5 floor check, the second-device sentence). Gates were re-run green after both
+additions.</p>
+<div class="next-step">The one thing done first, before this report closed: added the
+<code>hist.unshift()</code> numeric-<code>id</code> floor check to
+<code>program-start-smoke.mjs</code>, proved it catches a deliberate regression, restored the
+baseline, and re-ran <code>npm run verify</code> to confirm 13/13 still holds.</div>
+</div>
+
+<details>
+<summary>Full five-lens review + peer cross-check</summary>
+<p>See <code>docs/council-transcript-2026-09-22-bug93-ship-review.md</code> for the complete
+Contrarian / First Principles / Expansionist / Outsider / Executor analysis and the condensed
+peer cross-check that produced this verdict.</p>
+</details>
+
+<details>
+<summary>Predecessor council (2026-09-15) this review builds on</summary>
+<p>See <code>docs/council-transcript-2026-09-15-bug93-day-pointer.md</code> — the original
+diagnosis council, run before any code was written. Its five recommendations were checked
+against the actual shipped diff item by item in this review's transcript.</p>
+</details>
+
+<footer>
+Council on: BUG-93 program start / day pointer — ship review of the fix (Cycle: autonomous /loop,
+BUG-93 Claude Code Prompt). Generated 2026-09-22.
+</footer>
+
+</body>
+</html>

@@ -1176,7 +1176,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
           <span class="ob-label">Program Start Date</span>
           <div class="ob-field">
             <div class="ob-field-label">First Workout</div>
-            <input class="ob-input" type="date" id="ob-start-date" style="text-align:left;padding-left:18px;">
+            <input class="ob-input" type="date" id="ob-start-date" style="text-align:left;padding-left:18px;" oninput="this.removeAttribute('data-autofilled')">
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">The day your first workout falls on becomes Day 1 of your program.</div>
         </div>
@@ -1518,7 +1518,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
             <span class="ob-label">Program Start Date</span>
             <div class="ob-field">
               <div class="ob-field-label">First Workout</div>
-              <input class="ob-input" type="date" id="ob-lib-start-date" style="text-align:left;padding-left:18px;">
+              <input class="ob-input" type="date" id="ob-lib-start-date" style="text-align:left;padding-left:18px;" oninput="this.removeAttribute('data-autofilled')">
             </div>
             <div style="font-size:11px;color:var(--muted);margin-top:8px;font-weight:300;">The day your first workout falls on becomes Day 1 of your program.</div>
           </div>
@@ -3349,7 +3349,12 @@ async function finalizeLibraryOnboarding(btn) {
   const inEl = document.getElementById('ob-lib-height-in');
   const heightIn = ftEl.value ? (parseInt(ftEl.value) * 12 + parseInt(inEl.value || 0)) : null;
   const age = parseInt(document.getElementById('ob-lib-age').value) || null;
-  const startDate = document.getElementById('ob-lib-start-date')?.value || new Date().toISOString().split('T')[0];
+  // BUG-93/R3: a date input pre-filled at page load can go stale if the tab is left
+  // open past local midnight — refresh it to TODAY (local) here unless the user
+  // actually picked a date (oninput clears data-autofilled, see markup above).
+  const sdLibInput = document.getElementById('ob-lib-start-date');
+  if (sdLibInput && (!sdLibInput.value || sdLibInput.dataset.autofilled)) sdLibInput.value = localDateStr();
+  const startDate = sdLibInput?.value || localDateStr();
 
   cfg = {
     goal: tpl.code_goal_mapping,
@@ -3365,6 +3370,7 @@ async function finalizeLibraryOnboarding(btn) {
     secondary_goal: null,
     program_goal: tpl.code_goal_mapping,
     startDate,
+    startEpoch: Date.now(), // BUG-93/R5: same-day switch boundary refinement (local rows only)
     themeColor: selectedThemeColor || '#1B5E38',
     onboardingEstimates: {},
   };
@@ -3508,6 +3514,16 @@ async function adoptTemplate(templateId, btn) {
     // onboarding cfg.weeks would render deloads/phases sized for the WRONG length.
     // Same fix already applied to the sibling createCustomTemplate() path (Slice 6).
     cfg.weeks = src.duration_weeks;
+    // BUG-93/R4: a template adoption is a brand-new program — it never reset
+    // cfg.startDate, so the OLD program's calendar position (week-of-cadence anchor,
+    // getWeekSchedule()) and overdue gap (getOverdueDays()) carried straight over
+    // onto this one. Reset the start pointer to TODAY (local — R2) and clear the
+    // stale day-pointer cache; R1's queue reconciliation in renderProgramViews()
+    // then computes Day 1 from a start date that actually matches this program.
+    cfg.startDate = localDateStr();
+    cfg.startEpoch = Date.now(); // R5: same-day switch boundary refinement
+    delete cfg.revertedAt; // a fresh program supersedes any earlier revert floor
+    LS.del('tandem_current_day');
     LS.set('tandem_cfg', cfg);
     currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
     await syncToCloud();
@@ -3647,6 +3663,13 @@ async function createCustomTemplate(input) {
   // render time) — without this, a custom template shorter/longer than the user's
   // onboarding cfg.weeks would render deloads/phases sized for the WRONG length.
   cfg.weeks = weeks;
+  // BUG-93/R4: same reset as adoptTemplate() above — a custom-built program is
+  // also brand new and must not inherit the prior program's calendar position or
+  // overdue gap. See that function's comment for the full reasoning.
+  cfg.startDate = localDateStr();
+  cfg.startEpoch = Date.now();
+  delete cfg.revertedAt;
+  LS.del('tandem_current_day');
   LS.set('tandem_cfg', cfg);
   currentWeek = 1; LS.set('tandem_week', 1); // a new program starts at week 1
   await syncToCloud();
@@ -3896,6 +3919,24 @@ function revertToGenerated() {
   // stale programSource restored from cloud) could resurrect a program the user
   // had explicitly abandoned.
   LS.del('tandem_adopted_program');
+  // BUG-93/2(d) — Kerwin's ruling, 2026-09-16: revertToGenerated() RESUMES where the
+  // generated plan left off (cfg.startDate/cfg.weeks are deliberately left untouched,
+  // unlike adoptTemplate/createCustomTemplate above — this is not a new program), and
+  // the WEEK IS NOT RESET (currentWeek/tandem_week untouched here, same reason). Only
+  // the overdue clock recomputes, from the switch moment forward: getOverdueDays()
+  // floors its "last completed session" at cfg.revertedAt (below) whenever that floor
+  // is more recent than what history shows, so a long detour on an adopted/custom
+  // program doesn't retroactively read as "overdue since the generated program's
+  // original start" the instant he switches back — he becomes overdue again only if
+  // he doesn't train after reverting, not for time already spent on the other program.
+  // Local-only (not a users.* column, no schema change in this scope). Concretely: opening
+  // the app for the first time on a DIFFERENT device right after reverting won't see this
+  // floor and may show stale overdue there for one render — bounded, not open-ended, because
+  // the very next real completed session (logged anywhere) supersedes it via Math.max inside
+  // getOverdueDays() regardless of which device wrote it. Named explicitly per the 2026-09-22
+  // ship-review council (docs/council-transcript-2026-09-22-bug93-ship-review.md, "The
+  // Outsider") rather than left as an abstract residual-gap disclosure.
+  cfg.revertedAt = localDateStr();
   LS.set('tandem_cfg', cfg);
   syncToCloud();
   closeModal('library');
@@ -3969,7 +4010,7 @@ function applySetupSelection() {
 function saveSetLS(exId, weight, reps, exName) {
   const lastSets = LS.get('tandem_lastsets') || {};
   const key = exName || exId;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr(); // BUG-93/R2: local day, not UTC
   const ex = lastSets[key];
   if (!ex || ex.date !== today) {
     lastSets[key] = { minReps: reps, weight, date: today, name: key };
@@ -4333,12 +4374,18 @@ function buildProgram() {
   const heightIn = ftEl.value ? (parseInt(ftEl.value)*12 + parseInt(inEl.value||0)) : null;
   const age = parseInt(document.getElementById('ob-age').value) || null;
   // BUG-005 fix: capture program start date — the anchor for all calendar/day logic
-  const startDate = document.getElementById('ob-start-date')?.value || new Date().toISOString().split('T')[0];
+  // BUG-93/R3: refresh a stale auto-filled default (app left open past local midnight)
+  // before reading it — see the oninput handler on #ob-start-date that clears
+  // data-autofilled the moment the user actually picks a date.
+  const sdBuildInput = document.getElementById('ob-start-date');
+  if (sdBuildInput && (!sdBuildInput.value || sdBuildInput.dataset.autofilled)) sdBuildInput.value = localDateStr();
+  const startDate = sdBuildInput?.value || localDateStr();
 
   cfg = {
     goal: selectedGoal,
     days: selectedDays,
     weeks,
+    startEpoch: Date.now(), // BUG-93/R5: same-day switch boundary refinement (local rows only)
     weight,
     targetWeight,
     heightIn,
@@ -4709,8 +4756,25 @@ function renderProgramViews() {
   });
 
   if (program.length) {
+    // BUG-93/R1: the QUEUE (nextProgramDayKey(), completedSessionCount()-based) is
+    // the single owner of "today's workout" — Kerwin's ruling: "The QUEUE owns
+    // today's workout. The saved tab is a fallback only." Previously this read
+    // ONLY the cached tandem_current_day, so the whole missed-workout/queue rewrite
+    // (nextProgramDayKey/getProgramDayNumber, BUG-93 original fix) sat as dead code:
+    // this is the actual function the tracker's selected day calls, and it never
+    // called into the queue at all (Cycle 86 tested getProgramDayNumber() itself,
+    // which nothing here ever invoked). Fixed by reconciling against the queue on
+    // EVERY render and demoting tandem_current_day to a cache: it is written here
+    // for the sync-restore writers to have somewhere to land, but never trusted as
+    // primary — only used as a fallback when the queue can't be computed (no
+    // cfg.days, e.g. mid-onboarding) or points at a day the active program doesn't
+    // have (a stale key surviving a program switch).
+    const queueDay = typeof nextProgramDayKey === 'function' ? nextProgramDayKey() : null;
     const savedDay = LS.get('tandem_current_day');
-    currentDay = (savedDay && program.some(d => d.key === savedDay)) ? savedDay : program[0].key;
+    currentDay = (queueDay && program.some(d => d.key === queueDay)) ? queueDay
+      : (savedDay && program.some(d => d.key === savedDay)) ? savedDay
+      : program[0].key;
+    LS.set('tandem_current_day', currentDay); // reconciled cache, not the source of truth
     document.querySelectorAll('.day-tab').forEach((tab, i) => {
       tab.classList.toggle('active', program[i].key === currentDay);
     });
@@ -5296,7 +5360,7 @@ function logSet(id, i) {
               await sb.from('sets').update({ is_pr: false }).eq('id', cachedEntry.setId);
             }
             sessionPrCache[rawName] = { est1rm, setId: insertedSet.id };
-            const today = new Date().toISOString().split('T')[0];
+            const today = localDateStr(); // BUG-93/R2: local day, not UTC
             const { error: prErr } = await sb.from('personal_records').upsert({
               user_id: currentUser.id,
               exercise_name: rawName,
@@ -7912,6 +7976,28 @@ function isProgramHistoryRow(h) {
   return !!h && h.session_type !== ONEOFF_SESSION_TYPE;
 }
 
+// ── isBeforeProgramStart() — BUG-93/R5, one rule one home ──
+// cfg.startDate is a calendar DATE — it cannot see a same-day program switch, so a
+// session logged under the OLD program earlier the same day the user adopts/creates/
+// builds a new one was, before this, indistinguishable from a session under the NEW
+// one (BUG-96's own date-only guard had this same blind spot). Refined with
+// cfg.startEpoch (a real Date.now() instant, set alongside cfg.startDate at every
+// program-start write — see adoptTemplate/createCustomTemplate/buildProgram/
+// finalizeLibraryOnboarding) wherever the row itself carries an equally real instant:
+// a row Finish() wrote locally stamps `id: Date.now()` (a number). A row hydrated from
+// Supabase carries the DB's own UUID `id` (a string) with no equivalent instant
+// available client-side, so it still falls back to the date-only test — a narrower,
+// HONEST residual gap (cross-device same-day switch), not a fix pretending to be
+// complete. Both completedSessionCount() and getOverdueDays() call this SAME function
+// so they cannot disagree about what counts as "before this program started."
+function isBeforeProgramStart(h, d, start) {
+  if (!start || isNaN(start)) return false;
+  if (d < start) return true;
+  if (cfg?.startEpoch && typeof h.id === 'number' && h.id < cfg.startEpoch
+      && d.toDateString() === start.toDateString()) return true;
+  return false;
+}
+
 // Completed sessions on/after the program start. The single counter both the week
 // and the day-queue derive from, so they can never disagree about where he is.
 // A session the user did not finish is not volume and does not advance anything —
@@ -7927,7 +8013,7 @@ function completedSessionCount() {
     if (!raw) continue;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
     if (isNaN(d)) continue;
-    if (start && !isNaN(start) && d < start) continue; // pre-program history doesn't count
+    if (isBeforeProgramStart(h, d, start)) continue; // pre-program history doesn't count
     done++;
   }
   return done;
@@ -8025,7 +8111,7 @@ function getOverdueDays() {
     if (!raw) return;
     const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
     if (isNaN(d)) return;
-    if (hasStart && d < start) return;  // pre-program session — not this plan's history
+    if (isBeforeProgramStart(h, d, hasStart ? start : null)) return; // not this plan's history — R5
     if (!last || d > last) last = d;
   });
   // No session yet under THIS program: measure the gap from the start date rather than
@@ -8034,6 +8120,15 @@ function getOverdueDays() {
   // advancing past work, which BUG-93 handles separately.
   if (!last && hasStart) last = new Date(start);
   if (!last) return 0;
+  // BUG-93/2(d) — Kerwin's ruling on revertToGenerated(): overdue recomputes from the
+  // SWITCH time, without resetting the week. cfg.revertedAt is a floor, never a
+  // ceiling — Math.max means a real completed session after the switch (already
+  // reflected in `last` above) always wins over the switch moment itself, so this
+  // only matters when nothing has been logged since reverting.
+  if (cfg?.revertedAt) {
+    const revertedAt = new Date(cfg.revertedAt + 'T00:00:00');
+    if (!isNaN(revertedAt) && revertedAt > last) last = revertedAt;
+  }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   last.setHours(0, 0, 0, 0);
   const gap = Math.floor((today - last) / 86400000);
@@ -8195,7 +8290,7 @@ async function loadDashboard() {
   if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   try {
     const uid = currentUser.id;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr(); // BUG-93/R2: local day, not UTC
 
     // 1. Today's health snapshot
     const { data: snap } = await sb.from('health_snapshots')
@@ -8281,7 +8376,7 @@ async function refreshDashboard() {
   if (!currentUser) return;
   if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr(); // BUG-93/R2: local day, not UTC
     const { data: snap } = await sb.from('health_snapshots')
       .select('*').eq('user_id', currentUser.id).eq('snapshot_date', today).maybeSingle();
     dashboardData.health = snap || null;
@@ -8792,8 +8887,12 @@ function refreshAvatarPreview(){
     renderIcons();
     applyHeroImages();
     // BUG-005: default the onboarding start-date picker to today
+    // BUG-93/R2+R3: localDateStr() (local day), and flagged data-autofilled so
+    // buildProgram()/finalizeLibraryOnboarding() know to refresh it at submit time
+    // rather than trust a value that may have gone stale past local midnight while
+    // the tab sat open (R3) — see their own re-check just before reading it.
     const sdInput = document.getElementById('ob-start-date');
-    if (sdInput && !sdInput.value) sdInput.value = new Date().toISOString().split('T')[0];
+    if (sdInput && !sdInput.value) { sdInput.value = localDateStr(); sdInput.dataset.autofilled = '1'; }
     // Restore saved color theme immediately
     const savedProfile = LS.get('tandem_profile');
     if (savedProfile?.colorTheme) {
@@ -8825,10 +8924,14 @@ function refreshAvatarPreview(){
           .limit(1)
           .maybeSingle();
         if (lastSession) {
-          const today = new Date().toISOString().split('T')[0];
+          const today = localDateStr(); // BUG-93/R2: local day, not UTC
           if (lastSession.session_date <= today) {
             const prog = getActiveProgram();
             const idx = prog.findIndex(d => d.key === lastSession.day_type);
+            // BUG-93/R1: this write is now a CACHE only — renderProgramViews() (called
+            // via renderTracker() below) reconciles the displayed day against the queue
+            // (nextProgramDayKey()) on every render, so a stale or wrong value written
+            // here can no longer strand the tracker on the wrong day.
             if (idx !== -1) LS.set('tandem_current_day', prog[(idx + 1) % prog.length].key);
           }
         }

@@ -1305,15 +1305,34 @@ try {
   }
 
   // ── the program POINTER ─────────────────────────────────────────────────────────
-  // Three sites write tandem_current_day, and they fail differently, so they are checked
+  // Four sites write tandem_current_day, and they fail differently, so they are checked
   // differently rather than by one grep count. A count is the wrong instrument here: five
-  // one-off guards exist in the file for other reasons, so "at least three guards" stays
+  // one-off guards exist in the file for other reasons, so "at least four guards" stays
   // true even after the one that matters is deleted — it would report green on the exact
   // regression it was meant to catch. Enumerating the sites and pinning the TOTAL is the
-  // honest version: a fourth site cannot appear without a human extending this list.
+  // honest version: a fifth site cannot appear without a human extending this list.
+  //
+  // BUG-93/R1 (2026-09-2x) added the 4th site: renderProgramViews() now reconciles
+  // tandem_current_day against the QUEUE (nextProgramDayKey()) on every render, instead
+  // of the tracker's selected day trusting the cache as primary — see that function's own
+  // comment. This write is guard-free BY CONSTRUCTION for a DIFFERENT reason than
+  // finishSession's: it derives from nextProgramDayKey() -> completedSessionCount(),
+  // which the block above already proves filters through isProgramHistoryRow(). It never
+  // reads a raw session row itself, so there is no lookup here for a one-off to win.
   const ptrWrites = (tandemHtml.match(/LS\.set\('tandem_current_day'/g) || []).length;
-  if (ptrWrites !== 3) {
-    fail('D9', `${ptrWrites} sites write tandem_current_day; this gate knows 3 (finishSession's local advance + syncFromCloud's lastDone + the boot-time rehydrate). A new one must be reviewed for a one-off guard and enumerated here before it ships — an unguarded pointer advance is how a one-off becomes "an extra day"`);
+  if (ptrWrites !== 4) {
+    fail('D9', `${ptrWrites} sites write tandem_current_day; this gate knows 4 (finishSession's local advance + syncFromCloud's lastDone + the boot-time rehydrate + renderProgramViews()'s queue-reconciliation cache write, BUG-93). A new one must be reviewed for a one-off guard and enumerated here before it ships — an unguarded pointer advance is how a one-off becomes "an extra day"`);
+  } else d9ScopeChecked++;
+
+  // Site 4 — renderProgramViews()'s reconciliation write. Confirms the write is fed by
+  // nextProgramDayKey() (the already-guarded queue), not by a fresh, unfiltered session
+  // lookup living inside this function — which would reopen exactly the hole this block
+  // exists to close.
+  const rpvMatch = tandemHtml.match(/function renderProgramViews\(\) \{[\s\S]{0,4000}?\n\}/);
+  if (!rpvMatch) {
+    fail('D9', 'renderProgramViews() not found in tandem.html');
+  } else if (!/queueDay[\s\S]{0,60}nextProgramDayKey\(\)/.test(rpvMatch[0])) {
+    fail('D9', "renderProgramViews() writes tandem_current_day without deriving it from nextProgramDayKey() first — its guard-free-by-construction status (BUG-93/R1) depends on that derivation; without it, this site needs its own one-off guard like syncFromCloud()'s and the boot-time rehydrate's");
   } else d9ScopeChecked++;
 
   // Site 1 — finishSession()'s advance is guard-free BY CONSTRUCTION: it steps from
