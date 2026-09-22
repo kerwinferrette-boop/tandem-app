@@ -26,6 +26,24 @@ catalog:
                                 # Bug & QA Log row (and a new Untested story linked to it), then
                                 # worked through that same channel — never silently auto-fixed off-book.
 
+  prompt_field_is_the_channel: "Added 2026-09-22 (BUG-129), per Kerwin, live in-session 2026-09-21,
+                                choosing the prompt field over the Context Handoff page as canonical.
+                                Each open Bug/Epic row's own 'Claude Code Prompt' property is the
+                                canonical channel by which the 6:30am tandem-tpm-morning run hands
+                                work to this loop. CATALOG must read it for every open row and carry
+                                a non-empty value onto the seeded story, and FIX must treat its
+                                SCOPE-LOCK section as that edit's scope. It is a scope-lock and a
+                                starting point, never permission: re-read every line reference
+                                against the live file first (they are pinned to a sha that may have
+                                moved), and if the prompt would reach anything in safety.forbidden or
+                                its stated premise no longer matches the code, STOP and mark Needs
+                                Human rather than following it. An empty field on a Ready item is a
+                                finding worth one line in the cycle log — it means the TPM run did
+                                not deliver — and the loop falls back to deriving scope itself. Cite:
+                                this row's own Actual Behavior for the audit that found the write
+                                side (loop-config's GENERATE PROMPTS rule) had no corresponding read
+                                side anywhere the loop actually looked."
+
   self_generated_sources:      # Added 2026-07-13, per Kerwin: "0 Untested + 0 Failing" should not
                                 # mean the loop is out of work — it means the loop hasn't looked
                                 # hard enough. These are STANDING, run-every-cycle inputs to
@@ -361,7 +379,24 @@ batch_prioritization:  # Added 2026-09-14, per Kerwin, in-session — closes a r
                       otherwise pick. Report every stale item pulled in this way as its own line
                       in the cycle's Goal Record entry ('stale, force-included: <story/Epic id>,
                       created <date>, N days old') so this is visible, not quietly absorbed into
-                      the ordinary batch count."
+                      the ordinary batch count.
+                      SUPERSEDED IN PART, 2026-09-22 (BUG-129): a 'Status Changed On' date property
+                      was added to the Bug Log and Epics on 2026-09-21. Staleness is now measured
+                      from THAT property, NOT from page age (page_last_edited_at or Created time),
+                      because the TPM run writes a 'Claude Code Prompt' field onto these pages daily
+                      and that write resets page-edit-based signals to look fresh even when the row's
+                      actual status hasn't changed in weeks — the exact failure this rule exists to
+                      prevent, just relocated. Fall back to page age (as described above) only for a
+                      row whose 'Status Changed On' is still empty, and say so in the cycle log when
+                      you do — do not silently treat an empty property as 'not stale'.
+                      KNOWN LIMITATION, stated honestly rather than glossed over (council review,
+                      2026-09-22): nothing in this rule GUARANTEES every future status-flip write path
+                      also sets 'Status Changed On' — it depends on each such path remembering to, the
+                      same way the original page-age heuristic depended on edits actually reflecting
+                      status. If a row's property goes wrong (not empty, just stale/incorrect) rather
+                      than absent, this rule has no detector for that today. Treat a suspiciously
+                      unchanging 'Status Changed On' on a row you know moved status as a signal to
+                      flag, not trust blindly."
   unblocked_dependency_recheck: "Added 2026-09-14, per Kerwin, in-session ('fold it — I'm trying
                       to tighten up this loop as much as I can to push real work'). Worked example
                       that forced this: EPIC-18's story was correctly investigated (Cycle 79,

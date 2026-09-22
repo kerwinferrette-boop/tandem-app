@@ -739,3 +739,44 @@ nothing calls the script for you, since there is no single controlled Notion-wri
 isn't there. It also only proves the sha is *reachable*, not that its diff contains the specifically
 claimed fix — pair it with a grep for the fix string itself, the way this entry's own investigation
 did.
+
+---
+
+## SC-20 — I wrote a rule that says "log the finding" without naming where
+
+**What I believed.** That BUG-129's fix to `.claude/loop-config.md` (adding
+`prompt_field_is_the_channel` and the `Status Changed On` staleness-source swap) was complete and
+safe to ship once the standing gates (`npm run verify`, `npm run validate:personas`) were green and
+a pre-ship council reviewed it.
+
+**What was true.** All 5 council advisors independently converged on the same gap: the added prose
+said things like "worth one line in the cycle log" and "say so ... when you do" without the words
+being checked against whether a concrete, already-existing write target actually receives that
+line every time — and, separately, that the new `Status Changed On` fallback path (revert to page
+age when the property is empty) had no stated behavior for the harder case of the property being
+*present but wrong*, only the easier case of it being *absent*. `npm run verify` and
+`validate:personas` were both green throughout, because neither exercises `loop-config.md`'s prose
+at all — green gates were treated as reassurance for a diff they cannot see.
+
+**The gap.** A loop-config rule is enforced by an LLM re-reading and following prose each cycle, not
+by a script — so "the gate is green" proves the file parses, never that the described behavior
+actually fires. I had already demonstrated the *read-side* half of BUG-129 working live in this same
+cycle (using BUG-93/BUG-118's own Claude Code Prompt fields as scope-locks), but I had not run that
+same live check against the *Status Changed On* half before treating the change as ready to ship —
+I was about to let the more-tested half's confidence cover for the less-tested half.
+
+> **THE RULE — SC-20.** When a loop-config rule instructs "log X" or "say so," the same edit must
+> name the concrete existing sink (a named section of the Goal Record's Cycle log, a named Notion
+> property) rather than leaving "log it" free-floating — a instruction with no addressed destination
+> silently no-ops the first time an unattended cycle hits the edge case, the same "wired vs working"
+> failure CLAUDE.md already names for app code, just relocated into prose config. And when a new rule
+> has an easy case (property empty) and a harder case (property present but wrong) do not let the
+> gate cover for the easy case only — state the harder case's limitation explicitly, even when it
+> can't be fixed in the same change.
+
+**Enforced by:** judgment — not mechanically checkable. There is no script that can verify a prose
+sentence in `loop-config.md` names a concrete write target; the standing gates provably do not (see
+above). The mitigation applied this cycle was narrower and honest about its limit: adding a
+"KNOWN LIMITATION" paragraph naming the undetected case plainly, and citing this same cycle's live
+use of the read-side rule (BUG-93/BUG-118's prompt fields) as the actual runtime evidence for that
+half — rather than claiming both halves were runtime-verified when only one was.
