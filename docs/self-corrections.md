@@ -880,3 +880,24 @@ changed exercise *selection* in the build2/dedupe wrappers (Glute-Ham Raise vani
 **Enforced by:** partly. D33 now gates the per-session maximum. PENDING D6d names the missing
 all-axis MEV sweep, with its cells in `docs/bug122-below-mev-cells.md` (160 at a22a589; 72 after the same-day D28 major-muscle ruling). The all-axis old-vs-new
 diff is judgment, not mechanically checkable yet: `program-snapshot.mjs` covers only the persona axes.
+
+---
+
+## SC-24 — A top-level parse error silently killed the whole app script, and I trusted the preview console's silence
+
+**What I believed.** That if the app was broken, the preview's console would say so. After a Wave 4
+edit, `goTab` was "not defined" and every view was inert, but `preview_console_logs` showed zero
+errors and the DOM looked complete — so I nearly diagnosed a wiring bug instead of the real one:
+I had written `a ?? b || c` (`ut?.goal_weight_lbs ?? Number(profile.goalWeight) || null`), which is
+a JavaScript *parse* error — mixing `??` with `||` unparenthesized is a syntax error by spec — and a
+parse error at any point in tandem.html's single inline script block discards the ENTIRE block. No
+function in the app exists, and the preview console logs nothing for it.
+
+> **THE RULE — SC-24.** Parenthesize any mix of `??` with `||`/`&&`. After editing tandem.html's
+> inline script, syntax-check it before reaching for behavioral debugging: extract every non-src
+> `<script>` block and `new Function(src)` each in node — a parse failure names the token. Symptom
+> signature to recognize: DOM fully present, ALL top-level functions undefined, console empty.
+
+**Enforced by:** `npm run verify`'s "syntax: tandem.html app block" check covers commits; the rule's
+mid-edit half (check BEFORE debugging behavior in the preview) is judgment — not mechanically
+checkable.
