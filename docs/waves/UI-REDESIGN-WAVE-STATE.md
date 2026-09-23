@@ -72,7 +72,10 @@ The already-built reference pieces:
   - Remove the 40px scanline grid (`body::before`).
   - Restrict the bug FAB and QA badge to where they belong.
   - Build tab bar B.
-- **Wave 2:** Home (ruling 2).
+- **Wave 2:** Home (ruling 2). — **DONE `c5fcc22`** (2026-09-23). Hero/duel/muscles/vitals/PR
+  per ruling 2; shots in `docs/screenshots/wave2/`. Medals card + body-comp + nutrition rings
+  removed from Home (nutrition/body → Wave 4 You tab; **medals render nowhere right now —
+  flagged to Kerwin**).
 - **Wave 3:** Duel (ruling 4).
 - **Wave 4:** You (ruling 5). The heatmap sub-slice waits on the art.
 - **Wave 5:** Session complete: celebration, gold, photo.
