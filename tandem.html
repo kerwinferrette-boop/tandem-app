@@ -6727,8 +6727,16 @@ function buildLiftSeries() {
   Object.values(typeof EXERCISE_BANK === 'object' ? EXERCISE_BANK : {}).forEach(e => { if (e && e.name) unitOf[e.name] = e.unit; });
   const lifts = {};
   hist.slice().reverse().forEach(sess => {                 // tandem_history is newest-first
-    const when = new Date(sess.date);
+    // BUG-135: a cloud-restored row carries session_date (bare YYYY-MM-DD, parsed as
+    // local midnight) instead of date, and no exercises map at all — same shape guard
+    // completedSessionCount()/:8231 and getOverdueDays()/:8329 already apply.
+    const raw = sess.session_date || sess.date;
+    if (!raw) return;
+    const when = sess.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
     if (isNaN(when)) return;
+    // A restored row has no per-set data to show — skip it rather than emit a
+    // zero-value point, which would render a WRONG chart instead of an empty one.
+    if (!sess.exercises) return;
     const best = {};
     Object.values(sess.exercises || {}).forEach(sets => (sets || []).forEach(x => {
       if (!x || !x.name) return;
