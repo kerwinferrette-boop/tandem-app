@@ -1444,38 +1444,30 @@ try {
       } else d9ScopeChecked++;
     }
 
-    // "Past date, don't count for the streak." A journaled workout is credited from its
-    // OWN date, so the streak flag must be derived from whether that date is today. A
-    // literal `true`, or the 3-arg call, silently re-credits the streak for a backdated
-    // entry — the exact regression this clause exists to prevent.
-    // Matched to the `);` terminator, not to the first `)` — the argument list contains
-    // nested calls (Math.round(...)), and a `[^)]*` cap would clip mid-argument and read
-    // as "the flag is missing" when it is present. A false failure, not a safe one.
-    const creditCall = sjMatch[0].match(/creditSessionToStreaks\([\s\S]{0,200}?\);/);
-    if (!creditCall) {
-      fail('D9', 'saveJournal() never calls creditSessionToStreaks() — points/volume/PRs must be credited through the ONE owner of the scoring rule, not inlined');
-    } else if (!/,\s*!isBackdated\s*\);$/.test(creditCall[0])) {
-      fail('D9', `saveJournal()'s streak credit is \`${creditCall[0]}\` — it must pass \`!isBackdated\` as the advanceStreak argument. "Past date, don't count for the streak." (Kerwin ruling 2026-09-14)`);
+    // "Past date, don't count for the streak." Since migrations/0020 the database derives
+    // streaks from the rows (one owner, no double count — review C1, Kerwin 2026-09-23
+    // "1A"), so the journal's job is to FLAG a backdated entry on its insert. Without the
+    // flag the DB would count a past date as a streak day — the exact regression this
+    // clause exists to prevent.
+    const jIns = sjMatch[0].match(/from\('workout_sessions'\)\.insert\(\{[\s\S]{0,900}?\}\)/);
+    if (!jIns || !/backdated:\s*isBackdated/.test(jIns[0])) {
+      fail('D9', "saveJournal()'s workout_sessions insert does not carry `backdated: isBackdated` — a backdated journal entry would advance the streak. \"Past date, don't count for the streak.\" (Kerwin ruling 2026-09-14)");
     } else d9ScopeChecked++;
   }
 
-  // The option must actually gate the three streak-bearing columns inside the one owner.
-  // Checked on the owner's body, not on the caller: passing advanceStreak=false and then
-  // writing last_session_date anyway is "wired, not working" — and writing it BACKWARDS
-  // is worse than not crediting, because it breaks a live streak.
-  const csMatch = tandemHtml.match(/async function creditSessionToStreaks\([\s\S]{0,6000}?\n\}/);
-  if (!csMatch) {
-    fail('D9', 'creditSessionToStreaks() not found in tandem.html');
-  } else {
-    if (!/advanceStreak\s*=\s*true/.test(csMatch[0])) {
-      fail('D9', 'creditSessionToStreaks() has no advanceStreak parameter defaulting to true — a backdated journal entry cannot be credited without advancing the streak, and defaulting it false would silently stop crediting real sessions');
-    } else d9ScopeChecked++;
-    // The UPDATE branch must assign the streak-bearing columns conditionally.
-    const guarded = /if \(advanceStreak\) \{[\s\S]{0,400}?last_session_date[\s\S]{0,200}?\n  \}/.test(csMatch[0]);
-    if (!guarded) {
-      fail('D9', "creditSessionToStreaks() writes last_session_date unconditionally — a backdated entry would move the streak date BACKWARDS and break a live streak. The three streak-bearing columns (current_streak_days, longest_streak_days, last_session_date) must be assigned only inside `if (advanceStreak)` (Kerwin ruling 2026-09-14)");
-    } else d9ScopeChecked++;
-  }
+  // One owner for streaks/totals: the DB (migrations/0020). The app must never write the
+  // streaks table again — a second writer is exactly the double count C1 found.
+  if (/from\('streaks'\)\s*\.(insert|update|upsert|delete)\(/.test(tandemHtml)) {
+    fail('D9', 'tandem.html writes to `streaks` — streaks/totals are derived in the database (migrations/0020, public.streak_recompute). A second writer re-creates the double count (review C1).');
+  } else d9ScopeChecked++;
+  // …and the DB owner must exclude backdated days from the streak while still counting them.
+  const m20 = readFileSync(join(root, 'migrations/0020_streaks_derived.sql'), 'utf8');
+  if (!/where user_id = p_user and completed and not backdated/.test(m20)) {
+    fail('D9', 'migrations/0020 streak_recompute() no longer excludes backdated sessions from the streak');
+  } else d9ScopeChecked++;
+  if (!/drop trigger if exists update_streak_on_complete/.test(m20)) {
+    fail('D9', 'migrations/0020 no longer retires the old update_streak trigger — two counters would run again');
+  } else d9ScopeChecked++;
 } catch (e) {
   fail('D9', `could not verify one-off program-position scope: ${e.message}`);
 }

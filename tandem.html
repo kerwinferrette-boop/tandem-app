@@ -6329,15 +6329,14 @@ function reorderWeek() {
 // ruling; a second copy inside the one-off path is exactly the silo that drifts.
 // Returns the streak to display on the completion card.
 //
-// `advanceStreak` (Kerwin, 2026-09-14, verbatim: "Past date, don't count for the
-// streak."): a BACKDATED journal entry is still a workout, so it still earns points,
-// volume, sessions and PRs — but it must not move the streak, because a streak is a
-// claim about consecutive days actually shown up for, and a retroactive entry cannot
-// make yesterday have happened today. When false, the three streak-bearing columns
-// (current_streak_days, longest_streak_days, last_session_date) are left untouched
-// rather than written with today's or the backdated value — writing last_session_date
-// backwards would silently BREAK a live streak, which is worse than not crediting it.
-// This is an option on the one owner, deliberately not a second copy of the rule.
+// Streaks and totals are DERIVED IN THE DATABASE since migrations/0020 (Kerwin
+// 2026-09-23, "1A"): public.streak_recompute() rebuilds sessions/PRs/volume/streak from
+// the rows themselves on every workout_sessions / personal_records write, so there is
+// ONE owner and nothing to double-count (review C1: a DB trigger AND this function both
+// incremented, 33 sessions shown vs 18 real). The app never writes `streaks`.
+// "Past date, don't count for the streak" (Kerwin 2026-09-14) is now the
+// workout_sessions.backdated flag the journal sets; the DB excludes those days from the
+// streak but still counts the session, PRs and volume.
 // Kerwin, 2026-09-23: "let's take a PR 15 points." ONE home for the point values —
 // every finisher (program day, one-off, journal) and every toast reads these. The
 // Home scoreboard reads the competition_leaderboard VIEW, which must match:
@@ -6346,48 +6345,14 @@ const POINTS_PER_SESSION = 10;
 const POINTS_PER_PR = 15;
 function sessionPointsFor(prCount) { return POINTS_PER_SESSION + (prCount || 0) * POINTS_PER_PR; }
 
-async function creditSessionToStreaks(prCount, volume, todayDate, advanceStreak = true) {
-  const sessionPoints = sessionPointsFor(prCount);
-  const { data: existing } = await sb.from('streaks')
-    .select('*')
+// Read back the streak the database just derived (migrations/0020). Its triggers run
+// inside the write that completed the session, so the value is already current.
+async function readCreditedStreak() {
+  const { data } = await sb.from('streaks')
+    .select('current_streak_days')
     .eq('user_id', currentUser.id)
     .maybeSingle();
-  if (!existing) {
-    const { error: sErr } = await sb.from('streaks').insert({
-      user_id: currentUser.id,
-      current_streak_days: advanceStreak ? 1 : 0,
-      longest_streak_days: advanceStreak ? 1 : 0,
-      total_sessions: 1,
-      total_prs: prCount || 0,
-      total_volume_lbs: volume,
-      weekly_points: sessionPoints,
-      last_session_date: advanceStreak ? todayDate : null,
-      updated_at: new Date().toISOString()
-    });
-    if (sErr) throw sErr;
-    return advanceStreak ? 1 : 0;
-  }
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
-  const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
-  const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
-  const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
-  const patch = {
-    total_sessions: (existing.total_sessions || 0) + 1,
-    total_prs: (existing.total_prs || 0) + (prCount || 0),
-    total_volume_lbs: (existing.total_volume_lbs || 0) + volume,
-    weekly_points: (existing.weekly_points || 0) + sessionPoints,
-    updated_at: new Date().toISOString()
-  };
-  if (advanceStreak) {
-    patch.current_streak_days = newStreak;
-    patch.longest_streak_days = newLongest;
-    patch.last_session_date = todayDate;
-  }
-  const { error: sErr } = await sb.from('streaks').update(patch).eq('user_id', currentUser.id);
-  if (sErr) throw sErr;
-  return advanceStreak ? newStreak : (existing.current_streak_days || 0);
+  return data?.current_streak_days ?? 0;
 }
 
 function finishSession() {
@@ -6582,9 +6547,9 @@ function finishSession() {
           .eq('session_id', resolvedId)
           .eq('is_pr', true);
 
-        // 4. Upsert streaks — POINTS_PER_SESSION + POINTS_PER_PR (creditSessionToStreaks owns it)
+        // 4. Streak — derived by the DB on the completed=true write above (migrations/0020).
         // EPIC-13 Step 4/Step 3: fed into the completion summary card below.
-        const finalStreak = await creditSessionToStreaks(prCount || 0, totalVolume, todayDate);
+        const finalStreak = await readCreditedStreak();
 
         // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
         try {
@@ -7745,7 +7710,7 @@ async function finishOneOff() {
       .eq('is_pr', true);
 
     // Streak, points and cumulative volume, through the one owner of that rule.
-    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), localDateStr()); }
+    try { await readCreditedStreak(); } // streak/totals derived by the DB on the insert (migrations/0020)
     catch (stErr) { console.warn('One-off streak credit failed:', stErr); }
 
     // The W1D1 calibration seed is offered here too: it is idempotent (its own
@@ -7865,10 +7830,9 @@ async function saveOneOffTemplate() {
 // governs one-offs (2026-09-13, DOCTRINE D9/D11). So it writes session_type =
 // ONEOFF_SESSION_TYPE and reuses finishOneOff()'s exact seams rather than growing a
 // second copy of the scoring or 1RM rules: `sets` rows (the DB trigger decides PRs),
-// reconcileWorking1RMs() with an explicit synthesized day, creditSessionToStreaks(),
-// computeCalibration1RMs(). The ONE difference is the date: a backdated entry passes
-// advanceStreak=false, per "Past date, don't count for the streak."
-// ═══════════════════════════════════════════════════════
+// reconcileWorking1RMs() with an explicit synthesized day, readCreditedStreak() (the DB derives the streak, migrations/0020),
+// computeCalibration1RMs(). The ONE difference is the date: a backdated entry is inserted with
+// backdated: true, per "Past date, don't count for the streak." (migrations/0020 excludes it).
 let journalRowSeq = 0;
 
 function addJournalRow(prefill) {
@@ -7971,6 +7935,7 @@ async function saveJournal() {
       program_goal: goalKeyFor(cfg.goal),
       session_type: ONEOFF_SESSION_TYPE, // migrations/0015's partial index is what lets this coexist with a program day on the same date
       completed: true,
+      backdated: isBackdated, // "Past date, don't count for the streak" — the DB (migrations/0020) excludes it from the streak only
       total_volume_lbs: Math.round(totalVolume),
       notes: notes || null,
     }).select('id').single();
@@ -8004,7 +7969,7 @@ async function saveJournal() {
       .eq('is_pr', true);
 
     // Points/volume/sessions/PRs always; the streak ONLY if it happened today.
-    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), sessionDate, !isBackdated); }
+    try { await readCreditedStreak(); } // DB derives totals; backdated days are excluded from the streak via the flag on the insert
     catch (stErr) { console.warn('Journal streak credit failed:', stErr); }
 
     try { await computeCalibration1RMs(session.id, currentUser.id); }
