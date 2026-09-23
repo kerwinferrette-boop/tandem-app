@@ -6321,8 +6321,8 @@ function reorderWeek() {
   if (typeof syncToCloud === 'function') syncToCloud();
 }
 
-// The scoring rule has ONE owner (CLAUDE.md, "one rule, one home"): 10 points for a
-// completed session + 5 per PR, with the streak advancing only across consecutive
+// The scoring rule has ONE owner (CLAUDE.md, "one rule, one home"): POINTS_PER_SESSION for a
+// completed session + POINTS_PER_PR per PR, with the streak advancing only across consecutive
 // calendar days. Two finishers call it — the program day's finishSession() and, per
 // Kerwin's ruling of 2026-09-13 ("one-offs should count towards streak/points/volume,
 // as it is a workout"), finishOneOff(). It was inlined in finishSession until that
@@ -6338,8 +6338,16 @@ function reorderWeek() {
 // rather than written with today's or the backdated value — writing last_session_date
 // backwards would silently BREAK a live streak, which is worse than not crediting it.
 // This is an option on the one owner, deliberately not a second copy of the rule.
+// Kerwin, 2026-09-23: "let's take a PR 15 points." ONE home for the point values —
+// every finisher (program day, one-off, journal) and every toast reads these. The
+// Home scoreboard reads the competition_leaderboard VIEW, which must match:
+// migrations/0018_pr_points_15.sql (human-applied) brings it from 25/PR to 15.
+const POINTS_PER_SESSION = 10;
+const POINTS_PER_PR = 15;
+function sessionPointsFor(prCount) { return POINTS_PER_SESSION + (prCount || 0) * POINTS_PER_PR; }
+
 async function creditSessionToStreaks(prCount, volume, todayDate, advanceStreak = true) {
-  const sessionPoints = 10 + (prCount || 0) * 5;
+  const sessionPoints = sessionPointsFor(prCount);
   const { data: existing } = await sb.from('streaks')
     .select('*')
     .eq('user_id', currentUser.id)
@@ -6574,7 +6582,7 @@ function finishSession() {
           .eq('session_id', resolvedId)
           .eq('is_pr', true);
 
-        // 4. Upsert streaks — 10 pts/session + 5 pts/PR (creditSessionToStreaks owns it)
+        // 4. Upsert streaks — POINTS_PER_SESSION + POINTS_PER_PR (creditSessionToStreaks owns it)
         // EPIC-13 Step 4/Step 3: fed into the completion summary card below.
         const finalStreak = await creditSessionToStreaks(prCount || 0, totalVolume, todayDate);
 
@@ -7745,7 +7753,7 @@ async function finishOneOff() {
     LS.set('tandem_history', hist);
 
     oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
-    const pts = 10 + (prCount || 0) * 5;
+    const pts = sessionPointsFor(prCount);
     showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts`);
     // The scoreboard on screen is now stale by exactly this session's points and volume.
     // loadDashboard() is the one path that re-reads them from the cloud (showView does the
@@ -7995,7 +8003,7 @@ async function saveJournal() {
     if (hist.length > 100) hist.pop();
     LS.set('tandem_history', hist);
 
-    const pts = 10 + (prCount || 0) * 5;
+    const pts = sessionPointsFor(prCount);
     showToast(`${svgIcon('flame')} Logged — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts${isBackdated ? ' (streak unchanged)' : ''}`);
     closeModal('journal');
     // The scoreboard is now stale by exactly this session's points and volume, and
