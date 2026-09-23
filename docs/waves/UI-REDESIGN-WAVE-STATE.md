@@ -91,7 +91,12 @@ The already-built reference pieces:
   display buckets aggregate `muscleCeilingKey` groups via `HEATMAP_KEY_GROUPS` (tandem.html).
   Sex-specific via `userSexKey()`; head/hands/feet neutral. Shots in `docs/screenshots/wave4/`.
   Finish-card reuse of the map → Wave 5.
-- **Wave 5:** Session complete: celebration, gold, photo.
+- **Wave 5:** Session complete. — **DONE `72f57b0`** (2026-09-23). #modal-summary restyled to the
+  celebration sheet: celebrate-{male,female}.jpg hero on the shared duotone recipe, stat grid with
+  the PRs tile in gold, gold PR rows from tandem_working1rm dir:'pr' (same store as Home's gold
+  card), and the muscle heatmap reused on the card via renderMuscleHeatmap(target) — same renderer/
+  scale/volume as You. Signed-out finishes now show the card too (local duration + PR count; streak
+  '—' offline, it lives in the cloud streaks table). Shots in `docs/screenshots/wave5/`.
 - **Wave 6:** Workout tracker.
 - **Wave 7:** Onboarding and sign-in.
 - **Wave 8:** The remaining modals.
