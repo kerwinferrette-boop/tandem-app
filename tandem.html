@@ -991,6 +991,35 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .duel-nudge:active{transform:scale(.98);}
 .duel-empty{padding:26px 4px;text-align:center;color:var(--muted2);font-size:14px;line-height:1.6;}
 
+/* ── You tab (Wave 4, ruling 5 — nutrition · heatmap · profile/settings) ────── */
+.you-wrap{padding:22px 16px 32px;max-width:620px;margin:0 auto;}
+.you-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
+.you-settings-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);color:var(--text);font-family:var(--font-body);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;}
+.you-settings-btn:active{transform:scale(.96);}
+/* Nutrition photo strip — same duotone recipe as the hero cards */
+.you-nutri-card{position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--border2);padding:16px;margin-bottom:12px;isolation:isolate;background:var(--s1);}
+.you-nutri-card .you-photo{position:absolute;inset:0;z-index:-3;background-image:url('public/meal-prep.jpg');background-size:cover;background-position:center;filter:grayscale(1) contrast(1.08) brightness(.7);}
+.you-nutri-card .tc-tint{position:absolute;inset:0;z-index:-2;}
+.you-nutri-card .you-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.45) 0%,rgba(7,7,11,.82) 40%,rgba(7,7,11,.94) 100%);}
+.you-nutri-card .dash-label{color:rgba(255,255,255,.75);}
+.you-nutri{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.you-nutri .dash-mr-top{color:#fff;}
+.you-nutri .dash-mr-top span:last-child{color:rgba(255,255,255,.65);}
+.you-nutri .dash-mr-trk{background:rgba(255,255,255,.14);}
+/* Body comp tiles */
+.you-body{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}
+.you-tile{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:13px 14px;}
+.you-tile .t{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.you-tile .v{font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text);margin-top:5px;line-height:1;}
+.you-tile .v small{font-size:11px;color:var(--muted2);font-weight:600;}
+.you-tile .s{font-size:11px;color:var(--muted2);margin-top:4px;}
+/* Muscle heatmap */
+.you-map{display:flex;justify-content:center;gap:10px;margin-top:12px;}
+.you-map svg,.you-map img{max-width:100%;height:auto;}
+.you-map-fig{width:46%;max-width:200px;object-fit:contain;opacity:.6;filter:grayscale(1) brightness(1.35);}
+.you-map-legend{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
+.you-map-legend i{display:block;height:8px;width:110px;border-radius:999px;background:linear-gradient(90deg,#232b27,var(--accent2));}
+
 /* ── Bug Report FAB ──────────────────────────────────── */
 .bug-fab{position:fixed;bottom:80px;right:16px;z-index:900;width:40px;height:40px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);transition:opacity .15s;}
 .bug-fab:active{transform:scale(.91);}
@@ -1827,6 +1856,43 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 </div>
 
 <!-- ══════════════════════════════════
+     VIEW: YOU (Wave 4, ruling 5) — nutrition logs (the EPIC-4 Apple Health /
+     MyFitnessPal pipeline; never hand-typed), body comp, the muscle heatmap,
+     and profile/settings (the existing modal-profile, opened from here).
+══════════════════════════════════ -->
+<div class="view" id="view-you">
+  <div class="you-wrap">
+    <div class="you-head">
+      <div style="min-width:0;">
+        <div class="log-title" id="youName">You</div>
+        <div class="log-sub" id="youSub"></div>
+      </div>
+      <button class="you-settings-btn" onclick="openProfileModal()"><span data-icon="user"></span> Settings</button>
+    </div>
+
+    <!-- 1. Nutrition today — reads health_snapshots dietary_* vs users daily_*_target -->
+    <div class="you-nutri-card">
+      <div class="you-photo"></div><div class="tc-tint"></div><div class="you-scrim"></div>
+      <div class="dash-label"><span>Nutrition today</span><span id="youNutriNote">vs your targets</span></div>
+      <div class="you-nutri" id="youNutriRows"></div>
+    </div>
+
+    <!-- 2. Body composition (moved off Home in Wave 2) -->
+    <span class="dash-section-label">Body</span>
+    <div class="you-body" id="youBodyTiles"></div>
+
+    <!-- 3. Muscle heatmap — same crediting as Home's muscles-this-week
+         (computeMuscleWeeklyVolume, primary 1.0 / secondary 0.5), drawn on the
+         sex-specific body art on ONE continuous scale of % weekly target. -->
+    <div class="dash-panel">
+      <div class="dash-label"><span>Muscle heatmap</span><span>this week vs target</span></div>
+      <div class="you-map" id="youMuscleMap"></div>
+      <div class="you-map-legend"><span>0%</span><i></i><span>100% of target</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
      VIEW: TRACKER (main app)
 ══════════════════════════════════ -->
 <div class="view" id="view-tracker">
@@ -2458,6 +2524,8 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 
 <!-- Static data layer: icon registry + goal-adaptive program library (Item C extraction) -->
 <script src="programs.js"></script>
+<!-- Muscle heatmap path data (Wave 4, ruling 7) — GENERATED by scripts/build-musclemap-asset.py -->
+<script src="public/musclemap-paths.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -6734,6 +6802,7 @@ function showView(id) {
   setTabBar(id);
   if (id === 'dashboard') loadDashboard();
   if (id === 'log') renderLogTab();
+  if (id === 'you') { renderYouTab(); loadDashboard(); } // render cached state now; loadDashboard refreshes both
   if (id === 'tracker') renderTracker();
 }
 
@@ -6742,7 +6811,7 @@ function showView(id) {
 // You → profile (its own view lands in Wave 4); Duel → the week's competition
 // (its own view lands in Wave 3 — until then it scrolls Home to the duel card).
 // Only the top-level views show the bar; the in-workout #bottomNav owns the tracker.
-const TAB_VIEWS = { dashboard: 'home', log: 'log' };
+const TAB_VIEWS = { dashboard: 'home', log: 'log', you: 'you' };
 function setTabBar(viewId) {
   const tab = TAB_VIEWS[viewId];
   document.body.classList.toggle('tabbed', !!tab);
@@ -6752,7 +6821,7 @@ function goTab(tab) {
   if (tab === 'home') showView('dashboard');
   else if (tab === 'log') showView('log');
   else if (tab === 'start') openModal('todaychoice');
-  else if (tab === 'you') openProfileModal();
+  else if (tab === 'you') showView('you'); // Wave 4: You tab (ruling 5)
   else if (tab === 'duel') openModal('duel'); // Wave 3: breakdown sheet (ruling 4)
 }
 
@@ -8575,7 +8644,7 @@ async function loadDashboard() {
 
     // 2. Current user targets + partner_id
     const { data: userRow } = await sb.from('users')
-      .select('partner_id, name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g')
+      .select('partner_id, name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g, daily_water_target_oz, goal_weight_lbs, height_inches')
       .eq('id', uid).maybeSingle();
     dashboardData.userTargets = userRow || null;
 
@@ -8651,6 +8720,7 @@ async function loadDashboard() {
   } finally {
     applyColorTakeover();
     renderDashboard();
+    renderYouTab(); // Wave 4: the You tab renders from the same dashboardData state
     if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
   }
 }
@@ -8867,11 +8937,10 @@ function renderDashHero() {
 // generated program with — fed this week's tandem_history rows reshaped into its
 // day shape. Grouping tag → major muscle uses muscleCeilingKey (programs.js), and
 // the target is VOLUME_LANDMARKS[goal].mev per muscle. Nothing re-implemented here.
-function renderMuscleWeek() {
-  const rowsEl = document.getElementById('dashMuscleRows');
-  if (!rowsEl) return;
-  const fig = document.getElementById('dashMuscleFig');
-  if (fig) fig.src = `public/musclemap-${userSexKey()}.webp`;
+// Shared by Home's muscles-this-week AND the You tab heatmap (one rule, one home):
+// this week's LOGGED sets, credited by computeMuscleWeeklyVolume (primary 1.0 /
+// secondary 0.5), grouped under muscleCeilingKey, against the goal's weekly MEV.
+function computeWeekMuscleGrouped() {
   const dow = new Date().getDay();
   const monday = new Date();
   monday.setDate(monday.getDate() - (dow === 0 ? 6 : dow - 1));
@@ -8896,6 +8965,15 @@ function renderMuscleWeek() {
     grouped[k] = (grouped[k] || 0) + v;
   }
   const mev = VOLUME_LANDMARKS[cfg?.goal]?.mev ?? VOLUME_LANDMARKS.build_muscle.mev;
+  return { grouped, mev };
+}
+
+function renderMuscleWeek() {
+  const rowsEl = document.getElementById('dashMuscleRows');
+  if (!rowsEl) return;
+  const fig = document.getElementById('dashMuscleFig');
+  if (fig) fig.src = `public/musclemap-${userSexKey()}.webp`;
+  const { grouped, mev } = computeWeekMuscleGrouped();
   // Presentation labels over MAJOR_MUSCLE_GROUP_TOKENS (programs.js) — display only.
   const ROWS = [
     ['Chest', ['pec', 'pec_major']],
@@ -9106,6 +9184,159 @@ function renderDuelSheet() {
       : gap === 0 ? 'Dead even — next session takes the lead →'
       : 'You\'re ahead — one more session locks it in →';
   }
+}
+
+// ── Wave 4 (ruling 5): the You tab ────────────────────────────────────────────
+// Renders from the SAME dashboardData state Home loads (health snapshot, user
+// targets, 7-day weight trend) — no second fetch path. Nutrition values are the
+// EPIC-4 Apple Health / MyFitnessPal pipeline's health_snapshots dietary_* fields;
+// nothing here is hand-typed (Kerwin: "'2 meals' has no ability to add nutritional
+// value to the home page"). Targets: users.daily_*_target with the local
+// tandem_profile copy as offline fallback (same values saveProfileNutrition writes
+// to both). The heatmap credits from computeWeekMuscleGrouped — the exact numbers
+// Home's muscles-this-week bars show.
+function renderYouTab() {
+  const nameEl = document.getElementById('youName');
+  if (!nameEl) return;
+  const h = dashboardData.health;
+  const ut = dashboardData.userTargets;
+  const profile = LS.get('tandem_profile') || {};
+
+  nameEl.textContent = ut?.name || currentUser?.email?.split('@')[0] || 'You';
+  const subEl = document.getElementById('youSub');
+  if (subEl) subEl.textContent = currentUser ? (currentUser.email || '') : 'Sign in to sync your health data.';
+
+  // 1. Nutrition today
+  const note = document.getElementById('youNutriNote');
+  if (note) note.textContent = h ? 'vs your targets' : 'sync pending';
+  const rowsEl = document.getElementById('youNutriRows');
+  if (rowsEl) {
+    rowsEl.innerHTML = '';
+    const rows = [
+      ['Calories', h?.dietary_calories_kcal, ut?.daily_calories_target ?? profile.calories ?? 2200, ''],
+      ['Protein',  h?.dietary_protein_g,     ut?.daily_protein_target_g ?? profile.protein ?? 150, 'g'],
+      ['Carbs',    h?.dietary_carbs_g,       ut?.daily_carbs_target_g ?? profile.carbs ?? 250, 'g'],
+      ['Fat',      h?.dietary_fat_g,         ut?.daily_fat_target_g ?? profile.fat ?? 65, 'g'],
+      ['Water',    h?.dietary_water_oz,      ut?.daily_water_target_oz ?? profile.water ?? 100, 'oz'],
+    ];
+    rows.forEach(([label, val, target, unit]) => {
+      const pct = val != null && target ? Math.min(val / target, 1) : 0;
+      const row = document.createElement('div');
+      const top = document.createElement('div'); top.className = 'dash-mr-top';
+      const nameSpan = document.createElement('span'); nameSpan.textContent = label;
+      const valSpan = document.createElement('span');
+      valSpan.textContent = `${val != null ? Math.round(val).toLocaleString() : '—'} / ${Math.round(target).toLocaleString()}${unit}`;
+      top.append(nameSpan, valSpan);
+      const trk = document.createElement('div'); trk.className = 'dash-mr-trk';
+      const bar = document.createElement('i');
+      bar.style.width = `${Math.round(pct * 100)}%`;
+      bar.style.background = 'var(--accent2)';
+      trk.append(bar);
+      row.append(top, trk);
+      rowsEl.append(row);
+    });
+  }
+
+  // 2. Body composition — 7-day rolling weight (EPIC-6) beats a single profile
+  // number; goal weight from users row with local profile fallback.
+  const tilesEl = document.getElementById('youBodyTiles');
+  if (tilesEl) {
+    tilesEl.innerHTML = '';
+    const trend = dashboardData.weightTrend7d;
+    const weightNow = trend ?? (Number(cfg?.weight) || null);
+    const goal = ut?.goal_weight_lbs ?? (Number(profile.goalWeight) || null);
+    const toGo = weightNow != null && goal != null ? weightNow - goal : null;
+    const heightIn = ut?.height_inches ?? profile.heightInches ?? null;
+    const tiles = [
+      { t: 'Weight', v: weightNow != null ? weightNow.toFixed(1) : '—', u: 'lbs', s: trend != null ? '7-day average' : 'from your profile' },
+      { t: 'Goal', v: goal != null ? Math.round(goal) : '—', u: 'lbs', s: goal != null ? '' : 'set it in Settings' },
+      { t: 'To go', v: toGo != null ? Math.abs(toGo).toFixed(1) : '—', u: 'lbs', s: toGo == null ? '' : toGo > 0 ? 'down to goal' : toGo < 0 ? 'below goal' : 'at goal' },
+      { t: 'Body fat', v: h?.body_fat_pct != null ? (+h.body_fat_pct).toFixed(1) : '—', u: '%', s: h?.body_fat_pct != null ? 'from Apple Health' : 'sync pending' },
+    ];
+    if (heightIn) tiles[3].s = h?.body_fat_pct != null ? 'from Apple Health' : `height ${Math.floor(heightIn / 12)}'${heightIn % 12}"`;
+    tiles.forEach(td => {
+      const tile = document.createElement('div'); tile.className = 'you-tile';
+      const t = document.createElement('div'); t.className = 't'; t.textContent = td.t;
+      const v = document.createElement('div'); v.className = 'v'; v.append(String(td.v));
+      const small = document.createElement('small'); small.textContent = ' ' + td.u; v.append(small);
+      tile.append(t, v);
+      if (td.s) { const s = document.createElement('div'); s.className = 's'; s.textContent = td.s; tile.append(s); }
+      tilesEl.append(tile);
+    });
+  }
+
+  // 3. Muscle heatmap
+  renderMuscleHeatmap();
+}
+
+// Sex-specific body art colored on ONE continuous scale by % of each muscle's
+// weekly target (ruling 7 / EPIC-15 crediting via computeWeekMuscleGrouped()).
+// Paths come from window.MUSCLEMAP (public/musclemap-paths.js, generated by
+// scripts/build-musclemap-asset.py from Kerwin's art). Each heatmap display
+// bucket aggregates the muscleCeilingKey groups listed here — the ONLY place
+// display buckets are defined; geometry→bucket lives in the generator.
+const HEATMAP_KEY_GROUPS = {
+  pec_major: ['pec_major', 'pec'],
+  anterior_delt: ['anterior_delt'],
+  lateral_delt: ['lateral_delt'],
+  posterior_delt: ['posterior_delt'],
+  bicep_brachii: ['bicep_brachii', 'bicep_brachii_long_head', 'bicep_brachii_short_head', 'brachialis'],
+  tricep: ['tricep', 'tricep_lateral', 'tricep_long_head', 'tricep_medial', 'anconeus'],
+  forearm: ['brachioradialis'],
+  rectus_abdominis: ['rectus_abdominis', 'rectus_abdominis_lower', 'core', 'transverse_abdominis'],
+  oblique_external: ['oblique_external', 'oblique_internal', 'serratus_anterior'],
+  quad: ['quad'],
+  adductor: ['adductor'],
+  calf: ['calf', 'gastrocnemius', 'soleus'],
+  upper_trap: ['upper_trap', 'levator_scapulae'],
+  rhomboid: ['rhomboid', 'middle_trap', 'lower_trap'],
+  erector_spinae: ['erector_spinae', 'quadratus_lumborum'],
+  glute_max: ['glute_max', 'glute_medius', 'glute_minimus', 'tensor_fasciae_latae'],
+  hamstring: ['hamstring'],
+  rotator: ['external_rotator', 'supraspinatus'],
+};
+
+function renderMuscleHeatmap() {
+  const mapEl = document.getElementById('youMuscleMap');
+  if (!mapEl) return;
+  mapEl.innerHTML = '';
+  const art = window.MUSCLEMAP?.[userSexKey()];
+  if (!art) { // asset failed to load — fall back to the flat figure
+    const img = document.createElement('img');
+    img.className = 'you-map-fig';
+    img.alt = '';
+    img.src = `public/musclemap-${userSexKey()}.webp`;
+    mapEl.append(img);
+    return;
+  }
+  const { grouped, mev } = computeWeekMuscleGrouped();
+  const pctOf = bucket => {
+    const keys = HEATMAP_KEY_GROUPS[bucket] || [];
+    const v = keys.reduce((s, k) => s + (grouped[k] || 0), 0);
+    return Math.max(0, Math.min(v / mev, 1));
+  };
+  // ONE continuous scale: neutral panel tone -> the user's accent.
+  const cs = getComputedStyle(document.documentElement);
+  const hexToRgb = h => {
+    const m = h.trim().replace('#', '');
+    const s = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+    return [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16));
+  };
+  const lo = hexToRgb('#232b27');
+  const hi = hexToRgb(cs.getPropertyValue('--accent2') || '#7ef0c0');
+  const mix = t => `rgb(${lo.map((c, i) => Math.round(c + (hi[i] - c) * t)).join(',')})`;
+  const NEUTRAL = '#181d1b';
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${art.w} ${art.h}`);
+  svg.setAttribute('aria-label', 'Muscle heatmap: % of weekly volume target per muscle');
+  for (const [bucket, d] of art.regions) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('fill', bucket ? mix(pctOf(bucket)) : NEUTRAL);
+    svg.append(p);
+  }
+  mapEl.append(svg);
 }
 
 // ═══════════════════════════════════════════════════════

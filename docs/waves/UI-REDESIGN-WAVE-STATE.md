@@ -81,7 +81,16 @@ The already-built reference pieces:
   `total_points` so the view stays the only steps-math home); day-by-day dots, gold PRs,
   nudge → chooser. Shots in `docs/screenshots/wave3/`. **Reminder: 0018 still unapplied —
   live view pays 25/PR; the delta shows in the Steps row until Kerwin applies it.**
-- **Wave 4:** You (ruling 5). The heatmap sub-slice waits on the art.
+- **Wave 4:** You (ruling 5). — **DONE** (2026-09-23). You tab: nutrition-today card (photo,
+  targets from `users` → LS fallback), Body tiles, Settings → `modal-profile`, and the muscle
+  heatmap. Heatmap: art traced (`scripts/trace-musclemap.py` → 204/218 regions), position-heuristic
+  labels verified visually per quadrant (`scripts/label-musclemap.py`, overrides file supported),
+  packed to `public/musclemap-paths.js` (`scripts/build-musclemap-asset.py`, 75 KB). Rendered as
+  per-region SVG on ONE continuous scale (neutral → `--accent2`), volume from
+  `computeWeekMuscleGrouped()` (primary 1.0 / secondary 0.5 — same numbers as Home's bars);
+  display buckets aggregate `muscleCeilingKey` groups via `HEATMAP_KEY_GROUPS` (tandem.html).
+  Sex-specific via `userSexKey()`; head/hands/feet neutral. Shots in `docs/screenshots/wave4/`.
+  Finish-card reuse of the map → Wave 5.
 - **Wave 5:** Session complete: celebration, gold, photo.
 - **Wave 6:** Workout tracker.
 - **Wave 7:** Onboarding and sign-in.
