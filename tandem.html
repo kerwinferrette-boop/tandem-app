@@ -637,6 +637,62 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tc-card.primary h2{font-size:32px;}
 .tc-card.primary .tc-cta{background:var(--accent);border-color:transparent;color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
 .tc-hero{flex:1 1 54%;min-height:230px;}
+/* ── EPIC-58: persistent tab bar (Home / Plan / Log / Settings) ──────────────
+   Kerwin 2026-09-23: "push the scoped new nav bar". Compact floating bar — the
+   hero-card language is for screens, not the nav. Shown only on the top-level
+   views (dashboard, log) via body.tabbed; the in-workout #bottomNav owns the
+   tracker and is a different component (EPIC-58: do not repurpose it). */
+.tab-bar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:120;display:none;
+  grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border-radius:22px;max-width:520px;margin:0 auto;
+  background:rgba(16,16,23,.84);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+  border:1px solid var(--border2);box-shadow:0 10px 30px rgba(0,0,0,.45);}
+body.tabbed .tab-bar{display:grid;}
+.tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 7px;border:none;border-radius:16px;background:transparent;
+  color:var(--muted2);font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
+  transition:transform .15s,background .2s,color .2s;}
+.tab-btn .tab-ico{display:inline-flex;font-size:20px;line-height:1;}
+.tab-btn:active{transform:scale(.94);}
+.tab-btn.active{background:var(--accent);color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
+body.tabbed .view.active{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));}
+body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
+/* ── EPIC-58: Log tab — one card per lift, bar-chart detail (Today's-Workout style) ── */
+.log-wrap{padding:22px 16px 0;max-width:620px;margin:0 auto;}
+.log-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;}
+.log-sub{font-size:13px;color:var(--muted2);margin-top:5px;}
+.log-filters{display:flex;gap:6px;margin:16px 0 14px;overflow-x:auto;}
+.log-chip{flex:0 0 auto;padding:7px 13px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);color:var(--muted2);
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
+.log-chip.active{background:var(--accent);border-color:transparent;color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
+.log-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.log-card{position:relative;overflow:hidden;isolation:isolate;text-align:left;border-radius:18px;border:1px solid var(--border2);padding:14px 13px 12px;
+  min-height:150px;display:flex;flex-direction:column;cursor:pointer;color:#fff;background:var(--s1);transition:transform .15s;}
+.log-card:active{transform:scale(.976);}
+.log-card .tc-photo,.log-card .tc-tint{z-index:-3;}
+.log-card .tc-photo{position:absolute;inset:0;background-image:var(--hero-url);background-size:cover;background-position:center;opacity:.35;}
+.log-card .tc-tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.35) 0%,rgba(7,7,11,.92) 70%);}
+.log-card .log-meta{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;}
+.log-card h3{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.01em;margin:6px 0 auto;line-height:1.15;}
+.log-card .log-val{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1;margin-top:10px;}
+.log-card .log-val small{font-size:12px;font-weight:600;color:rgba(255,255,255,.7);}
+.log-delta{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;margin-top:5px;}
+.log-delta.up{color:var(--accent2);} .log-delta.down{color:#e0794f;} .log-delta.flat{color:var(--muted2);}
+.log-spark{display:flex;align-items:flex-end;gap:2px;height:22px;margin-top:8px;}
+.log-spark i{flex:1;border-radius:2px;background:var(--accent2);opacity:.75;}
+.log-spark i.pr{opacity:1;}
+.log-spark i.pr{background:var(--gold);}
+.log-empty{padding:40px 16px;text-align:center;color:var(--muted2);font-size:13px;border:1px dashed var(--border2);border-radius:18px;}
+.log-detail-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.log-big{font-family:var(--font-display);font-size:34px;font-weight:700;line-height:1;}
+.log-bars{display:flex;align-items:flex-end;gap:4px;height:170px;padding:10px 0 0;border-bottom:1px solid var(--border2);}
+.log-bars .b{flex:1;min-width:6px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--accent2),var(--accent-deep));position:relative;}
+.log-bars .b.pr{background:linear-gradient(180deg,var(--gold2),var(--gold));box-shadow:0 0 12px var(--gold-glow);}
+.log-bars .b span{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-family:var(--font-mono);font-size:9px;color:var(--muted2);white-space:nowrap;}
+.log-more{display:block;width:100%;margin-top:16px;padding:13px;border-radius:999px;border:1px solid var(--border2);background:var(--s2);color:#fff;
+  font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;}
+.log-more:active{transform:scale(.98);}
+.log-axis{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--muted2);margin-top:5px;}
+
 .tc-row{flex:1 1 46%;display:flex;gap:12px;min-height:180px;}
 .tc-row .tc-card{flex:1 1 0;padding:12px 10px;}
 .tc-row .tc-card h2{font-size:22px;max-width:9ch;}
@@ -1753,6 +1809,25 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 </div>
 
 <!-- ══════════════════════════════════
+     VIEW: LOG (EPIC-58) — one card per lift; tap for a per-session bar chart.
+     Data: the same local session history the History modals read (tandem_history,
+     canonical per-set names — BUG-48), so every bar is one movement by construction.
+══════════════════════════════════ -->
+<div class="view" id="view-log">
+  <div class="log-wrap">
+    <div class="log-title">Your lifts</div>
+    <div class="log-sub">Tap a lift to see every session. Gold bars are PRs.</div>
+    <div class="log-filters" id="logFilters">
+      <button class="log-chip" data-win="week" onclick="setLogWindow('week')">Past week</button>
+      <button class="log-chip" data-win="month" onclick="setLogWindow('month')">Past month</button>
+      <button class="log-chip" data-win="ytd" onclick="setLogWindow('ytd')">YTD</button>
+      <button class="log-chip" data-win="program" onclick="setLogWindow('program')">This program</button>
+    </div>
+    <div id="logGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
      VIEW: TRACKER (main app)
 ══════════════════════════════════ -->
 <div class="view" id="view-tracker">
@@ -1973,7 +2048,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     <div class="modal-handle"></div>
     <button class="modal-close" onclick="closeModal('exhistory')">✕</button>
     <div class="modal-title" id="exhistoryTitle">Exercise History</div>
-    <div class="modal-sub">Matched by exercise name across all logged sessions — not by today's slot, since slot assignments can rotate week to week.</div>
+    <div class="modal-sub" id="exhistorySub">Matched by exercise name across all logged sessions — not by today's slot, since slot assignments can rotate week to week.</div>
     <div id="exhistoryList"></div>
   </div>
 </div>
@@ -2349,6 +2424,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   <button class="bnav-btn" onclick="skipWorkout()"><span data-icon="clock"></span> Skip</button>
   <button class="bnav-btn primary" onclick="finishSession()">Finish ✓</button>
 </div>
+
+<!-- EPIC-58 — persistent tab bar (top-level views only; see .tab-bar CSS) -->
+<nav class="tab-bar" id="tabBar" aria-label="Main">
+  <button class="tab-btn" data-tab="home" onclick="goTab('home')"><span class="tab-ico" data-icon="home"></span>Home</button>
+  <button class="tab-btn" data-tab="plan" onclick="goTab('plan')"><span class="tab-ico" data-icon="dumbbell"></span>Plan</button>
+  <button class="tab-btn" data-tab="log" onclick="goTab('log')"><span class="tab-ico" data-icon="chart"></span>Log</button>
+  <button class="tab-btn" data-tab="settings" onclick="goTab('settings')"><span class="tab-ico" data-icon="cog"></span>Settings</button>
+</nav>
 
 </div><!-- /page -->
 
@@ -6071,6 +6154,8 @@ function openExerciseHistory(id, name) {
   const displayName = name || id;
   const titleEl = document.getElementById('exhistoryTitle');
   if (titleEl) titleEl.textContent = displayName + ' — History';
+  const subEl = document.getElementById('exhistorySub');
+  if (subEl) subEl.style.display = '';
 
   const hist = LS.get('tandem_history') || [];
   const matches = findExerciseHistorySessions(hist, name);
@@ -6589,8 +6674,134 @@ function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
   document.getElementById('bottomNav').style.display = id === 'tracker' ? 'flex' : 'none';
+  setTabBar(id);
   if (id === 'dashboard') loadDashboard();
+  if (id === 'log') renderLogTab();
   if (id === 'tracker') renderTracker();
+}
+
+// ── EPIC-58: tab bar ──────────────────────────────────────────────────────────
+// Home → dashboard; Plan → the Today's Workout chooser; Log → the Log tab;
+// Settings → the profile modal. Only the two top-level views show the bar.
+const TAB_VIEWS = { dashboard: 'home', log: 'log' };
+function setTabBar(viewId) {
+  const tab = TAB_VIEWS[viewId];
+  document.body.classList.toggle('tabbed', !!tab);
+  if (tab) document.querySelectorAll('#tabBar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+}
+function goTab(tab) {
+  if (tab === 'home') showView('dashboard');
+  else if (tab === 'log') showView('log');
+  else if (tab === 'plan') openModal('todaychoice');
+  else if (tab === 'settings') openProfileModal();
+}
+
+// ── EPIC-58: Log tab ──────────────────────────────────────────────────────────
+// One card per lift the user has logged (canonical per-set name, BUG-48). A
+// session's value is its HIGHEST result: est. 1RM for loaded lifts, top reps for
+// bodyweight, top seconds for timed holds (unit from EXERCISE_BANK). "X% change"
+// is first-vs-last WITHIN the selected window (Kerwin's pick, EPIC-58). A bar is a
+// PR when it beats every earlier session of that lift (gold = celebration only).
+let logWindow = 'month';
+function setLogWindow(win) { logWindow = win; renderLogTab(); }
+function logWindowStart(win) {
+  const now = new Date();
+  if (win === 'week') return new Date(now.getTime() - 7 * 864e5);
+  if (win === 'month') return new Date(now.getTime() - 30 * 864e5);
+  if (win === 'ytd') return new Date(now.getFullYear(), 0, 1);
+  const start = cfg?.startDate;
+  const d = start ? new Date(start) : null;
+  return d && !isNaN(d) ? d : new Date(0);
+}
+function buildLiftSeries() {
+  const hist = (LS.get('tandem_history') || []).filter(s => s && !s.skipped);
+  const unitOf = {};
+  Object.values(typeof EXERCISE_BANK === 'object' ? EXERCISE_BANK : {}).forEach(e => { if (e && e.name) unitOf[e.name] = e.unit; });
+  const lifts = {};
+  hist.slice().reverse().forEach(sess => {                 // tandem_history is newest-first
+    const when = new Date(sess.date);
+    if (isNaN(when)) return;
+    const best = {};
+    Object.values(sess.exercises || {}).forEach(sets => (sets || []).forEach(x => {
+      if (!x || !x.name) return;
+      const loaded = (Number(x.w) || 0) > 0;
+      const v = loaded ? (Number(x.est1rm) || Number(x.w) || 0) : (Number(x.r) || 0);
+      if (!v) return;
+      const kind = loaded ? 'lbs' : (unitOf[x.name] === 'sec' ? 'sec' : 'reps');
+      const cur = best[x.name];
+      if (!cur || (kind === 'lbs' && cur.kind !== 'lbs') || (kind === cur.kind && v > cur.v)) best[x.name] = { v, kind };
+    }));
+    Object.entries(best).forEach(([name, b]) => {
+      (lifts[name] = lifts[name] || []).push({ date: when, label: sess.date, v: b.v, kind: b.kind });
+    });
+  });
+  // PR flag: beats every earlier session of the same lift and kind.
+  Object.values(lifts).forEach(pts => { let top = 0; pts.forEach((p, i) => { p.pr = i > 0 && p.v > top; top = Math.max(top, p.v); }); });
+  return lifts;
+}
+function logDelta(pts) {
+  if (pts.length < 2) return null;
+  const a = pts[0].v, b = pts[pts.length - 1].v;
+  return a ? Math.round(((b - a) / a) * 100) : null;
+}
+function logDeltaHtml(pct) {
+  if (pct == null) return '<div class="log-delta flat">Log again to see a trend</div>';
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  return `<div class="log-delta ${cls}">${pct > 0 ? '▲ ' + pct + '% increase' : pct < 0 ? '▼ ' + Math.abs(pct) + '% decrease' : 'No change'}</div>`;
+}
+const logEsc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function renderLogTab() {
+  document.querySelectorAll('#logFilters .log-chip').forEach(c => c.classList.toggle('active', c.dataset.win === logWindow));
+  const grid = document.getElementById('logGrid');
+  if (!grid) return;
+  const from = logWindowStart(logWindow);
+  const lifts = buildLiftSeries();
+  const cards = Object.entries(lifts).map(([name, all]) => {
+    const pts = all.filter(p => p.date >= from);
+    return pts.length ? { name, pts, last: pts[pts.length - 1] } : null;
+  }).filter(Boolean).sort((a, b) => b.last.date - a.last.date);
+  if (!cards.length) {
+    grid.innerHTML = `<div class="log-empty">No lifts logged in this window yet.<br>Finish a workout and your lifts show up here.</div>`;
+    return;
+  }
+  grid.innerHTML = '<div class="log-grid">' + cards.map(c => {
+    const hi = Math.max(...c.pts.map(p => p.v)) || 1;
+    const spark = c.pts.slice(-12).map(p => `<i class="${p.pr ? 'pr' : ''}" style="height:${Math.max(12, Math.round(p.v / hi * 100))}%"></i>`).join('');
+    const unit = c.last.kind === 'lbs' ? 'lbs e1RM' : c.last.kind;
+    return `<button class="log-card" onclick="openLogDetail(this.dataset.name)" data-name="${logEsc(c.name)}">
+      <div class="tc-photo" data-hero="phase"></div><div class="tc-tint"></div><div class="log-scrim"></div>
+      <div class="log-meta">${c.pts.length} session${c.pts.length > 1 ? 's' : ''}</div>
+      <h3>${logEsc(c.name)}</h3>
+      <div class="log-val">${Math.round(c.last.v)} <small>${unit}</small></div>
+      ${logDeltaHtml(logDelta(c.pts))}
+      <div class="log-spark">${spark}</div>
+    </button>`;
+  }).join('') + '</div>';
+  if (typeof applyHeroImages === 'function') applyHeroImages(grid);
+}
+function openLogDetail(name) {
+  const all = buildLiftSeries()[name] || [];
+  const pts = all.filter(p => p.date >= logWindowStart(logWindow));
+  const titleEl = document.getElementById('exhistoryTitle');
+  const list = document.getElementById('exhistoryList');
+  if (!titleEl || !list) return;
+  titleEl.textContent = name;
+  const subEl = document.getElementById('exhistorySub');
+  if (subEl) subEl.style.display = 'none';
+  const hi = Math.max(1, ...pts.map(p => p.v));
+  const last = pts[pts.length - 1];
+  const unit = last?.kind === 'lbs' ? 'lbs · est. 1RM' : (last?.kind || '');
+  const bars = pts.map(p => `<div class="b ${p.pr ? 'pr' : ''}" style="height:${Math.max(4, Math.round(p.v / hi * 100))}%" title="${logEsc(p.label)}"><span>${Math.round(p.v)}</span></div>`).join('');
+  list.innerHTML = `
+    <div class="log-detail-head">
+      <div><div class="log-big">${last ? Math.round(last.v) : '—'}</div><div class="log-sub" style="margin-top:4px;">${unit}</div></div>
+      <div style="text-align:right;">${logDeltaHtml(logDelta(pts))}<div class="log-sub" style="margin-top:4px;font-size:11px;">first vs last · ${logEsc(document.querySelector('#logFilters .log-chip.active')?.textContent || '')}</div></div>
+    </div>
+    <div class="log-bars">${bars}</div>
+    <div class="log-axis"><span>${logEsc(pts[0]?.label || '')}</span><span>${logEsc(last?.label || '')}</span></div>
+    <button class="log-more" onclick="openExerciseHistory('', this.dataset.name)" data-name="${logEsc(name)}">See every set →</button>`;
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  document.getElementById('modal-exhistory').classList.add('open');
 }
 
 function openModal(name) {

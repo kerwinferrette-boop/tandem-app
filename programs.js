@@ -9,6 +9,7 @@
 // ICONS — inline Lucide-style SVG registry (no emoji)
 // ═══════════════════════════════════════════════════════
 const ICONS = {
+  home:'<path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-6h4v6"/>',
   user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
   trophy:'<path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4.5a2 2 0 0 0 2.2 4M17 6h2.5a2 2 0 0 1-2.2 4"/><path d="M12 13v4M9 21h6M10.5 17h3"/>',
   flame:'<path d="M12 2.5c.8 3.2 3.8 4.2 3.8 8a3.8 3.8 0 0 1-7.6 0c0-1 .4-1.9 1-2.8.6 1.8 1.9 1.7 1.9.1 0-1.9-1-2.9.9-5.4Z"/>',
