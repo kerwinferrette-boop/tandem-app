@@ -878,5 +878,5 @@ changed exercise *selection* in the build2/dedupe wrappers (Glute-Ham Raise vani
 > explained.
 
 **Enforced by:** partly. D33 now gates the per-session maximum. PENDING D6d names the missing
-all-axis MEV sweep, with its 160 cells in `docs/bug122-below-mev-cells.md`. The all-axis old-vs-new
+all-axis MEV sweep, with its cells in `docs/bug122-below-mev-cells.md` (160 at a22a589; 72 after the same-day D28 major-muscle ruling). The all-axis old-vs-new
 diff is judgment, not mechanically checkable yet: `program-snapshot.mjs` covers only the persona axes.

@@ -2812,6 +2812,17 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     cardioGroups:['full_body','glute_max'],
   };
 
+  // The accessory a short session / beginner tier drops (D28, EPIC-8a/8b): the LAST
+  // acc slot whose target groups include no MAJOR_MUSCLE_GROUP_TOKENS muscle; acc3
+  // if every accessory targets a major group. Computed from the template's own slot
+  // groups, so it holds for every template/day-count, not a per-day patch.
+  const droppableAccessory = (slots) => {
+    const acc = slots.filter(x => /^acc\d$/.test(x.role));
+    const isMajor = (g) => MAJOR_MUSCLE_GROUP_TOKENS.some(t => g === t || g.startsWith(t + '_'));
+    const minor = acc.filter(x => !(x.groups || []).some(isMajor));
+    return (minor.length ? minor[minor.length - 1] : acc.find(x => x.role === 'acc3') || acc[acc.length - 1] || {}).role;
+  };
+
   try {
     const result = TEMPLATES.map(tmpl => {
       const exs = {};
@@ -2825,7 +2836,12 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         // Epic's "1 superset finisher") or leaves as a small plain Accessory
         // Block for build_muscle (D5: build_muscle never supersets — an honest
         // consequence of existing doctrine, not a gap).
-        if ((exp === 'beginner' || isShortSession) && s.role === 'acc3') return;
+        // Kerwin 2026-09-23 ("sessions under 45 — prioritize maximizing major muscle
+        // groups"): the slot dropped is the accessory that trains NO major muscle
+        // group (arms, calves) — not blindly acc3, which on upper/pull days is the
+        // delt slot and left lateral delts under MEV (BUG-122 D6d, 88 cells). acc3
+        // only when every accessory trains a major group.
+        if ((exp === 'beginner' || isShortSession) && s.role === droppableAccessory(tmpl.slots)) return;
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
         const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
@@ -4123,6 +4139,15 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     return result;
   };
 
+  // Accessory slot n (0-based acc1..acc3) of a base day, by ROLE not array position.
+  // Generated days stamp the role in the id (tmpl.key+'-a'+n); a short session /
+  // beginner drops one slot (D28), which shifts positions, so positional picks
+  // would silently grab a different muscle's lift. Static fallback days carry no
+  // role ids — positional there, exactly as before.
+  const accOf = (day, n) => {
+    const exs = day?.blocks?.[1]?.exs || [];
+    return exs.some(e => /-a\d$/.test(e?.id || '')) ? exs.find(e => (e?.id || '').endsWith('-a' + n)) : exs[n];
+  };
   // 3-day versions: compress to Push/Pull/Legs
   const ppl = (base4) => {
     const [ua, la, ub, lb] = base4;
@@ -4135,7 +4160,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
       // BUG: la.blocks[0].exs[1] is the hinge day's SECOND compound — it belongs in the
       // Compound Block, not tacked onto the accessory tail after isolations (R3 mis-order).
       { label:'Compound Block', exs:[ la.blocks[0].exs[0], lb.blocks[0].exs[0], la.blocks[0].exs[1] ].filter(Boolean) },
-      { label:'Accessory Block', exs:[ la.blocks[1].exs[0], lb.blocks[1].exs[0] ].filter(Boolean) },
+      { label:'Accessory Block', exs:[ accOf(la, 0), accOf(lb, 0) ].filter(Boolean) },
     ];
     if (legsCore) legsBlocks.push({ ...legsCore, exs:[...legsCore.exs] });
     if (legsCardio) legsBlocks.push({ label:'Zone 2 · 22 min', cardio:true, exs:[ {...legsCardio, duration:22} ] });
@@ -4267,13 +4292,13 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     const coreB = coreOf(lb) || coreOf(ub);
     const dayABlocks = [
       { label:'Compound Block', exs:[ ua.blocks[0].exs[0], la.blocks[0].exs[0] ].filter(Boolean) },
-      { label:'Accessory Block', exs:[ ub.blocks[0].exs[1], lb.blocks[1]?.exs[0], la.blocks[1]?.exs[2] || la.blocks[1]?.exs[1] ].filter(Boolean) },
+      { label:'Accessory Block', exs:[ ub.blocks[0].exs[1], accOf(lb, 0), accOf(la, 2) || accOf(la, 1) ].filter(Boolean) },
     ];
     if (coreA) dayABlocks.push({ ...coreA, exs:[...coreA.exs] });
     dayABlocks.push({ ...(la.blocks.find(b=>b.cardio) || ub.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' });
     const dayBBlocks = [
       { label:'Compound Block', exs:[ ub.blocks[0].exs[0], lb.blocks[0].exs[0] ].filter(Boolean) },
-      { label:'Accessory Block', exs:[ ua.blocks[0].exs[1], la.blocks[1]?.exs[0], ub.blocks[1]?.exs[1] ].filter(Boolean) },
+      { label:'Accessory Block', exs:[ ua.blocks[0].exs[1], accOf(la, 0), accOf(ub, 1) ].filter(Boolean) },
     ];
     if (coreB) dayBBlocks.push({ ...coreB, exs:[...coreB.exs] });
     dayBBlocks.push({ ...(lb.blocks.find(b=>b.cardio) || la.blocks.find(b=>b.cardio)), label:'Zone 2 Finisher · 20 min' });

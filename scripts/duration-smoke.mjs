@@ -9,7 +9,8 @@
  *      durationMinutes) must see byte-identical output. This is what makes
  *      threading a new axis into an 11-arg engine safe to ship.
  *   2. THE CITED SHAPE — a session under SHORT_SESSION_MAX_MINUTES drops the
- *      isolation block's 3rd slot (acc3): for goals with an active
+ *      isolation block's non-major accessory slot (arms/calves; acc3 only if all
+ *      accessories train a major group — droppableAccessory()): for goals with an active
  *      SUPERSET_CFG entry (transform/fat_burn) this leaves exactly ONE
  *      superset block and NO leftover plain accessory block (the Epic's own
  *      "keep 2 compounds + 1 superset finisher"); for goals without one
@@ -100,12 +101,12 @@ for (const goal of ['build_muscle', 'transform', 'fat_burn']) {
   } else {
     // build_muscle (and any future non-superset goal): D5 forbids inventing
     // a superset that doesn't exist by design — the Accessory Block just
-    // shrinks by exactly one exercise (acc3 dropped).
+    // shrinks by exactly one exercise (the droppable accessory).
     checked++;
     if (!accFull || !accShort) {
       failures.push(`${goal}: expected an Accessory Block in both the full and short program`);
     } else if (accFull.exs.length - accShort.exs.length !== 1) {
-      failures.push(`${goal}: expected the Accessory Block to shrink by exactly 1 exercise under a short session (acc3 only), got ${accFull.exs.length} -> ${accShort.exs.length}`);
+      failures.push(`${goal}: expected the Accessory Block to shrink by exactly 1 exercise under a short session (one droppable accessory), got ${accFull.exs.length} -> ${accShort.exs.length}`);
     }
     checked++;
     if (supersShort !== 0) {
