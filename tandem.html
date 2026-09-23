@@ -7148,6 +7148,20 @@ function localDateStr(d = new Date()) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 }
 
+// ── calendarDaysBetween() — BUG-27 DST fix ──
+// Counts whole calendar days between two local-midnight Dates without dividing a raw
+// ms difference by a fixed 86400000 (a day is 23h on a spring-forward date, 25h on a
+// fall-back one, so that division is off by one across the boundary — confirmed by a
+// 20,130-scenario sweep in the 2026-09-23 review, 2,585 failures in America/Los_Angeles).
+// Anchors both dates to UTC NOON of their own local Y/M/D components: UTC itself has no
+// DST, so the resulting ms difference is always an exact multiple of 24h and round() is
+// safe. Callers must pass local-midnight-normalized Dates (as every call site here
+// already does); this does not itself normalize time-of-day.
+function calendarDaysBetween(a, b) {
+  const utcNoon = d => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+  return Math.round((utcNoon(b) - utcNoon(a)) / 86400000);
+}
+
 // ── SCIENCE-BASED CADENCE ENGINE — BUG-030 fix ──
 // Derives weekly training schedules from exercise-science recovery principles
 // rather than a static (diffDays%7)+1 counter that ignores plan length and goal.
@@ -8109,7 +8123,7 @@ function getWeekSchedule() {
   if (!cfg?.startDate || !cfg?.goal) return null;
   const start = new Date(cfg.startDate + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const diffDays = Math.floor((today - start) / 86400000);
+  const diffDays = calendarDaysBetween(start, today);
   if (diffDays < 0) return null;
   const program = getActiveProgram();
   if (!program?.length) return null;
@@ -8358,7 +8372,7 @@ function getOverdueDays() {
   }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   last.setHours(0, 0, 0, 0);
-  const gap = Math.floor((today - last) / 86400000);
+  const gap = calendarDaysBetween(last, today);
   return gap > allowed ? gap : 0;
 }
 
