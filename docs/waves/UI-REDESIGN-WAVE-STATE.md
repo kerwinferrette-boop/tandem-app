@@ -108,7 +108,12 @@ The already-built reference pieces:
   solid-accent pill CTA + pill skip. Onboarding: Next/Build → solid-accent pills (dark text,
   glow), Back → circle; hero band/step dots/goal cards were already on the target look,
   untouched. Shots in `docs/screenshots/wave7/` (`scripts/shots-wave7.mjs`).
-- **Wave 8:** The remaining modals.
+- **Wave 8:** The remaining modals. — **DONE `c7f40d3`** (2026-09-23). Shared-primitive pass that
+  restyles all 17 modals at once: `.modal-title` → display 28px/700, `.profile-pill` → 999px pill
+  with solid-accent active (dark text + glow), `.profile-save-btn` → the solid-accent pill CTA
+  shared with auth/onboarding/tracker, `.clear-btn` radius → 11px (kept non-pill: modal-skip
+  reuses it as multi-line option cards). History modal's buttons are `.tool-btn`, already pills
+  from Wave 6. Shots in `docs/screenshots/wave8/` (`scripts/shots-wave8.mjs`).
 
 ## Per-wave definition of done
 
@@ -141,4 +146,5 @@ set is currently unused).
   drawn muscle segment, both sexes (OpenCV). Wave 4 pipeline: fill shading holes → `cv2.findContours`
   → simplified SVG paths → label each region with a muscle tag (a one-time table, several segments
   per muscle, e.g. quads = 3–4) → drop head/hands/feet → color by % of weekly target.
-- [ ] Wave 0 … Wave 8
+- [x] Wave 0 … Wave 8 — rollout complete 2026-09-23 (Waves 2–8 shipped on
+  `claude/review-2026-09-23`; per-wave commits above)
