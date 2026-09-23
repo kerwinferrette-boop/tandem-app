@@ -27,7 +27,10 @@
   --orange:#fb923c;
   --text:#F2F2F5;--muted:#6B6B7A;--muted2:#9A9AAC;
   /* type */
-  --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;--font-mono:var(--font-mono);
+  --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  /* type scale + duotone tint (Wave 0 tokens — one home for the numbers every screen reuses) */
+  --t-hero:32px;--t-h1:28px;--t-h2:22px;--t-eyebrow:10px;--tint-opacity:.42;
   /* unified radius + elevation */
   --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
   --e1:0 1px 2px rgba(0,0,0,0.4);--e2:0 8px 24px rgba(0,0,0,0.5);
@@ -35,10 +38,10 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;font-size:15px;}
+/* Wave 1: the 40px scanline grid is gone (2026-06-20 Design Direction, ruled
+   2026-09-23). Only the warm accent glow at the top remains. */
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 100% 45% at 50% -5%,color-mix(in srgb,var(--accent) 6%,transparent) 0%,transparent 55%),
-  repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.011) 40px),
-  repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.011) 40px);}
+  background:radial-gradient(ellipse 100% 45% at 50% -5%,color-mix(in srgb,var(--accent) 6%,transparent) 0%,transparent 55%);}
 .page{position:relative;z-index:1;max-width:580px;margin:0 auto;padding-bottom:88px;}
 
 /* ═══════════════════════════════
@@ -512,13 +515,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .finish-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
 
 /* ═══ HERO IMAGERY — duotone, profile-driven, avatar-swappable ═══ */
+/* ONE tint recipe (Wave 0): grayscale photo below, this layer paints the user's
+   accent over it. Every duotone surface shares this rule — per-component rules
+   keep only their own z-index. Override strength via --tint-opacity. */
+.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint{
+  content:'';position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;
+  opacity:var(--tint-opacity,.42);}
+.hero-fill{--tint-opacity:.4;}
 .hero-band{position:relative;width:100%;aspect-ratio:16/10;border-radius:var(--r-lg);
   overflow:hidden;isolation:isolate;background:var(--s1);margin:0 0 20px;box-shadow:var(--e2);}
 .hero-band::before{content:'';position:absolute;inset:0;z-index:0;
   background-image:var(--hero-url);background-size:cover;background-position:center 26%;
   filter:grayscale(1) contrast(1.08) brightness(.9);transform:scale(1.02);}
-.hero-band::after{content:'';position:absolute;inset:0;z-index:1;
-  background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.hero-band::after{z-index:1;}
 .hero-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.45) 55%,rgba(7,7,11,.82) 100%);}
 .hero-band .hero-cap{position:absolute;left:18px;right:18px;bottom:15px;z-index:3;}
@@ -533,8 +542,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .hero-fill::before{content:'';position:absolute;inset:0;
   background-image:var(--hero-url);background-size:cover;background-position:center 22%;
   filter:grayscale(1) contrast(1.05) brightness(.88);opacity:.4;}
-.hero-fill::after{content:'';position:absolute;inset:0;
-  background:var(--accent);mix-blend-mode:color;opacity:.4;}
 @media (prefers-reduced-motion:reduce){.hero-band::before{transform:none;}}
 
 /* ═══ ONE-OFF FOCUS PICKER (EPIC-028) — 3x3 of hero-treated photo cards ═══ */
@@ -550,8 +557,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .oneoff-card::before{content:'';position:absolute;inset:0;z-index:0;
   background-image:var(--card-url);background-size:cover;background-position:center;
   filter:grayscale(1) contrast(1.08) brightness(.72);transition:filter .16s ease;}
-.oneoff-card::after{content:'';position:absolute;inset:0;z-index:1;
-  background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.oneoff-card::after{z-index:1;}
 .oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
 .oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
@@ -620,7 +626,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tc-card:active{transform:scale(.976);}
 .tc-card .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
   filter:grayscale(1) contrast(1.08) brightness(.75);}
-.tc-card .tc-tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.tc-card .tc-tint{z-index:-2;}
 .tc-card .tc-scrim{position:absolute;inset:0;z-index:-1;
   background:radial-gradient(120% 76% at 50% 50%,rgba(7,7,11,.32) 0%,rgba(7,7,11,.74) 56%,rgba(7,7,11,.93) 100%);}
 .tc-card .tc-meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.85);
@@ -642,19 +648,31 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    hero-card language is for screens, not the nav. Shown only on the top-level
    views (dashboard, log) via body.tabbed; the in-workout #bottomNav owns the
    tracker and is a different component (EPIC-58: do not repurpose it). */
-.tab-bar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:120;display:none;
-  grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border-radius:22px;max-width:520px;margin:0 auto;
-  background:rgba(16,16,23,.84);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
-  border:1px solid var(--border2);box-shadow:0 10px 30px rgba(0,0,0,.45);}
+/* Wave 1 (ruled 2026-09-23): tab bar OPTION B from docs/mockups/tabbar-and-duel.html.
+   Docked bar, 5 slots — Home · Log · START (raised center circle, opens the
+   Today's Workout chooser) · You · Duel. Labels under every icon are required
+   (Kerwin: "having the names underneath them is critical"). */
+.tab-bar{position:fixed;left:0;right:0;bottom:0;z-index:120;display:none;
+  grid-template-columns:1fr 1fr 96px 1fr 1fr;align-items:center;
+  height:calc(74px + env(safe-area-inset-bottom,0px));padding:0 6px env(safe-area-inset-bottom,0px);
+  background:rgba(12,12,18,.92);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+  border-top:1px solid rgba(255,255,255,.08);}
 body.tabbed .tab-bar{display:grid;}
-.tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 7px;border:none;border-radius:16px;background:transparent;
-  color:var(--muted2);font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
-  transition:transform .15s,background .2s,color .2s;}
-.tab-btn .tab-ico{display:inline-flex;font-size:20px;line-height:1;}
+.tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:none;background:transparent;
+  color:var(--muted2);font-family:var(--font-display);font-size:11px;font-weight:700;cursor:pointer;
+  transition:transform .15s,color .2s;}
+.tab-btn .tab-ico{display:inline-flex;font-size:22px;line-height:1;}
 .tab-btn:active{transform:scale(.94);}
-.tab-btn.active{background:var(--accent);color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
-body.tabbed .view.active{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));}
-body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
+.tab-btn.active{color:#fff;}
+.tab-btn.active .tab-ico{color:var(--accent2);filter:drop-shadow(0 0 8px var(--accent-glow));}
+.tab-btn.tab-start{position:relative;top:-18px;width:68px;height:68px;margin:0 auto;padding:0;gap:2px;justify-content:center;
+  border-radius:50%;background:radial-gradient(circle at 30% 25%,var(--accent2),var(--accent) 55%,var(--accent-deep));
+  color:#04130b;font-size:10px;font-weight:900;letter-spacing:.06em;
+  box-shadow:0 8px 24px var(--accent-glow),0 0 0 6px var(--bg);}
+.tab-btn.tab-start .tab-ico{font-size:26px;}
+.tab-btn.tab-start:active{transform:scale(.94);}
+body.tabbed .view.active{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px));}
+body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 /* ── EPIC-58: Log tab — one card per lift, bar-chart detail (Today's-Workout style) ── */
 .log-wrap{padding:22px 16px 0;max-width:620px;margin:0 auto;}
 .log-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;}
@@ -669,7 +687,7 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .log-card:active{transform:scale(.976);}
 .log-card .tc-photo,.log-card .tc-tint{z-index:-3;}
 .log-card .tc-photo{position:absolute;inset:0;background-image:var(--hero-url);background-size:cover;background-position:center;opacity:.35;}
-.log-card .tc-tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.log-card .tc-tint{z-index:-2;}
 .log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.35) 0%,rgba(7,7,11,.92) 70%);}
 .log-card .log-meta{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;}
 .log-card h3{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.01em;margin:6px 0 auto;line-height:1.15;}
@@ -929,6 +947,12 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 /* ── Bug Report FAB ──────────────────────────────────── */
 .bug-fab{position:fixed;bottom:80px;right:16px;z-index:900;width:40px;height:40px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);transition:opacity .15s;}
 .bug-fab:active{transform:scale(.91);}
+/* Wave 1: keep debug chrome off first-impression + hero surfaces. The FAB stays
+   on the working screens (dashboard, log, tracker); it hides on auth/onboarding
+   and while a full-screen hero takeover (Today's Workout) is up. */
+body:has(#view-auth.active) .bug-fab,
+body:has(#view-onboard.active) .bug-fab,
+body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 /* ── Bug Report Modal ────────────────────────────────── */
 .bug-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;background:rgba(0,0,0,.52);opacity:0;pointer-events:none;transition:opacity .2s;}
 .bug-overlay.open{opacity:1;pointer-events:auto;}
@@ -1359,16 +1383,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
         <span class="ob-label">YOUR COLOR</span>
         <div style="font-size:12px;color:var(--muted2);margin-bottom:16px;font-weight:300;">This is how you show up in the competition</div>
 
-        <div class="color-swatches" id="colorSwatches">
-          <div class="color-swatch selected" style="background:#1B5E38;" data-color="#1B5E38" onclick="selectThemeColor('#1B5E38',this)"></div>
-          <div class="color-swatch" style="background:#d4a843;" data-color="#d4a843" onclick="selectThemeColor('#d4a843',this)"></div>
-          <div class="color-swatch" style="background:#4A9EFF;" data-color="#4A9EFF" onclick="selectThemeColor('#4A9EFF',this)"></div>
-          <div class="color-swatch" style="background:#B47FFF;" data-color="#B47FFF" onclick="selectThemeColor('#B47FFF',this)"></div>
-          <div class="color-swatch" style="background:#E85454;" data-color="#E85454" onclick="selectThemeColor('#E85454',this)"></div>
-          <div class="color-swatch" style="background:#38D9C0;" data-color="#38D9C0" onclick="selectThemeColor('#38D9C0',this)"></div>
-          <div class="color-swatch" style="background:#FF6B35;" data-color="#FF6B35" onclick="selectThemeColor('#FF6B35',this)"></div>
-          <div class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4" onclick="selectThemeColor('#FF69B4',this)"></div>
-        </div>
+        <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
+        <div class="color-swatches" id="colorSwatches" data-swatch-row="onboard"></div>
 
         <div class="color-ring-preview">
           <div class="color-ring" id="colorRingPreview">
@@ -1559,16 +1575,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
           <div class="ob-card-title">Your Color</div>
           <div class="ob-card-sub">This is how you show up in the competition. You can always change it later.</div>
 
-          <div class="color-swatches">
-            <div class="color-swatch selected" style="background:#1B5E38;" data-color="#1B5E38" onclick="selectThemeColor('#1B5E38',this)"></div>
-            <div class="color-swatch" style="background:#d4a843;" data-color="#d4a843" onclick="selectThemeColor('#d4a843',this)"></div>
-            <div class="color-swatch" style="background:#4A9EFF;" data-color="#4A9EFF" onclick="selectThemeColor('#4A9EFF',this)"></div>
-            <div class="color-swatch" style="background:#B47FFF;" data-color="#B47FFF" onclick="selectThemeColor('#B47FFF',this)"></div>
-            <div class="color-swatch" style="background:#E85454;" data-color="#E85454" onclick="selectThemeColor('#E85454',this)"></div>
-            <div class="color-swatch" style="background:#38D9C0;" data-color="#38D9C0" onclick="selectThemeColor('#38D9C0',this)"></div>
-            <div class="color-swatch" style="background:#FF6B35;" data-color="#FF6B35" onclick="selectThemeColor('#FF6B35',this)"></div>
-            <div class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4" onclick="selectThemeColor('#FF69B4',this)"></div>
-          </div>
+          <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
+          <div class="color-swatches" id="colorSwatchesLib" data-swatch-row="onboard"></div>
 
           <div class="ob-section" style="margin-top:20px;">
             <span class="ob-label">Program Start Date</span>
@@ -2343,16 +2351,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
     <!-- D. Color Theme -->
     <div class="profile-section">
       <span class="profile-section-label">Color Theme</span>
-      <div class="profile-swatch-row" id="profileThemeRow">
-        <div class="profile-swatch" data-color="#d4a843" style="background:#d4a843;" onclick="applyColorTheme('#d4a843')" title="Gold"></div>
-        <div class="profile-swatch" data-color="#3FE08C" style="background:#3FE08C;" onclick="applyColorTheme('#3FE08C')" title="Green"></div>
-        <div class="profile-swatch" data-color="#4a9eff" style="background:#4a9eff;" onclick="applyColorTheme('#4a9eff')" title="Blue"></div>
-        <div class="profile-swatch" data-color="#e85454" style="background:#e85454;" onclick="applyColorTheme('#e85454')" title="Red"></div>
-        <div class="profile-swatch" data-color="#b47fff" style="background:#b47fff;" onclick="applyColorTheme('#b47fff')" title="Purple"></div>
-        <div class="profile-swatch" data-color="#38d9c0" style="background:#38d9c0;" onclick="applyColorTheme('#38d9c0')" title="Teal"></div>
-        <div class="profile-swatch" data-color="#e8547a" style="background:#e8547a;" onclick="applyColorTheme('#e8547a')" title="Pink"></div>
-        <div class="profile-swatch" data-color="#ff9952" style="background:#ff9952;" onclick="applyColorTheme('#ff9952')" title="Orange"></div>
-      </div>
+      <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
+      <div class="profile-swatch-row" id="profileThemeRow" data-swatch-row="profile"></div>
     </div>
 
     <div class="profile-divider"></div>
@@ -2425,12 +2425,14 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
   <button class="bnav-btn primary" onclick="finishSession()">Finish ✓</button>
 </div>
 
-<!-- EPIC-58 — persistent tab bar (top-level views only; see .tab-bar CSS) -->
+<!-- Wave 1 — tab bar B (top-level views only; see .tab-bar CSS). START opens the
+     Today's Workout chooser; You and Duel get their own views in Waves 4 and 3. -->
 <nav class="tab-bar" id="tabBar" aria-label="Main">
   <button class="tab-btn" data-tab="home" onclick="goTab('home')"><span class="tab-ico" data-icon="home"></span>Home</button>
-  <button class="tab-btn" data-tab="plan" onclick="goTab('plan')"><span class="tab-ico" data-icon="dumbbell"></span>Plan</button>
   <button class="tab-btn" data-tab="log" onclick="goTab('log')"><span class="tab-ico" data-icon="chart"></span>Log</button>
-  <button class="tab-btn" data-tab="settings" onclick="goTab('settings')"><span class="tab-ico" data-icon="cog"></span>Settings</button>
+  <button class="tab-btn tab-start" data-tab="start" onclick="goTab('start')" aria-label="Start a workout"><span class="tab-ico" data-icon="dumbbell"></span>START</button>
+  <button class="tab-btn" data-tab="you" onclick="goTab('you')"><span class="tab-ico" data-icon="user"></span>You</button>
+  <button class="tab-btn" data-tab="duel" onclick="goTab('duel')"><span class="tab-ico" data-icon="duel"></span>Duel</button>
 </nav>
 
 </div><!-- /page -->
@@ -4118,6 +4120,34 @@ let selectedDuration = 60;
 let selectedWorkoutTime = null;
 let selectedSecondaryGoal = null;
 let selectedThemeColor = '#1B5E38';
+
+// ── Wave 0: ONE color palette (one rule, one home) ──────────────────────────
+// Onboarding and profile used to hard-code two different swatch lists — the
+// profile list didn't even contain the default #1B5E38, so a default-color user
+// saw no selected swatch. This constant is now the only home; every swatch row
+// (marked data-swatch-row) renders from it. Onboarding rows call
+// selectThemeColor (staged until save); the profile row calls applyColorTheme
+// (applies live + saves to cloud).
+const THEME_PALETTE = [
+  { hex: '#1B5E38', name: 'Forest' },
+  { hex: '#d4a843', name: 'Gold' },
+  { hex: '#4A9EFF', name: 'Blue' },
+  { hex: '#B47FFF', name: 'Purple' },
+  { hex: '#E85454', name: 'Red' },
+  { hex: '#38D9C0', name: 'Teal' },
+  { hex: '#FF6B35', name: 'Orange' },
+  { hex: '#FF69B4', name: 'Pink' }
+];
+function renderThemeSwatches() {
+  document.querySelectorAll('[data-swatch-row]').forEach(row => {
+    const isProfile = row.dataset.swatchRow === 'profile';
+    row.innerHTML = THEME_PALETTE.map(c => isProfile
+      ? `<div class="profile-swatch" data-color="${c.hex}" style="background:${c.hex};" onclick="applyColorTheme('${c.hex}')" title="${c.name}"></div>`
+      : `<div class="color-swatch${c.hex === selectedThemeColor ? ' selected' : ''}" data-color="${c.hex}" style="background:${c.hex};" onclick="selectThemeColor('${c.hex}',this)" title="${c.name}"></div>`
+    ).join('');
+  });
+}
+renderThemeSwatches();
 
 // Path Gate / library mini-flow state (onboarding fork) — parallel to, and
 // deliberately not merged with, the obCurrentStep/OB_STEPS machinery above.
@@ -6688,9 +6718,11 @@ function showView(id) {
   if (id === 'tracker') renderTracker();
 }
 
-// ── EPIC-58: tab bar ──────────────────────────────────────────────────────────
-// Home → dashboard; Plan → the Today's Workout chooser; Log → the Log tab;
-// Settings → the profile modal. Only the two top-level views show the bar.
+// ── Wave 1: tab bar B ─────────────────────────────────────────────────────────
+// Home → dashboard; Log → the Log tab; START → the Today's Workout chooser;
+// You → profile (its own view lands in Wave 4); Duel → the week's competition
+// (its own view lands in Wave 3 — until then it scrolls Home to the duel card).
+// Only the top-level views show the bar; the in-workout #bottomNav owns the tracker.
 const TAB_VIEWS = { dashboard: 'home', log: 'log' };
 function setTabBar(viewId) {
   const tab = TAB_VIEWS[viewId];
@@ -6700,8 +6732,12 @@ function setTabBar(viewId) {
 function goTab(tab) {
   if (tab === 'home') showView('dashboard');
   else if (tab === 'log') showView('log');
-  else if (tab === 'plan') openModal('todaychoice');
-  else if (tab === 'settings') openProfileModal();
+  else if (tab === 'start') openModal('todaychoice');
+  else if (tab === 'you') openProfileModal();
+  else if (tab === 'duel') {
+    showView('dashboard');
+    document.querySelector('.dash-competition')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 // ── EPIC-58: Log tab ──────────────────────────────────────────────────────────
@@ -8841,9 +8877,9 @@ function openProfileModal() {
     b.classList.toggle('active', b.dataset.hair === profileState.hair);
   });
   // Theme swatches
-  const curTheme = profile.colorTheme || '#3FE08C';
+  const curTheme = (profile.colorTheme || '#1B5E38').toLowerCase();
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
-    b.classList.toggle('active', b.dataset.color === curTheme);
+    b.classList.toggle('active', b.dataset.color.toLowerCase() === curTheme);
   });
   // User email
   const emailEl = document.getElementById('profileUserEmail');
@@ -8977,7 +9013,7 @@ function applyColorTheme(hex) {
   applyAccentColor(hex);
   // Update swatch active states
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
-    b.classList.toggle('active', b.dataset.color === hex);
+    b.classList.toggle('active', b.dataset.color.toLowerCase() === String(hex).toLowerCase());
   });
   const profile = LS.get('tandem_profile') || {};
   profile.colorTheme = hex;
