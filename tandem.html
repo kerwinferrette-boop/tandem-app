@@ -595,7 +595,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   animation:slideUp .22s ease;position:relative;}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-handle{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px;}
-.modal-title{font-family:var(--font-display);font-size:26px;letter-spacing:.04em;color:#fff;margin-bottom:3px;}
+.modal-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;margin-bottom:3px;}
 .modal-sub{font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.5;}
 .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;}
 
@@ -812,7 +812,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .hist-pr{font-family:var(--font-mono);font-size:9px;color:var(--amber);background:var(--amber-dim);
   border:1px solid rgba(255,176,32,.2);padding:1px 6px;border-radius:3px;display:inline-block;margin-left:5px;}
 .clear-btn{width:100%;padding:9px;background:var(--red-dim);border:1px solid rgba(232,84,84,.3);
-  border-radius:8px;color:var(--red);font-family:var(--font-mono);font-size:10px;
+  border-radius:11px;color:var(--red);font-family:var(--font-mono);font-size:10px;
   cursor:pointer;margin-top:10px;letter-spacing:.07em;text-transform:uppercase;}
 
 /* PR TOAST */
@@ -894,8 +894,8 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .profile-section{margin-bottom:20px;}
 .profile-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
 .profile-pill-row{display:flex;gap:6px;flex-wrap:wrap;}
-.profile-pill{padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
-.profile-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
+.profile-pill{padding:8px 14px;border-radius:999px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.profile-pill.active{background:var(--accent);border-color:transparent;color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 .profile-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
 .profile-swatch.active{border-color:#fff;transform:scale(1.15);}
 .profile-swatch-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
@@ -904,7 +904,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .profile-input-group{display:flex;flex-direction:column;gap:5px;}
 .profile-input-label{font-size:11px;color:var(--muted2);}
 .modal-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
-.profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:8px;transition:all .2s;}
+.profile-save-btn{width:100%;padding:13px;border-radius:999px;background:var(--accent);border:none;color:#04130b;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;margin-top:8px;transition:all .2s;box-shadow:0 6px 18px var(--accent-glow);}
 .profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
 #profileBtn{cursor:pointer;transition:all .15s;}
