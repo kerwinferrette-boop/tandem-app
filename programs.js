@@ -32,7 +32,8 @@ const ICONS = {
   plate:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/>',
   save:'<path d="M5 3h11l3 3v15H5V3ZM8.5 3v5h6V3M8.5 21v-7h7v7"/>',
   alert:'<path d="M12 3 21 19H3L12 3ZM12 10v4M12 17h.01"/>',
-  swap:'<path d="M4 8h13M13 4l4 4-4 4M20 16H7M11 20l-4-4 4-4"/>'
+  swap:'<path d="M4 8h13M13 4l4 4-4 4M20 16H7M11 20l-4-4 4-4"/>',
+  duel:'<circle cx="9" cy="8" r="3.5"/><circle cx="16.5" cy="9" r="2.8"/><path d="M2.5 20c0-3.6 3-5.5 6.5-5.5s6.5 1.9 6.5 5.5M15 14.6c3.4-.3 6.5 1.4 6.5 5"/>'
 };
 function svgIcon(name, size){
   const p = ICONS[name]; if(!p) return '';

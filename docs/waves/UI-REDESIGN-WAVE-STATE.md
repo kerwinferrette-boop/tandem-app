@@ -72,13 +72,48 @@ The already-built reference pieces:
   - Remove the 40px scanline grid (`body::before`).
   - Restrict the bug FAB and QA badge to where they belong.
   - Build tab bar B.
-- **Wave 2:** Home (ruling 2).
-- **Wave 3:** Duel (ruling 4).
-- **Wave 4:** You (ruling 5). The heatmap sub-slice waits on the art.
-- **Wave 5:** Session complete: celebration, gold, photo.
-- **Wave 6:** Workout tracker.
-- **Wave 7:** Onboarding and sign-in.
-- **Wave 8:** The remaining modals.
+- **Wave 2:** Home (ruling 2). — **DONE `c5fcc22`** (2026-09-23). Hero/duel/muscles/vitals/PR
+  per ruling 2; shots in `docs/screenshots/wave2/`. Medals card + body-comp + nutrition rings
+  removed from Home (nutrition/body → Wave 4 You tab; **medals render nowhere right now —
+  flagged to Kerwin**).
+- **Wave 3:** Duel (ruling 4). — **DONE `dea9444`** (2026-09-23). Duel tab + Home duel card open
+  `#modal-duel`; source rows sum exactly to the score (steps shown as residual of
+  `total_points` so the view stays the only steps-math home); day-by-day dots, gold PRs,
+  nudge → chooser. Shots in `docs/screenshots/wave3/`. **Reminder: 0018 still unapplied —
+  live view pays 25/PR; the delta shows in the Steps row until Kerwin applies it.**
+- **Wave 4:** You (ruling 5). — **DONE** (2026-09-23). You tab: nutrition-today card (photo,
+  targets from `users` → LS fallback), Body tiles, Settings → `modal-profile`, and the muscle
+  heatmap. Heatmap: art traced (`scripts/trace-musclemap.py` → 204/218 regions), position-heuristic
+  labels verified visually per quadrant (`scripts/label-musclemap.py`, overrides file supported),
+  packed to `public/musclemap-paths.js` (`scripts/build-musclemap-asset.py`, 75 KB). Rendered as
+  per-region SVG on ONE continuous scale (neutral → `--accent2`), volume from
+  `computeWeekMuscleGrouped()` (primary 1.0 / secondary 0.5 — same numbers as Home's bars);
+  display buckets aggregate `muscleCeilingKey` groups via `HEATMAP_KEY_GROUPS` (tandem.html).
+  Sex-specific via `userSexKey()`; head/hands/feet neutral. Shots in `docs/screenshots/wave4/`.
+  Finish-card reuse of the map → Wave 5.
+- **Wave 5:** Session complete. — **DONE `72f57b0`** (2026-09-23). #modal-summary restyled to the
+  celebration sheet: celebrate-{male,female}.jpg hero on the shared duotone recipe, stat grid with
+  the PRs tile in gold, gold PR rows from tandem_working1rm dir:'pr' (same store as Home's gold
+  card), and the muscle heatmap reused on the card via renderMuscleHeatmap(target) — same renderer/
+  scale/volume as You. Signed-out finishes now show the card too (local duration + PR count; streak
+  '—' offline, it lives in the cloud streaks table). Shots in `docs/screenshots/wave5/`.
+- **Wave 6:** Workout tracker. — **DONE `4c21938`** (2026-09-23). CSS-only chrome pass: Start
+  Workout is a full-width accent pill (live timer row matches), tool chips/day tabs/week-nav
+  reset restyled to the Log tab's pill language (active day tab solid accent), #bottomNav
+  gets bigger targets with a solid-accent Finish, day title on display type. The set logger
+  is deliberately untouched; #bottomNav still owns in-workout nav (ruling 1). Shots in
+  `docs/screenshots/wave6/` (`scripts/shots-wave6.mjs`).
+- **Wave 7:** Onboarding and sign-in. — **DONE `16dc5d9`** (2026-09-23). Sign-in: duotone hero
+  band (new `auth` moment in `HERO_MOMENTS`, shared pool/tint recipe), 36px display heading,
+  solid-accent pill CTA + pill skip. Onboarding: Next/Build → solid-accent pills (dark text,
+  glow), Back → circle; hero band/step dots/goal cards were already on the target look,
+  untouched. Shots in `docs/screenshots/wave7/` (`scripts/shots-wave7.mjs`).
+- **Wave 8:** The remaining modals. — **DONE `c7f40d3`** (2026-09-23). Shared-primitive pass that
+  restyles all 17 modals at once: `.modal-title` → display 28px/700, `.profile-pill` → 999px pill
+  with solid-accent active (dark text + glow), `.profile-save-btn` → the solid-accent pill CTA
+  shared with auth/onboarding/tracker, `.clear-btn` radius → 11px (kept non-pill: modal-skip
+  reuses it as multi-line option cards). History modal's buttons are `.tool-btn`, already pills
+  from Wave 6. Shots in `docs/screenshots/wave8/` (`scripts/shots-wave8.mjs`).
 
 ## Per-wave definition of done
 
@@ -111,4 +146,5 @@ set is currently unused).
   drawn muscle segment, both sexes (OpenCV). Wave 4 pipeline: fill shading holes → `cv2.findContours`
   → simplified SVG paths → label each region with a muscle tag (a one-time table, several segments
   per muscle, e.g. quads = 3–4) → drop head/hands/feet → color by % of weekly target.
-- [ ] Wave 0 … Wave 8
+- [x] Wave 0 … Wave 8 — rollout complete 2026-09-23 (Waves 2–8 shipped on
+  `claude/review-2026-09-23`; per-wave commits above)

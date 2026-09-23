@@ -947,3 +947,27 @@ and cleared it in one pass, then confirmed a second run reports "no stale local 
 Honest limit: this cannot patch the harness-owned stop hook itself (outside this repo), so a *newly
 reseeded* stale ref could still trigger one false-positive report before the next preflight run
 clears it — but it can no longer persist or recur silently across a whole session the way it did here.
+
+---
+
+## SC-26 — A top-level parse error silently killed the whole app script, and I trusted the preview console's silence
+
+(Originally written as "SC-24" on the redesign branch, in parallel with the SC-24/SC-25 entries
+above; renumbered to SC-26 at merge.)
+
+**What I believed.** That if the app was broken, the preview's console would say so. After a Wave 4
+edit, `goTab` was "not defined" and every view was inert, but `preview_console_logs` showed zero
+errors and the DOM looked complete — so I nearly diagnosed a wiring bug instead of the real one:
+I had written `a ?? b || c` (`ut?.goal_weight_lbs ?? Number(profile.goalWeight) || null`), which is
+a JavaScript *parse* error — mixing `??` with `||` unparenthesized is a syntax error by spec — and a
+parse error at any point in tandem.html's single inline script block discards the ENTIRE block. No
+function in the app exists, and the preview console logs nothing for it.
+
+> **THE RULE — SC-26.** Parenthesize any mix of `??` with `||`/`&&`. After editing tandem.html's
+> inline script, syntax-check it before reaching for behavioral debugging: extract every non-src
+> `<script>` block and `new Function(src)` each in node — a parse failure names the token. Symptom
+> signature to recognize: DOM fully present, ALL top-level functions undefined, console empty.
+
+**Enforced by:** `npm run verify`'s "syntax: tandem.html app block" check covers commits; the rule's
+mid-edit half (check BEFORE debugging behavior in the preview) is judgment — not mechanically
+checkable.

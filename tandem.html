@@ -27,7 +27,10 @@
   --orange:#fb923c;
   --text:#F2F2F5;--muted:#6B6B7A;--muted2:#9A9AAC;
   /* type */
-  --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;--font-mono:var(--font-mono);
+  --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  /* type scale + duotone tint (Wave 0 tokens — one home for the numbers every screen reuses) */
+  --t-hero:32px;--t-h1:28px;--t-h2:22px;--t-eyebrow:10px;--tint-opacity:.42;
   /* unified radius + elevation */
   --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
   --e1:0 1px 2px rgba(0,0,0,0.4);--e2:0 8px 24px rgba(0,0,0,0.5);
@@ -35,10 +38,10 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;font-size:15px;}
+/* Wave 1: the 40px scanline grid is gone (2026-06-20 Design Direction, ruled
+   2026-09-23). Only the warm accent glow at the top remains. */
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 100% 45% at 50% -5%,color-mix(in srgb,var(--accent) 6%,transparent) 0%,transparent 55%),
-  repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.011) 40px),
-  repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.011) 40px);}
+  background:radial-gradient(ellipse 100% 45% at 50% -5%,color-mix(in srgb,var(--accent) 6%,transparent) 0%,transparent 55%);}
 .page{position:relative;z-index:1;max-width:580px;margin:0 auto;padding-bottom:88px;}
 
 /* ═══════════════════════════════
@@ -182,21 +185,21 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 /* Navigation buttons */
 .ob-nav{display:flex;gap:10px;padding:16px 18px 32px;margin-top:4px;}
-.ob-back-btn{flex:0 0 48px;height:48px;border-radius:11px;border:1px solid var(--border2);
+.ob-back-btn{flex:0 0 48px;height:48px;border-radius:999px;border:1px solid var(--border2);
   background:var(--s1);color:var(--muted2);font-size:18px;cursor:pointer;transition:all .15s;
   display:flex;align-items:center;justify-content:center;}
 .ob-back-btn:hover{border-color:var(--border2);color:var(--text);}
-.ob-next-btn{flex:1;height:48px;border-radius:11px;border:none;
-  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);
-  color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.08em;
+.ob-next-btn{flex:1;height:48px;border-radius:999px;border:none;
+  background:var(--accent);box-shadow:0 6px 18px var(--accent-glow);
+  color:#04130b;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.02em;
   cursor:pointer;transition:all .2s;}
 .ob-next-btn:disabled{background:var(--s2);color:var(--muted);cursor:not-allowed;}
 .ob-next-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .ob-next-btn:not(:disabled):active{transform:scale(.98);}
-.ob-build-btn{width:100%;padding:16px;border-radius:12px;
-  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);
-  border:none;color:#fff;font-family:var(--font-display);font-size:22px;
-  letter-spacing:.08em;cursor:pointer;transition:all .2s;margin-top:8px;}
+.ob-build-btn{width:100%;padding:16px;border-radius:999px;
+  background:var(--accent);box-shadow:0 6px 18px var(--accent-glow);
+  border:none;color:#04130b;font-family:var(--font-display);font-size:17px;font-weight:800;
+  letter-spacing:.02em;cursor:pointer;transition:all .2s;margin-top:8px;}
 .ob-build-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 30%,transparent);}
 .ob-build-btn:active{transform:scale(.98);}
 
@@ -225,26 +228,28 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .pb-reps{font-family:var(--font-mono);font-size:12px;color:var(--accent2);margin-top:4px;}
 
 .week-nav{display:flex;align-items:center;gap:8px;padding:8px 16px 0;}
-.wn-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border2);background:var(--s1);
-  color:var(--muted2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.wn-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:var(--s1);
+  color:var(--muted2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .wn-btn:hover{border-color:var(--accent);color:var(--accent);}
 .wn-label{flex:1;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.08em;}
 .wn-reset{font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;
-  padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);}
+  padding:8px 13px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);}
 
 /* ═══════════════════════════════
    SESSION TIMER (FEAT: persistent workout session state + running timer,
    in-app report 14f6baca, 2026-07-03 — "a start button... continuous timer
    that goes until finish is hit... doesnt lose my spot")
 ═══════════════════════════════ */
-.session-timer-row{padding:8px 16px 0;display:flex;justify-content:center;}
-.session-timer-start{width:100%;padding:9px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
-  background:var(--accent-dim);color:var(--accent);font-family:var(--font-mono);font-size:11px;
-  letter-spacing:.07em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;gap:6px;transition:all .15s;}
-.session-timer-start:hover{background:color-mix(in srgb,var(--accent) 28%,transparent);}
+.session-timer-row{padding:10px 16px 0;display:flex;justify-content:center;}
+/* Wave 6: the Start button is the tracker's hero action — big accent pill,
+   same button language as the chooser CTAs (Kerwin: "I want to click buttons"). */
+.session-timer-start{width:100%;padding:15px 12px;border-radius:999px;border:none;
+  background:var(--accent);color:#04130b;font-family:var(--font-display);font-size:16px;
+  font-weight:800;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;box-shadow:0 6px 18px var(--accent-glow);transition:transform .15s;}
+.session-timer-start:active{transform:scale(.98);}
 .session-timer-live{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
-  padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--s1);
+  padding:11px 12px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);
   color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
 .session-timer-live svg{color:var(--accent);width:14px;height:14px;}
 /* EPIC-19 Slice 1 — advisory-only pacing text appended into the same live-timer
@@ -266,7 +271,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 ═══════════════════════════════ */
 .tools-row{display:flex;gap:6px;padding:8px 16px 0;overflow-x:auto;scrollbar-width:none;}
 .tools-row::-webkit-scrollbar{display:none;}
-.tool-btn{flex-shrink:0;padding:6px 12px;border-radius:7px;border:1px solid var(--border);
+/* Wave 6: pill chips — same language as the Log tab's .log-chip */
+.tool-btn{flex-shrink:0;padding:8px 14px;border-radius:999px;border:1px solid var(--border2);
   background:var(--s1);font-family:var(--font-mono);font-size:10px;
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transition:all .15s;}
 .tool-btn:hover,.tool-btn.on{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);}
@@ -279,10 +285,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:linear-gradient(to right,transparent,var(--bg));pointer-events:none;}
 .day-tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 16px 0;}
 .day-tabs::-webkit-scrollbar{display:none;}
-.day-tab{flex-shrink:0;padding:7px 13px;border-radius:8px;border:1px solid var(--border);
+.day-tab{flex-shrink:0;padding:8px 14px;border-radius:999px;border:1px solid var(--border2);
   background:var(--s1);font-family:var(--font-mono);font-size:10px;
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .15s;}
-.day-tab.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
+.day-tab.active{background:var(--accent);border-color:transparent;color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 
 /* ═══════════════════════════════
    WORKOUT VIEW
@@ -292,7 +298,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .day-header{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:16px;margin-bottom:10px;position:relative;overflow:hidden;}
 .day-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--dhc,var(--accent));}
 .dh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
-.dh-title{font-family:var(--font-display);font-size:24px;letter-spacing:.04em;color:#fff;line-height:1;}
+.dh-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;line-height:1;}
 .dh-chips{display:flex;gap:5px;flex-wrap:wrap;}
 .dh-chip{font-family:var(--font-mono);font-size:9px;padding:3px 9px;border-radius:5px;
   background:var(--s2);border:1px solid var(--border);color:var(--muted2);text-transform:uppercase;}
@@ -512,13 +518,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .finish-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
 
 /* ═══ HERO IMAGERY — duotone, profile-driven, avatar-swappable ═══ */
+/* ONE tint recipe (Wave 0): grayscale photo below, this layer paints the user's
+   accent over it. Every duotone surface shares this rule — per-component rules
+   keep only their own z-index. Override strength via --tint-opacity. */
+.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint,.dash-hero .tc-tint,.sum-hero .tc-tint{
+  content:'';position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;
+  opacity:var(--tint-opacity,.42);}
+.hero-fill{--tint-opacity:.4;}
 .hero-band{position:relative;width:100%;aspect-ratio:16/10;border-radius:var(--r-lg);
   overflow:hidden;isolation:isolate;background:var(--s1);margin:0 0 20px;box-shadow:var(--e2);}
 .hero-band::before{content:'';position:absolute;inset:0;z-index:0;
   background-image:var(--hero-url);background-size:cover;background-position:center 26%;
   filter:grayscale(1) contrast(1.08) brightness(.9);transform:scale(1.02);}
-.hero-band::after{content:'';position:absolute;inset:0;z-index:1;
-  background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.hero-band::after{z-index:1;}
 .hero-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.45) 55%,rgba(7,7,11,.82) 100%);}
 .hero-band .hero-cap{position:absolute;left:18px;right:18px;bottom:15px;z-index:3;}
@@ -533,8 +545,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .hero-fill::before{content:'';position:absolute;inset:0;
   background-image:var(--hero-url);background-size:cover;background-position:center 22%;
   filter:grayscale(1) contrast(1.05) brightness(.88);opacity:.4;}
-.hero-fill::after{content:'';position:absolute;inset:0;
-  background:var(--accent);mix-blend-mode:color;opacity:.4;}
 @media (prefers-reduced-motion:reduce){.hero-band::before{transform:none;}}
 
 /* ═══ ONE-OFF FOCUS PICKER (EPIC-028) — 3x3 of hero-treated photo cards ═══ */
@@ -550,8 +560,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .oneoff-card::before{content:'';position:absolute;inset:0;z-index:0;
   background-image:var(--card-url);background-size:cover;background-position:center;
   filter:grayscale(1) contrast(1.08) brightness(.72);transition:filter .16s ease;}
-.oneoff-card::after{content:'';position:absolute;inset:0;z-index:1;
-  background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.oneoff-card::after{z-index:1;}
 .oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
   background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
 .oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
@@ -586,7 +595,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   animation:slideUp .22s ease;position:relative;}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-handle{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px;}
-.modal-title{font-family:var(--font-display);font-size:26px;letter-spacing:.04em;color:#fff;margin-bottom:3px;}
+.modal-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;margin-bottom:3px;}
 .modal-sub{font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.5;}
 .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;}
 
@@ -620,7 +629,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tc-card:active{transform:scale(.976);}
 .tc-card .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
   filter:grayscale(1) contrast(1.08) brightness(.75);}
-.tc-card .tc-tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.tc-card .tc-tint{z-index:-2;}
 .tc-card .tc-scrim{position:absolute;inset:0;z-index:-1;
   background:radial-gradient(120% 76% at 50% 50%,rgba(7,7,11,.32) 0%,rgba(7,7,11,.74) 56%,rgba(7,7,11,.93) 100%);}
 .tc-card .tc-meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.85);
@@ -642,19 +651,31 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    hero-card language is for screens, not the nav. Shown only on the top-level
    views (dashboard, log) via body.tabbed; the in-workout #bottomNav owns the
    tracker and is a different component (EPIC-58: do not repurpose it). */
-.tab-bar{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:120;display:none;
-  grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border-radius:22px;max-width:520px;margin:0 auto;
-  background:rgba(16,16,23,.84);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
-  border:1px solid var(--border2);box-shadow:0 10px 30px rgba(0,0,0,.45);}
+/* Wave 1 (ruled 2026-09-23): tab bar OPTION B from docs/mockups/tabbar-and-duel.html.
+   Docked bar, 5 slots — Home · Log · START (raised center circle, opens the
+   Today's Workout chooser) · You · Duel. Labels under every icon are required
+   (Kerwin: "having the names underneath them is critical"). */
+.tab-bar{position:fixed;left:0;right:0;bottom:0;z-index:120;display:none;
+  grid-template-columns:1fr 1fr 96px 1fr 1fr;align-items:center;
+  height:calc(74px + env(safe-area-inset-bottom,0px));padding:0 6px env(safe-area-inset-bottom,0px);
+  background:rgba(12,12,18,.92);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+  border-top:1px solid rgba(255,255,255,.08);}
 body.tabbed .tab-bar{display:grid;}
-.tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 7px;border:none;border-radius:16px;background:transparent;
-  color:var(--muted2);font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
-  transition:transform .15s,background .2s,color .2s;}
-.tab-btn .tab-ico{display:inline-flex;font-size:20px;line-height:1;}
+.tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:none;background:transparent;
+  color:var(--muted2);font-family:var(--font-display);font-size:11px;font-weight:700;cursor:pointer;
+  transition:transform .15s,color .2s;}
+.tab-btn .tab-ico{display:inline-flex;font-size:22px;line-height:1;}
 .tab-btn:active{transform:scale(.94);}
-.tab-btn.active{background:var(--accent);color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
-body.tabbed .view.active{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));}
-body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
+.tab-btn.active{color:#fff;}
+.tab-btn.active .tab-ico{color:var(--accent2);filter:drop-shadow(0 0 8px var(--accent-glow));}
+.tab-btn.tab-start{position:relative;top:-18px;width:68px;height:68px;margin:0 auto;padding:0;gap:2px;justify-content:center;
+  border-radius:50%;background:radial-gradient(circle at 30% 25%,var(--accent2),var(--accent) 55%,var(--accent-deep));
+  color:#04130b;font-size:10px;font-weight:900;letter-spacing:.06em;
+  box-shadow:0 8px 24px var(--accent-glow),0 0 0 6px var(--bg);}
+.tab-btn.tab-start .tab-ico{font-size:26px;}
+.tab-btn.tab-start:active{transform:scale(.94);}
+body.tabbed .view.active{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px));}
+body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 /* ── EPIC-58: Log tab — one card per lift, bar-chart detail (Today's-Workout style) ── */
 .log-wrap{padding:22px 16px 0;max-width:620px;margin:0 auto;}
 .log-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;}
@@ -669,7 +690,7 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .log-card:active{transform:scale(.976);}
 .log-card .tc-photo,.log-card .tc-tint{z-index:-3;}
 .log-card .tc-photo{position:absolute;inset:0;background-image:var(--hero-url);background-size:cover;background-position:center;opacity:.35;}
-.log-card .tc-tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42;}
+.log-card .tc-tint{z-index:-2;}
 .log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.35) 0%,rgba(7,7,11,.92) 70%);}
 .log-card .log-meta{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;}
 .log-card h3{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.01em;margin:6px 0 auto;line-height:1.15;}
@@ -712,14 +733,39 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .calc-result-val{font-family:var(--font-display);font-size:58px;color:var(--accent2);line-height:1;}
 .calc-result-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
 
-/* Session summary (EPIC-13 Step 3) */
+/* Session summary (EPIC-13 Step 3) — Wave 5: celebration sheet. Hero photo uses
+   the ONE duotone recipe (.tc-photo grayscale + the shared .tc-tint rule above);
+   PR rows reuse .duel-pr (gold = celebration-only surfaces, same as Wave 3). */
+.sum-sheet{padding:0;}
+.sum-sheet .modal-close{z-index:5;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7);}
+.sum-hero{position:relative;isolation:isolate;overflow:hidden;min-height:200px;display:flex;align-items:flex-end;border-radius:20px 20px 0 0;}
+.sum-hero .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
+  filter:grayscale(1) contrast(1.08) brightness(.75);}
+.sum-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
+.sum-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.12) 0%,rgba(7,7,11,.5) 55%,var(--s1) 100%);}
+.sum-hero-body{padding:30px 20px 12px;}
+.sum-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.sum-eyebrow i{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
+.sum-title{font-family:var(--font-display);font-size:42px;font-weight:800;line-height:.98;letter-spacing:-.02em;color:#fff;}
+.sum-body{padding:14px 16px max(20px,env(safe-area-inset-bottom));}
 .summary-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
 .summary-stat{background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:14px;text-align:center;}
 .summary-stat-val{font-family:var(--font-display);font-size:28px;color:var(--accent2);line-height:1;}
 .summary-stat-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+.summary-stat.gold{background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35);}
+.summary-stat.gold .summary-stat-val{color:var(--gold2);}
+#sumPrList{margin-top:12px;}
+#sumPrList .duel-pr span{display:flex;align-items:center;gap:8px;}
+#sumPrList .duel-pr svg{width:14px;height:14px;color:var(--gold2);flex-shrink:0;}
+.sum-map{margin-top:12px;background:var(--s2);border:1px solid var(--border2);border-radius:16px;padding:12px 12px 14px;}
+.sum-map-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.sum-cta{display:block;width:100%;margin-top:14px;padding:15px;border:none;border-radius:999px;background:var(--accent);color:#04130b;
+  font-family:var(--font-display);font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px var(--accent-glow);}
+.sum-cta:active{transform:scale(.98);}
 
-/* Persistent streak badge (EPIC-13 Step 4) */
-.dash-streak-chip{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:12px;color:var(--muted2);background:var(--s2);border:1px solid var(--border2);border-radius:20px;padding:5px 10px;flex-shrink:0;}
+/* Persistent streak badge (EPIC-13 Step 4) — Wave 2: gold pill per docs/mockups/home-v2.html
+   (gold = celebration-only surfaces: streak, PRs) */
+.dash-streak-chip{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:12px;color:var(--gold2);background:var(--gold-dim);border:1px solid rgba(255,176,32,.3);border-radius:999px;padding:7px 12px;flex-shrink:0;}
 .pct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .pct-card{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:9px 6px;
   text-align:center;transition:all .15s;}
@@ -766,7 +812,7 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .hist-pr{font-family:var(--font-mono);font-size:9px;color:var(--amber);background:var(--amber-dim);
   border:1px solid rgba(255,176,32,.2);padding:1px 6px;border-radius:3px;display:inline-block;margin-left:5px;}
 .clear-btn{width:100%;padding:9px;background:var(--red-dim);border:1px solid rgba(232,84,84,.3);
-  border-radius:8px;color:var(--red);font-family:var(--font-mono);font-size:10px;
+  border-radius:11px;color:var(--red);font-family:var(--font-mono);font-size:10px;
   cursor:pointer;margin-top:10px;letter-spacing:.07em;text-transform:uppercase;}
 
 /* PR TOAST */
@@ -799,10 +845,11 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .bottom-nav{position:fixed;bottom:0;bottom:env(safe-area-inset-bottom,0);left:0;right:0;background:rgba(7,7,11,.96);
   backdrop-filter:blur(20px);border-top:1px solid var(--border);
   display:flex;padding:9px 14px 22px;gap:7px;z-index:300;max-width:580px;margin:0 auto;}
-.bnav-btn{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--s1);
+/* Wave 6: bigger tap targets; Finish is the one solid-accent action down here */
+.bnav-btn{flex:1;padding:12px 6px;border-radius:13px;border:1px solid var(--border2);background:var(--s1);
   color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;cursor:pointer;transition:all .15s;text-align:center;}
-.bnav-btn.primary{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);font-weight:600;}
+.bnav-btn.primary{background:var(--accent);border-color:transparent;color:#04130b;font-weight:800;box-shadow:0 4px 14px var(--accent-glow);}
 .bnav-btn:active{transform:scale(.97);}
 
 @media(max-width:420px){
@@ -813,19 +860,19 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 /* ═══════════════════════════════
    AUTH VIEW
 ═══════════════════════════════ */
-.auth-wrap{padding:40px 18px 0;}
-.auth-logo{text-align:center;margin-bottom:28px;}
-.auth-heading{font-family:var(--font-display);font-size:30px;letter-spacing:.05em;color:#fff;margin-bottom:8px;text-align:center;}
-.auth-sub{font-size:13px;color:var(--muted2);text-align:center;line-height:1.7;margin-bottom:28px;font-weight:300;}
+.auth-wrap{padding:24px 18px 0;}
+.auth-logo{text-align:center;margin-bottom:18px;}
+.auth-heading{font-family:var(--font-display);font-size:36px;font-weight:800;letter-spacing:-.01em;line-height:1.02;color:#fff;margin-bottom:8px;text-align:center;}
+.auth-sub{font-size:13px;color:var(--muted2);text-align:center;line-height:1.7;margin-bottom:22px;font-weight:300;}
 .auth-form{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:20px;}
 .auth-field-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;display:block;}
 .auth-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--font-body);font-size:16px;padding:13px 14px;outline:none;margin-bottom:12px;transition:border-color .15s;-webkit-appearance:none;}
 .auth-input:focus{border-color:var(--accent);}
-.auth-send-btn{width:100%;padding:15px;border-radius:11px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.08em;cursor:pointer;transition:all .2s;margin-bottom:10px;}
-.auth-send-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 30%,transparent);}
+.auth-send-btn{width:100%;padding:15px;border-radius:999px;background:var(--accent);border:none;color:#04130b;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;transition:all .2s;margin-bottom:10px;box-shadow:0 6px 18px var(--accent-glow);}
+.auth-send-btn:hover{transform:translateY(-1px);}
 .auth-send-btn:active{transform:scale(.98);}
 .auth-send-btn:disabled{opacity:.5;cursor:default;transform:none;}
-.auth-skip{width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.auth-skip{width:100%;padding:11px;background:transparent;border:1px solid var(--border2);border-radius:999px;color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
 .auth-skip:hover{border-color:var(--muted2);color:var(--text);}
 .auth-sent{text-align:center;padding:16px 0 8px;}
 .auth-sent-icon{font-size:44px;margin-bottom:12px;}
@@ -847,8 +894,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .profile-section{margin-bottom:20px;}
 .profile-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
 .profile-pill-row{display:flex;gap:6px;flex-wrap:wrap;}
-.profile-pill{padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
-.profile-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
+.profile-pill{padding:8px 14px;border-radius:999px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.profile-pill.active{background:var(--accent);border-color:transparent;color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 .profile-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
 .profile-swatch.active{border-color:#fff;transform:scale(1.15);}
 .profile-swatch-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
@@ -857,7 +904,7 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .profile-input-group{display:flex;flex-direction:column;gap:5px;}
 .profile-input-label{font-size:11px;color:var(--muted2);}
 .modal-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
-.profile-save-btn{width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:17px;letter-spacing:.08em;cursor:pointer;margin-top:8px;transition:all .2s;}
+.profile-save-btn{width:100%;padding:13px;border-radius:999px;background:var(--accent);border:none;color:#04130b;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;margin-top:8px;transition:all .2s;box-shadow:0 6px 18px var(--accent-glow);}
 .profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
 #profileBtn{cursor:pointer;transition:all .15s;}
@@ -870,65 +917,146 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 .avatar-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;}
 /* ── JS-controlled initial states ── */
 #obBackBtn,#authOTPState,#bottomNav{display:none;}
-/* ── Dashboard ── */
+/* ── Dashboard — Wave 2 (ruling 2, docs/mockups/home-v2.html, 2026-09-23) ──
+   Order: hero (today's session) → duel → muscles → vitals → latest PR.
+   Photo cards reuse the ONE duotone recipe (.tc-tint in the grouped rule above);
+   gold appears only on celebration surfaces (streak chip, PR card). */
 .dash-wrap{padding:0 16px 32px;}
-.dash-header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px;}
-.dash-title{font-family:var(--font-display);font-size:22px;letter-spacing:.06em;color:var(--text);}
+.dash-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:20px 2px 14px;}
+.dash-greet{font-family:var(--font-display);font-size:28px;font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1.05;}
+.dash-date{font-size:12.5px;color:var(--muted2);margin-top:3px;}
 .dash-refresh-btn{width:34px;height:34px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .dash-refresh-btn:hover:not(:disabled){background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);}
 .dash-refresh-btn:disabled{opacity:.35;cursor:default;}
 @keyframes dash-spin{to{transform:rotate(360deg);}}
 .dash-refresh-btn.spinning span{display:inline-block;animation:dash-spin .7s linear infinite;}
-.dash-rings{display:flex;gap:10px;margin-bottom:12px;}
-.dash-ring-card{flex:1;background:var(--s2);border-radius:14px;padding:14px 8px 12px;text-align:center;border:1px solid var(--border2);}
-.dash-ring-svg{width:68px;height:68px;transform:rotate(-90deg);overflow:visible;}
-.dash-ring-track{fill:none;stroke:var(--border2);stroke-width:5;}
-.dash-ring-circle{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;transition:stroke-dasharray .4s ease;}
-.dash-ring-val{font-family:var(--font-display);font-size:20px;color:var(--text);margin-top:6px;line-height:1;}
-.dash-ring-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
-.dash-nutrition{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);display:flex;justify-content:space-around;margin-bottom:12px;}
-.dash-nut-cell{text-align:center;}
-.dash-nut-val{font-family:var(--font-display);font-size:20px;color:var(--text);line-height:1;}
-.dash-nut-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+/* 1. Hero — today's session, .tc-card design language */
+.dash-hero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;
+  text-align:left;width:100%;min-height:300px;margin-bottom:12px;padding:20px;border:1px solid var(--border2);
+  border-radius:22px;overflow:hidden;isolation:isolate;cursor:pointer;color:inherit;font:inherit;
+  background:var(--s1);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.4);
+  transition:transform .13s ease;-webkit-tap-highlight-color:transparent;}
+.dash-hero:active{transform:scale(.985);}
+.dash-hero .dash-hero-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);
+  background-size:cover;background-position:center 25%;filter:grayscale(1) contrast(1.08) brightness(.75);}
+.dash-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
+.dash-hero .dash-hero-scrim{position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.55) 45%,rgba(7,7,11,.95) 100%);}
+.dash-hero .tc-meta{justify-content:flex-start;margin-bottom:0;}
+.dash-hero h2{font-family:var(--font-display);font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff;margin:8px 0 6px;}
+.dash-hero p{font-size:13px;color:rgba(255,255,255,.72);margin:0;}
+.dash-chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+.dash-chip{font-size:11px;padding:5px 10px;border-radius:999px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);}
+.dash-cta{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;
+  border-radius:999px;background:var(--accent);color:#04130b;font-family:var(--font-body);font-weight:800;font-size:16px;
+  border:none;box-shadow:0 6px 20px var(--accent-glow);cursor:pointer;}
+/* Shared panel chrome (duel, muscles, PR) */
+.dash-panel{background:var(--s1);border:1px solid var(--border2);border-radius:22px;padding:16px;margin-bottom:12px;}
+.dash-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;}
 .dash-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;display:block;}
-.dash-competition{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);margin-bottom:12px;}
-.dash-comp-row{display:flex;justify-content:space-around;margin-top:8px;}
-.dash-comp-user{text-align:center;}
-.dash-comp-name{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
-.dash-comp-count{font-family:var(--font-display);font-size:40px;color:var(--text);line-height:1;}
-.dash-comp-leading{color:var(--accent);}
-.dash-comp-divider{font-family:var(--font-display);font-size:28px;color:var(--border2);align-self:center;}
-.dash-medals{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);margin-bottom:12px;}
-.dash-medals-header{display:flex;align-items:center;justify-content:space-between;}
-.dash-medal-row{display:flex;gap:8px;margin-top:10px;}
-.dash-medal-chip{flex:1;background:var(--bg);border-radius:10px;padding:10px 6px;text-align:center;font-size:11px;color:var(--muted2);border:1px solid var(--border);}
-.dash-medal-icon{font-size:20px;display:block;margin-bottom:4px;}
-.dash-cta{width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.1em;cursor:pointer;transition:all .2s;}
-.dash-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
-.dash-date{font-family:var(--font-mono);font-size:12px;color:var(--muted2);flex:1;text-align:center;}
-.dash-comp-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:2px;}
-.dash-comp-name-right{text-align:right;}
-.dash-comp-vs{font-family:var(--font-display);font-size:14px;color:var(--muted2);text-align:center;}
-.dash-comp-pts-row{display:grid;grid-template-columns:1fr auto 1fr;margin-bottom:10px;}
-.dash-comp-pts{font-family:var(--font-display);font-size:28px;line-height:1;}
+/* 2. Duel */
+.dash-competition{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.dash-competition:active{transform:scale(.99);}
+.dash-duel{display:flex;align-items:flex-end;justify-content:space-between;margin:10px 0;}
+.dash-who{font-size:12px;color:var(--muted2);}
+.dash-comp-pts{font-family:var(--font-display);font-size:38px;font-weight:800;line-height:1;color:var(--text);}
+.dash-comp-pts small{font-size:13px;color:var(--muted2);font-weight:600;}
 .dash-comp-pts-right{text-align:right;}
-.dash-comp-bar-track{height:6px;background:var(--border2);border-radius:3px;margin-bottom:12px;overflow:hidden;}
-.dash-comp-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s ease;}
-.dash-comp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:12px;gap:4px;}
-.dash-comp-stat-cell{text-align:center;background:var(--bg);border-radius:10px;padding:8px 4px;}
-.dash-comp-stat-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-bottom:4px;}
-.dash-comp-stat-vals{display:flex;align-items:baseline;justify-content:center;gap:2px;}
-.dash-comp-stat-mine{font-family:var(--font-display);font-size:18px;color:var(--text);}
-.dash-comp-stat-theirs{font-family:var(--font-display);font-size:14px;color:var(--muted2);}
-.dash-comp-stat-sep{font-size:10px;color:var(--muted2);}
-.dash-day-dots{display:flex;justify-content:space-between;}
-.dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.dash-day-dot{width:10px;height:10px;border-radius:50%;background:var(--border2);display:inline-block;}
-.dash-day-label{font-family:var(--font-mono);font-size:8px;color:var(--muted2);}
+.dash-comp-vs{font-family:var(--font-mono);font-size:11px;color:var(--muted2);padding-bottom:8px;}
+.dash-comp-bar-track{height:10px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;}
+.dash-comp-bar-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .4s ease;}
+.dash-duel-note{font-size:13px;margin-top:10px;color:var(--text);}
+.dash-duel-note b{color:var(--accent2);}
+.dash-day-dots{display:flex;justify-content:space-between;margin-top:12px;}
+.dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.dash-day-dot{width:26px;height:26px;border-radius:50%;border:1px solid var(--border2);background:transparent;display:inline-block;}
+.dash-day-label{font-family:var(--font-mono);font-size:9px;color:var(--muted2);}
+/* 3. Muscles this week */
+.dash-mmap{display:flex;gap:14px;align-items:center;margin-top:12px;}
+.dash-mmap-fig{width:96px;flex:0 0 auto;align-self:stretch;object-fit:contain;opacity:.5;
+  filter:grayscale(1) brightness(1.4);}
+.dash-mrows{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0;}
+.dash-mr-top{display:flex;justify-content:space-between;font-size:12px;color:var(--text);}
+.dash-mr-top span:last-child{font-family:var(--font-mono);color:var(--muted2);font-size:11px;}
+.dash-mr-trk{height:6px;border-radius:999px;background:rgba(255,255,255,.07);margin-top:4px;overflow:hidden;}
+.dash-mr-trk i{display:block;height:100%;border-radius:999px;}
+/* 4. Vitals — 4 tiles, accent-only rings */
+.dash-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.dash-ring-card{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:11px 6px;text-align:center;}
+.dash-ring-svg{width:34px;height:34px;transform:rotate(-90deg);overflow:visible;display:block;margin:0 auto;}
+.dash-ring-track{fill:none;stroke:rgba(255,255,255,.1);stroke-width:7;}
+.dash-ring-circle{fill:none;stroke:var(--accent2);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .4s ease;}
+.dash-ring-val{font-family:var(--font-display);font-size:16px;color:var(--text);margin-top:6px;line-height:1;}
+.dash-ring-label{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+/* 5. Latest PR — gold, celebration-only */
+.dash-pr{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35);}
+.dash-pr-tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--gold2);display:flex;align-items:center;gap:5px;}
+.dash-pr-tag svg{width:12px;height:12px;}
+.dash-pr h3{font-family:var(--font-display);font-size:18px;color:var(--text);margin:4px 0 0;}
+.dash-pr-num{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--gold2);margin-left:auto;text-align:right;line-height:1;}
+.dash-pr-num small{display:block;font-size:10px;color:var(--muted2);font-family:var(--font-mono);font-weight:400;margin-top:3px;}
+
+/* ── Duel breakdown sheet (Wave 3, ruling 4 — docs/mockups/tabbar-and-duel.html) ── */
+.duel-title{font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-.02em;color:#fff;}
+.duel-sub{font-size:13px;color:var(--muted2);margin-top:3px;}
+.duel-score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin:18px 0 8px;}
+.duel-score .n{font-family:var(--font-display);font-size:44px;font-weight:800;line-height:1;}
+.duel-score .l{font-size:12px;color:var(--muted2);margin-bottom:4px;}
+.duel-lead{justify-self:center;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;padding:6px 10px;border-radius:999px;background:rgba(63,224,140,.12);color:var(--accent2);white-space:nowrap;}
+.duel-rowh{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);margin:18px 0 8px;text-transform:uppercase;}
+.duel-src{display:grid;grid-template-columns:1fr 76px 76px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;color:var(--text);}
+.duel-src span{text-align:right;font-family:var(--font-display);font-weight:700;}
+.duel-src em{display:block;font-style:normal;font-size:11px;color:var(--muted2);margin-top:2px;}
+.duel-src:last-child{border-bottom:none;}
+.duel-src .win{color:var(--accent2);}
+.duel-days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.duel-d{border-radius:12px;background:var(--s2);padding:8px 0;text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--muted2);}
+.duel-d i{display:block;width:10px;height:10px;border-radius:50%;margin:6px auto 3px;background:rgba(255,255,255,.1);}
+.duel-d.today{outline:2px solid var(--accent2);}
+.duel-pr{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,var(--gold-dim),rgba(255,176,32,.03));border:1px solid rgba(255,176,32,.35);margin-bottom:8px;font-size:13px;color:var(--text);}
+.duel-pr b{font-family:var(--font-display);color:var(--gold2);font-size:18px;}
+.duel-nudge{display:block;width:100%;margin-top:16px;padding:14px;border:none;border-radius:18px;background:var(--accent);color:#04130b;font-family:var(--font-display);font-weight:800;text-align:center;font-size:15px;box-shadow:0 6px 20px var(--accent-glow);cursor:pointer;}
+.duel-nudge:active{transform:scale(.98);}
+.duel-empty{padding:26px 4px;text-align:center;color:var(--muted2);font-size:14px;line-height:1.6;}
+
+/* ── You tab (Wave 4, ruling 5 — nutrition · heatmap · profile/settings) ────── */
+.you-wrap{padding:22px 16px 32px;max-width:620px;margin:0 auto;}
+.you-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
+.you-settings-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);color:var(--text);font-family:var(--font-body);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;}
+.you-settings-btn:active{transform:scale(.96);}
+/* Nutrition photo strip — same duotone recipe as the hero cards */
+.you-nutri-card{position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--border2);padding:16px;margin-bottom:12px;isolation:isolate;background:var(--s1);}
+.you-nutri-card .you-photo{position:absolute;inset:0;z-index:-3;background-image:url('public/meal-prep.jpg');background-size:cover;background-position:center;filter:grayscale(1) contrast(1.08) brightness(.7);}
+.you-nutri-card .tc-tint{position:absolute;inset:0;z-index:-2;}
+.you-nutri-card .you-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.45) 0%,rgba(7,7,11,.82) 40%,rgba(7,7,11,.94) 100%);}
+.you-nutri-card .dash-label{color:rgba(255,255,255,.75);}
+.you-nutri{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.you-nutri .dash-mr-top{color:#fff;}
+.you-nutri .dash-mr-top span:last-child{color:rgba(255,255,255,.65);}
+.you-nutri .dash-mr-trk{background:rgba(255,255,255,.14);}
+/* Body comp tiles */
+.you-body{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}
+.you-tile{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:13px 14px;}
+.you-tile .t{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.you-tile .v{font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text);margin-top:5px;line-height:1;}
+.you-tile .v small{font-size:11px;color:var(--muted2);font-weight:600;}
+.you-tile .s{font-size:11px;color:var(--muted2);margin-top:4px;}
+/* Muscle heatmap */
+.you-map{display:flex;justify-content:center;gap:10px;margin-top:12px;}
+.you-map svg,.you-map img{max-width:100%;height:auto;}
+.you-map-fig{width:46%;max-width:200px;object-fit:contain;opacity:.6;filter:grayscale(1) brightness(1.35);}
+.you-map-legend{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
+.you-map-legend i{display:block;height:8px;width:110px;border-radius:999px;background:linear-gradient(90deg,#232b27,var(--accent2));}
 
 /* ── Bug Report FAB ──────────────────────────────────── */
 .bug-fab{position:fixed;bottom:80px;right:16px;z-index:900;width:40px;height:40px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);transition:opacity .15s;}
 .bug-fab:active{transform:scale(.91);}
+/* Wave 1: keep debug chrome off first-impression + hero surfaces. The FAB stays
+   on the working screens (dashboard, log, tracker); it hides on auth/onboarding
+   and while a full-screen hero takeover (Today's Workout) is up. */
+body:has(#view-auth.active) .bug-fab,
+body:has(#view-onboard.active) .bug-fab,
+body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 /* ── Bug Report Modal ────────────────────────────────── */
 .bug-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;background:rgba(0,0,0,.52);opacity:0;pointer-events:none;transition:opacity .2s;}
 .bug-overlay.open{opacity:1;pointer-events:auto;}
@@ -1359,16 +1487,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
         <span class="ob-label">YOUR COLOR</span>
         <div style="font-size:12px;color:var(--muted2);margin-bottom:16px;font-weight:300;">This is how you show up in the competition</div>
 
-        <div class="color-swatches" id="colorSwatches">
-          <div class="color-swatch selected" style="background:#1B5E38;" data-color="#1B5E38" onclick="selectThemeColor('#1B5E38',this)"></div>
-          <div class="color-swatch" style="background:#d4a843;" data-color="#d4a843" onclick="selectThemeColor('#d4a843',this)"></div>
-          <div class="color-swatch" style="background:#4A9EFF;" data-color="#4A9EFF" onclick="selectThemeColor('#4A9EFF',this)"></div>
-          <div class="color-swatch" style="background:#B47FFF;" data-color="#B47FFF" onclick="selectThemeColor('#B47FFF',this)"></div>
-          <div class="color-swatch" style="background:#E85454;" data-color="#E85454" onclick="selectThemeColor('#E85454',this)"></div>
-          <div class="color-swatch" style="background:#38D9C0;" data-color="#38D9C0" onclick="selectThemeColor('#38D9C0',this)"></div>
-          <div class="color-swatch" style="background:#FF6B35;" data-color="#FF6B35" onclick="selectThemeColor('#FF6B35',this)"></div>
-          <div class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4" onclick="selectThemeColor('#FF69B4',this)"></div>
-        </div>
+        <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
+        <div class="color-swatches" id="colorSwatches" data-swatch-row="onboard"></div>
 
         <div class="color-ring-preview">
           <div class="color-ring" id="colorRingPreview">
@@ -1559,16 +1679,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
           <div class="ob-card-title">Your Color</div>
           <div class="ob-card-sub">This is how you show up in the competition. You can always change it later.</div>
 
-          <div class="color-swatches">
-            <div class="color-swatch selected" style="background:#1B5E38;" data-color="#1B5E38" onclick="selectThemeColor('#1B5E38',this)"></div>
-            <div class="color-swatch" style="background:#d4a843;" data-color="#d4a843" onclick="selectThemeColor('#d4a843',this)"></div>
-            <div class="color-swatch" style="background:#4A9EFF;" data-color="#4A9EFF" onclick="selectThemeColor('#4A9EFF',this)"></div>
-            <div class="color-swatch" style="background:#B47FFF;" data-color="#B47FFF" onclick="selectThemeColor('#B47FFF',this)"></div>
-            <div class="color-swatch" style="background:#E85454;" data-color="#E85454" onclick="selectThemeColor('#E85454',this)"></div>
-            <div class="color-swatch" style="background:#38D9C0;" data-color="#38D9C0" onclick="selectThemeColor('#38D9C0',this)"></div>
-            <div class="color-swatch" style="background:#FF6B35;" data-color="#FF6B35" onclick="selectThemeColor('#FF6B35',this)"></div>
-            <div class="color-swatch" style="background:#FF69B4;" data-color="#FF69B4" onclick="selectThemeColor('#FF69B4',this)"></div>
-          </div>
+          <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
+          <div class="color-swatches" id="colorSwatchesLib" data-swatch-row="onboard"></div>
 
           <div class="ob-section" style="margin-top:20px;">
             <span class="ob-label">Program Start Date</span>
@@ -1611,6 +1723,13 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
       </svg>
       <div style="font-family:var(--font-display);font-size:30px;letter-spacing:.1em;background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">TANDEM</div>
     </div>
+    <div class="hero-band" data-hero="auth" role="img" aria-label="Athlete training">
+      <div class="hero-scrim"></div>
+      <div class="hero-cap">
+        <div class="hero-cap-eyebrow">Train together</div>
+        <div class="hero-cap-title">Every set counts.</div>
+      </div>
+    </div>
     <div class="auth-heading">Sync your training</div>
     <div class="auth-sub">Sign in to back up sessions, PRs, and progressive overload data across devices. Your data lives on-device — cloud is the safety net.</div>
     <div class="auth-form">
@@ -1643,143 +1762,43 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
 <div class="view" id="view-dashboard">
   <div class="dash-wrap">
 
-    <!-- Header -->
+    <!-- Header — greeting + program context + gold streak chip -->
     <div class="dash-header">
-      <div class="dash-title">Today</div>
-      <span class="dash-date" id="dashDate"></span>
+      <div style="min-width:0;">
+        <div class="dash-greet" id="dashGreeting">Tandem</div>
+        <div class="dash-date" id="dashDate"></div>
+      </div>
       <div class="dash-streak-chip" id="dashStreakChip" title="Current streak"><span data-icon="flame"></span> <span id="dashStreakVal">—</span></div>
       <button id="dashRefreshBtn" class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh health data">
         <span>↻</span>
       </button>
     </div>
 
-    <!-- Health Rings — Activity -->
-    <span class="dash-section-label" id="dashActivityLabel">Activity</span>
-    <div class="dash-rings">
-      <div class="dash-ring-card" id="dashRingCal">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingCalVal">—</div>
-        <div class="dash-ring-label">Active Cal</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingSleep">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#4a9eff;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingSleepVal">—</div>
-        <div class="dash-ring-label">Sleep</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingSteps">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#38d9c0;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingStepsVal">—</div>
-        <div class="dash-ring-label">Steps</div>
-      </div>
-    </div>
+    <!-- 1. HERO — today's session first (ruling 2). Same duotone recipe as the
+         Today's Workout chooser; the whole card opens that chooser. The .dash-cta
+         class stays on the button here — the walkthrough scripts drive the app
+         through it. -->
+    <button class="dash-hero" data-hero="phase" onclick="openModal('todaychoice')">
+      <div class="dash-hero-photo"></div><div class="tc-tint"></div><div class="dash-hero-scrim"></div>
+      <div class="tc-meta"><span class="tc-dot"></span><span id="dashHeroMeta">TODAY</span></div>
+      <h2 id="dashHeroTitle">Today's Workout</h2>
+      <p id="dashHeroSub"></p>
+      <div class="dash-chips" id="dashHeroChips"></div>
+      <span class="dash-cta" id="dashHeroCta">Start workout →</span>
+    </button>
 
-    <!-- Health Rings — Nutrition -->
-    <span class="dash-section-label">Nutrition</span>
-    <div class="dash-rings">
-      <div class="dash-ring-card" id="dashRingDietCal">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#FFB020;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingDietCalVal">—</div>
-        <div class="dash-ring-label">Cal</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingProtein">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#e854a0;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingProteinVal">—</div>
-        <div class="dash-ring-label">Protein</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingCarbs">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#a78bfa;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingCarbsVal">—</div>
-        <div class="dash-ring-label">Carbs</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingFat">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#fb923c;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingFatVal">—</div>
-        <div class="dash-ring-label">Fat</div>
-      </div>
-    </div>
-
-    <!-- Body Composition — EPIC-6 (weight_lbs/body_fat_pct land in health_snapshots via
-         the same ingest-health-snapshot pipeline as Activity/Nutrition). The 7-day
-         weight figure is a ROLLING AVERAGE computed HERE, on read, from the raw
-         health_snapshots rows (loadWeightTrend()) — never a materialized table
-         (weight_trend was deleted under BUG-72 for being exactly that: a duplicate of
-         truth that could drift from the rows it summarized). Body fat is today's
-         snapshot reading, same source as every other ring on this page. -->
-    <span class="dash-section-label">Body</span>
-    <div class="dash-nutrition" id="dashBodySection">
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashBodyWeightVal">—</div>
-        <div class="dash-nut-label">7-Day Avg Weight</div>
-      </div>
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashBodyFatVal">—</div>
-        <div class="dash-nut-label">Body Fat %</div>
-      </div>
-    </div>
-
-    <!-- Competition -->
-    <span class="dash-section-label">This Week</span>
-    <div class="dash-competition">
-      <div class="dash-comp-names">
-        <div class="dash-comp-name" id="dashCompMyName">You</div>
-        <div class="dash-comp-vs">vs</div>
-        <div class="dash-comp-name dash-comp-name-right" id="dashCompTheirName">Partner</div>
-      </div>
-      <div class="dash-comp-pts-row">
-        <div class="dash-comp-pts" id="dashCompMyPts">— pts</div>
-        <div></div>
-        <div class="dash-comp-pts dash-comp-pts-right" id="dashCompTheirPts">— pts</div>
+    <!-- 2. THE DUEL — tapping opens the Duel tab (breakdown ships in Wave 3) -->
+    <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0">
+      <div class="dash-label"><span>This week</span><span>tap for details ›</span></div>
+      <div class="dash-duel">
+        <div><div class="dash-who" id="dashCompMyName">You</div><div class="dash-comp-pts" id="dashCompMyPts">—</div></div>
+        <div class="dash-comp-vs">VS</div>
+        <div style="text-align:right;"><div class="dash-who" id="dashCompTheirName">Partner</div><div class="dash-comp-pts dash-comp-pts-right" id="dashCompTheirPts">—</div></div>
       </div>
       <div class="dash-comp-bar-track">
         <div class="dash-comp-bar-fill" id="dashCompBarFill" style="width:50%;"></div>
       </div>
-      <div class="dash-comp-stats">
-        <div class="dash-comp-stat-cell">
-          <div class="dash-comp-stat-label">Sessions</div>
-          <div class="dash-comp-stat-vals">
-            <span class="dash-comp-stat-mine" id="dashStatSessionsMine">—</span>
-            <span class="dash-comp-stat-sep">/</span>
-            <span class="dash-comp-stat-theirs" id="dashStatSessionsTheirs">—</span>
-          </div>
-        </div>
-        <div class="dash-comp-stat-cell">
-          <div class="dash-comp-stat-label">Streak</div>
-          <div class="dash-comp-stat-vals">
-            <span class="dash-comp-stat-mine" id="dashStatStreakMine">—</span>
-            <span class="dash-comp-stat-sep">/</span>
-            <span class="dash-comp-stat-theirs" id="dashStatStreakTheirs">—</span>
-          </div>
-        </div>
-        <div class="dash-comp-stat-cell">
-          <div class="dash-comp-stat-label">PRs</div>
-          <div class="dash-comp-stat-vals">
-            <span class="dash-comp-stat-mine" id="dashStatPRsMine">—</span>
-            <span class="dash-comp-stat-sep">/</span>
-            <span class="dash-comp-stat-theirs" id="dashStatPRsTheirs">—</span>
-          </div>
-        </div>
-      </div>
+      <div class="dash-duel-note" id="dashDuelNote"></div>
       <div class="dash-day-dots">
         <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot0"></span><span class="dash-day-label">M</span></div>
         <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot1"></span><span class="dash-day-label">T</span></div>
@@ -1791,19 +1810,63 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
       </div>
     </div>
 
-    <!-- Medals -->
-    <div class="dash-medals">
-      <div class="dash-medals-header">
-        <span class="dash-section-label" style="margin-bottom:0;">Medals</span>
-        <button class="auth-signout" onclick="openModal('history')" style="font-size:11px;">See all →</button>
-      </div>
-      <div class="dash-medal-row" id="dashMedalRow">
-        <div style="font-size:12px;color:var(--muted);padding:6px 0;">No medals yet — keep going <span data-icon="medal"></span></div>
+    <!-- 3. MUSCLES THIS WEEK — logged sets vs weekly MEV target (ruling 7's scale;
+         crediting lives in programs.js computeMuscleWeeklyVolume — one rule, one
+         home). Per-muscle SVG heatmap art lands in Wave 4. -->
+    <div class="dash-panel">
+      <div class="dash-label"><span>Muscles this week</span><span>vs weekly target</span></div>
+      <div class="dash-mmap">
+        <img class="dash-mmap-fig" id="dashMuscleFig" alt="" aria-hidden="true">
+        <div class="dash-mrows" id="dashMuscleRows"></div>
       </div>
     </div>
 
-    <!-- Today's Workout CTA -->
-    <button class="dash-cta" onclick="openModal('todaychoice')">Today's Workout →</button>
+    <!-- 4. VITALS — 4 tiles, accent-only rings (ruling 2). Nutrition detail +
+         body composition move to the You tab in Wave 4. -->
+    <span class="dash-section-label" id="dashActivityLabel">Vitals</span>
+    <div class="dash-vitals">
+      <div class="dash-ring-card" id="dashRingSteps">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingStepsVal">—</div>
+        <div class="dash-ring-label">Steps</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingSleep">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingSleepVal">—</div>
+        <div class="dash-ring-label">Sleep</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingCal">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingCalVal">—</div>
+        <div class="dash-ring-label">Active</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingProtein">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingProteinVal">—</div>
+        <div class="dash-ring-label">Protein</div>
+      </div>
+    </div>
+
+    <!-- 5. LATEST PR — gold, celebration-only; hidden until a PR exists -->
+    <div class="dash-panel dash-pr" id="dashPrCard" style="display:none;">
+      <div style="min-width:0;">
+        <div class="dash-pr-tag" id="dashPrTag"></div>
+        <h3 id="dashPrName"></h3>
+      </div>
+      <div class="dash-pr-num" id="dashPrNum"></div>
+    </div>
 
   </div>
 </div>
@@ -1824,6 +1887,43 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
       <button class="log-chip" data-win="program" onclick="setLogWindow('program')">This program</button>
     </div>
     <div id="logGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     VIEW: YOU (Wave 4, ruling 5) — nutrition logs (the EPIC-4 Apple Health /
+     MyFitnessPal pipeline; never hand-typed), body comp, the muscle heatmap,
+     and profile/settings (the existing modal-profile, opened from here).
+══════════════════════════════════ -->
+<div class="view" id="view-you">
+  <div class="you-wrap">
+    <div class="you-head">
+      <div style="min-width:0;">
+        <div class="log-title" id="youName">You</div>
+        <div class="log-sub" id="youSub"></div>
+      </div>
+      <button class="you-settings-btn" onclick="openProfileModal()"><span data-icon="user"></span> Settings</button>
+    </div>
+
+    <!-- 1. Nutrition today — reads health_snapshots dietary_* vs users daily_*_target -->
+    <div class="you-nutri-card">
+      <div class="you-photo"></div><div class="tc-tint"></div><div class="you-scrim"></div>
+      <div class="dash-label"><span>Nutrition today</span><span id="youNutriNote">vs your targets</span></div>
+      <div class="you-nutri" id="youNutriRows"></div>
+    </div>
+
+    <!-- 2. Body composition (moved off Home in Wave 2) -->
+    <span class="dash-section-label">Body</span>
+    <div class="you-body" id="youBodyTiles"></div>
+
+    <!-- 3. Muscle heatmap — same crediting as Home's muscles-this-week
+         (computeMuscleWeeklyVolume, primary 1.0 / secondary 0.5), drawn on the
+         sex-specific body art on ONE continuous scale of % weekly target. -->
+    <div class="dash-panel">
+      <div class="dash-label"><span>Muscle heatmap</span><span>this week vs target</span></div>
+      <div class="you-map" id="youMuscleMap"></div>
+      <div class="you-map-legend"><span>0%</span><i></i><span>100% of target</span></div>
+    </div>
   </div>
 </div>
 
@@ -1969,20 +2069,32 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
   </div>
 </div>
 
-<!-- SESSION SUMMARY (EPIC-13 Step 3) -->
+<!-- SESSION SUMMARY (EPIC-13 Step 3; restyled Wave 5 — celebration, gold, photo, heatmap reuse per ruling 7) -->
 <div class="modal-overlay" id="modal-summary" onclick="if(event.target===this)closeModal('summary')">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
+  <div class="modal-sheet sum-sheet">
     <button class="modal-close" onclick="closeModal('summary')">✕</button>
-    <div class="modal-title">Session Complete <span data-icon="flame"></span></div>
-    <div class="modal-sub">Nice work. Here's how it went.</div>
-    <div class="summary-stat-grid">
-      <div class="summary-stat"><div class="summary-stat-val" id="sumVolume">—</div><div class="summary-stat-lbl">Volume (lbs)</div></div>
-      <div class="summary-stat"><div class="summary-stat-val" id="sumDuration">—</div><div class="summary-stat-lbl">Duration (min)</div></div>
-      <div class="summary-stat"><div class="summary-stat-val" id="sumPRs">—</div><div class="summary-stat-lbl">PRs</div></div>
-      <div class="summary-stat"><div class="summary-stat-val" id="sumStreak">—</div><div class="summary-stat-lbl">Day Streak</div></div>
+    <div class="sum-hero" id="sumHero">
+      <div class="tc-photo"></div><div class="tc-tint"></div><div class="sum-scrim"></div>
+      <div class="sum-hero-body">
+        <div class="sum-eyebrow"><i></i>WORKOUT LOGGED</div>
+        <div class="sum-title">Session<br>Complete</div>
+      </div>
     </div>
-    <button class="set-act green" style="width:100%;justify-content:center;margin-top:14px;" onclick="closeModal('summary')">Nice! →</button>
+    <div class="sum-body">
+      <div class="summary-stat-grid">
+        <div class="summary-stat"><div class="summary-stat-val" id="sumVolume">—</div><div class="summary-stat-lbl">Volume (lbs)</div></div>
+        <div class="summary-stat"><div class="summary-stat-val" id="sumDuration">—</div><div class="summary-stat-lbl">Duration (min)</div></div>
+        <div class="summary-stat gold"><div class="summary-stat-val" id="sumPRs">—</div><div class="summary-stat-lbl">PRs</div></div>
+        <div class="summary-stat"><div class="summary-stat-val" id="sumStreak">—</div><div class="summary-stat-lbl">Day Streak</div></div>
+      </div>
+      <div id="sumPrList"></div>
+      <div class="sum-map">
+        <div class="sum-map-lbl">Muscles this week</div>
+        <div class="you-map" id="sumMuscleMap"></div>
+        <div class="you-map-legend"><span>0%</span><i></i><span>100% of target</span></div>
+      </div>
+      <button class="sum-cta" onclick="closeModal('summary')">Nice! →</button>
+    </div>
   </div>
 </div>
 
@@ -2167,6 +2279,34 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
   </div>
 </div>
 
+<!-- DUEL BREAKDOWN SHEET (Wave 3, ruling 4) — opened by the Duel tab and the Home
+     duel card. Every number here comes from the SAME competition_leaderboard rows the
+     Home scoreboard reads; the source rows sum exactly to the score by construction
+     (steps = total minus the two client-known components — the view owns steps math). -->
+<div class="modal-overlay" id="modal-duel" onclick="if(event.target===this)closeModal('duel')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal('duel')">✕</button>
+    <div class="duel-title" id="duelTitle">This week's duel</div>
+    <div class="duel-sub" id="duelSub"></div>
+    <div id="duelEmpty" class="duel-empty" style="display:none;"></div>
+    <div id="duelBody">
+      <div class="duel-score">
+        <div><div class="l" id="duelMyName">You</div><div class="n" id="duelMyPts">0</div></div>
+        <div class="duel-lead" id="duelLead"></div>
+        <div style="text-align:right;"><div class="l" id="duelTheirName">Partner</div><div class="n" id="duelTheirPts">0</div></div>
+      </div>
+      <div class="duel-rowh">Where the points came from · sums to the score</div>
+      <div id="duelSources"></div>
+      <div class="duel-rowh">Day by day</div>
+      <div class="duel-days" id="duelDays"></div>
+      <div class="duel-rowh" id="duelPrHead">This week's PRs</div>
+      <div id="duelPRs"></div>
+      <button class="duel-nudge" id="duelNudge" onclick="closeModal('duel');openModal('todaychoice')"></button>
+    </div>
+  </div>
+</div>
+
 <!-- JOURNAL — manual WORKOUT log (rebuilt 2026-09-14 on Kerwin's correction:
      "The journal it's not supposed to be a food journal. It's supposed to be:
      These are the workouts that I did today. These are the reps that I did.
@@ -2343,16 +2483,8 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
     <!-- D. Color Theme -->
     <div class="profile-section">
       <span class="profile-section-label">Color Theme</span>
-      <div class="profile-swatch-row" id="profileThemeRow">
-        <div class="profile-swatch" data-color="#d4a843" style="background:#d4a843;" onclick="applyColorTheme('#d4a843')" title="Gold"></div>
-        <div class="profile-swatch" data-color="#3FE08C" style="background:#3FE08C;" onclick="applyColorTheme('#3FE08C')" title="Green"></div>
-        <div class="profile-swatch" data-color="#4a9eff" style="background:#4a9eff;" onclick="applyColorTheme('#4a9eff')" title="Blue"></div>
-        <div class="profile-swatch" data-color="#e85454" style="background:#e85454;" onclick="applyColorTheme('#e85454')" title="Red"></div>
-        <div class="profile-swatch" data-color="#b47fff" style="background:#b47fff;" onclick="applyColorTheme('#b47fff')" title="Purple"></div>
-        <div class="profile-swatch" data-color="#38d9c0" style="background:#38d9c0;" onclick="applyColorTheme('#38d9c0')" title="Teal"></div>
-        <div class="profile-swatch" data-color="#e8547a" style="background:#e8547a;" onclick="applyColorTheme('#e8547a')" title="Pink"></div>
-        <div class="profile-swatch" data-color="#ff9952" style="background:#ff9952;" onclick="applyColorTheme('#ff9952')" title="Orange"></div>
-      </div>
+      <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
+      <div class="profile-swatch-row" id="profileThemeRow" data-swatch-row="profile"></div>
     </div>
 
     <div class="profile-divider"></div>
@@ -2425,18 +2557,22 @@ body.tabbed .bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));}
   <button class="bnav-btn primary" onclick="finishSession()">Finish ✓</button>
 </div>
 
-<!-- EPIC-58 — persistent tab bar (top-level views only; see .tab-bar CSS) -->
+<!-- Wave 1 — tab bar B (top-level views only; see .tab-bar CSS). START opens the
+     Today's Workout chooser; You and Duel get their own views in Waves 4 and 3. -->
 <nav class="tab-bar" id="tabBar" aria-label="Main">
   <button class="tab-btn" data-tab="home" onclick="goTab('home')"><span class="tab-ico" data-icon="home"></span>Home</button>
-  <button class="tab-btn" data-tab="plan" onclick="goTab('plan')"><span class="tab-ico" data-icon="dumbbell"></span>Plan</button>
   <button class="tab-btn" data-tab="log" onclick="goTab('log')"><span class="tab-ico" data-icon="chart"></span>Log</button>
-  <button class="tab-btn" data-tab="settings" onclick="goTab('settings')"><span class="tab-ico" data-icon="cog"></span>Settings</button>
+  <button class="tab-btn tab-start" data-tab="start" onclick="goTab('start')" aria-label="Start a workout"><span class="tab-ico" data-icon="dumbbell"></span>START</button>
+  <button class="tab-btn" data-tab="you" onclick="goTab('you')"><span class="tab-ico" data-icon="user"></span>You</button>
+  <button class="tab-btn" data-tab="duel" onclick="goTab('duel')"><span class="tab-ico" data-icon="duel"></span>Duel</button>
 </nav>
 
 </div><!-- /page -->
 
 <!-- Static data layer: icon registry + goal-adaptive program library (Item C extraction) -->
 <script src="programs.js"></script>
+<!-- Muscle heatmap path data (Wave 4, ruling 7) — GENERATED by scripts/build-musclemap-asset.py -->
+<script src="public/musclemap-paths.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -2451,7 +2587,7 @@ const HERO_PHOTOS = {
   male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg','public/hero-male-5.jpg','public/hero-male-6.jpg'],
   female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg','public/hero-female-5.jpg','public/hero-female-6.jpg']
 };
-const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3 };
+const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3, auth:4 };
 function userSexKey(){
   let s = '';
   // live edit in profile modal takes priority for instant preview
@@ -4118,6 +4254,34 @@ let selectedDuration = 60;
 let selectedWorkoutTime = null;
 let selectedSecondaryGoal = null;
 let selectedThemeColor = '#1B5E38';
+
+// ── Wave 0: ONE color palette (one rule, one home) ──────────────────────────
+// Onboarding and profile used to hard-code two different swatch lists — the
+// profile list didn't even contain the default #1B5E38, so a default-color user
+// saw no selected swatch. This constant is now the only home; every swatch row
+// (marked data-swatch-row) renders from it. Onboarding rows call
+// selectThemeColor (staged until save); the profile row calls applyColorTheme
+// (applies live + saves to cloud).
+const THEME_PALETTE = [
+  { hex: '#1B5E38', name: 'Forest' },
+  { hex: '#d4a843', name: 'Gold' },
+  { hex: '#4A9EFF', name: 'Blue' },
+  { hex: '#B47FFF', name: 'Purple' },
+  { hex: '#E85454', name: 'Red' },
+  { hex: '#38D9C0', name: 'Teal' },
+  { hex: '#FF6B35', name: 'Orange' },
+  { hex: '#FF69B4', name: 'Pink' }
+];
+function renderThemeSwatches() {
+  document.querySelectorAll('[data-swatch-row]').forEach(row => {
+    const isProfile = row.dataset.swatchRow === 'profile';
+    row.innerHTML = THEME_PALETTE.map(c => isProfile
+      ? `<div class="profile-swatch" data-color="${c.hex}" style="background:${c.hex};" onclick="applyColorTheme('${c.hex}')" title="${c.name}"></div>`
+      : `<div class="color-swatch${c.hex === selectedThemeColor ? ' selected' : ''}" data-color="${c.hex}" style="background:${c.hex};" onclick="selectThemeColor('${c.hex}',this)" title="${c.name}"></div>`
+    ).join('');
+  });
+}
+renderThemeSwatches();
 
 // Path Gate / library mini-flow state (onboarding fork) — parallel to, and
 // deliberately not merged with, the obCurrentStep/OB_STEPS machinery above.
@@ -6587,6 +6751,19 @@ function finishSession() {
     sessionStartTime = null;
     Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
   }
+  // Wave 5: the celebration card is not a cloud feature — a signed-out finish
+  // shows it too, from local data. Duration comes from the local start time
+  // (read BEFORE the unconditional clear below); PR count from today's
+  // tandem_working1rm dir:'pr' entries (the same store showSessionSummary's
+  // gold rows read); streak lives in the cloud streaks table, so it stays '—'.
+  if (!currentUser) {
+    const startTime = localStorage.getItem('tandem_session_start_time');
+    const duration = startTime ? Math.round((Date.now() - Number(startTime)) / 60000) : null;
+    const today = localDateStr();
+    const working = LS.get('tandem_working1rm') || {};
+    const localPrs = Object.values(working).filter(e => e && e.dir === 'pr' && e.date === today && e.rm).length;
+    showSessionSummary(localVolume, duration, localPrs, null);
+  }
   // FEAT persistent-session-timer: clear unconditionally, not only in the
   // currentUser branch above — a signed-out/local-only session must also stop
   // showing a running timer once Finish is tapped, otherwise the previous
@@ -6662,13 +6839,16 @@ function showView(id) {
   setTabBar(id);
   if (id === 'dashboard') loadDashboard();
   if (id === 'log') renderLogTab();
+  if (id === 'you') { renderYouTab(); loadDashboard(); } // render cached state now; loadDashboard refreshes both
   if (id === 'tracker') renderTracker();
 }
 
-// ── EPIC-58: tab bar ──────────────────────────────────────────────────────────
-// Home → dashboard; Plan → the Today's Workout chooser; Log → the Log tab;
-// Settings → the profile modal. Only the two top-level views show the bar.
-const TAB_VIEWS = { dashboard: 'home', log: 'log' };
+// ── Wave 1: tab bar B ─────────────────────────────────────────────────────────
+// Home → dashboard; Log → the Log tab; START → the Today's Workout chooser;
+// You → profile (its own view lands in Wave 4); Duel → the week's competition
+// (its own view lands in Wave 3 — until then it scrolls Home to the duel card).
+// Only the top-level views show the bar; the in-workout #bottomNav owns the tracker.
+const TAB_VIEWS = { dashboard: 'home', log: 'log', you: 'you' };
 function setTabBar(viewId) {
   const tab = TAB_VIEWS[viewId];
   document.body.classList.toggle('tabbed', !!tab);
@@ -6677,8 +6857,9 @@ function setTabBar(viewId) {
 function goTab(tab) {
   if (tab === 'home') showView('dashboard');
   else if (tab === 'log') showView('log');
-  else if (tab === 'plan') openModal('todaychoice');
-  else if (tab === 'settings') openProfileModal();
+  else if (tab === 'start') openModal('todaychoice');
+  else if (tab === 'you') showView('you'); // Wave 4: You tab (ruling 5)
+  else if (tab === 'duel') openModal('duel'); // Wave 3: breakdown sheet (ruling 4)
 }
 
 // ── EPIC-58: Log tab ──────────────────────────────────────────────────────────
@@ -6803,6 +6984,7 @@ function openModal(name) {
   if (name === 'prs')     buildPRModal();
   if (name === 'history') { buildHistoryModal(); updateSyncUserInfo(); }
   if (name === 'goal')    updateSyncUserInfo();
+  if (name === 'duel')    renderDuelSheet();
 }
 
 function closeModal(name) { document.getElementById('modal-' + name)?.classList.remove('open'); }
@@ -6822,8 +7004,38 @@ function showSessionSummary(volume, duration, prCount, streak) {
   set('sumDuration', duration != null ? duration : '—');
   set('sumPRs', prCount != null ? prCount : 0);
   set('sumStreak', streak != null ? streak : '—');
+  // Wave 5: sex-specific celebration photo, tinted by the shared duotone recipe.
+  const heroPhoto = document.querySelector('#sumHero .tc-photo');
+  if (heroPhoto) heroPhoto.style.setProperty('--hero-url', `url("public/celebrate-${userSexKey()}.jpg")`);
+  // Gold PR rows — the SAME store the Home gold card reads (tandem_working1rm
+  // dir:'pr', written by logSet at the moment a PR is beaten), filtered to today.
+  const list = document.getElementById('sumPrList');
+  if (list) {
+    list.innerHTML = '';
+    const today = localDateStr();
+    const working = LS.get('tandem_working1rm') || {};
+    for (const [name, e] of Object.entries(working)) {
+      if (!e || e.dir !== 'pr' || e.date !== today || !e.rm) continue;
+      const row = document.createElement('div');
+      row.className = 'duel-pr';
+      const span = document.createElement('span');
+      span.innerHTML = svgIcon('trophy');
+      span.append(name);
+      const b = document.createElement('b');
+      b.textContent = `${e.rm} lbs`;
+      row.append(span, b);
+      list.append(row);
+    }
+  }
+  // Ruling 7: the same muscle map, reused on the Finish card.
+  const mapEl = document.getElementById('sumMuscleMap');
+  if (mapEl) renderMuscleHeatmap(mapEl);
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-  document.getElementById('modal-summary')?.classList.add('open');
+  const overlay = document.getElementById('modal-summary');
+  overlay?.classList.add('open');
+  // A reopened sheet inherits its previous scroll — always start at the hero.
+  const sheet = overlay?.querySelector('.sum-sheet');
+  if (sheet) sheet.scrollTop = 0;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8471,7 +8683,8 @@ const dashboardData = {
   dailyWins: {},       // { 'YYYY-MM-DD': 'mine' | 'theirs' | 'both' }
   medals: [],
   streak: null,          // EPIC-13 Step 4: own current_streak_days, independent of partner pairing
-  weightTrend7d: null    // EPIC-6: 7-day rolling avg of health_snapshots.weight_lbs, computed on read
+  weightTrend7d: null,   // EPIC-6: 7-day rolling avg of health_snapshots.weight_lbs, computed on read
+  weekPRs: []            // Wave 3: this week's personal_records rows, both partners (duel sheet)
 };
 
 // EPIC-6 — 7-day rolling weight average, computed ON READ from the raw health_snapshots
@@ -8520,7 +8733,7 @@ async function loadDashboard() {
 
     // 2. Current user targets + partner_id
     const { data: userRow } = await sb.from('users')
-      .select('partner_id, name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g')
+      .select('partner_id, name, theme_color, daily_calories_target, daily_protein_target_g, daily_carbs_target_g, daily_fat_target_g, daily_water_target_oz, goal_weight_lbs, height_inches')
       .eq('id', uid).maybeSingle();
     dashboardData.userTargets = userRow || null;
 
@@ -8537,8 +8750,10 @@ async function loadDashboard() {
       const pid = userRow.partner_id;
 
       // 3a. Leaderboard rows (do NOT select theme_color — it's broken in the view)
+      // avg_steps added Wave 3: the duel sheet shows the steps component's input; the
+      // steps POINTS themselves are never recomputed client-side (the view owns that rule).
       const { data: lb } = await sb.from('competition_leaderboard')
-        .select('user_id, name, sessions_completed, prs_earned, current_streak, total_points')
+        .select('user_id, name, sessions_completed, prs_earned, avg_steps, current_streak, total_points')
         .in('user_id', [uid, pid]);
       dashboardData.leaderboard = lb || [];
 
@@ -8572,10 +8787,19 @@ async function loadDashboard() {
           dashboardData.dailyWins[key] = 'both';
         }
       });
+      // 3d. Wave 3 (ruling 4): this week's PRs, both partners — same Monday week window
+      // as the leaderboard view (date_trunc('week') = ISO Monday) and the day dots above.
+      const { data: weekPRs } = await sb.from('personal_records')
+        .select('user_id, exercise_name, best_estimated_1rm_lbs, achieved_date')
+        .in('user_id', [uid, pid])
+        .gte('achieved_date', localDateStr(monday))
+        .order('achieved_date', { ascending: false });
+      dashboardData.weekPRs = weekPRs || [];
     } else {
       dashboardData.leaderboard = [];
       dashboardData.partnerTargets = null;
       dashboardData.dailyWins = {};
+      dashboardData.weekPRs = [];
     }
 
     // 4. Medals — 3 most recent
@@ -8588,6 +8812,7 @@ async function loadDashboard() {
   } finally {
     applyColorTakeover();
     renderDashboard();
+    renderYouTab(); // Wave 4: the You tab renders from the same dashboardData state
     if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
   }
 }
@@ -8617,29 +8842,37 @@ function renderDashboard() {
   const ut = dashboardData.userTargets;
   const circ = 175.9; // 2π × r=28
 
-  // Date in header
+  // Header — greeting + program-context line (Wave 2, home-v2 mockup)
+  const greetEl = document.getElementById('dashGreeting');
+  if (greetEl) {
+    const hour = new Date().getHours();
+    const dayPart = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+    const name = ut?.name || currentUser?.email?.split('@')[0] || '';
+    greetEl.textContent = name ? `${dayPart}, ${name}` : `Good ${dayPart.toLowerCase()}`;
+  }
   const dateEl = document.getElementById('dashDate');
   if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const parts = [new Date().toLocaleDateString('en-US', { weekday: 'long' })];
+    if (cfg?.weeks && currentWeek) parts.push(`Week ${currentWeek} of ${cfg.weeks}`);
+    if (TEMPLATE_GOAL_LABEL[cfg?.goal]) parts.push(TEMPLATE_GOAL_LABEL[cfg.goal]);
+    dateEl.textContent = parts.join(' · ');
   }
 
-  // Activity label — sync pending state
+  // Vitals label — sync pending state
   const actLabel = document.getElementById('dashActivityLabel');
-  if (actLabel) actLabel.textContent = h ? 'Activity' : 'Activity — Sync pending';
+  if (actLabel) actLabel.textContent = h ? 'Vitals' : 'Vitals — sync pending';
 
   // Persistent streak badge (EPIC-13 Step 4) — always visible, not gated on partner pairing
   const streakValEl = document.getElementById('dashStreakVal');
-  if (streakValEl) streakValEl.textContent = dashboardData.streak != null ? dashboardData.streak : '—';
+  if (streakValEl) streakValEl.textContent = dashboardData.streak != null ? `${dashboardData.streak} day${dashboardData.streak === 1 ? '' : 's'}` : '—';
 
-  // 7 Rings
+  // Vitals — 4 accent-only rings (ruling 2; nutrition detail + body comp → You tab, Wave 4).
+  // dashboardData.health/weightTrend7d still load in full so Wave 4 renders from the same state.
   const ringDefs = [
-    { cardId: 'dashRingCal',     valId: 'dashRingCalVal',     val: h?.active_calories_kcal,  target: h?.active_calories_goal ?? 500,    fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
-    { cardId: 'dashRingSleep',   valId: 'dashRingSleepVal',   val: h?.sleep_total_hours,     target: h?.sleep_goal_hours ?? 8,          fmt: v => v != null ? (+v).toFixed(1) + 'h' : '—' },
     { cardId: 'dashRingSteps',   valId: 'dashRingStepsVal',   val: h?.steps,                 target: h?.steps_goal ?? 8000,             fmt: v => v != null ? (v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString()) : '—' },
-    { cardId: 'dashRingDietCal', valId: 'dashRingDietCalVal', val: h?.dietary_calories_kcal, target: ut?.daily_calories_target ?? 2000,  fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
+    { cardId: 'dashRingSleep',   valId: 'dashRingSleepVal',   val: h?.sleep_total_hours,     target: h?.sleep_goal_hours ?? 8,          fmt: v => v != null ? (+v).toFixed(1) + 'h' : '—' },
+    { cardId: 'dashRingCal',     valId: 'dashRingCalVal',     val: h?.active_calories_kcal,  target: h?.active_calories_goal ?? 500,    fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
     { cardId: 'dashRingProtein', valId: 'dashRingProteinVal', val: h?.dietary_protein_g,     target: ut?.daily_protein_target_g ?? 150, fmt: v => v != null ? Math.round(v)+'g' : '—' },
-    { cardId: 'dashRingCarbs',   valId: 'dashRingCarbsVal',   val: h?.dietary_carbs_g,       target: ut?.daily_carbs_target_g ?? 250,   fmt: v => v != null ? Math.round(v)+'g' : '—' },
-    { cardId: 'dashRingFat',     valId: 'dashRingFatVal',     val: h?.dietary_fat_g,         target: ut?.daily_fat_target_g ?? 65,      fmt: v => v != null ? Math.round(v)+'g' : '—' },
   ];
   ringDefs.forEach(r => {
     const card = document.getElementById(r.cardId);
@@ -8650,19 +8883,6 @@ function renderDashboard() {
     const valEl = document.getElementById(r.valId);
     if (valEl) valEl.textContent = r.fmt(r.val);
   });
-
-  // EPIC-6 — Body: 7-day rolling avg weight (computed on read, see loadWeightTrend)
-  // + today's body-fat reading, same source (h) as every ring above.
-  const bodyWeightEl = document.getElementById('dashBodyWeightVal');
-  if (bodyWeightEl) {
-    const wt = dashboardData.weightTrend7d;
-    bodyWeightEl.textContent = wt != null ? wt.toFixed(1) + ' lbs' : '—';
-  }
-  const bodyFatEl = document.getElementById('dashBodyFatVal');
-  if (bodyFatEl) {
-    const bf = h?.body_fat_pct;
-    bodyFatEl.textContent = bf != null ? (+bf).toFixed(1) + '%' : '—';
-  }
 
   // Competition scoreboard
   const lb = dashboardData.leaderboard;
@@ -8681,52 +8901,40 @@ function renderDashboard() {
   const myPtsEl = document.getElementById('dashCompMyPts');
   const theirPtsEl = document.getElementById('dashCompTheirPts');
   const barFill = document.getElementById('dashCompBarFill');
+  const noteEl = document.getElementById('dashDuelNote');
 
+  const theirName = theirLbRow?.name || dashboardData.partnerTargets?.name || 'Partner';
   if (myNameEl) myNameEl.textContent = myLbRow?.name || ut?.name || currentUser?.email?.split('@')[0] || 'You';
-  if (theirNameEl) theirNameEl.textContent = theirLbRow?.name || dashboardData.partnerTargets?.name || 'Partner';
+  if (theirNameEl) theirNameEl.textContent = theirName;
 
+  const setPts = (el, pts) => { if (!el) return; el.innerHTML = ''; el.append(String(pts)); const s = document.createElement('small'); s.textContent = ' pts'; el.append(s); };
   if (!hasPartner) {
-    if (myPtsEl) { myPtsEl.textContent = '— pts'; myPtsEl.style.color = ''; }
-    if (theirPtsEl) { theirPtsEl.textContent = '— pts'; theirPtsEl.style.color = ''; }
+    if (myPtsEl) { myPtsEl.textContent = '—'; myPtsEl.style.color = ''; }
+    if (theirPtsEl) { theirPtsEl.textContent = '—'; theirPtsEl.style.color = ''; }
     if (barFill) { barFill.style.width = '50%'; barFill.style.background = ''; }
-    ['dashStatSessionsMine','dashStatSessionsTheirs','dashStatStreakMine','dashStatStreakTheirs','dashStatPRsMine','dashStatPRsTheirs'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = '—';
-    });
+    if (noteEl) noteEl.textContent = 'Pair with your partner to start the weekly duel.';
   } else {
-    if (myPtsEl) {
-      myPtsEl.textContent = myPts + ' pts';
-      myPtsEl.style.color = iWin ? myColor : 'var(--muted2)';
-    }
-    if (theirPtsEl) {
-      theirPtsEl.textContent = theirPts + ' pts';
-      theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)';
-    }
+    setPts(myPtsEl, myPts);
+    setPts(theirPtsEl, theirPts);
+    if (myPtsEl) myPtsEl.style.color = iWin ? myColor : 'var(--muted2)';
+    if (theirPtsEl) theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)';
     const total = myPts + theirPts;
     const barPct = total > 0 ? (iWin ? myPts / total : theirPts / total) * 100 : 50;
     if (barFill) {
       barFill.style.width = barPct + '%';
       barFill.style.background = iWin ? myColor : theirColor;
     }
-
-    // Stats — winner's value appears larger/white, loser's smaller/muted
-    const setStatPair = (mineId, theirsId, mineVal, theirsVal) => {
-      const mineEl = document.getElementById(mineId);
-      const theirsEl = document.getElementById(theirsId);
-      if (mineEl) {
-        mineEl.textContent = mineVal ?? '—';
-        mineEl.style.color = iWin ? 'var(--text)' : 'var(--muted2)';
-        mineEl.style.fontSize = iWin ? '18px' : '14px';
+    if (noteEl) {
+      noteEl.innerHTML = '';
+      if (myPts === theirPts) {
+        noteEl.textContent = 'Dead even — next session takes the lead.';
+      } else {
+        noteEl.append(iWin ? "You're up " : `${theirName} is up `);
+        const b = document.createElement('b');
+        b.textContent = Math.abs(myPts - theirPts);
+        noteEl.append(b, ' this week.');
       }
-      if (theirsEl) {
-        theirsEl.textContent = theirsVal ?? '—';
-        theirsEl.style.color = !iWin ? 'var(--text)' : 'var(--muted2)';
-        theirsEl.style.fontSize = !iWin ? '18px' : '14px';
-      }
-    };
-    setStatPair('dashStatSessionsMine','dashStatSessionsTheirs', myLbRow?.sessions_completed, theirLbRow?.sessions_completed);
-    const sr = dashboardData.streakRows || {};
-    setStatPair('dashStatStreakMine','dashStatStreakTheirs', liveStreak(sr[myLbRow?.user_id]), liveStreak(sr[theirLbRow?.user_id]));
-    setStatPair('dashStatPRsMine','dashStatPRsTheirs', myLbRow?.prs_earned, theirLbRow?.prs_earned);
+    }
   }
 
   // Day dots
@@ -8752,22 +8960,478 @@ function renderDashboard() {
       dotEl.style.background = 'transparent';
       dotEl.style.backgroundImage = `linear-gradient(90deg, ${myColor} 50%, ${theirColor} 50%)`;
     } else {
-      dotEl.style.background = 'var(--border2)';
+      dotEl.style.background = 'transparent';
       dotEl.style.backgroundImage = '';
     }
+    // today marker — accent2 outline on the current cycle day
+    dotEl.style.borderColor = i === (dayOfWeek === 0 ? 6 : dayOfWeek - 1) ? 'var(--accent2)' : '';
+    dotEl.style.borderWidth = i === (dayOfWeek === 0 ? 6 : dayOfWeek - 1) ? '2px' : '';
   });
 
-  // Medals
-  const medalRow = document.getElementById('dashMedalRow');
-  if (medalRow) {
-    if (dashboardData.medals.length) {
-      medalRow.innerHTML = dashboardData.medals.map(m =>
-        `<div class="dash-medal-chip"><span class="dash-medal-icon">${svgIcon('medal')}</span>${m.name || 'Medal'}</div>`
-      ).join('');
-    } else {
-      medalRow.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:6px 0;">No medals yet — keep going ${svgIcon('medal')}</div>`;
-    }
+  // Wave 2 sections — hero, muscles-this-week, latest PR (local-data renders)
+  renderDashHero();
+  renderMuscleWeek();
+  renderLatestPR();
+}
+
+// ── Wave 2: hero card — today's session from the same schedule plumbing the
+// tracker uses (getWeekSchedule/getProgramDayNumber; one rule, one home). ──
+function renderDashHero() {
+  const titleEl = document.getElementById('dashHeroTitle');
+  if (!titleEl) return;
+  const metaEl = document.getElementById('dashHeroMeta');
+  const subEl = document.getElementById('dashHeroSub');
+  const chipsEl = document.getElementById('dashHeroChips');
+  const ctaEl = document.getElementById('dashHeroCta');
+  applyHeroImages(document.getElementById('view-dashboard'));
+  const sched = typeof getWeekSchedule === 'function' ? getWeekSchedule() : null;
+  const dayKey = typeof getProgramDayNumber === 'function' ? getProgramDayNumber() : null;
+  chipsEl.innerHTML = '';
+  if (!sched || !dayKey) {
+    metaEl.textContent = 'TODAY';
+    titleEl.textContent = "Today's Workout";
+    subEl.textContent = 'Continue your plan, or start something one-off.';
+    if (ctaEl) ctaEl.textContent = 'Start workout →';
+    return;
   }
+  const daySlot = `DAY ${sched.todayIndex + 1} OF 7`;
+  if (dayKey === 'rest') {
+    metaEl.textContent = `REST DAY · ${daySlot}`;
+    titleEl.textContent = 'Rest & Recover';
+    subEl.textContent = 'Recovery day on your plan — log a one-off or journal from here.';
+    if (ctaEl) ctaEl.textContent = 'Open workouts →';
+    return;
+  }
+  metaEl.textContent = `TODAY · ${daySlot}`;
+  titleEl.textContent = sched.labelFor(dayKey);
+  if (ctaEl) ctaEl.textContent = 'Start workout →';
+  const day = sched.program.find(d => d.key === dayKey);
+  const lifts = [];
+  (day?.blocks || []).forEach(b => {
+    if (b.cardio) return;
+    (b.exs || []).forEach(ex => { if (ex && !ex.isCore) lifts.push(ex); });
+  });
+  const mins = Number(cfg?.workout_duration_minutes);
+  subEl.textContent = lifts.length
+    ? `${lifts.length} lift${lifts.length === 1 ? '' : 's'}${mins ? ` · about ${mins} min` : ''}`
+    : '';
+  lifts.slice(0, 2).forEach(ex => {
+    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = ex.name; chipsEl.append(c);
+  });
+  if (lifts.length > 2) {
+    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = `+${lifts.length - 2} more`; chipsEl.append(c);
+  }
+}
+
+// ── Wave 2: muscles this week — LOGGED sets vs the weekly MEV target. ──
+// Crediting (primary 1.0 / secondary 0.5, core+cardio excluded) is
+// computeMuscleWeeklyVolume in programs.js — the SAME function D6b gates the
+// generated program with — fed this week's tandem_history rows reshaped into its
+// day shape. Grouping tag → major muscle uses muscleCeilingKey (programs.js), and
+// the target is VOLUME_LANDMARKS[goal].mev per muscle. Nothing re-implemented here.
+// Shared by Home's muscles-this-week AND the You tab heatmap (one rule, one home):
+// this week's LOGGED sets, credited by computeMuscleWeeklyVolume (primary 1.0 /
+// secondary 0.5), grouped under muscleCeilingKey, against the goal's weekly MEV.
+function computeWeekMuscleGrouped() {
+  const dow = new Date().getDay();
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  const days = (LS.get('tandem_history') || [])
+    .filter(row => {
+      if (!row || row.skipped) return false;
+      const d = new Date(row.date);
+      return !isNaN(d) && d >= monday;
+    })
+    .map(row => ({
+      blocks: [{
+        exs: Object.values(row.exercises || {})
+          .filter(sets => Array.isArray(sets) && sets.length && sets[0]?.name)
+          .map(sets => ({ name: sets[0].name, sets: sets.length })),
+      }],
+    }));
+  const totals = computeMuscleWeeklyVolume(days, EXERCISE_BANK);
+  const grouped = {};
+  for (const [tag, v] of Object.entries(totals)) {
+    const k = muscleCeilingKey(tag);
+    grouped[k] = (grouped[k] || 0) + v;
+  }
+  const mev = VOLUME_LANDMARKS[cfg?.goal]?.mev ?? VOLUME_LANDMARKS.build_muscle.mev;
+  return { grouped, mev };
+}
+
+function renderMuscleWeek() {
+  const rowsEl = document.getElementById('dashMuscleRows');
+  if (!rowsEl) return;
+  const fig = document.getElementById('dashMuscleFig');
+  if (fig) fig.src = `public/musclemap-${userSexKey()}.webp`;
+  const { grouped, mev } = computeWeekMuscleGrouped();
+  // Presentation labels over MAJOR_MUSCLE_GROUP_TOKENS (programs.js) — display only.
+  const ROWS = [
+    ['Chest', ['pec', 'pec_major']],
+    ['Lats', ['lat_dorsi']],
+    ['Upper Back', ['rhomboid']],
+    ['Front Delts', ['anterior_delt']],
+    ['Side Delts', ['lateral_delt']],
+    ['Quads', ['quad']],
+    ['Hamstrings', ['hamstring']],
+    ['Glutes', ['glute_max']],
+  ];
+  rowsEl.innerHTML = '';
+  ROWS.forEach(([label, keys]) => {
+    const v = keys.reduce((s, k) => s + (grouped[k] || 0), 0);
+    const pct = Math.min(v / mev, 1);
+    const row = document.createElement('div');
+    row.className = 'dash-mr';
+    const top = document.createElement('div'); top.className = 'dash-mr-top';
+    const nameSpan = document.createElement('span'); nameSpan.textContent = label;
+    const valSpan = document.createElement('span'); valSpan.textContent = `${Math.round(v * 2) / 2} / ${mev}`;
+    top.append(nameSpan, valSpan);
+    const trk = document.createElement('div'); trk.className = 'dash-mr-trk';
+    const bar = document.createElement('i');
+    bar.style.width = `${Math.round(pct * 100)}%`;
+    bar.style.background = `color-mix(in srgb, var(--accent2) ${Math.round(25 + pct * 75)}%, #1c2a23)`;
+    trk.append(bar);
+    row.append(top, trk);
+    rowsEl.append(row);
+  });
+}
+
+// ── Wave 2: latest PR — gold celebration card from tandem_working1rm's dated
+// dir:'pr' entries (written at the moment a PR is beaten, see the PR path in
+// logSet). Hidden until one exists. ──
+function renderLatestPR() {
+  const card = document.getElementById('dashPrCard');
+  if (!card) return;
+  const working = LS.get('tandem_working1rm') || {};
+  let best = null;
+  for (const [name, e] of Object.entries(working)) {
+    if (!e || e.dir !== 'pr' || !e.date || !e.rm) continue;
+    if (!best || e.date > best.date) best = { name, date: e.date, rm: e.rm }; // localDateStr sorts lexicographically
+  }
+  if (!best) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const when = new Date(best.date + 'T00:00:00');
+  const daysAgo = Math.floor((new Date().setHours(0, 0, 0, 0) - when.getTime()) / 86400000);
+  const whenLabel = daysAgo <= 0 ? 'TODAY'
+    : daysAgo === 1 ? 'YESTERDAY'
+    : daysAgo < 7 ? when.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
+    : when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  const tagEl = document.getElementById('dashPrTag');
+  if (tagEl) tagEl.innerHTML = `${svgIcon('trophy')} NEW PR · ${whenLabel}`;
+  const nameEl = document.getElementById('dashPrName');
+  if (nameEl) nameEl.textContent = best.name;
+  const numEl = document.getElementById('dashPrNum');
+  if (numEl) { numEl.innerHTML = ''; numEl.append(String(best.rm)); const s = document.createElement('small'); s.textContent = 'LBS E1RM'; numEl.append(s); }
+}
+
+// ── Wave 3 (ruling 4): Duel breakdown sheet ───────────────────────────────────
+// Reads the SAME dashboardData the Home scoreboard renders from — no second fetch,
+// no second scoring rule. Sessions and PRs price from POINTS_PER_SESSION /
+// POINTS_PER_PR (the one client home, ruling 6); the steps component is shown as
+// the RESIDUAL (total_points minus those two), because the steps math (avg/8k,
+// cap 15) lives ONLY in the competition_leaderboard view (migrations/0018) and
+// re-implementing it here would be a second home. Residual construction is also
+// what makes the rows sum exactly to the score, which ruling 4 requires.
+// NOTE until Kerwin applies migrations/0018_pr_points_15.sql, the LIVE view still
+// pays 25/PR while the client prices 15/PR — the 10/PR difference will surface in
+// the Steps row's points. That is the two-rules bug 0018 exists to close, kept
+// visible here rather than papered over.
+function renderDuelSheet() {
+  const lb = dashboardData.leaderboard;
+  const myRow = lb.find(r => r.user_id === currentUser?.id);
+  const theirRow = lb.find(r => r.user_id !== currentUser?.id);
+  const hasPartner = dashboardData.partnerTargets != null && myRow && theirRow;
+
+  const emptyEl = document.getElementById('duelEmpty');
+  const bodyEl = document.getElementById('duelBody');
+  const subEl = document.getElementById('duelSub');
+  const titleEl = document.getElementById('duelTitle');
+
+  // Week window — same Monday anchor as the day dots and the leaderboard view.
+  const dayOfWeek = new Date().getDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(); monday.setDate(new Date().getDate() - mondayOffset); monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (subEl) subEl.textContent = (currentWeek ? `Week ${currentWeek} · ` : '') + `Mon ${fmt(monday)} – Sun ${fmt(sunday)}`;
+
+  if (!hasPartner) {
+    if (titleEl) titleEl.textContent = 'This week\'s duel';
+    if (bodyEl) bodyEl.style.display = 'none';
+    if (emptyEl) {
+      emptyEl.style.display = '';
+      emptyEl.textContent = currentUser
+        ? 'Pair with your partner to start the weekly duel. Your sessions and PRs are already banking points.'
+        : 'Sign in and pair with your partner to start the weekly duel.';
+    }
+    return;
+  }
+  if (bodyEl) bodyEl.style.display = '';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  const theirName = theirRow.name || dashboardData.partnerTargets?.name || 'Partner';
+  const myColor = dashboardData.userTargets?.theme_color || '#18C26A';
+  const theirColor = dashboardData.partnerTargets?.theme_color || '#888888';
+  const myPts = myRow.total_points ?? 0;
+  const theirPts = theirRow.total_points ?? 0;
+  const iWin = myPts >= theirPts;
+
+  if (titleEl) titleEl.textContent = `You vs ${theirName}`;
+  const myNameEl = document.getElementById('duelMyName');
+  const theirNameEl = document.getElementById('duelTheirName');
+  if (myNameEl) myNameEl.textContent = 'You';
+  if (theirNameEl) theirNameEl.textContent = theirName;
+  const myPtsEl = document.getElementById('duelMyPts');
+  const theirPtsEl = document.getElementById('duelTheirPts');
+  if (myPtsEl) { myPtsEl.textContent = myPts; myPtsEl.style.color = iWin ? myColor : 'var(--muted2)'; }
+  if (theirPtsEl) { theirPtsEl.textContent = theirPts; theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)'; }
+  const leadEl = document.getElementById('duelLead');
+  if (leadEl) {
+    leadEl.textContent = myPts === theirPts ? 'EVEN'
+      : iWin ? `YOU +${myPts - theirPts}` : `${theirName.toUpperCase()} +${theirPts - myPts}`;
+  }
+
+  // Sources — each side: [value shown, points]; steps points are the residual (see header).
+  const srcOf = row => {
+    const sessions = row.sessions_completed ?? 0;
+    const prs = row.prs_earned ?? 0;
+    const sessionPts = sessions * POINTS_PER_SESSION;
+    const prPts = prs * POINTS_PER_PR;
+    return {
+      sessions, prs,
+      sessionPts, prPts,
+      stepsAvg: row.avg_steps ?? 0,
+      stepsPts: (row.total_points ?? 0) - sessionPts - prPts,
+      streak: row.current_streak ?? 0,
+    };
+  };
+  const mine = srcOf(myRow), theirs = srcOf(theirRow);
+  const kFmt = v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v);
+  const srcRows = [
+    { label: 'Sessions', sub: `${POINTS_PER_SESSION} pts each`, me: `${mine.sessions} · ${mine.sessionPts}`, them: `${theirs.sessions} · ${theirs.sessionPts}`, meV: mine.sessionPts, themV: theirs.sessionPts },
+    { label: 'PRs', sub: `${POINTS_PER_PR} pts each`, me: `${mine.prs} · ${mine.prPts}`, them: `${theirs.prs} · ${theirs.prPts}`, meV: mine.prPts, themV: theirs.prPts },
+    { label: 'Steps', sub: 'avg/day', me: `${kFmt(mine.stepsAvg)} · ${mine.stepsPts}`, them: `${kFmt(theirs.stepsAvg)} · ${theirs.stepsPts}`, meV: mine.stepsPts, themV: theirs.stepsPts },
+    { label: 'Streak', sub: 'not scored · bragging rights', me: `${mine.streak} day${mine.streak === 1 ? '' : 's'}`, them: `${theirs.streak} day${theirs.streak === 1 ? '' : 's'}`, meV: mine.streak, themV: theirs.streak },
+  ];
+  const srcWrap = document.getElementById('duelSources');
+  if (srcWrap) {
+    srcWrap.innerHTML = '';
+    srcRows.forEach(r => {
+      const row = document.createElement('div'); row.className = 'duel-src';
+      const lab = document.createElement('div'); lab.append(r.label);
+      const em = document.createElement('em'); em.textContent = r.sub; lab.append(em);
+      const meS = document.createElement('span'); meS.textContent = r.me;
+      const themS = document.createElement('span'); themS.textContent = r.them;
+      if (r.meV > r.themV) meS.classList.add('win');
+      else if (r.themV > r.meV) themS.classList.add('win');
+      row.append(lab, meS, themS);
+      srcWrap.append(row);
+    });
+  }
+
+  // Day by day — same dailyWins map as the Home dots.
+  const daysWrap = document.getElementById('duelDays');
+  if (daysWrap) {
+    daysWrap.innerHTML = '';
+    const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const todayIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    letters.forEach((L, i) => {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      const outcome = dashboardData.dailyWins[localDateStr(d)];
+      const cell = document.createElement('div'); cell.className = 'duel-d' + (i === todayIdx ? ' today' : '');
+      cell.append(L);
+      const meDot = document.createElement('i');
+      if (outcome === 'mine' || outcome === 'both') meDot.style.background = myColor;
+      const themDot = document.createElement('i');
+      if (outcome === 'theirs' || outcome === 'both') themDot.style.background = theirColor;
+      cell.append(meDot, themDot);
+      daysWrap.append(cell);
+    });
+  }
+
+  // This week's PRs — gold rows, both partners, capped at 6 (query is date-desc).
+  const prWrap = document.getElementById('duelPRs');
+  const prHead = document.getElementById('duelPrHead');
+  if (prWrap) {
+    prWrap.innerHTML = '';
+    const prs = (dashboardData.weekPRs || []).slice(0, 6);
+    if (prHead) prHead.style.display = prs.length ? '' : 'none';
+    prs.forEach(pr => {
+      const row = document.createElement('div'); row.className = 'duel-pr';
+      const who = pr.user_id === currentUser?.id ? 'You' : theirName;
+      const span = document.createElement('span'); span.textContent = `${who} · ${pr.exercise_name}`;
+      const b = document.createElement('b'); b.textContent = Math.round(pr.best_estimated_1rm_lbs ?? 0);
+      row.append(span, b);
+      prWrap.append(row);
+    });
+  }
+
+  // Nudge — always phrased from POINTS_PER_SESSION (ruling 6: never re-inline values).
+  const nudgeEl = document.getElementById('duelNudge');
+  if (nudgeEl) {
+    const gap = theirPts - myPts;
+    nudgeEl.textContent = gap > 0
+      ? (gap <= POINTS_PER_SESSION ? 'One session takes the lead →' : `Down ${gap} — every session is ${POINTS_PER_SESSION} pts →`)
+      : gap === 0 ? 'Dead even — next session takes the lead →'
+      : 'You\'re ahead — one more session locks it in →';
+  }
+}
+
+// ── Wave 4 (ruling 5): the You tab ────────────────────────────────────────────
+// Renders from the SAME dashboardData state Home loads (health snapshot, user
+// targets, 7-day weight trend) — no second fetch path. Nutrition values are the
+// EPIC-4 Apple Health / MyFitnessPal pipeline's health_snapshots dietary_* fields;
+// nothing here is hand-typed (Kerwin: "'2 meals' has no ability to add nutritional
+// value to the home page"). Targets: users.daily_*_target with the local
+// tandem_profile copy as offline fallback (same values saveProfileNutrition writes
+// to both). The heatmap credits from computeWeekMuscleGrouped — the exact numbers
+// Home's muscles-this-week bars show.
+function renderYouTab() {
+  const nameEl = document.getElementById('youName');
+  if (!nameEl) return;
+  const h = dashboardData.health;
+  const ut = dashboardData.userTargets;
+  const profile = LS.get('tandem_profile') || {};
+
+  nameEl.textContent = ut?.name || currentUser?.email?.split('@')[0] || 'You';
+  const subEl = document.getElementById('youSub');
+  if (subEl) subEl.textContent = currentUser ? (currentUser.email || '') : 'Sign in to sync your health data.';
+
+  // 1. Nutrition today
+  const note = document.getElementById('youNutriNote');
+  if (note) note.textContent = h ? 'vs your targets' : 'sync pending';
+  const rowsEl = document.getElementById('youNutriRows');
+  if (rowsEl) {
+    rowsEl.innerHTML = '';
+    const rows = [
+      ['Calories', h?.dietary_calories_kcal, ut?.daily_calories_target ?? profile.calories ?? 2200, ''],
+      ['Protein',  h?.dietary_protein_g,     ut?.daily_protein_target_g ?? profile.protein ?? 150, 'g'],
+      ['Carbs',    h?.dietary_carbs_g,       ut?.daily_carbs_target_g ?? profile.carbs ?? 250, 'g'],
+      ['Fat',      h?.dietary_fat_g,         ut?.daily_fat_target_g ?? profile.fat ?? 65, 'g'],
+      ['Water',    h?.dietary_water_oz,      ut?.daily_water_target_oz ?? profile.water ?? 100, 'oz'],
+    ];
+    rows.forEach(([label, val, target, unit]) => {
+      const pct = val != null && target ? Math.min(val / target, 1) : 0;
+      const row = document.createElement('div');
+      const top = document.createElement('div'); top.className = 'dash-mr-top';
+      const nameSpan = document.createElement('span'); nameSpan.textContent = label;
+      const valSpan = document.createElement('span');
+      valSpan.textContent = `${val != null ? Math.round(val).toLocaleString() : '—'} / ${Math.round(target).toLocaleString()}${unit}`;
+      top.append(nameSpan, valSpan);
+      const trk = document.createElement('div'); trk.className = 'dash-mr-trk';
+      const bar = document.createElement('i');
+      bar.style.width = `${Math.round(pct * 100)}%`;
+      bar.style.background = 'var(--accent2)';
+      trk.append(bar);
+      row.append(top, trk);
+      rowsEl.append(row);
+    });
+  }
+
+  // 2. Body composition — 7-day rolling weight (EPIC-6) beats a single profile
+  // number; goal weight from users row with local profile fallback.
+  const tilesEl = document.getElementById('youBodyTiles');
+  if (tilesEl) {
+    tilesEl.innerHTML = '';
+    const trend = dashboardData.weightTrend7d;
+    const weightNow = trend ?? (Number(cfg?.weight) || null);
+    const goal = ut?.goal_weight_lbs ?? (Number(profile.goalWeight) || null);
+    const toGo = weightNow != null && goal != null ? weightNow - goal : null;
+    const heightIn = ut?.height_inches ?? profile.heightInches ?? null;
+    const tiles = [
+      { t: 'Weight', v: weightNow != null ? weightNow.toFixed(1) : '—', u: 'lbs', s: trend != null ? '7-day average' : 'from your profile' },
+      { t: 'Goal', v: goal != null ? Math.round(goal) : '—', u: 'lbs', s: goal != null ? '' : 'set it in Settings' },
+      { t: 'To go', v: toGo != null ? Math.abs(toGo).toFixed(1) : '—', u: 'lbs', s: toGo == null ? '' : toGo > 0 ? 'down to goal' : toGo < 0 ? 'below goal' : 'at goal' },
+      { t: 'Body fat', v: h?.body_fat_pct != null ? (+h.body_fat_pct).toFixed(1) : '—', u: '%', s: h?.body_fat_pct != null ? 'from Apple Health' : 'sync pending' },
+    ];
+    if (heightIn) tiles[3].s = h?.body_fat_pct != null ? 'from Apple Health' : `height ${Math.floor(heightIn / 12)}'${heightIn % 12}"`;
+    tiles.forEach(td => {
+      const tile = document.createElement('div'); tile.className = 'you-tile';
+      const t = document.createElement('div'); t.className = 't'; t.textContent = td.t;
+      const v = document.createElement('div'); v.className = 'v'; v.append(String(td.v));
+      const small = document.createElement('small'); small.textContent = ' ' + td.u; v.append(small);
+      tile.append(t, v);
+      if (td.s) { const s = document.createElement('div'); s.className = 's'; s.textContent = td.s; tile.append(s); }
+      tilesEl.append(tile);
+    });
+  }
+
+  // 3. Muscle heatmap
+  renderMuscleHeatmap();
+}
+
+// Sex-specific body art colored on ONE continuous scale by % of each muscle's
+// weekly target (ruling 7 / EPIC-15 crediting via computeWeekMuscleGrouped()).
+// Paths come from window.MUSCLEMAP (public/musclemap-paths.js, generated by
+// scripts/build-musclemap-asset.py from Kerwin's art). Each heatmap display
+// bucket aggregates the muscleCeilingKey groups listed here — the ONLY place
+// display buckets are defined; geometry→bucket lives in the generator.
+const HEATMAP_KEY_GROUPS = {
+  pec_major: ['pec_major', 'pec'],
+  anterior_delt: ['anterior_delt'],
+  lateral_delt: ['lateral_delt'],
+  posterior_delt: ['posterior_delt'],
+  bicep_brachii: ['bicep_brachii', 'bicep_brachii_long_head', 'bicep_brachii_short_head', 'brachialis'],
+  tricep: ['tricep', 'tricep_lateral', 'tricep_long_head', 'tricep_medial', 'anconeus'],
+  forearm: ['brachioradialis'],
+  rectus_abdominis: ['rectus_abdominis', 'rectus_abdominis_lower', 'core', 'transverse_abdominis'],
+  oblique_external: ['oblique_external', 'oblique_internal', 'serratus_anterior'],
+  quad: ['quad'],
+  adductor: ['adductor'],
+  calf: ['calf', 'gastrocnemius', 'soleus'],
+  upper_trap: ['upper_trap', 'levator_scapulae'],
+  rhomboid: ['rhomboid', 'middle_trap', 'lower_trap'],
+  erector_spinae: ['erector_spinae', 'quadratus_lumborum'],
+  glute_max: ['glute_max', 'glute_medius', 'glute_minimus', 'tensor_fasciae_latae'],
+  hamstring: ['hamstring'],
+  rotator: ['external_rotator', 'supraspinatus'],
+};
+
+// target defaults to the You tab's container; Wave 5 passes #sumMuscleMap so the
+// Finish card reuses the SAME map (ruling 7: "the same map is reused on the
+// Finish Workout card") — one renderer, one scale, one volume source.
+function renderMuscleHeatmap(target) {
+  const mapEl = target || document.getElementById('youMuscleMap');
+  if (!mapEl) return;
+  mapEl.innerHTML = '';
+  const art = window.MUSCLEMAP?.[userSexKey()];
+  if (!art) { // asset failed to load — fall back to the flat figure
+    const img = document.createElement('img');
+    img.className = 'you-map-fig';
+    img.alt = '';
+    img.src = `public/musclemap-${userSexKey()}.webp`;
+    mapEl.append(img);
+    return;
+  }
+  const { grouped, mev } = computeWeekMuscleGrouped();
+  const pctOf = bucket => {
+    const keys = HEATMAP_KEY_GROUPS[bucket] || [];
+    const v = keys.reduce((s, k) => s + (grouped[k] || 0), 0);
+    return Math.max(0, Math.min(v / mev, 1));
+  };
+  // ONE continuous scale: neutral panel tone -> the user's accent.
+  const cs = getComputedStyle(document.documentElement);
+  const hexToRgb = h => {
+    const m = h.trim().replace('#', '');
+    const s = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+    return [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16));
+  };
+  const lo = hexToRgb('#232b27');
+  const hi = hexToRgb(cs.getPropertyValue('--accent2') || '#7ef0c0');
+  const mix = t => `rgb(${lo.map((c, i) => Math.round(c + (hi[i] - c) * t)).join(',')})`;
+  const NEUTRAL = '#181d1b';
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${art.w} ${art.h}`);
+  svg.setAttribute('aria-label', 'Muscle heatmap: % of weekly volume target per muscle');
+  for (const [bucket, d] of art.regions) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('fill', bucket ? mix(pctOf(bucket)) : NEUTRAL);
+    svg.append(p);
+  }
+  mapEl.append(svg);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8844,9 +9508,9 @@ function openProfileModal() {
     b.classList.toggle('active', b.dataset.hair === profileState.hair);
   });
   // Theme swatches
-  const curTheme = profile.colorTheme || '#3FE08C';
+  const curTheme = (profile.colorTheme || '#1B5E38').toLowerCase();
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
-    b.classList.toggle('active', b.dataset.color === curTheme);
+    b.classList.toggle('active', b.dataset.color.toLowerCase() === curTheme);
   });
   // User email
   const emailEl = document.getElementById('profileUserEmail');
@@ -8980,7 +9644,7 @@ function applyColorTheme(hex) {
   applyAccentColor(hex);
   // Update swatch active states
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
-    b.classList.toggle('active', b.dataset.color === hex);
+    b.classList.toggle('active', b.dataset.color.toLowerCase() === String(hex).toLowerCase());
   });
   const profile = LS.get('tandem_profile') || {};
   profile.colorTheme = hex;
