@@ -518,7 +518,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ONE tint recipe (Wave 0): grayscale photo below, this layer paints the user's
    accent over it. Every duotone surface shares this rule — per-component rules
    keep only their own z-index. Override strength via --tint-opacity. */
-.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint{
+.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint,.dash-hero .tc-tint{
   content:'';position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;
   opacity:var(--tint-opacity,.42);}
 .hero-fill{--tint-opacity:.4;}
@@ -736,8 +736,9 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .summary-stat-val{font-family:var(--font-display);font-size:28px;color:var(--accent2);line-height:1;}
 .summary-stat-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
 
-/* Persistent streak badge (EPIC-13 Step 4) */
-.dash-streak-chip{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:12px;color:var(--muted2);background:var(--s2);border:1px solid var(--border2);border-radius:20px;padding:5px 10px;flex-shrink:0;}
+/* Persistent streak badge (EPIC-13 Step 4) — Wave 2: gold pill per docs/mockups/home-v2.html
+   (gold = celebration-only surfaces: streak, PRs) */
+.dash-streak-chip{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:12px;color:var(--gold2);background:var(--gold-dim);border:1px solid rgba(255,176,32,.3);border-radius:999px;padding:7px 12px;flex-shrink:0;}
 .pct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .pct-card{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:9px 6px;
   text-align:center;transition:all .15s;}
@@ -888,61 +889,84 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .avatar-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;}
 /* ── JS-controlled initial states ── */
 #obBackBtn,#authOTPState,#bottomNav{display:none;}
-/* ── Dashboard ── */
+/* ── Dashboard — Wave 2 (ruling 2, docs/mockups/home-v2.html, 2026-09-23) ──
+   Order: hero (today's session) → duel → muscles → vitals → latest PR.
+   Photo cards reuse the ONE duotone recipe (.tc-tint in the grouped rule above);
+   gold appears only on celebration surfaces (streak chip, PR card). */
 .dash-wrap{padding:0 16px 32px;}
-.dash-header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px;}
-.dash-title{font-family:var(--font-display);font-size:22px;letter-spacing:.06em;color:var(--text);}
+.dash-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:20px 2px 14px;}
+.dash-greet{font-family:var(--font-display);font-size:28px;font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1.05;}
+.dash-date{font-size:12.5px;color:var(--muted2);margin-top:3px;}
 .dash-refresh-btn{width:34px;height:34px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .dash-refresh-btn:hover:not(:disabled){background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);}
 .dash-refresh-btn:disabled{opacity:.35;cursor:default;}
 @keyframes dash-spin{to{transform:rotate(360deg);}}
 .dash-refresh-btn.spinning span{display:inline-block;animation:dash-spin .7s linear infinite;}
-.dash-rings{display:flex;gap:10px;margin-bottom:12px;}
-.dash-ring-card{flex:1;background:var(--s2);border-radius:14px;padding:14px 8px 12px;text-align:center;border:1px solid var(--border2);}
-.dash-ring-svg{width:68px;height:68px;transform:rotate(-90deg);overflow:visible;}
-.dash-ring-track{fill:none;stroke:var(--border2);stroke-width:5;}
-.dash-ring-circle{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;transition:stroke-dasharray .4s ease;}
-.dash-ring-val{font-family:var(--font-display);font-size:20px;color:var(--text);margin-top:6px;line-height:1;}
-.dash-ring-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
-.dash-nutrition{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);display:flex;justify-content:space-around;margin-bottom:12px;}
-.dash-nut-cell{text-align:center;}
-.dash-nut-val{font-family:var(--font-display);font-size:20px;color:var(--text);line-height:1;}
-.dash-nut-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+/* 1. Hero — today's session, .tc-card design language */
+.dash-hero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;
+  text-align:left;width:100%;min-height:300px;margin-bottom:12px;padding:20px;border:1px solid var(--border2);
+  border-radius:22px;overflow:hidden;isolation:isolate;cursor:pointer;color:inherit;font:inherit;
+  background:var(--s1);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.4);
+  transition:transform .13s ease;-webkit-tap-highlight-color:transparent;}
+.dash-hero:active{transform:scale(.985);}
+.dash-hero .dash-hero-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);
+  background-size:cover;background-position:center 25%;filter:grayscale(1) contrast(1.08) brightness(.75);}
+.dash-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
+.dash-hero .dash-hero-scrim{position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.55) 45%,rgba(7,7,11,.95) 100%);}
+.dash-hero .tc-meta{justify-content:flex-start;margin-bottom:0;}
+.dash-hero h2{font-family:var(--font-display);font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff;margin:8px 0 6px;}
+.dash-hero p{font-size:13px;color:rgba(255,255,255,.72);margin:0;}
+.dash-chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+.dash-chip{font-size:11px;padding:5px 10px;border-radius:999px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);}
+.dash-cta{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;
+  border-radius:999px;background:var(--accent);color:#04130b;font-family:var(--font-body);font-weight:800;font-size:16px;
+  border:none;box-shadow:0 6px 20px var(--accent-glow);cursor:pointer;}
+/* Shared panel chrome (duel, muscles, PR) */
+.dash-panel{background:var(--s1);border:1px solid var(--border2);border-radius:22px;padding:16px;margin-bottom:12px;}
+.dash-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;}
 .dash-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;display:block;}
-.dash-competition{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);margin-bottom:12px;}
-.dash-comp-row{display:flex;justify-content:space-around;margin-top:8px;}
-.dash-comp-user{text-align:center;}
-.dash-comp-name{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
-.dash-comp-count{font-family:var(--font-display);font-size:40px;color:var(--text);line-height:1;}
-.dash-comp-leading{color:var(--accent);}
-.dash-comp-divider{font-family:var(--font-display);font-size:28px;color:var(--border2);align-self:center;}
-.dash-medals{background:var(--s2);border-radius:14px;padding:14px 16px;border:1px solid var(--border2);margin-bottom:12px;}
-.dash-medals-header{display:flex;align-items:center;justify-content:space-between;}
-.dash-medal-row{display:flex;gap:8px;margin-top:10px;}
-.dash-medal-chip{flex:1;background:var(--bg);border-radius:10px;padding:10px 6px;text-align:center;font-size:11px;color:var(--muted2);border:1px solid var(--border);}
-.dash-medal-icon{font-size:20px;display:block;margin-bottom:4px;}
-.dash-cta{width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-deep) 100%);border:none;color:#fff;font-family:var(--font-display);font-size:20px;letter-spacing:.1em;cursor:pointer;transition:all .2s;}
-.dash-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
-.dash-date{font-family:var(--font-mono);font-size:12px;color:var(--muted2);flex:1;text-align:center;}
-.dash-comp-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:2px;}
-.dash-comp-name-right{text-align:right;}
-.dash-comp-vs{font-family:var(--font-display);font-size:14px;color:var(--muted2);text-align:center;}
-.dash-comp-pts-row{display:grid;grid-template-columns:1fr auto 1fr;margin-bottom:10px;}
-.dash-comp-pts{font-family:var(--font-display);font-size:28px;line-height:1;}
+/* 2. Duel */
+.dash-competition{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.dash-competition:active{transform:scale(.99);}
+.dash-duel{display:flex;align-items:flex-end;justify-content:space-between;margin:10px 0;}
+.dash-who{font-size:12px;color:var(--muted2);}
+.dash-comp-pts{font-family:var(--font-display);font-size:38px;font-weight:800;line-height:1;color:var(--text);}
+.dash-comp-pts small{font-size:13px;color:var(--muted2);font-weight:600;}
 .dash-comp-pts-right{text-align:right;}
-.dash-comp-bar-track{height:6px;background:var(--border2);border-radius:3px;margin-bottom:12px;overflow:hidden;}
-.dash-comp-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s ease;}
-.dash-comp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:12px;gap:4px;}
-.dash-comp-stat-cell{text-align:center;background:var(--bg);border-radius:10px;padding:8px 4px;}
-.dash-comp-stat-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-bottom:4px;}
-.dash-comp-stat-vals{display:flex;align-items:baseline;justify-content:center;gap:2px;}
-.dash-comp-stat-mine{font-family:var(--font-display);font-size:18px;color:var(--text);}
-.dash-comp-stat-theirs{font-family:var(--font-display);font-size:14px;color:var(--muted2);}
-.dash-comp-stat-sep{font-size:10px;color:var(--muted2);}
-.dash-day-dots{display:flex;justify-content:space-between;}
-.dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.dash-day-dot{width:10px;height:10px;border-radius:50%;background:var(--border2);display:inline-block;}
-.dash-day-label{font-family:var(--font-mono);font-size:8px;color:var(--muted2);}
+.dash-comp-vs{font-family:var(--font-mono);font-size:11px;color:var(--muted2);padding-bottom:8px;}
+.dash-comp-bar-track{height:10px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;}
+.dash-comp-bar-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .4s ease;}
+.dash-duel-note{font-size:13px;margin-top:10px;color:var(--text);}
+.dash-duel-note b{color:var(--accent2);}
+.dash-day-dots{display:flex;justify-content:space-between;margin-top:12px;}
+.dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.dash-day-dot{width:26px;height:26px;border-radius:50%;border:1px solid var(--border2);background:transparent;display:inline-block;}
+.dash-day-label{font-family:var(--font-mono);font-size:9px;color:var(--muted2);}
+/* 3. Muscles this week */
+.dash-mmap{display:flex;gap:14px;align-items:center;margin-top:12px;}
+.dash-mmap-fig{width:96px;flex:0 0 auto;align-self:stretch;object-fit:contain;opacity:.5;
+  filter:grayscale(1) brightness(1.4);}
+.dash-mrows{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0;}
+.dash-mr-top{display:flex;justify-content:space-between;font-size:12px;color:var(--text);}
+.dash-mr-top span:last-child{font-family:var(--font-mono);color:var(--muted2);font-size:11px;}
+.dash-mr-trk{height:6px;border-radius:999px;background:rgba(255,255,255,.07);margin-top:4px;overflow:hidden;}
+.dash-mr-trk i{display:block;height:100%;border-radius:999px;}
+/* 4. Vitals — 4 tiles, accent-only rings */
+.dash-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.dash-ring-card{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:11px 6px;text-align:center;}
+.dash-ring-svg{width:34px;height:34px;transform:rotate(-90deg);overflow:visible;display:block;margin:0 auto;}
+.dash-ring-track{fill:none;stroke:rgba(255,255,255,.1);stroke-width:7;}
+.dash-ring-circle{fill:none;stroke:var(--accent2);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .4s ease;}
+.dash-ring-val{font-family:var(--font-display);font-size:16px;color:var(--text);margin-top:6px;line-height:1;}
+.dash-ring-label{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+/* 5. Latest PR — gold, celebration-only */
+.dash-pr{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35);}
+.dash-pr-tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--gold2);display:flex;align-items:center;gap:5px;}
+.dash-pr-tag svg{width:12px;height:12px;}
+.dash-pr h3{font-family:var(--font-display);font-size:18px;color:var(--text);margin:4px 0 0;}
+.dash-pr-num{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--gold2);margin-left:auto;text-align:right;line-height:1;}
+.dash-pr-num small{display:block;font-size:10px;color:var(--muted2);font-family:var(--font-mono);font-weight:400;margin-top:3px;}
 
 /* ── Bug Report FAB ──────────────────────────────────── */
 .bug-fab{position:fixed;bottom:80px;right:16px;z-index:900;width:40px;height:40px;border-radius:50%;background:var(--s2);border:1px solid var(--border2);color:var(--muted2);font-size:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);transition:opacity .15s;}
@@ -1651,143 +1675,43 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 <div class="view" id="view-dashboard">
   <div class="dash-wrap">
 
-    <!-- Header -->
+    <!-- Header — greeting + program context + gold streak chip -->
     <div class="dash-header">
-      <div class="dash-title">Today</div>
-      <span class="dash-date" id="dashDate"></span>
+      <div style="min-width:0;">
+        <div class="dash-greet" id="dashGreeting">Tandem</div>
+        <div class="dash-date" id="dashDate"></div>
+      </div>
       <div class="dash-streak-chip" id="dashStreakChip" title="Current streak"><span data-icon="flame"></span> <span id="dashStreakVal">—</span></div>
       <button id="dashRefreshBtn" class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh health data">
         <span>↻</span>
       </button>
     </div>
 
-    <!-- Health Rings — Activity -->
-    <span class="dash-section-label" id="dashActivityLabel">Activity</span>
-    <div class="dash-rings">
-      <div class="dash-ring-card" id="dashRingCal">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingCalVal">—</div>
-        <div class="dash-ring-label">Active Cal</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingSleep">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#4a9eff;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingSleepVal">—</div>
-        <div class="dash-ring-label">Sleep</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingSteps">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#38d9c0;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingStepsVal">—</div>
-        <div class="dash-ring-label">Steps</div>
-      </div>
-    </div>
+    <!-- 1. HERO — today's session first (ruling 2). Same duotone recipe as the
+         Today's Workout chooser; the whole card opens that chooser. The .dash-cta
+         class stays on the button here — the walkthrough scripts drive the app
+         through it. -->
+    <button class="dash-hero" data-hero="phase" onclick="openModal('todaychoice')">
+      <div class="dash-hero-photo"></div><div class="tc-tint"></div><div class="dash-hero-scrim"></div>
+      <div class="tc-meta"><span class="tc-dot"></span><span id="dashHeroMeta">TODAY</span></div>
+      <h2 id="dashHeroTitle">Today's Workout</h2>
+      <p id="dashHeroSub"></p>
+      <div class="dash-chips" id="dashHeroChips"></div>
+      <span class="dash-cta" id="dashHeroCta">Start workout →</span>
+    </button>
 
-    <!-- Health Rings — Nutrition -->
-    <span class="dash-section-label">Nutrition</span>
-    <div class="dash-rings">
-      <div class="dash-ring-card" id="dashRingDietCal">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#FFB020;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingDietCalVal">—</div>
-        <div class="dash-ring-label">Cal</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingProtein">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#e854a0;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingProteinVal">—</div>
-        <div class="dash-ring-label">Protein</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingCarbs">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#a78bfa;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingCarbsVal">—</div>
-        <div class="dash-ring-label">Carbs</div>
-      </div>
-      <div class="dash-ring-card" id="dashRingFat">
-        <svg class="dash-ring-svg" viewBox="0 0 68 68">
-          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
-          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9" style="stroke:#fb923c;"/>
-        </svg>
-        <div class="dash-ring-val" id="dashRingFatVal">—</div>
-        <div class="dash-ring-label">Fat</div>
-      </div>
-    </div>
-
-    <!-- Body Composition — EPIC-6 (weight_lbs/body_fat_pct land in health_snapshots via
-         the same ingest-health-snapshot pipeline as Activity/Nutrition). The 7-day
-         weight figure is a ROLLING AVERAGE computed HERE, on read, from the raw
-         health_snapshots rows (loadWeightTrend()) — never a materialized table
-         (weight_trend was deleted under BUG-72 for being exactly that: a duplicate of
-         truth that could drift from the rows it summarized). Body fat is today's
-         snapshot reading, same source as every other ring on this page. -->
-    <span class="dash-section-label">Body</span>
-    <div class="dash-nutrition" id="dashBodySection">
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashBodyWeightVal">—</div>
-        <div class="dash-nut-label">7-Day Avg Weight</div>
-      </div>
-      <div class="dash-nut-cell">
-        <div class="dash-nut-val" id="dashBodyFatVal">—</div>
-        <div class="dash-nut-label">Body Fat %</div>
-      </div>
-    </div>
-
-    <!-- Competition -->
-    <span class="dash-section-label">This Week</span>
-    <div class="dash-competition">
-      <div class="dash-comp-names">
-        <div class="dash-comp-name" id="dashCompMyName">You</div>
-        <div class="dash-comp-vs">vs</div>
-        <div class="dash-comp-name dash-comp-name-right" id="dashCompTheirName">Partner</div>
-      </div>
-      <div class="dash-comp-pts-row">
-        <div class="dash-comp-pts" id="dashCompMyPts">— pts</div>
-        <div></div>
-        <div class="dash-comp-pts dash-comp-pts-right" id="dashCompTheirPts">— pts</div>
+    <!-- 2. THE DUEL — tapping opens the Duel tab (breakdown ships in Wave 3) -->
+    <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0">
+      <div class="dash-label"><span>This week</span><span>tap for details ›</span></div>
+      <div class="dash-duel">
+        <div><div class="dash-who" id="dashCompMyName">You</div><div class="dash-comp-pts" id="dashCompMyPts">—</div></div>
+        <div class="dash-comp-vs">VS</div>
+        <div style="text-align:right;"><div class="dash-who" id="dashCompTheirName">Partner</div><div class="dash-comp-pts dash-comp-pts-right" id="dashCompTheirPts">—</div></div>
       </div>
       <div class="dash-comp-bar-track">
         <div class="dash-comp-bar-fill" id="dashCompBarFill" style="width:50%;"></div>
       </div>
-      <div class="dash-comp-stats">
-        <div class="dash-comp-stat-cell">
-          <div class="dash-comp-stat-label">Sessions</div>
-          <div class="dash-comp-stat-vals">
-            <span class="dash-comp-stat-mine" id="dashStatSessionsMine">—</span>
-            <span class="dash-comp-stat-sep">/</span>
-            <span class="dash-comp-stat-theirs" id="dashStatSessionsTheirs">—</span>
-          </div>
-        </div>
-        <div class="dash-comp-stat-cell">
-          <div class="dash-comp-stat-label">Streak</div>
-          <div class="dash-comp-stat-vals">
-            <span class="dash-comp-stat-mine" id="dashStatStreakMine">—</span>
-            <span class="dash-comp-stat-sep">/</span>
-            <span class="dash-comp-stat-theirs" id="dashStatStreakTheirs">—</span>
-          </div>
-        </div>
-        <div class="dash-comp-stat-cell">
-          <div class="dash-comp-stat-label">PRs</div>
-          <div class="dash-comp-stat-vals">
-            <span class="dash-comp-stat-mine" id="dashStatPRsMine">—</span>
-            <span class="dash-comp-stat-sep">/</span>
-            <span class="dash-comp-stat-theirs" id="dashStatPRsTheirs">—</span>
-          </div>
-        </div>
-      </div>
+      <div class="dash-duel-note" id="dashDuelNote"></div>
       <div class="dash-day-dots">
         <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot0"></span><span class="dash-day-label">M</span></div>
         <div class="dash-day-dot-col"><span class="dash-day-dot" id="dashDot1"></span><span class="dash-day-label">T</span></div>
@@ -1799,19 +1723,63 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       </div>
     </div>
 
-    <!-- Medals -->
-    <div class="dash-medals">
-      <div class="dash-medals-header">
-        <span class="dash-section-label" style="margin-bottom:0;">Medals</span>
-        <button class="auth-signout" onclick="openModal('history')" style="font-size:11px;">See all →</button>
-      </div>
-      <div class="dash-medal-row" id="dashMedalRow">
-        <div style="font-size:12px;color:var(--muted);padding:6px 0;">No medals yet — keep going <span data-icon="medal"></span></div>
+    <!-- 3. MUSCLES THIS WEEK — logged sets vs weekly MEV target (ruling 7's scale;
+         crediting lives in programs.js computeMuscleWeeklyVolume — one rule, one
+         home). Per-muscle SVG heatmap art lands in Wave 4. -->
+    <div class="dash-panel">
+      <div class="dash-label"><span>Muscles this week</span><span>vs weekly target</span></div>
+      <div class="dash-mmap">
+        <img class="dash-mmap-fig" id="dashMuscleFig" alt="" aria-hidden="true">
+        <div class="dash-mrows" id="dashMuscleRows"></div>
       </div>
     </div>
 
-    <!-- Today's Workout CTA -->
-    <button class="dash-cta" onclick="openModal('todaychoice')">Today's Workout →</button>
+    <!-- 4. VITALS — 4 tiles, accent-only rings (ruling 2). Nutrition detail +
+         body composition move to the You tab in Wave 4. -->
+    <span class="dash-section-label" id="dashActivityLabel">Vitals</span>
+    <div class="dash-vitals">
+      <div class="dash-ring-card" id="dashRingSteps">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingStepsVal">—</div>
+        <div class="dash-ring-label">Steps</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingSleep">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingSleepVal">—</div>
+        <div class="dash-ring-label">Sleep</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingCal">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingCalVal">—</div>
+        <div class="dash-ring-label">Active</div>
+      </div>
+      <div class="dash-ring-card" id="dashRingProtein">
+        <svg class="dash-ring-svg" viewBox="0 0 68 68">
+          <circle class="dash-ring-track" cx="34" cy="34" r="28"/>
+          <circle class="dash-ring-circle" cx="34" cy="34" r="28" stroke-dasharray="0 175.9"/>
+        </svg>
+        <div class="dash-ring-val" id="dashRingProteinVal">—</div>
+        <div class="dash-ring-label">Protein</div>
+      </div>
+    </div>
+
+    <!-- 5. LATEST PR — gold, celebration-only; hidden until a PR exists -->
+    <div class="dash-panel dash-pr" id="dashPrCard" style="display:none;">
+      <div style="min-width:0;">
+        <div class="dash-pr-tag" id="dashPrTag"></div>
+        <h3 id="dashPrName"></h3>
+      </div>
+      <div class="dash-pr-num" id="dashPrNum"></div>
+    </div>
 
   </div>
 </div>
@@ -8651,29 +8619,37 @@ function renderDashboard() {
   const ut = dashboardData.userTargets;
   const circ = 175.9; // 2π × r=28
 
-  // Date in header
+  // Header — greeting + program-context line (Wave 2, home-v2 mockup)
+  const greetEl = document.getElementById('dashGreeting');
+  if (greetEl) {
+    const hour = new Date().getHours();
+    const dayPart = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+    const name = ut?.name || currentUser?.email?.split('@')[0] || '';
+    greetEl.textContent = name ? `${dayPart}, ${name}` : `Good ${dayPart.toLowerCase()}`;
+  }
   const dateEl = document.getElementById('dashDate');
   if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const parts = [new Date().toLocaleDateString('en-US', { weekday: 'long' })];
+    if (cfg?.weeks && currentWeek) parts.push(`Week ${currentWeek} of ${cfg.weeks}`);
+    if (TEMPLATE_GOAL_LABEL[cfg?.goal]) parts.push(TEMPLATE_GOAL_LABEL[cfg.goal]);
+    dateEl.textContent = parts.join(' · ');
   }
 
-  // Activity label — sync pending state
+  // Vitals label — sync pending state
   const actLabel = document.getElementById('dashActivityLabel');
-  if (actLabel) actLabel.textContent = h ? 'Activity' : 'Activity — Sync pending';
+  if (actLabel) actLabel.textContent = h ? 'Vitals' : 'Vitals — sync pending';
 
   // Persistent streak badge (EPIC-13 Step 4) — always visible, not gated on partner pairing
   const streakValEl = document.getElementById('dashStreakVal');
-  if (streakValEl) streakValEl.textContent = dashboardData.streak != null ? dashboardData.streak : '—';
+  if (streakValEl) streakValEl.textContent = dashboardData.streak != null ? `${dashboardData.streak} day${dashboardData.streak === 1 ? '' : 's'}` : '—';
 
-  // 7 Rings
+  // Vitals — 4 accent-only rings (ruling 2; nutrition detail + body comp → You tab, Wave 4).
+  // dashboardData.health/weightTrend7d still load in full so Wave 4 renders from the same state.
   const ringDefs = [
-    { cardId: 'dashRingCal',     valId: 'dashRingCalVal',     val: h?.active_calories_kcal,  target: h?.active_calories_goal ?? 500,    fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
-    { cardId: 'dashRingSleep',   valId: 'dashRingSleepVal',   val: h?.sleep_total_hours,     target: h?.sleep_goal_hours ?? 8,          fmt: v => v != null ? (+v).toFixed(1) + 'h' : '—' },
     { cardId: 'dashRingSteps',   valId: 'dashRingStepsVal',   val: h?.steps,                 target: h?.steps_goal ?? 8000,             fmt: v => v != null ? (v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString()) : '—' },
-    { cardId: 'dashRingDietCal', valId: 'dashRingDietCalVal', val: h?.dietary_calories_kcal, target: ut?.daily_calories_target ?? 2000,  fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
+    { cardId: 'dashRingSleep',   valId: 'dashRingSleepVal',   val: h?.sleep_total_hours,     target: h?.sleep_goal_hours ?? 8,          fmt: v => v != null ? (+v).toFixed(1) + 'h' : '—' },
+    { cardId: 'dashRingCal',     valId: 'dashRingCalVal',     val: h?.active_calories_kcal,  target: h?.active_calories_goal ?? 500,    fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
     { cardId: 'dashRingProtein', valId: 'dashRingProteinVal', val: h?.dietary_protein_g,     target: ut?.daily_protein_target_g ?? 150, fmt: v => v != null ? Math.round(v)+'g' : '—' },
-    { cardId: 'dashRingCarbs',   valId: 'dashRingCarbsVal',   val: h?.dietary_carbs_g,       target: ut?.daily_carbs_target_g ?? 250,   fmt: v => v != null ? Math.round(v)+'g' : '—' },
-    { cardId: 'dashRingFat',     valId: 'dashRingFatVal',     val: h?.dietary_fat_g,         target: ut?.daily_fat_target_g ?? 65,      fmt: v => v != null ? Math.round(v)+'g' : '—' },
   ];
   ringDefs.forEach(r => {
     const card = document.getElementById(r.cardId);
@@ -8684,19 +8660,6 @@ function renderDashboard() {
     const valEl = document.getElementById(r.valId);
     if (valEl) valEl.textContent = r.fmt(r.val);
   });
-
-  // EPIC-6 — Body: 7-day rolling avg weight (computed on read, see loadWeightTrend)
-  // + today's body-fat reading, same source (h) as every ring above.
-  const bodyWeightEl = document.getElementById('dashBodyWeightVal');
-  if (bodyWeightEl) {
-    const wt = dashboardData.weightTrend7d;
-    bodyWeightEl.textContent = wt != null ? wt.toFixed(1) + ' lbs' : '—';
-  }
-  const bodyFatEl = document.getElementById('dashBodyFatVal');
-  if (bodyFatEl) {
-    const bf = h?.body_fat_pct;
-    bodyFatEl.textContent = bf != null ? (+bf).toFixed(1) + '%' : '—';
-  }
 
   // Competition scoreboard
   const lb = dashboardData.leaderboard;
@@ -8715,51 +8678,40 @@ function renderDashboard() {
   const myPtsEl = document.getElementById('dashCompMyPts');
   const theirPtsEl = document.getElementById('dashCompTheirPts');
   const barFill = document.getElementById('dashCompBarFill');
+  const noteEl = document.getElementById('dashDuelNote');
 
+  const theirName = theirLbRow?.name || dashboardData.partnerTargets?.name || 'Partner';
   if (myNameEl) myNameEl.textContent = myLbRow?.name || ut?.name || currentUser?.email?.split('@')[0] || 'You';
-  if (theirNameEl) theirNameEl.textContent = theirLbRow?.name || dashboardData.partnerTargets?.name || 'Partner';
+  if (theirNameEl) theirNameEl.textContent = theirName;
 
+  const setPts = (el, pts) => { if (!el) return; el.innerHTML = ''; el.append(String(pts)); const s = document.createElement('small'); s.textContent = ' pts'; el.append(s); };
   if (!hasPartner) {
-    if (myPtsEl) { myPtsEl.textContent = '— pts'; myPtsEl.style.color = ''; }
-    if (theirPtsEl) { theirPtsEl.textContent = '— pts'; theirPtsEl.style.color = ''; }
+    if (myPtsEl) { myPtsEl.textContent = '—'; myPtsEl.style.color = ''; }
+    if (theirPtsEl) { theirPtsEl.textContent = '—'; theirPtsEl.style.color = ''; }
     if (barFill) { barFill.style.width = '50%'; barFill.style.background = ''; }
-    ['dashStatSessionsMine','dashStatSessionsTheirs','dashStatStreakMine','dashStatStreakTheirs','dashStatPRsMine','dashStatPRsTheirs'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = '—';
-    });
+    if (noteEl) noteEl.textContent = 'Pair with your partner to start the weekly duel.';
   } else {
-    if (myPtsEl) {
-      myPtsEl.textContent = myPts + ' pts';
-      myPtsEl.style.color = iWin ? myColor : 'var(--muted2)';
-    }
-    if (theirPtsEl) {
-      theirPtsEl.textContent = theirPts + ' pts';
-      theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)';
-    }
+    setPts(myPtsEl, myPts);
+    setPts(theirPtsEl, theirPts);
+    if (myPtsEl) myPtsEl.style.color = iWin ? myColor : 'var(--muted2)';
+    if (theirPtsEl) theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)';
     const total = myPts + theirPts;
     const barPct = total > 0 ? (iWin ? myPts / total : theirPts / total) * 100 : 50;
     if (barFill) {
       barFill.style.width = barPct + '%';
       barFill.style.background = iWin ? myColor : theirColor;
     }
-
-    // Stats — winner's value appears larger/white, loser's smaller/muted
-    const setStatPair = (mineId, theirsId, mineVal, theirsVal) => {
-      const mineEl = document.getElementById(mineId);
-      const theirsEl = document.getElementById(theirsId);
-      if (mineEl) {
-        mineEl.textContent = mineVal ?? '—';
-        mineEl.style.color = iWin ? 'var(--text)' : 'var(--muted2)';
-        mineEl.style.fontSize = iWin ? '18px' : '14px';
+    if (noteEl) {
+      noteEl.innerHTML = '';
+      if (myPts === theirPts) {
+        noteEl.textContent = 'Dead even — next session takes the lead.';
+      } else {
+        noteEl.append(iWin ? "You're up " : `${theirName} is up `);
+        const b = document.createElement('b');
+        b.textContent = Math.abs(myPts - theirPts);
+        noteEl.append(b, ' this week.');
       }
-      if (theirsEl) {
-        theirsEl.textContent = theirsVal ?? '—';
-        theirsEl.style.color = !iWin ? 'var(--text)' : 'var(--muted2)';
-        theirsEl.style.fontSize = !iWin ? '18px' : '14px';
-      }
-    };
-    setStatPair('dashStatSessionsMine','dashStatSessionsTheirs', myLbRow?.sessions_completed, theirLbRow?.sessions_completed);
-    setStatPair('dashStatStreakMine','dashStatStreakTheirs', myLbRow?.current_streak, theirLbRow?.current_streak);
-    setStatPair('dashStatPRsMine','dashStatPRsTheirs', myLbRow?.prs_earned, theirLbRow?.prs_earned);
+    }
   }
 
   // Day dots
@@ -8785,22 +8737,161 @@ function renderDashboard() {
       dotEl.style.background = 'transparent';
       dotEl.style.backgroundImage = `linear-gradient(90deg, ${myColor} 50%, ${theirColor} 50%)`;
     } else {
-      dotEl.style.background = 'var(--border2)';
+      dotEl.style.background = 'transparent';
       dotEl.style.backgroundImage = '';
     }
+    // today marker — accent2 outline on the current cycle day
+    dotEl.style.borderColor = i === (dayOfWeek === 0 ? 6 : dayOfWeek - 1) ? 'var(--accent2)' : '';
+    dotEl.style.borderWidth = i === (dayOfWeek === 0 ? 6 : dayOfWeek - 1) ? '2px' : '';
   });
 
-  // Medals
-  const medalRow = document.getElementById('dashMedalRow');
-  if (medalRow) {
-    if (dashboardData.medals.length) {
-      medalRow.innerHTML = dashboardData.medals.map(m =>
-        `<div class="dash-medal-chip"><span class="dash-medal-icon">${svgIcon('medal')}</span>${m.name || 'Medal'}</div>`
-      ).join('');
-    } else {
-      medalRow.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:6px 0;">No medals yet — keep going ${svgIcon('medal')}</div>`;
-    }
+  // Wave 2 sections — hero, muscles-this-week, latest PR (local-data renders)
+  renderDashHero();
+  renderMuscleWeek();
+  renderLatestPR();
+}
+
+// ── Wave 2: hero card — today's session from the same schedule plumbing the
+// tracker uses (getWeekSchedule/getProgramDayNumber; one rule, one home). ──
+function renderDashHero() {
+  const titleEl = document.getElementById('dashHeroTitle');
+  if (!titleEl) return;
+  const metaEl = document.getElementById('dashHeroMeta');
+  const subEl = document.getElementById('dashHeroSub');
+  const chipsEl = document.getElementById('dashHeroChips');
+  const ctaEl = document.getElementById('dashHeroCta');
+  applyHeroImages(document.getElementById('view-dashboard'));
+  const sched = typeof getWeekSchedule === 'function' ? getWeekSchedule() : null;
+  const dayKey = typeof getProgramDayNumber === 'function' ? getProgramDayNumber() : null;
+  chipsEl.innerHTML = '';
+  if (!sched || !dayKey) {
+    metaEl.textContent = 'TODAY';
+    titleEl.textContent = "Today's Workout";
+    subEl.textContent = 'Continue your plan, or start something one-off.';
+    if (ctaEl) ctaEl.textContent = 'Start workout →';
+    return;
   }
+  const daySlot = `DAY ${sched.todayIndex + 1} OF 7`;
+  if (dayKey === 'rest') {
+    metaEl.textContent = `REST DAY · ${daySlot}`;
+    titleEl.textContent = 'Rest & Recover';
+    subEl.textContent = 'Recovery day on your plan — log a one-off or journal from here.';
+    if (ctaEl) ctaEl.textContent = 'Open workouts →';
+    return;
+  }
+  metaEl.textContent = `TODAY · ${daySlot}`;
+  titleEl.textContent = sched.labelFor(dayKey);
+  if (ctaEl) ctaEl.textContent = 'Start workout →';
+  const day = sched.program.find(d => d.key === dayKey);
+  const lifts = [];
+  (day?.blocks || []).forEach(b => {
+    if (b.cardio) return;
+    (b.exs || []).forEach(ex => { if (ex && !ex.isCore) lifts.push(ex); });
+  });
+  const mins = Number(cfg?.workout_duration_minutes);
+  subEl.textContent = lifts.length
+    ? `${lifts.length} lift${lifts.length === 1 ? '' : 's'}${mins ? ` · about ${mins} min` : ''}`
+    : '';
+  lifts.slice(0, 2).forEach(ex => {
+    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = ex.name; chipsEl.append(c);
+  });
+  if (lifts.length > 2) {
+    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = `+${lifts.length - 2} more`; chipsEl.append(c);
+  }
+}
+
+// ── Wave 2: muscles this week — LOGGED sets vs the weekly MEV target. ──
+// Crediting (primary 1.0 / secondary 0.5, core+cardio excluded) is
+// computeMuscleWeeklyVolume in programs.js — the SAME function D6b gates the
+// generated program with — fed this week's tandem_history rows reshaped into its
+// day shape. Grouping tag → major muscle uses muscleCeilingKey (programs.js), and
+// the target is VOLUME_LANDMARKS[goal].mev per muscle. Nothing re-implemented here.
+function renderMuscleWeek() {
+  const rowsEl = document.getElementById('dashMuscleRows');
+  if (!rowsEl) return;
+  const fig = document.getElementById('dashMuscleFig');
+  if (fig) fig.src = `public/musclemap-${userSexKey()}.webp`;
+  const dow = new Date().getDay();
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  const days = (LS.get('tandem_history') || [])
+    .filter(row => {
+      if (!row || row.skipped) return false;
+      const d = new Date(row.date);
+      return !isNaN(d) && d >= monday;
+    })
+    .map(row => ({
+      blocks: [{
+        exs: Object.values(row.exercises || {})
+          .filter(sets => Array.isArray(sets) && sets.length && sets[0]?.name)
+          .map(sets => ({ name: sets[0].name, sets: sets.length })),
+      }],
+    }));
+  const totals = computeMuscleWeeklyVolume(days, EXERCISE_BANK);
+  const grouped = {};
+  for (const [tag, v] of Object.entries(totals)) {
+    const k = muscleCeilingKey(tag);
+    grouped[k] = (grouped[k] || 0) + v;
+  }
+  const mev = VOLUME_LANDMARKS[cfg?.goal]?.mev ?? VOLUME_LANDMARKS.build_muscle.mev;
+  // Presentation labels over MAJOR_MUSCLE_GROUP_TOKENS (programs.js) — display only.
+  const ROWS = [
+    ['Chest', ['pec', 'pec_major']],
+    ['Lats', ['lat_dorsi']],
+    ['Upper Back', ['rhomboid']],
+    ['Front Delts', ['anterior_delt']],
+    ['Side Delts', ['lateral_delt']],
+    ['Quads', ['quad']],
+    ['Hamstrings', ['hamstring']],
+    ['Glutes', ['glute_max']],
+  ];
+  rowsEl.innerHTML = '';
+  ROWS.forEach(([label, keys]) => {
+    const v = keys.reduce((s, k) => s + (grouped[k] || 0), 0);
+    const pct = Math.min(v / mev, 1);
+    const row = document.createElement('div');
+    row.className = 'dash-mr';
+    const top = document.createElement('div'); top.className = 'dash-mr-top';
+    const nameSpan = document.createElement('span'); nameSpan.textContent = label;
+    const valSpan = document.createElement('span'); valSpan.textContent = `${Math.round(v * 2) / 2} / ${mev}`;
+    top.append(nameSpan, valSpan);
+    const trk = document.createElement('div'); trk.className = 'dash-mr-trk';
+    const bar = document.createElement('i');
+    bar.style.width = `${Math.round(pct * 100)}%`;
+    bar.style.background = `color-mix(in srgb, var(--accent2) ${Math.round(25 + pct * 75)}%, #1c2a23)`;
+    trk.append(bar);
+    row.append(top, trk);
+    rowsEl.append(row);
+  });
+}
+
+// ── Wave 2: latest PR — gold celebration card from tandem_working1rm's dated
+// dir:'pr' entries (written at the moment a PR is beaten, see the PR path in
+// logSet). Hidden until one exists. ──
+function renderLatestPR() {
+  const card = document.getElementById('dashPrCard');
+  if (!card) return;
+  const working = LS.get('tandem_working1rm') || {};
+  let best = null;
+  for (const [name, e] of Object.entries(working)) {
+    if (!e || e.dir !== 'pr' || !e.date || !e.rm) continue;
+    if (!best || e.date > best.date) best = { name, date: e.date, rm: e.rm }; // localDateStr sorts lexicographically
+  }
+  if (!best) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const when = new Date(best.date + 'T00:00:00');
+  const daysAgo = Math.floor((new Date().setHours(0, 0, 0, 0) - when.getTime()) / 86400000);
+  const whenLabel = daysAgo <= 0 ? 'TODAY'
+    : daysAgo === 1 ? 'YESTERDAY'
+    : daysAgo < 7 ? when.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
+    : when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  const tagEl = document.getElementById('dashPrTag');
+  if (tagEl) tagEl.innerHTML = `${svgIcon('trophy')} NEW PR · ${whenLabel}`;
+  const nameEl = document.getElementById('dashPrName');
+  if (nameEl) nameEl.textContent = best.name;
+  const numEl = document.getElementById('dashPrNum');
+  if (numEl) { numEl.innerHTML = ''; numEl.append(String(best.rm)); const s = document.createElement('small'); s.textContent = 'LBS E1RM'; numEl.append(s); }
 }
 
 // ═══════════════════════════════════════════════════════
