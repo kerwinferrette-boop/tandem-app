@@ -6493,65 +6493,42 @@ function reorderWeek() {
 // ruling; a second copy inside the one-off path is exactly the silo that drifts.
 // Returns the streak to display on the completion card.
 //
-// `advanceStreak` (Kerwin, 2026-09-14, verbatim: "Past date, don't count for the
-// streak."): a BACKDATED journal entry is still a workout, so it still earns points,
-// volume, sessions and PRs — but it must not move the streak, because a streak is a
-// claim about consecutive days actually shown up for, and a retroactive entry cannot
-// make yesterday have happened today. When false, the three streak-bearing columns
-// (current_streak_days, longest_streak_days, last_session_date) are left untouched
-// rather than written with today's or the backdated value — writing last_session_date
-// backwards would silently BREAK a live streak, which is worse than not crediting it.
-// This is an option on the one owner, deliberately not a second copy of the rule.
+// Streaks and totals are DERIVED IN THE DATABASE since migrations/0020 (Kerwin
+// 2026-09-23, "1A"): public.streak_recompute() rebuilds sessions/PRs/volume/streak from
+// the rows themselves on every workout_sessions / personal_records write, so there is
+// ONE owner and nothing to double-count (review C1: a DB trigger AND this function both
+// incremented, 33 sessions shown vs 18 real). The app never writes `streaks`.
+// "Past date, don't count for the streak" (Kerwin 2026-09-14) is now the
+// workout_sessions.backdated flag the journal sets; the DB excludes those days from the
+// streak but still counts the session, PRs and volume.
 // Kerwin, 2026-09-23: "let's take a PR 15 points." ONE home for the point values —
 // every finisher (program day, one-off, journal) and every toast reads these. The
 // Home scoreboard reads the competition_leaderboard VIEW, which must match:
-// migrations/0018_pr_points_15.sql (human-applied) brings it from 25/PR to 15.
+// migrations/0018_pr_points_15.sql (applied 2026-09-23) set it from 25/PR to 15.
 const POINTS_PER_SESSION = 10;
 const POINTS_PER_PR = 15;
 function sessionPointsFor(prCount) { return POINTS_PER_SESSION + (prCount || 0) * POINTS_PER_PR; }
 
-async function creditSessionToStreaks(prCount, volume, todayDate, advanceStreak = true) {
-  const sessionPoints = sessionPointsFor(prCount);
-  const { data: existing } = await sb.from('streaks')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
-  if (!existing) {
-    const { error: sErr } = await sb.from('streaks').insert({
-      user_id: currentUser.id,
-      current_streak_days: advanceStreak ? 1 : 0,
-      longest_streak_days: advanceStreak ? 1 : 0,
-      total_sessions: 1,
-      total_prs: prCount || 0,
-      total_volume_lbs: volume,
-      weekly_points: sessionPoints,
-      last_session_date: advanceStreak ? todayDate : null,
-      updated_at: new Date().toISOString()
-    });
-    if (sErr) throw sErr;
-    return advanceStreak ? 1 : 0;
-  }
+// Read back the streak the database just derived (migrations/0020). Its triggers run
+// inside the write that completed the session, so the value is already current.
+// The DB stores the streak as of the last workout (migrations/0020). It is only CURRENT
+// if that last counted day is today or yesterday in the user's LOCAL date — skip a day
+// and the streak is over, so show 0 instead of a stale number. Done here, not in SQL,
+// because the database's "today" is UTC (an evening workout in Pacific time is already
+// tomorrow there). Kerwin 2026-09-23: "fix it".
+function liveStreak(row) {
+  if (!row || !row.last_session_date) return 0;
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = localDateStr(yesterday); // BUG-018/027: local day
-  const isConsecutive = existing.last_session_date === todayDate || existing.last_session_date === yesterdayStr;
-  const newStreak = isConsecutive ? (existing.current_streak_days || 0) + 1 : 1;
-  const newLongest = Math.max(newStreak, existing.longest_streak_days || 0);
-  const patch = {
-    total_sessions: (existing.total_sessions || 0) + 1,
-    total_prs: (existing.total_prs || 0) + (prCount || 0),
-    total_volume_lbs: (existing.total_volume_lbs || 0) + volume,
-    weekly_points: (existing.weekly_points || 0) + sessionPoints,
-    updated_at: new Date().toISOString()
-  };
-  if (advanceStreak) {
-    patch.current_streak_days = newStreak;
-    patch.longest_streak_days = newLongest;
-    patch.last_session_date = todayDate;
-  }
-  const { error: sErr } = await sb.from('streaks').update(patch).eq('user_id', currentUser.id);
-  if (sErr) throw sErr;
-  return advanceStreak ? newStreak : (existing.current_streak_days || 0);
+  return row.last_session_date >= localDateStr(yesterday) ? (row.current_streak_days || 0) : 0;
+}
+
+async function readCreditedStreak() {
+  const { data } = await sb.from('streaks')
+    .select('current_streak_days, last_session_date')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+  return liveStreak(data);
 }
 
 function finishSession() {
@@ -6746,9 +6723,9 @@ function finishSession() {
           .eq('session_id', resolvedId)
           .eq('is_pr', true);
 
-        // 4. Upsert streaks — POINTS_PER_SESSION + POINTS_PER_PR (creditSessionToStreaks owns it)
+        // 4. Streak — derived by the DB on the completed=true write above (migrations/0020).
         // EPIC-13 Step 4/Step 3: fed into the completion summary card below.
-        const finalStreak = await creditSessionToStreaks(prCount || 0, totalVolume, todayDate);
+        const finalStreak = await readCreditedStreak();
 
         // 5. Write calibrated 1RMs (W1D1 calibration hook — idempotent)
         try {
@@ -6908,8 +6885,16 @@ function buildLiftSeries() {
   Object.values(typeof EXERCISE_BANK === 'object' ? EXERCISE_BANK : {}).forEach(e => { if (e && e.name) unitOf[e.name] = e.unit; });
   const lifts = {};
   hist.slice().reverse().forEach(sess => {                 // tandem_history is newest-first
-    const when = new Date(sess.date);
+    // BUG-135: a cloud-restored row carries session_date (bare YYYY-MM-DD, parsed as
+    // local midnight) instead of date, and no exercises map at all — same shape guard
+    // completedSessionCount()/:8231 and getOverdueDays()/:8329 already apply.
+    const raw = sess.session_date || sess.date;
+    if (!raw) return;
+    const when = sess.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
     if (isNaN(when)) return;
+    // A restored row has no per-set data to show — skip it rather than emit a
+    // zero-value point, which would render a WRONG chart instead of an empty one.
+    if (!sess.exercises) return;
     const best = {};
     Object.values(sess.exercises || {}).forEach(sets => (sets || []).forEach(x => {
       if (!x || !x.name) return;
@@ -7350,6 +7335,20 @@ async function restoreFromCloud() {
 // dashboard day-dots — must agree on the user's local day.
 function localDateStr(d = new Date()) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+}
+
+// ── calendarDaysBetween() — BUG-27 DST fix ──
+// Counts whole calendar days between two local-midnight Dates without dividing a raw
+// ms difference by a fixed 86400000 (a day is 23h on a spring-forward date, 25h on a
+// fall-back one, so that division is off by one across the boundary — confirmed by a
+// 20,130-scenario sweep in the 2026-09-23 review, 2,585 failures in America/Los_Angeles).
+// Anchors both dates to UTC NOON of their own local Y/M/D components: UTC itself has no
+// DST, so the resulting ms difference is always an exact multiple of 24h and round() is
+// safe. Callers must pass local-midnight-normalized Dates (as every call site here
+// already does); this does not itself normalize time-of-day.
+function calendarDaysBetween(a, b) {
+  const utcNoon = d => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+  return Math.round((utcNoon(b) - utcNoon(a)) / 86400000);
 }
 
 // ── SCIENCE-BASED CADENCE ENGINE — BUG-030 fix ──
@@ -7935,7 +7934,7 @@ async function finishOneOff() {
       .eq('is_pr', true);
 
     // Streak, points and cumulative volume, through the one owner of that rule.
-    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), localDateStr()); }
+    try { await readCreditedStreak(); } // streak/totals derived by the DB on the insert (migrations/0020)
     catch (stErr) { console.warn('One-off streak credit failed:', stErr); }
 
     // The W1D1 calibration seed is offered here too: it is idempotent (its own
@@ -8055,10 +8054,9 @@ async function saveOneOffTemplate() {
 // governs one-offs (2026-09-13, DOCTRINE D9/D11). So it writes session_type =
 // ONEOFF_SESSION_TYPE and reuses finishOneOff()'s exact seams rather than growing a
 // second copy of the scoring or 1RM rules: `sets` rows (the DB trigger decides PRs),
-// reconcileWorking1RMs() with an explicit synthesized day, creditSessionToStreaks(),
-// computeCalibration1RMs(). The ONE difference is the date: a backdated entry passes
-// advanceStreak=false, per "Past date, don't count for the streak."
-// ═══════════════════════════════════════════════════════
+// reconcileWorking1RMs() with an explicit synthesized day, readCreditedStreak() (the DB derives the streak, migrations/0020),
+// computeCalibration1RMs(). The ONE difference is the date: a backdated entry is inserted with
+// backdated: true, per "Past date, don't count for the streak." (migrations/0020 excludes it).
 let journalRowSeq = 0;
 
 function addJournalRow(prefill) {
@@ -8161,6 +8159,7 @@ async function saveJournal() {
       program_goal: goalKeyFor(cfg.goal),
       session_type: ONEOFF_SESSION_TYPE, // migrations/0015's partial index is what lets this coexist with a program day on the same date
       completed: true,
+      backdated: isBackdated, // "Past date, don't count for the streak" — the DB (migrations/0020) excludes it from the streak only
       total_volume_lbs: Math.round(totalVolume),
       notes: notes || null,
     }).select('id').single();
@@ -8194,7 +8193,7 @@ async function saveJournal() {
       .eq('is_pr', true);
 
     // Points/volume/sessions/PRs always; the streak ONLY if it happened today.
-    try { await creditSessionToStreaks(prCount || 0, Math.round(totalVolume), sessionDate, !isBackdated); }
+    try { await readCreditedStreak(); } // DB derives totals; backdated days are excluded from the streak via the flag on the insert
     catch (stErr) { console.warn('Journal streak credit failed:', stErr); }
 
     try { await computeCalibration1RMs(session.id, currentUser.id); }
@@ -8313,7 +8312,7 @@ function getWeekSchedule() {
   if (!cfg?.startDate || !cfg?.goal) return null;
   const start = new Date(cfg.startDate + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const diffDays = Math.floor((today - start) / 86400000);
+  const diffDays = calendarDaysBetween(start, today);
   if (diffDays < 0) return null;
   const program = getActiveProgram();
   if (!program?.length) return null;
@@ -8562,7 +8561,7 @@ function getOverdueDays() {
   }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   last.setHours(0, 0, 0, 0);
-  const gap = Math.floor((today - last) / 86400000);
+  const gap = calendarDaysBetween(last, today);
   return gap > allowed ? gap : 0;
 }
 
@@ -8740,9 +8739,12 @@ async function loadDashboard() {
 
     // 2b. Own streak — EPIC-13 Step 4: persistent badge, independent of partner pairing
     // (the competition-scoreboard streak stat below only populates when partnered).
-    const { data: streakRow } = await sb.from('streaks')
-      .select('current_streak_days').eq('user_id', uid).maybeSingle();
-    dashboardData.streak = streakRow?.current_streak_days ?? 0;
+    // Partner's row too (RLS: self or mutual partner) so the duel's streak stat is live as well.
+    const { data: streakRows } = await sb.from('streaks')
+      .select('user_id, current_streak_days, last_session_date')
+      .in('user_id', [uid, userRow?.partner_id].filter(Boolean));
+    dashboardData.streakRows = Object.fromEntries((streakRows || []).map(r => [r.user_id, r]));
+    dashboardData.streak = liveStreak(dashboardData.streakRows[uid]);
 
     if (userRow?.partner_id) {
       const pid = userRow.partner_id;

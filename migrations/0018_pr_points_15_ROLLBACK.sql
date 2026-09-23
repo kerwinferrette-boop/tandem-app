@@ -1,8 +1,6 @@
--- migrations/0018_pr_points_15.sql
+-- migrations/0018_pr_points_15_ROLLBACK.sql
 -- Kerwin, 2026-09-23: "let's take a PR 15 points. Why not?"
--- APPLIED 2026-09-23 09:15 UTC on Kerwin's explicit in-session authorization ("go, apply 0018"),
--- via Supabase execute_sql. Audit: agent_log c0154717-ae1a-4401-9fc9-f9ebe4aa8a72. Verified: *15 live,
--- security_invoker kept, 28 grants unchanged, 0 rows with mismatched math. Rollback: 0018_..._ROLLBACK.sql
+-- ROLLBACK for 0018: restores PR weight 25. Only run if Kerwin asks to revert.
 --
 -- WHY: points were scored by two rules that disagreed.
 --   - The Home scoreboard reads this VIEW: 10/session + 25/PR + up to 15 for avg steps.
@@ -49,7 +47,7 @@ WITH (security_invoker = on) AS
     COALESCE(p.prs_earned, 0::bigint)::integer AS prs_earned,
     round(COALESCE(a.avg_steps, 0::numeric))::integer AS avg_steps,
     COALESCE(st.current_streak_days, 0) AS current_streak,
-    COALESCE(s.sessions_completed, 0::bigint) * 10 + COALESCE(p.prs_earned, 0::bigint) * 15 + round(LEAST(COALESCE(a.avg_steps, 0::numeric) / 8000.0, 1.0) * 15::numeric)::integer AS total_points
+    COALESCE(s.sessions_completed, 0::bigint) * 10 + COALESCE(p.prs_earned, 0::bigint) * 25 + round(LEAST(COALESCE(a.avg_steps, 0::numeric) / 8000.0, 1.0) * 15::numeric)::integer AS total_points
    FROM users u
      LEFT JOIN sessions_this_week s ON s.user_id = u.id
      LEFT JOIN prs_this_week p ON p.user_id = u.id

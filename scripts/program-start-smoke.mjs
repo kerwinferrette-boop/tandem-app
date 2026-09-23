@@ -109,6 +109,10 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
 
 // ── 1. Extract the live functions (no re-implementation) ──
 const localDateStrSrc = grab('localDateStr', /function localDateStr\([\s\S]*?\n\}/);
+// BUG-27: getWeekSchedule()/getOverdueDays() now route their day-count through this
+// shared DST-safe helper instead of a raw ms/86400000 division — extract it too, same
+// "no re-implementation" discipline as every other function this smoke test isolates.
+const cdbSrc = grab('calendarDaysBetween', /function calendarDaysBetween\([\s\S]*?\n\}/);
 const recovSrc = grab('RECOVERY_PARAMS', /const RECOVERY_PARAMS = \{[\s\S]*?\};/);
 const mgflSrc = grab('muscleGroupFromLabel', /function muscleGroupFromLabel\(label\) \{[\s\S]*?\n\}/);
 const cpdSrc = grab('canPlaceDay', /function canPlaceDay\([\s\S]*?\n\}/);
@@ -138,7 +142,7 @@ function buildContext() {
   vm.createContext(ctx);
   vm.runInContext(fixedDateSrc, ctx);
   vm.runInContext(
-    [oneoffSrc, recovSrc, mgflSrc, cpdSrc, cwcSrc, localDateStrSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, gwsSrc, odSrc,
+    [oneoffSrc, recovSrc, mgflSrc, cpdSrc, cwcSrc, localDateStrSrc, cdbSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, gwsSrc, odSrc,
      'this.Date = FixedDate;', // every extracted function below must see the fixed "now"
      'this.ONEOFF_SESSION_TYPE = ONEOFF_SESSION_TYPE;',
      'this.getOverdueDays = getOverdueDays; this.nextProgramDayKey = nextProgramDayKey;',

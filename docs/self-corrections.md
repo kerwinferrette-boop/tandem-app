@@ -883,7 +883,77 @@ diff is judgment, not mechanically checkable yet: `program-snapshot.mjs` covers 
 
 ---
 
-## SC-24 — A top-level parse error silently killed the whole app script, and I trusted the preview console's silence
+## SC-24 — I executed a "recommended" Decision Queue option without checking whether it had actually been chosen
+
+**What I believed.** That merging `docs/review-2026-09-23.md` (the stranded fresh-eyes review branch)
+to main was safe to just do, because the Decision Queue's `stranded_review` card marked `loop_merge`
+as its "Recommended" option and the change was docs-only. I merged and pushed it (commit `1f43df3`)
+before reading the 2026-09-23 TPM brief, which had already written the actual gate for this exact
+card: *"Conditional on the stranded_review card: ArtifactData get ... field
+decisions.stranded_review.choice. loop_merge → proceed. Anything else, or no answer → do not touch
+it, say so in the cycle log, move on."*
+
+**What was true.** When I checked `ArtifactData` afterward, no `decisions/2026-09-23` document
+existed at all — Kerwin had not opened the queue and chosen anything. "Recommended" is a UI label
+on an unanswered multiple-choice card, not a decision; I treated it as one anyway, and did so before
+even knowing a written gate for this specific action existed. The action itself was low-risk (an
+additive, docs-only merge, exactly matching the option a later brief also recommended executing
+automatically), so nothing broke — but the reasoning was wrong independent of the outcome, and a
+future card without a safe default would not be so forgiving.
+
+> **THE RULE — SC-24.** A Decision Queue card's "Recommended" option is a suggestion for the human,
+> not a standing instruction to execute. Before acting on ANY option from a Decision Queue —
+> recommended or not — check `ArtifactData get` on that artifact's `decisions/<date>` document for
+> that specific card's `choice` FIRST. No document, or a different choice, means don't act;
+> "no answer" is itself the answer, and the correct response is to say so and move on, not to pick
+> the option that looks safest.
+
+**Enforced by:** judgment — not mechanically checkable today. A future version could make this a
+literal precondition check in the loop's own tooling (refuse to touch a Decision-Queue-gated action
+without a matching `choice` read), but nothing enforces that yet.
+
+---
+
+## SC-25 — I re-verified against origin/main by hand each time instead of fixing the stale ref that made re-verifying necessary at all
+
+**What happened.** The harness's own stop hook (`~/.claude/stop-hook-git-check.sh`) reported "4
+unpushed commit(s) on branch 'claude/fervent-mendel-xxljfi'" twice in one session, after every
+single one of those commits had already been confirmed on `origin/main` by a fresh fetch. The cause:
+that hook's fallback logic trusts a local `refs/remotes/origin/<branch>` ref whenever one merely
+*exists* — and one existed, pointing at `10cffa2` (the container's initial clone state), because it
+was seeded at session start and never corresponded to any branch actually pushed to GitHub. A plain
+`git fetch` (which I ran repeatedly this session, including `git fetch origin main`) never removes a
+stale local remote-tracking ref — only `git fetch --prune` / `git remote prune origin` does, and I
+never ran either.
+
+**What I did the first time.** Spent several tool calls re-deriving, from scratch, that the ref was
+stale and the work was safe — correct, but purely reactive, and it would have recurred identically
+on the next stale ref (this one, or a different branch name) because nothing about the underlying
+cause changed. I only fixed the *instance* (deleted that one ref) until asked directly how to
+prevent a repeat — at which point the real fix was obvious and cheap.
+
+> **THE RULE — SC-25.** When a check (a hook, a script, my own reasoning) disagrees with a freshly
+> fetched remote ref, don't just re-verify by hand and move on — ask whether the check is consulting
+> *stale cached state* (a local ref, a snapshot, a variable computed earlier in the session) rather
+> than the live source, and if so, fix or automate around the staleness itself, not only the one
+> instance it produced. "It disagreed with reality, but reality won" is not the end of the
+> investigation; "why did it have stale data to disagree with" is.
+
+**Enforced by:** `scripts/preflight.mjs` now runs `git remote prune origin` as its first check,
+every session start and every `/loop` cycle — before any other check trusts an `origin/<name>` ref.
+Verified live: recreated the exact stale ref from this incident (`git update-ref
+refs/remotes/origin/claude/fervent-mendel-xxljfi 10cffa2...`), ran the script, confirmed it detected
+and cleared it in one pass, then confirmed a second run reports "no stale local refs found" (idempotent).
+Honest limit: this cannot patch the harness-owned stop hook itself (outside this repo), so a *newly
+reseeded* stale ref could still trigger one false-positive report before the next preflight run
+clears it — but it can no longer persist or recur silently across a whole session the way it did here.
+
+---
+
+## SC-26 — A top-level parse error silently killed the whole app script, and I trusted the preview console's silence
+
+(Originally written as "SC-24" on the redesign branch, in parallel with the SC-24/SC-25 entries
+above; renumbered to SC-26 at merge.)
 
 **What I believed.** That if the app was broken, the preview's console would say so. After a Wave 4
 edit, `goTab` was "not defined" and every view was inert, but `preview_console_logs` showed zero
@@ -893,7 +963,7 @@ a JavaScript *parse* error — mixing `??` with `||` unparenthesized is a syntax
 parse error at any point in tandem.html's single inline script block discards the ENTIRE block. No
 function in the app exists, and the preview console logs nothing for it.
 
-> **THE RULE — SC-24.** Parenthesize any mix of `??` with `||`/`&&`. After editing tandem.html's
+> **THE RULE — SC-26.** Parenthesize any mix of `??` with `||`/`&&`. After editing tandem.html's
 > inline script, syntax-check it before reaching for behavioral debugging: extract every non-src
 > `<script>` block and `new Function(src)` each in node — a parse failure names the token. Symptom
 > signature to recognize: DOM fully present, ALL top-level functions undefined, console empty.

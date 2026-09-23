@@ -47,7 +47,7 @@ The already-built reference pieces:
 6. **Scoring**: 10 per session, **15 per PR**, plus up to 15 for average steps.
    - The app half shipped in 091e02d: `POINTS_PER_SESSION`, `POINTS_PER_PR` and
      `sessionPointsFor()` in `tandem.html`.
-   - The view half is `migrations/0018_pr_points_15.sql`, which **Kerwin applies**.
+   - The view half is `migrations/0018_pr_points_15.sql`, **applied 2026-09-23**.
    - Never re-inline a point value.
 7. **Muscle heatmap**:
    - Vector body map with **one SVG path per muscle**, colored on ONE continuous scale by
@@ -138,7 +138,7 @@ set is currently unused).
 
 ## State
 - [x] Log tab + first tab bar (ce65115)
-- [x] Scoring unified in app (091e02d); migration 0018 pending Kerwin
+- [x] Scoring unified in app (091e02d); migration 0018 APPLIED 2026-09-23 (agent_log c0154717)
 - [x] Scope + mockups approved
 - [x] Photo set in `public/` (864415c) — logos removed; see `public/PHOTO-CREDITS.md`. All 13 photos in.
 - [x] Muscle-map art in `public/musclemap-{male,female}.webp`. **Tracing proven feasible (2026-09-23):**
