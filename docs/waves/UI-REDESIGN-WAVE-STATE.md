@@ -76,7 +76,11 @@ The already-built reference pieces:
   per ruling 2; shots in `docs/screenshots/wave2/`. Medals card + body-comp + nutrition rings
   removed from Home (nutrition/body → Wave 4 You tab; **medals render nowhere right now —
   flagged to Kerwin**).
-- **Wave 3:** Duel (ruling 4).
+- **Wave 3:** Duel (ruling 4). — **DONE `dea9444`** (2026-09-23). Duel tab + Home duel card open
+  `#modal-duel`; source rows sum exactly to the score (steps shown as residual of
+  `total_points` so the view stays the only steps-math home); day-by-day dots, gold PRs,
+  nudge → chooser. Shots in `docs/screenshots/wave3/`. **Reminder: 0018 still unapplied —
+  live view pays 25/PR; the delta shows in the Steps row until Kerwin applies it.**
 - **Wave 4:** You (ruling 5). The heatmap sub-slice waits on the art.
 - **Wave 5:** Session complete: celebration, gold, photo.
 - **Wave 6:** Workout tracker.
