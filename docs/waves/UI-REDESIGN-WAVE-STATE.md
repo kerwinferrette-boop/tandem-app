@@ -97,7 +97,12 @@ The already-built reference pieces:
   card), and the muscle heatmap reused on the card via renderMuscleHeatmap(target) — same renderer/
   scale/volume as You. Signed-out finishes now show the card too (local duration + PR count; streak
   '—' offline, it lives in the cloud streaks table). Shots in `docs/screenshots/wave5/`.
-- **Wave 6:** Workout tracker.
+- **Wave 6:** Workout tracker. — **DONE `4c21938`** (2026-09-23). CSS-only chrome pass: Start
+  Workout is a full-width accent pill (live timer row matches), tool chips/day tabs/week-nav
+  reset restyled to the Log tab's pill language (active day tab solid accent), #bottomNav
+  gets bigger targets with a solid-accent Finish, day title on display type. The set logger
+  is deliberately untouched; #bottomNav still owns in-workout nav (ruling 1). Shots in
+  `docs/screenshots/wave6/` (`scripts/shots-wave6.mjs`).
 - **Wave 7:** Onboarding and sign-in.
 - **Wave 8:** The remaining modals.
 
