@@ -920,6 +920,39 @@ safety:
   max_items_per_cycle: 5
   max_fix_attempts_per_story: 2
   destructive_ops_require_human: true
+  destructive_write_audit_trail:   # Added 2026-09-20, per Kerwin, live in-session ("fix it") —
+                                    # closes the gap BUG-125 exposed. A real prod delete (83 `sets`
+                                    # rows, 2026-09-18) was executed via a direct Supabase MCP
+                                    # connection — correctly following the pre-image-capture +
+                                    # explicit-id-list + post-verify discipline, and correctly
+                                    # citing Kerwin's own prior ruling as authorization — but the
+                                    # ONLY record of it was prose on a Notion tracker page. No
+                                    # queryable table recorded it. Result: 2+ days of genuine
+                                    # confusion over whether it was authorized, an unnecessary
+                                    # re-escalation, and — even after Kerwin settled the
+                                    # authorization question twice (Decision Queue 09-18, this
+                                    # page's own quote) — no way to independently confirm which
+                                    # session/actor actually ran it, because Supabase's default
+                                    # logging captures neither statement text nor connection
+                                    # identity for a direct/service-role connection (no pgAudit
+                                    # enabled) and nothing wrote to `agent_log`.
+    rule: "Before, or immediately after, any direct (non-PostgREST, non-app) Supabase write that
+           deletes or updates more than one row of real data — the tandem-data-integrity-audit
+           skill's allowlisted ghost-session cleanup included — insert one row into `agent_log`
+           (log_type='destructive_db_write', assertion=one-line description, details=jsonb with
+           at minimum: tables touched, operation, row count, before/after totals, the specific
+           policy/ruling that authorizes it with a citation, and a link to the Notion page
+           recording it). This is NOT a replacement for the existing pre-image-capture +
+           explicit-id-list + post-verify discipline or for writing the incident up in Notion —
+           it is the durable, queryable half that discipline was missing. `agent_log` already has
+           the right shape for this (session_id uuid, log_type text, assertion text, details
+           jsonb, created_at) — no migration needed, no schema change, just discipline. Skipping
+           this step is itself a finding worth flagging next time it's caught missing, the same
+           way a missed should/could/did audit is."
+    retroactive_fix: "2026-09-20: backfilled one `agent_log` row (id 12b06564-8604-40aa-afaa-bc61a1e8f8ef,
+           created_at 2026-09-20 17:07:40 UTC) documenting the 2026-09-18 sets/personal_records
+           cleanup after the fact, cross-linked to BUG-16 and BUG-125. This does not change what
+           happened; it makes the record queryable instead of Notion-prose-only, going forward."
   forbidden:
     - "writing to sb.from('sessions') — ghost table, correct name is workout_sessions"
     - "writing to sb.from('prs') — ghost table, correct name is personal_records"
