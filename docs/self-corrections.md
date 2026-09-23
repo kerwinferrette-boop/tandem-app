@@ -911,3 +911,39 @@ future card without a safe default would not be so forgiving.
 **Enforced by:** judgment — not mechanically checkable today. A future version could make this a
 literal precondition check in the loop's own tooling (refuse to touch a Decision-Queue-gated action
 without a matching `choice` read), but nothing enforces that yet.
+
+---
+
+## SC-25 — I re-verified against origin/main by hand each time instead of fixing the stale ref that made re-verifying necessary at all
+
+**What happened.** The harness's own stop hook (`~/.claude/stop-hook-git-check.sh`) reported "4
+unpushed commit(s) on branch 'claude/fervent-mendel-xxljfi'" twice in one session, after every
+single one of those commits had already been confirmed on `origin/main` by a fresh fetch. The cause:
+that hook's fallback logic trusts a local `refs/remotes/origin/<branch>` ref whenever one merely
+*exists* — and one existed, pointing at `10cffa2` (the container's initial clone state), because it
+was seeded at session start and never corresponded to any branch actually pushed to GitHub. A plain
+`git fetch` (which I ran repeatedly this session, including `git fetch origin main`) never removes a
+stale local remote-tracking ref — only `git fetch --prune` / `git remote prune origin` does, and I
+never ran either.
+
+**What I did the first time.** Spent several tool calls re-deriving, from scratch, that the ref was
+stale and the work was safe — correct, but purely reactive, and it would have recurred identically
+on the next stale ref (this one, or a different branch name) because nothing about the underlying
+cause changed. I only fixed the *instance* (deleted that one ref) until asked directly how to
+prevent a repeat — at which point the real fix was obvious and cheap.
+
+> **THE RULE — SC-25.** When a check (a hook, a script, my own reasoning) disagrees with a freshly
+> fetched remote ref, don't just re-verify by hand and move on — ask whether the check is consulting
+> *stale cached state* (a local ref, a snapshot, a variable computed earlier in the session) rather
+> than the live source, and if so, fix or automate around the staleness itself, not only the one
+> instance it produced. "It disagreed with reality, but reality won" is not the end of the
+> investigation; "why did it have stale data to disagree with" is.
+
+**Enforced by:** `scripts/preflight.mjs` now runs `git remote prune origin` as its first check,
+every session start and every `/loop` cycle — before any other check trusts an `origin/<name>` ref.
+Verified live: recreated the exact stale ref from this incident (`git update-ref
+refs/remotes/origin/claude/fervent-mendel-xxljfi 10cffa2...`), ran the script, confirmed it detected
+and cleared it in one pass, then confirmed a second run reports "no stale local refs found" (idempotent).
+Honest limit: this cannot patch the harness-owned stop hook itself (outside this repo), so a *newly
+reseeded* stale ref could still trigger one false-positive report before the next preflight run
+clears it — but it can no longer persist or recur silently across a whole session the way it did here.

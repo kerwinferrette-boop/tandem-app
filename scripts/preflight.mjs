@@ -74,6 +74,28 @@ function flag(msg) { flags.push(msg); }
 
 console.log('\n═══ PREFLIGHT — where can work be hiding? ═══\n');
 
+// ── 0. Prune stale local-only remote-tracking refs FIRST — the 2026-09-23 incident. ──
+// A plain `git fetch` (including this script's own `git fetch origin main` below, and any
+// ordinary `git fetch origin main` run mid-session) NEVER removes a local
+// `refs/remotes/origin/<branch>` ref once that branch is gone from the real remote — only
+// `git fetch --prune` / `git remote prune origin` does that. On 2026-09-23 a leftover local
+// ref `origin/claude/fervent-mendel-xxljfi` (present locally, absent from `git ls-remote
+// --heads origin`) caused the harness's own stop-hook git check to report "4 unpushed
+// commit(s)" that were, in fact, already durably on origin/main — a stale artifact mistaken
+// for current state. This script cannot fix that hook (harness-owned, outside this repo),
+// but every check below that trusts an `origin/<name>` ref is only as good as this running
+// first, so it runs first and self-heals rather than just flagging it.
+const pruneDryRun = git('remote', 'prune', 'origin', '--dry-run');
+const wouldPrune = pruneDryRun
+  ? pruneDryRun.split('\n').filter(l => l.includes('[would prune]')).map(l => l.split('[would prune]')[1]?.trim()).filter(Boolean)
+  : [];
+if (wouldPrune.length) {
+  git('remote', 'prune', 'origin'); // safe: only removes local bookkeeping refs, touches nothing remote
+  checked('git remote prune origin', `cleared ${wouldPrune.length} stale local ref(s): ${wouldPrune.join(', ')}`);
+} else {
+  checked('git remote prune origin', 'no stale local refs found');
+}
+
 // ── 1. Sibling worktrees. THE ONE THAT WAS MISSED on 2026-08-18. ────────────────
 const wt = git('worktree', 'list');
 const wtLines = wt ? wt.split('\n').filter(Boolean) : [];
