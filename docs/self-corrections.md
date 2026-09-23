@@ -856,3 +856,27 @@ reader trusts it.
 
 **Enforced by:** judgment — not mechanically checkable. The practical guard is to use `now()` inside
 the INSERT whenever a row describes "up to this moment", so the bound cannot drift from the write.
+
+---
+
+## SC-23 — A floor-only gate let a fix pass green while it created the bug, and my new gate swept too few axes
+
+**What I believed.** Twice, that a green gate over the axis I was editing meant the change was right.
+(1) D6b gated only the weekly MEV *floor*, and the old allocator met it by stacking the whole weekly
+deficit onto one lift (20 sets of Cable Pull-Through in one session). Every gate stayed green because
+nothing gated the *maximum* (BUG-122). (2) My BUG-122 fix passed D6b 0/270, D33 and verify 14/14,
+and I was ready to ship. Then the pre-ship council asked "did anyone check weekly volume?" A sweep
+across tier × experience × duration showed below-MEV cells had risen 144 → 304. D6b only sweeps
+full_gym at default experience/duration. I had also first shipped a "phantom exercise" design that
+changed exercise *selection* in the build2/dedupe wrappers (Glute-Ham Raise vanished from beginner
+2-day plans). The standing persona sweep does not vary experience or duration, so it was blind to that.
+
+> **THE RULE — SC-23.** When a fix raises a number to meet a minimum, gate the maximum in the same
+> change. Before shipping any engine change, diff old vs new output over EVERY axis getProgram takes
+> (goal × days × sex × tier × experience × duration), not just the persona-matrix axes. State the
+> intended diff ("sets only"), and treat any other field or any selection change as a bug until
+> explained.
+
+**Enforced by:** partly. D33 now gates the per-session maximum. PENDING D6d names the missing
+all-axis MEV sweep, with its 160 cells in `docs/bug122-below-mev-cells.md`. The all-axis old-vs-new
+diff is judgment, not mechanically checkable yet: `program-snapshot.mjs` covers only the persona axes.

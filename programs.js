@@ -2950,122 +2950,121 @@ const GOAL_VOLUME = {
   build_muscle: { compound: 4, isolation: 3 },
   fat_burn:     { compound: 3, isolation: 3 },
 };
-// D6b (Kerwin, 2026-09-14, live — "fixes that go into only specific programs
-// versus the overarching macro-level logic"): GOAL_VOLUME above is a per-goal
-// FLOOR, not the final answer. The actual sets-per-exercise a day-count needs
-// to reach the goal's MEV floor is DERIVED from how much weekly slot-presence
-// THAT day-count's own structure (build2/ppl/build5/build6 wrappers, or the
-// unwrapped 4-day base) gives each major muscle — one formula, evaluated fresh
-// per (goal, days), not a hand-tuned bracket per day-count. Measured 2026-09-14:
-// flat GOAL_VOLUME left 90/216 goal x day-count x sex checks below MEV,
-// correlated with day-count (3d 44/54, 4d 32/54, 5d 14/54, 6d 0/54) because
-// lower day-counts give each muscle fewer weekly slot exposures, and nothing
-// compensated with more volume per exposure. Self-corrects for ANY day-count,
-// including one that doesn't exist yet — not scoped to "the reported cases."
-function resolveGoalVolume(program, goal) {
-  const base = GOAL_VOLUME[goal];
-  const landmark = VOLUME_LANDMARKS[goal];
-  if (!base || !landmark || !Array.isArray(program)) return base;
-  // Unit-volume probe: force every COMPOUND exercise to 1 set and measure each
-  // major muscle's resulting weekly total via the SAME computeMuscleWeeklyVolume()
-  // D6b's doctrine check uses (primary 1.0 / secondary 0.5 credit). ISOLATION
-  // exercises are deliberately excluded from the probe (D28, caught by its own
-  // smoke test, not assumed safe): a short session or beginner tier drops the
-  // isolation block's 3rd accessory slot BEFORE applyGoalVolume ever runs, so a
-  // probe that counted isolation slots would derive a DIFFERENT sets number for
-  // a pruned vs. unpruned day — and that number sets BOTH cfg.compound and
-  // cfg.isolation, silently letting session duration leak into the Compound
-  // Block's set count, which D28 forbids outright ("duration must never touch
-  // D3's compound-first structure"). Compound-slot presence is never pruned by
-  // duration/experience, so measuring only compound exercises makes the
-  // derivation invariant to both — structural, not runtime-dependent.
-  const probe = program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
-    ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e : ({ ...e, sets: e.compound ? 1 : 0 })),
-  })) }));
-  const slotWeight = computeMuscleWeeklyVolume(probe, EXERCISE_BANK);
-  // BUG-122 fix (2026-09-21): `needed` used to be ONE global scalar, driven by
-  // whichever major muscle was worst-served, and applied to EVERY exercise in the
-  // whole program regardless of which muscle it actually targets. On an asymmetric
-  // split (5-day transform: push gets 1 compound chest slot/wk, pull gets 2 back
-  // slots/wk) that meant chest's own correction (needed=10 to clear its MEV from a
-  // single weekly touch) got stamped onto every back/leg/arm exercise too — a
-  // well-served muscle with 4-6x chest's weekly exposure inflated to the SAME 10
-  // sets/exercise, producing ~50+ working sets in a single session. research-report
-  // (8).pdf §1: "Weekly volume targets: 10-20+ sets per muscle group per week,
-  // distributed across 3-5 sessions" / "Higher frequency (4-5 days/week) distributes
-  // volume across more sessions" — nothing supports one muscle's floor-correction
-  // bleeding into every other muscle's sets. Fix: derive `needed` PER MAJOR MUSCLE
-  // GROUP so each exercise is sized to what ITS OWN target actually needs, not the
-  // worst case anywhere in the program. `byMuscle` is keyed by MAJOR_MUSCLE_GROUP_TOKENS.
-  const byMuscle = {};
-  for (const token of MAJOR_MUSCLE_GROUP_TOKENS) {
-    const w = Object.entries(slotWeight)
-      .filter(([tag]) => tag === token || tag.startsWith(token + '_'))
-      .reduce((sum, [, v]) => sum + v, 0);
-    if (w > 0) byMuscle[token] = Math.max(base.compound, base.isolation, Math.ceil(landmark.mev / w));
-  }
-  const weights = Object.values(byMuscle);
-  if (!weights.length) return base;
-  return { compound: base.compound, isolation: base.isolation, byMuscle };
+// D6b + BUG-122 (Kerwin, 2026-09-23, live: "focusing in on the muscle versus the lift
+// is the way to go … I want this checked for every muscle … ingrained in the engine").
+// GOAL_VOLUME above is each exercise's normal per-goal set count. Sets are then
+// allocated per MUSCLE, never per lift:
+//   1. Every working exercise starts at its goal's normal count.
+//   2. Only a muscle still below its weekly MEV (VOLUME_LANDMARKS) gets more work,
+//      one set at a time, spread across ALL of that muscle's lifts in the week —
+//      primary lifts first, then whichever lift carries the fewest sets, so the
+//      deficit lands across days instead of on the first lift that happens to touch
+//      the muscle (the old greedy pass gave Rear Delt Fly the WHOLE week's rhomboid
+//      MEV — 10 sets — although Barbell Row/Pendlay Row/Face Pull already covered it).
+//   3. No muscle may exceed SESSION_MUSCLE_CEILING fractional sets in one session.
+//   4. What the split structurally cannot reach within the ceiling stays below MEV
+//      rather than being stacked — surfaced by the doctrine gate, not hidden.
+// Weekly credit uses computeMuscleWeeklyVolume()'s exact per-tag accounting (primary
+// 1.0 / secondary 0.5, summed under each MAJOR_MUSCLE_GROUP_TOKENS prefix) so the
+// engine targets precisely what D6b's gate measures.
+//
+// Remmert, Pelland, Robinson, Hinson & Zourdos (2025), "Is There Too Much of a Good
+// Thing? Meta-Regressions of the Effect of Per-Session Volume on Hypertrophy and
+// Strength", SportRxiv preprint (not peer reviewed), §4.6.2 / Table 1: the point of
+// undetectable outcome superiority for hypertrophy is ~11 'fractional' sets per muscle
+// per session (a set counts 1.0 for a muscle it directly trains, 0.5 indirectly);
+// beyond it no additional benefit was detectable. The paper reports no muscle-specific
+// difference, so the ceiling binds EVERY tagged muscle, not only the MEV-tracked ones.
+const SESSION_MUSCLE_CEILING = 11;
+const muscleCeilingKey = (tag) =>
+  MAJOR_MUSCLE_GROUP_TOKENS.filter(t => tag === t || tag.startsWith(t + '_'))
+    .sort((a, b) => b.length - a.length)[0] || tag;
+
+// compoundRef (D28): for a short session, the compound sets of the SAME user's
+// full-length program, keyed compoundRefKey(). The Compound Block must be
+// byte-identical whatever the duration, so a short session inherits those sets
+// rather than resizing its compounds against the shorter accessory block; only
+// isolation work is then sized against what the short session actually performs.
+const compoundRefKey = (di, e) => `${di}|${e.name}`;
+function compoundSetsOf(program) {
+  const ref = {};
+  (program || []).forEach((day, di) => (day.blocks || []).forEach(b => {
+    if (!b.cardio) (b.exs || []).forEach(e => { if (e && e.compound && !e.isCore && !e.cardioOnly) ref[compoundRefKey(di, e)] = e.sets; });
+  }));
+  return ref;
 }
-// BUG-122 follow-up (2026-09-21, same day, llm-council pre-ship review — 4 of 5
-// advisors independently flagged the first version of this fix as the SAME bug
-// at a narrower scope): giving every exercise that touches an under-served
-// muscle the full per-muscle `needed` count still double(or triple)-counts a
-// muscle hit by MULTIPLE slots in one session (e.g. a compound AND an
-// isolation exercise both targeting chest each independently getting sets
-// sized to clear the full weekly MEV — crediting ~2x MEV in one day). SHOULD:
-// research-report(8).pdf §1, "Weekly volume targets: 10-20+ sets per muscle
-// group per week" is a WEEKLY total, not a per-slot one. COULD (rejected):
-// keep the static per-muscle map and cap total sessions instead — doesn't
-// generalize, still needs a running total to know when a muscle is already
-// satisfied. DID: applyGoalVolume now assigns sets in program (day/block)
-// order while tracking each muscle's running CREDITED total (primary 1.0 /
-// secondary 0.5, the same accounting D6b's own doctrine check uses on the
-// final output) and only requests enough additional sets to close what's
-// STILL short of that muscle's MEV — a second slot touching an
-// already-satisfied muscle falls back to the flat per-goal base instead of
-// re-requesting the full correction. This is the SAME running-credit
-// accounting computeMuscleWeeklyVolume() uses to grade the final output, so
-// the two can't drift apart the way a separately-derived static map could.
-function applyGoalVolume(program, goal) {
+
+function applyGoalVolume(program, goal, compoundRef) {
   const base = GOAL_VOLUME[goal];
   const landmark = VOLUME_LANDMARKS[goal];
-  const cfg = resolveGoalVolume(program, goal);
-  if (!cfg || !base || !Array.isArray(program)) return program;
-  if (!landmark || !cfg.byMuscle) {
-    return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
-      ...b, exs: (b.exs || []).map(e => (e.isCore || e.cardioOnly) ? e
-        : ({ ...e, sets: e.compound ? cfg.compound : cfg.isolation })),
-    })) }));
-  }
+  if (!base || !Array.isArray(program)) return program;
   const byName = {};
   for (const e of Object.values(EXERCISE_BANK || {})) if (e && e.name) byName[e.name] = e;
-  const credited = {}; // running per-token credit (primary 1.0 / secondary 0.5) assigned so far this pass
-  return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({
-    ...b, exs: (b.exs || []).map(e => {
-      if (e.isCore || e.cardioOnly) return e;
-      const fallback = e.compound ? cfg.compound : cfg.isolation;
+  const out = program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => b.cardio ? b : ({ ...b, exs: [...(b.exs || [])] })) }));
+  const slots = [];
+  out.forEach((day, di) => day.blocks.forEach((b, bi) => {
+    if (b.cardio) return;
+    b.exs.forEach((e, ei) => {
+      if (!e || e.isCore || e.cardioOnly) return;
       const entry = byName[e.name];
-      const primaryTokens = entry ? MAJOR_MUSCLE_GROUP_TOKENS.filter(t =>
-        (entry.muscleGroups.primary || []).some(m => m === t || m.startsWith(t + '_'))) : [];
-      const secondaryTokens = entry ? MAJOR_MUSCLE_GROUP_TOKENS.filter(t =>
-        (entry.muscleGroups.secondary || []).some(m => m === t || m.startsWith(t + '_'))) : [];
-      const tokens = [...new Set([...primaryTokens, ...secondaryTokens])];
-      if (!tokens.length) return { ...e, sets: fallback };
-      let sets = fallback;
-      for (const t of tokens) {
-        const weight = primaryTokens.includes(t) ? 1.0 : 0.5;
-        const remaining = landmark.mev - (credited[t] || 0);
-        if (remaining > 0) sets = Math.max(sets, Math.ceil(remaining / weight));
+      const prim = entry?.muscleGroups?.primary || [];
+      const sec = entry?.muscleGroups?.secondary || [];
+      const mevW = {};
+      for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+        const hit = m => m === t || m.startsWith(t + '_');
+        const w = prim.filter(hit).length + 0.5 * sec.filter(hit).length;
+        if (w > 0) mevW[t] = w;
       }
-      for (const t of tokens) {
-        const weight = primaryTokens.includes(t) ? 1.0 : 0.5;
-        credited[t] = (credited[t] || 0) + sets * weight;
+      const ceilW = {};
+      for (const m of sec) { const k = muscleCeilingKey(m); ceilW[k] = Math.max(ceilW[k] || 0, 0.5); }
+      for (const m of prim) ceilW[muscleCeilingKey(m)] = 1;
+      const refSets = e.compound && compoundRef ? compoundRef[compoundRefKey(di, e)] : undefined;
+      slots.push({ di, order: slots.length, bi, ei, compound: !!e.compound, fixed: refSets != null,
+        sets: refSets != null ? refSets : (e.compound ? base.compound : base.isolation), mevW, ceilW });
+    });
+  }));
+  if (landmark) {
+    // The target muscle may never pass the ceiling in a session. A lift that trains
+    // the target DIRECTLY may push its co-primary movers past it (a row set added for
+    // lats also lands on rhomboids — past ~11 that is no added benefit, not harm, and
+    // withholding it would leave lats under MEV). A lift that trains the target only
+    // SECONDARILY may push nothing past it: that is the stacking pattern (Hip Thrust
+    // raised for hamstring at 0.5 credit took glutes to 40 sets in one session).
+    //
+    // Compounds are sized first, seeing every slot at its normal count, so a press
+    // is sized knowing the lateral raise beside it; isolation slots then close
+    // whatever is still short. With compoundRef the compounds are already fixed.
+    const weekly = {}, session = out.map(() => ({}));
+    const credit = (s, n) => {
+      for (const [t, w] of Object.entries(s.mevW)) weekly[t] = (weekly[t] || 0) + n * w;
+      for (const [k, w] of Object.entries(s.ceilW)) session[s.di][k] = (session[s.di][k] || 0) + n * w;
+    };
+    slots.forEach(s => credit(s, s.sets));
+    const fits = (s, t) => {
+      const direct = (s.mevW[t] || 0) >= 1;
+      const target = muscleCeilingKey(t);
+      return Object.entries(s.ceilW).every(([k, w]) =>
+        (direct && k !== target) || (session[s.di][k] || 0) + w <= SESSION_MUSCLE_CEILING);
+    };
+    for (const compound of [true, false]) {
+      for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+        while ((weekly[t] || 0) < landmark.mev) {
+          const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && fits(s, t));
+          if (!pool.length) break;
+          const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+          const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+            .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
+          s.sets++;
+          credit(s, 1);
+        }
       }
-      return { ...e, sets };
-    }),
-  })) }));
+    }
+  }
+  for (const s of slots) {
+    const b = out[s.di].blocks[s.bi];
+    b.exs[s.ei] = { ...b.exs[s.ei], sets: s.sets };
+  }
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4776,8 +4775,14 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // Final injury prune — catches statically-injected exercises (build5's
     // shoulder block) that bypass the bank-level filter inside the generator.
     // Then apply the deload week (Part B / doctrine D4) on every path.
-    const built = ensureUniqueExerciseIds(days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : days === 6 ? build6(generated) : generated);
-    return flagAdvanced(applyDeload(applySupersets(applyGoalVolume(pruneInjuries(built, injuries), goal), goal), rotation, weeks));
+    const wrap = (gen) => pruneInjuries(ensureUniqueExerciseIds(days === 2 ? build2(gen) : days === 3 ? ppl(gen) : days === 5 ? build5(gen) : days === 6 ? build6(gen) : gen), injuries);
+    // D28 × D33: a short session keeps the full-length session's compound sets.
+    let compoundRef = null;
+    if (Number.isFinite(durationMinutes) && durationMinutes < SHORT_SESSION_MAX_MINUTES) {
+      const full = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, null, weightDeltaLbs);
+      if (full) compoundRef = compoundSetsOf(applyGoalVolume(wrap(full), goal));
+    }
+    return flagAdvanced(applyDeload(applySupersets(applyGoalVolume(wrap(generated), goal, compoundRef), goal), rotation, weeks));
   }
 
   // ── Silent emergency fallback ──────────────────────────────────────────────

@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -71,7 +71,9 @@ const TIERS = {
   D4b: 'SCIENCE_DEFAULT', // training-age cadence scaling (PENDING)
   D5: 'SPLIT',            // never-on-primary = SAFETY; superset-required = SCIENCE_DEFAULT
   D6: 'SCIENCE_DEFAULT',  // goal volume MEV order
-  D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor — ACTIVE since 2026-09-14 (resolveGoalVolume() + coverage tiebreak); see the D6b check block below
+  D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor — ACTIVE since 2026-09-14 (per-muscle allocation in applyGoalVolume() since BUG-122, 2026-09-23); see the D6b check block below
+  D33: 'SCIENCE_DEFAULT', // per-muscle per-session ceiling (~11 fractional sets, Remmert et al. 2025 PREPRINT — number PROVISIONAL, revisit 2027-03-23) — ACTIVE 2026-09-23 (BUG-122)
+  D6d: 'SCIENCE_DEFAULT', // D6b's MEV floor across tier × experience × duration (PENDING — 160 cells below MEV, docs/bug122-below-mev-cells.md)
   D6c: 'SCIENCE_DEFAULT', // within-block MEV->MRV ramp cadence (PENDING — needs numeric ruling, depends on D6b)
   D7: 'SCIENCE_DEFAULT',
   D8: 'SPLIT',            // zero-supersets-on-strength-primaries = SAFETY; Maintenance MAV cap = SCIENCE_DEFAULT
@@ -1065,6 +1067,60 @@ for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
       const total = Object.entries(vol).filter(([tag]) => tag === token || tag.startsWith(token + '_'))
         .reduce((sum, [, v]) => sum + v, 0);
       if (total < mev) fail('D6b', `${goal}/${days}d/${sex}: '${token}' weekly volume ${total} sets is below the goal's MEV floor (${mev}) — primary sets at 1.0 credit, secondary at 0.5 (Kerwin's 2026-09-14 ruling, BUG-105)`);
+    }
+  }
+}
+
+// ── D33 (ACTIVE, 2026-09-23, BUG-122) — per-muscle per-session ceiling ──────────
+// Remmert, Pelland, Robinson, Hinson & Zourdos (2025), "Is There Too Much of a Good
+// Thing? Meta-Regressions of the Effect of Per-Session Volume on Hypertrophy and
+// Strength", SportRxiv preprint (not peer reviewed), §4.6.2 / Table 1: hypertrophy's
+// point of undetectable outcome superiority is ~11 'fractional' sets per muscle per
+// session (direct 1.0 / indirect 0.5); beyond it no further benefit was detectable, and
+// no muscle-specific difference is reported — so it binds every tagged muscle. Why this
+// exists: D6b gated only the weekly FLOOR, so the old first-touch allocator stacked a
+// muscle's whole weekly MEV onto one lift (Rear Delt Fly 10 sets, Barbell Hip Thrust 20,
+// glutes 40 fractional sets in one session) and the gate stayed green. Kerwin, 2026-09-23:
+// "focusing in on the muscle versus the lift … checked for every muscle … ingrained in
+// the engine." Checked on the generated output across goal × day-count × sex × tier:
+//   (A) no single exercise carries more sets than the ceiling;
+//   (B) any exercise prescribed above its goal's normal count (GOAL_VOLUME) directly
+//       (primary-tag) trains at least one muscle that is still within the ceiling in that
+//       session — i.e. extra sets were added for a muscle that could still use them, never
+//       stacked through secondary credit onto a muscle already past the ceiling.
+let d33Checked = 0;
+for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) for (const tier of ['full_gym', 'hotel_gym', 'home']) {
+  for (const goal of CANONICAL_GOALS) {
+    const base = GOAL_VOLUME[goal];
+    const prog = getProgram(goal, days, 12, sex, tier, 'balanced', null, null, { week: 1, phase: 0 });
+    const byName = {};
+    for (const e of Object.values(EXERCISE_BANK)) if (e && e.name) byName[e.name] = e;
+    for (const day of prog || []) {
+      const session = {};
+      const work = [];
+      for (const b of day.blocks || []) {
+        if (b.cardio) continue;
+        for (const ex of b.exs || []) {
+          if (!ex || ex.isCore || ex.cardioOnly) continue;
+          const entry = byName[ex.name];
+          const w = {};
+          for (const m of entry?.muscleGroups?.secondary || []) { const k = muscleCeilingKey(m); w[k] = Math.max(w[k] || 0, 0.5); }
+          for (const m of entry?.muscleGroups?.primary || []) w[muscleCeilingKey(m)] = 1;
+          for (const [k, v] of Object.entries(w)) session[k] = (session[k] || 0) + (Number(ex.sets) || 0) * v;
+          work.push({ ex, w });
+        }
+      }
+      for (const { ex, w } of work) {
+        d33Checked++;
+        const tag = `${goal}/${days}d/${sex}/${tier} ${day.key} '${ex.name}' ${ex.sets} sets`;
+        if (ex.sets > SESSION_MUSCLE_CEILING) fail('D33', `${tag} — above the per-session ceiling (${SESSION_MUSCLE_CEILING}) on its own (Remmert et al. 2025)`);
+        const normal = ex.compound ? base.compound : base.isolation;
+        if (ex.sets > normal) {
+          const direct = Object.entries(w).filter(([, v]) => v >= 1).map(([k]) => k);
+          if (!direct.some(k => session[k] <= SESSION_MUSCLE_CEILING))
+            fail('D33', `${tag} — raised above its goal's normal ${normal} but every muscle it directly trains is already past ${SESSION_MUSCLE_CEILING} fractional sets this session (${direct.map(k => `${k}=${session[k]}`).join(', ') || 'no direct muscle'}) — volume stacked, not distributed`);
+        }
+      }
     }
   }
 }
@@ -2483,6 +2539,7 @@ let d21Checked = 0;
 const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
   ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b (now ACTIVE) as its real per-muscle baseline', 'needs numeric ramp cadence'],
+  ['D6d', 'D6b\'s weekly MEV floor must hold on EVERY axis the generator branches on (tier × experience × duration), not only full_gym at default experience/duration, which is all D6b sweeps. After BUG-122 (2026-09-23) 160 cells sit below MEV there that the old engine reached only by stacking: 72 needed a lift above ~11 sets in one session (the per-session ceiling now wins, deficit surfaced — Kerwin 2026-09-23 "if the split can\'t reach the minimum, that goes into the engine dynamic"), 88 are the D28 compound freeze (a <45-min session drops the isolation lift that covered the muscle, and D28 forbids raising the compounds). Every cell and its cause: docs/bug122-below-mev-cells.md', 'needs the engine to add a related lift (muscle_tag_rescope) and a D28 × MEV ruling'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops the isolation block\'s 3rd accessory slot (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
   ['D30', 'No two COMPOUND exercises of the same movement pattern in one session (council ruling R2, docs/council-science-application-2026-09-14.md, ENGINEERING_DEFAULT — the corpus does not support a citation for the rule itself, only its mechanism, ACSM 2009 PMID 19204579 Exercise Order). FOCUS_SLOTS.chest\'s literal byte-identical-slot instance was fixed directly (2026-09-18, commit 39d2187) without this invariant. The remaining, confirmed-still-live case — buildDynamicProgram\'s TEMPLATES.day2 secondary slot (\'quad\') colliding with day4\'s primary (\'quad\') once a 3-day split merges both days — needs the full movement-pattern-uniqueness comparator mechanism (MOVEMENT_PATTERN table + patternClash, present on the unmerged claude/muscle-tag-vocabulary branch but built against a now-stale snapshot of main) re-authored against current main\'s primaryOnlyMatch/coverageCount/D27/D31 comparator chain, not transplanted.', 'needs the movement-pattern comparator mechanism built against current main'],
@@ -2597,6 +2654,7 @@ console.log(`  D29 oneRmFactor is load-estimation only, never a selection/rankin
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);
+console.log(`  D33 per-muscle per-session ceiling (~${SESSION_MUSCLE_CEILING} fractional sets, Remmert et al. 2025): no lift above it alone, extra sets only for a muscle still within it — ${d33Checked} exercise-sessions checked across goal×day-count×sex×tier`);
 console.log(`  D32 fat_burn cardio finisher gated by sex + weight delta (men optional <=20lb, women never gated, unknown delta keeps cardio on, build_muscle/transform unaffected) — ${d32Checked} day-count×sex×delta checks`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() across the full 4-24wk range — ${d11Checked} week-steps checked`);
