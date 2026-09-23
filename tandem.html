@@ -518,7 +518,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ONE tint recipe (Wave 0): grayscale photo below, this layer paints the user's
    accent over it. Every duotone surface shares this rule — per-component rules
    keep only their own z-index. Override strength via --tint-opacity. */
-.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint,.dash-hero .tc-tint{
+.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint,.dash-hero .tc-tint,.sum-hero .tc-tint{
   content:'';position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;
   opacity:var(--tint-opacity,.42);}
 .hero-fill{--tint-opacity:.4;}
@@ -730,11 +730,35 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .calc-result-val{font-family:var(--font-display);font-size:58px;color:var(--accent2);line-height:1;}
 .calc-result-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
 
-/* Session summary (EPIC-13 Step 3) */
+/* Session summary (EPIC-13 Step 3) — Wave 5: celebration sheet. Hero photo uses
+   the ONE duotone recipe (.tc-photo grayscale + the shared .tc-tint rule above);
+   PR rows reuse .duel-pr (gold = celebration-only surfaces, same as Wave 3). */
+.sum-sheet{padding:0;}
+.sum-sheet .modal-close{z-index:5;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7);}
+.sum-hero{position:relative;isolation:isolate;overflow:hidden;min-height:200px;display:flex;align-items:flex-end;border-radius:20px 20px 0 0;}
+.sum-hero .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
+  filter:grayscale(1) contrast(1.08) brightness(.75);}
+.sum-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
+.sum-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.12) 0%,rgba(7,7,11,.5) 55%,var(--s1) 100%);}
+.sum-hero-body{padding:30px 20px 12px;}
+.sum-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.sum-eyebrow i{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
+.sum-title{font-family:var(--font-display);font-size:42px;font-weight:800;line-height:.98;letter-spacing:-.02em;color:#fff;}
+.sum-body{padding:14px 16px max(20px,env(safe-area-inset-bottom));}
 .summary-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
 .summary-stat{background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:14px;text-align:center;}
 .summary-stat-val{font-family:var(--font-display);font-size:28px;color:var(--accent2);line-height:1;}
 .summary-stat-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+.summary-stat.gold{background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35);}
+.summary-stat.gold .summary-stat-val{color:var(--gold2);}
+#sumPrList{margin-top:12px;}
+#sumPrList .duel-pr span{display:flex;align-items:center;gap:8px;}
+#sumPrList .duel-pr svg{width:14px;height:14px;color:var(--gold2);flex-shrink:0;}
+.sum-map{margin-top:12px;background:var(--s2);border:1px solid var(--border2);border-radius:16px;padding:12px 12px 14px;}
+.sum-map-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.sum-cta{display:block;width:100%;margin-top:14px;padding:15px;border:none;border-radius:999px;background:var(--accent);color:#04130b;
+  font-family:var(--font-display);font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px var(--accent-glow);}
+.sum-cta:active{transform:scale(.98);}
 
 /* Persistent streak badge (EPIC-13 Step 4) — Wave 2: gold pill per docs/mockups/home-v2.html
    (gold = celebration-only surfaces: streak, PRs) */
@@ -2034,20 +2058,32 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
   </div>
 </div>
 
-<!-- SESSION SUMMARY (EPIC-13 Step 3) -->
+<!-- SESSION SUMMARY (EPIC-13 Step 3; restyled Wave 5 — celebration, gold, photo, heatmap reuse per ruling 7) -->
 <div class="modal-overlay" id="modal-summary" onclick="if(event.target===this)closeModal('summary')">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
+  <div class="modal-sheet sum-sheet">
     <button class="modal-close" onclick="closeModal('summary')">✕</button>
-    <div class="modal-title">Session Complete <span data-icon="flame"></span></div>
-    <div class="modal-sub">Nice work. Here's how it went.</div>
-    <div class="summary-stat-grid">
-      <div class="summary-stat"><div class="summary-stat-val" id="sumVolume">—</div><div class="summary-stat-lbl">Volume (lbs)</div></div>
-      <div class="summary-stat"><div class="summary-stat-val" id="sumDuration">—</div><div class="summary-stat-lbl">Duration (min)</div></div>
-      <div class="summary-stat"><div class="summary-stat-val" id="sumPRs">—</div><div class="summary-stat-lbl">PRs</div></div>
-      <div class="summary-stat"><div class="summary-stat-val" id="sumStreak">—</div><div class="summary-stat-lbl">Day Streak</div></div>
+    <div class="sum-hero" id="sumHero">
+      <div class="tc-photo"></div><div class="tc-tint"></div><div class="sum-scrim"></div>
+      <div class="sum-hero-body">
+        <div class="sum-eyebrow"><i></i>WORKOUT LOGGED</div>
+        <div class="sum-title">Session<br>Complete</div>
+      </div>
     </div>
-    <button class="set-act green" style="width:100%;justify-content:center;margin-top:14px;" onclick="closeModal('summary')">Nice! →</button>
+    <div class="sum-body">
+      <div class="summary-stat-grid">
+        <div class="summary-stat"><div class="summary-stat-val" id="sumVolume">—</div><div class="summary-stat-lbl">Volume (lbs)</div></div>
+        <div class="summary-stat"><div class="summary-stat-val" id="sumDuration">—</div><div class="summary-stat-lbl">Duration (min)</div></div>
+        <div class="summary-stat gold"><div class="summary-stat-val" id="sumPRs">—</div><div class="summary-stat-lbl">PRs</div></div>
+        <div class="summary-stat"><div class="summary-stat-val" id="sumStreak">—</div><div class="summary-stat-lbl">Day Streak</div></div>
+      </div>
+      <div id="sumPrList"></div>
+      <div class="sum-map">
+        <div class="sum-map-lbl">Muscles this week</div>
+        <div class="you-map" id="sumMuscleMap"></div>
+        <div class="you-map-legend"><span>0%</span><i></i><span>100% of target</span></div>
+      </div>
+      <button class="sum-cta" onclick="closeModal('summary')">Nice! →</button>
+    </div>
   </div>
 </div>
 
@@ -6727,6 +6763,19 @@ function finishSession() {
     sessionStartTime = null;
     Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
   }
+  // Wave 5: the celebration card is not a cloud feature — a signed-out finish
+  // shows it too, from local data. Duration comes from the local start time
+  // (read BEFORE the unconditional clear below); PR count from today's
+  // tandem_working1rm dir:'pr' entries (the same store showSessionSummary's
+  // gold rows read); streak lives in the cloud streaks table, so it stays '—'.
+  if (!currentUser) {
+    const startTime = localStorage.getItem('tandem_session_start_time');
+    const duration = startTime ? Math.round((Date.now() - Number(startTime)) / 60000) : null;
+    const today = localDateStr();
+    const working = LS.get('tandem_working1rm') || {};
+    const localPrs = Object.values(working).filter(e => e && e.dir === 'pr' && e.date === today && e.rm).length;
+    showSessionSummary(localVolume, duration, localPrs, null);
+  }
   // FEAT persistent-session-timer: clear unconditionally, not only in the
   // currentUser branch above — a signed-out/local-only session must also stop
   // showing a running timer once Finish is tapped, otherwise the previous
@@ -6959,8 +7008,38 @@ function showSessionSummary(volume, duration, prCount, streak) {
   set('sumDuration', duration != null ? duration : '—');
   set('sumPRs', prCount != null ? prCount : 0);
   set('sumStreak', streak != null ? streak : '—');
+  // Wave 5: sex-specific celebration photo, tinted by the shared duotone recipe.
+  const heroPhoto = document.querySelector('#sumHero .tc-photo');
+  if (heroPhoto) heroPhoto.style.setProperty('--hero-url', `url("public/celebrate-${userSexKey()}.jpg")`);
+  // Gold PR rows — the SAME store the Home gold card reads (tandem_working1rm
+  // dir:'pr', written by logSet at the moment a PR is beaten), filtered to today.
+  const list = document.getElementById('sumPrList');
+  if (list) {
+    list.innerHTML = '';
+    const today = localDateStr();
+    const working = LS.get('tandem_working1rm') || {};
+    for (const [name, e] of Object.entries(working)) {
+      if (!e || e.dir !== 'pr' || e.date !== today || !e.rm) continue;
+      const row = document.createElement('div');
+      row.className = 'duel-pr';
+      const span = document.createElement('span');
+      span.innerHTML = svgIcon('trophy');
+      span.append(name);
+      const b = document.createElement('b');
+      b.textContent = `${e.rm} lbs`;
+      row.append(span, b);
+      list.append(row);
+    }
+  }
+  // Ruling 7: the same muscle map, reused on the Finish card.
+  const mapEl = document.getElementById('sumMuscleMap');
+  if (mapEl) renderMuscleHeatmap(mapEl);
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-  document.getElementById('modal-summary')?.classList.add('open');
+  const overlay = document.getElementById('modal-summary');
+  overlay?.classList.add('open');
+  // A reopened sheet inherits its previous scroll — always start at the hero.
+  const sheet = overlay?.querySelector('.sum-sheet');
+  if (sheet) sheet.scrollTop = 0;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -9296,8 +9375,11 @@ const HEATMAP_KEY_GROUPS = {
   rotator: ['external_rotator', 'supraspinatus'],
 };
 
-function renderMuscleHeatmap() {
-  const mapEl = document.getElementById('youMuscleMap');
+// target defaults to the You tab's container; Wave 5 passes #sumMuscleMap so the
+// Finish card reuses the SAME map (ruling 7: "the same map is reused on the
+// Finish Workout card") — one renderer, one scale, one volume source.
+function renderMuscleHeatmap(target) {
+  const mapEl = target || document.getElementById('youMuscleMap');
   if (!mapEl) return;
   mapEl.innerHTML = '';
   const art = window.MUSCLEMAP?.[userSexKey()];
