@@ -1,0 +1,138 @@
+<!doctype html>
+<!-- Home v2 scoping mockup (2026-09-23). Static — NOT wired to the app. Uses the
+     app's real tokens, photos and the shipped EPIC-58 tab bar, in the Today's
+     Workout (.tc-*) design language. Numbers are sample data. -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tandem — Home v2 mockup</title>
+<style>
+:root{--bg:#07070b;--s1:#101017;--s2:#17171f;--border2:rgba(255,255,255,.13);
+--accent:#18C26A;--accent2:#3FE08C;--accent-deep:#0E7A45;--accent-glow:rgba(24,194,106,.25);
+--gold:#FFB020;--gold2:#FFC94D;--gold-glow:rgba(255,176,32,.3);--muted2:#9A9AAC;--text:#F2F2F5;
+--font-display:'Archivo','Helvetica Neue',Arial,sans-serif;--font-mono:ui-monospace,'SF Mono',Menlo,monospace;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:0 16px 120px;max-width:430px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 14px}
+.hi{font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:-.02em}
+.date{font-size:13px;color:var(--muted2);margin-top:3px}
+.streak{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:rgba(255,176,32,.12);color:var(--gold2);font-family:var(--font-mono);font-size:12px;border:1px solid rgba(255,176,32,.3)}
+.card{position:relative;overflow:hidden;isolation:isolate;border-radius:22px;border:1px solid var(--border2);margin-bottom:12px}
+.photo{position:absolute;inset:0;z-index:-3;background-size:cover;background-position:center 25%}
+.tint{position:absolute;inset:0;z-index:-2;background:var(--accent);mix-blend-mode:color;opacity:.42}
+.scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.55) 45%,rgba(7,7,11,.95) 100%)}
+.meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:7px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow)}
+.hero{min-height:300px;display:flex;flex-direction:column;justify-content:flex-end;padding:20px}
+.hero h2{font-family:var(--font-display);font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1;margin:8px 0 6px}
+.hero p{font-size:13px;color:rgba(255,255,255,.72)}
+.chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.chip{font-size:11px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15)}
+.cta{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:999px;background:var(--accent);color:#04130b;font-weight:800;font-size:16px;box-shadow:0 6px 20px var(--accent-glow);border:none}
+.panel{background:var(--s1);padding:16px}
+.label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;display:flex;justify-content:space-between}
+.duel{display:flex;align-items:flex-end;justify-content:space-between;margin:10px 0 10px}
+.who{font-size:12px;color:var(--muted2)}
+.pts{font-family:var(--font-display);font-size:38px;font-weight:800;line-height:1}
+.pts small{font-size:13px;color:var(--muted2);font-weight:600}
+.vs{font-family:var(--font-mono);font-size:11px;color:var(--muted2);padding-bottom:8px}
+.bar{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.duelnote{font-size:13px;margin-top:10px}
+.duelnote b{color:var(--accent2)}
+.week{display:flex;justify-content:space-between;margin-top:12px}
+.day{display:flex;flex-direction:column;align-items:center;gap:5px;font-family:var(--font-mono);font-size:9px;color:var(--muted2)}
+.pip{width:26px;height:26px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:12px}
+.pip.done{background:var(--accent);border-color:transparent;color:#04130b}
+.pip.dani{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+.pip.today{border:2px solid var(--accent2)}
+.mmap{display:flex;gap:14px;align-items:center;margin-top:10px}
+.body{width:112px;flex:0 0 auto;height:190px;border-radius:14px;background:radial-gradient(ellipse at 50% 40%,rgba(63,224,140,.10),transparent 70%);display:flex;align-items:center;justify-content:center;border:1px dashed var(--border2);font-family:var(--font-mono);font-size:9px;color:var(--muted2);text-align:center;padding:8px}
+.mrows{flex:1;display:flex;flex-direction:column;gap:9px}
+.mr .top2{display:flex;justify-content:space-between;font-size:12px}
+.mr .top2 span:last-child{font-family:var(--font-mono);color:var(--muted2);font-size:11px}
+.mr .trk{height:6px;border-radius:999px;background:rgba(255,255,255,.07);margin-top:4px;overflow:hidden}
+.mr .trk i{display:block;height:100%;border-radius:999px}
+.vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.v{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:11px 8px;text-align:center}
+.v svg{display:block;margin:0 auto 6px}
+.v b{font-family:var(--font-display);font-size:16px;display:block}
+.v span{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.1em;color:var(--muted2)}
+.pr{display:flex;align-items:center;gap:14px;padding:16px;background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35)}
+.pr .t{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--gold2)}
+.pr h3{font-family:var(--font-display);font-size:18px;margin:4px 0 2px}
+.pr .n{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--gold2);margin-left:auto;text-align:right;line-height:1}
+.pr .n small{display:block;font-size:10px;color:var(--muted2);font-family:var(--font-mono);font-weight:400;margin-top:3px}
+.tabbar{position:fixed;left:12px;right:12px;bottom:10px;max-width:406px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border-radius:22px;background:rgba(16,16,23,.86);backdrop-filter:blur(18px);border:1px solid var(--border2);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 7px;border-radius:16px;color:var(--muted2);font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em}
+.tab.on{background:var(--accent);color:#04130b;box-shadow:0 4px 14px var(--accent-glow)}
+.tab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tag{position:absolute;top:10px;right:10px;font-family:var(--font-mono);font-size:9px;padding:3px 7px;border-radius:6px;background:rgba(0,0,0,.5);color:var(--muted2)}
+</style></head><body>
+
+<div class="top">
+  <div><div class="hi">Morning, Kerwin</div><div class="date">Wednesday · Week 3 of 12 · Transform</div></div>
+  <div class="streak">🔥 6 days</div>
+</div>
+
+<!-- 1. HERO: today's session is the first thing, not the last -->
+<div class="card hero">
+  <div class="photo" style="background-image:url('../../public/hero-male-2.jpg')"></div><div class="tint"></div><div class="scrim"></div>
+  <div class="meta"><span class="dot"></span>TODAY · DAY 3 OF 5</div>
+  <h2>Upper Pull</h2>
+  <p>6 lifts · about 50 min · back, rear delts, biceps</p>
+  <div class="chips"><span class="chip">Barbell Row 5×</span><span class="chip">Pull-Up 4×</span><span class="chip">+4 more</span></div>
+  <button class="cta">Start workout →</button>
+</div>
+
+<!-- 2. THE DUEL: the couples moat, big and tappable -->
+<div class="card panel">
+  <div class="label"><span>This week</span><span>tap for details ›</span></div>
+  <div class="duel">
+    <div><div class="who">You</div><div class="pts">142 <small>pts</small></div></div>
+    <div class="vs">VS</div>
+    <div style="text-align:right"><div class="who">Dani</div><div class="pts">128 <small>pts</small></div></div>
+  </div>
+  <div class="bar"><i style="width:52.6%;background:var(--accent)"></i><i style="width:47.4%;background:rgba(255,255,255,.28)"></i></div>
+  <div class="duelnote">You're up <b>14</b> — one more session locks the week.</div>
+  <div class="week">
+    <div class="day"><div class="pip done">✓</div>M</div><div class="day"><div class="pip done dani">✓</div>T</div>
+    <div class="day"><div class="pip today">•</div>W</div><div class="day"><div class="pip dani"></div>T</div>
+    <div class="day"><div class="pip"></div>F</div><div class="day"><div class="pip"></div>S</div><div class="day"><div class="pip"></div>S</div>
+  </div>
+</div>
+
+<!-- 3. MUSCLES THIS WEEK: % of each muscle's weekly target, one continuous scale -->
+<div class="card panel">
+  <div class="label"><span>Muscles this week</span><span>vs weekly target</span></div>
+  <div class="mmap">
+    <div class="body">BODY MAP<br>(front / back art pending)</div>
+    <div class="mrows">
+      <div class="mr"><div class="top2"><span>Back</span><span>9 / 10</span></div><div class="trk"><i style="width:90%;background:var(--accent2)"></i></div></div>
+      <div class="mr"><div class="top2"><span>Chest</span><span>8 / 10</span></div><div class="trk"><i style="width:80%;background:var(--accent)"></i></div></div>
+      <div class="mr"><div class="top2"><span>Quads</span><span>6 / 10</span></div><div class="trk"><i style="width:60%;background:var(--accent-deep)"></i></div></div>
+      <div class="mr"><div class="top2"><span>Shoulders</span><span>4 / 10</span></div><div class="trk"><i style="width:40%;background:#2b5c43"></i></div></div>
+      <div class="mr"><div class="top2"><span>Hamstrings</span><span>2 / 10</span></div><div class="trk"><i style="width:20%;background:#2a3a33"></i></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. VITALS: the 7 rainbow rings collapse into one tappable strip, accent only -->
+<div class="vitals">
+  <div class="v"><svg width="34" height="34"><circle cx="17" cy="17" r="14" stroke="rgba(255,255,255,.1)" stroke-width="4" fill="none"/><circle cx="17" cy="17" r="14" stroke="#3FE08C" stroke-width="4" fill="none" stroke-dasharray="88" stroke-dashoffset="18" transform="rotate(-90 17 17)" stroke-linecap="round"/></svg><b>8.2k</b><span>STEPS</span></div>
+  <div class="v"><svg width="34" height="34"><circle cx="17" cy="17" r="14" stroke="rgba(255,255,255,.1)" stroke-width="4" fill="none"/><circle cx="17" cy="17" r="14" stroke="#3FE08C" stroke-width="4" fill="none" stroke-dasharray="88" stroke-dashoffset="10" transform="rotate(-90 17 17)" stroke-linecap="round"/></svg><b>7h10</b><span>SLEEP</span></div>
+  <div class="v"><svg width="34" height="34"><circle cx="17" cy="17" r="14" stroke="rgba(255,255,255,.1)" stroke-width="4" fill="none"/><circle cx="17" cy="17" r="14" stroke="#3FE08C" stroke-width="4" fill="none" stroke-dasharray="88" stroke-dashoffset="40" transform="rotate(-90 17 17)" stroke-linecap="round"/></svg><b>540</b><span>ACTIVE</span></div>
+  <div class="v"><svg width="34" height="34"><circle cx="17" cy="17" r="14" stroke="rgba(255,255,255,.1)" stroke-width="4" fill="none"/><circle cx="17" cy="17" r="14" stroke="#3FE08C" stroke-width="4" fill="none" stroke-dasharray="88" stroke-dashoffset="30" transform="rotate(-90 17 17)" stroke-linecap="round"/></svg><b>142g</b><span>PROTEIN</span></div>
+</div>
+
+<!-- 5. LATEST WIN: gold = celebration only -->
+<div class="card pr">
+  <div><div class="t">🏆 NEW PR · TUESDAY</div><h3>Barbell Bench Press</h3><div class="who">+6 lbs over your last best</div></div>
+  <div class="n">291<small>LBS E1RM</small></div>
+</div>
+
+<div class="tabbar">
+  <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-6h4v6"/></svg>HOME</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M6.5 7v10M4 9.5v5M17.5 7v10M20 9.5v5M6.5 12h11"/></svg>PLAN</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 16V10M12 16V5M17 16v-8"/></svg>LOG</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>SETTINGS</div>
+</div>
+</body></html>
