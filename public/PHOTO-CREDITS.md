@@ -12,7 +12,10 @@ appreciated but not required). Processed for the app: resized to ≤1600px, JPEG
 | celebrate-male.jpg | Session complete (male) | Shirt monogram, glove text, sleeve mark removed |
 | meal-plate.jpg | You tab — nutrition | — |
 | meal-prep.jpg | You tab — nutrition | — |
+| couple-hang.jpg | Duel tab | "22BB" cap embroidery removed |
+| couple-stair.jpg | Duel tab | Shirt text (e3-fitness.com), shorts + shoe swooshes removed |
+| celebrate-female.jpg | Session complete (female) — "recover, you earned it" | — |
+| recovery-lamp.jpg | Recovery / sleep | Clock brand mark removed |
+| recovery-bed.jpg | Recovery / sleep | — |
 | musclemap-male.webp / musclemap-female.webp | Heatmap source art (ChatGPT-generated), to be traced into per-muscle SVG paths | — |
 
-Pending re-upload (did not arrive as files): stair-climber couple, hanging couple,
-supplement pour (session complete, female), bedside lamp + dark bedroom (recovery).

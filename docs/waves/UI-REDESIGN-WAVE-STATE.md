@@ -105,7 +105,7 @@ set is currently unused).
 - [x] Log tab + first tab bar (ce65115)
 - [x] Scoring unified in app (091e02d); migration 0018 pending Kerwin
 - [x] Scope + mockups approved
-- [x] Photo set in `public/` (864415c) — logos removed; see `public/PHOTO-CREDITS.md`. 5 photos pending re-upload.
+- [x] Photo set in `public/` (864415c) — logos removed; see `public/PHOTO-CREDITS.md`. All 13 photos in.
 - [x] Muscle-map art in `public/musclemap-{male,female}.webp`. **Tracing proven feasible (2026-09-23):**
   threshold gray > 42 + 4-connected components splits each body into ~190–200 regions, one per
   drawn muscle segment, both sexes (OpenCV). Wave 4 pipeline: fill shading holes → `cv2.findContours`
