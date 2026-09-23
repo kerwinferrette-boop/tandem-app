@@ -6341,7 +6341,7 @@ function reorderWeek() {
 // Kerwin, 2026-09-23: "let's take a PR 15 points." ONE home for the point values —
 // every finisher (program day, one-off, journal) and every toast reads these. The
 // Home scoreboard reads the competition_leaderboard VIEW, which must match:
-// migrations/0018_pr_points_15.sql (human-applied) brings it from 25/PR to 15.
+// migrations/0018_pr_points_15.sql (applied 2026-09-23) set it from 25/PR to 15.
 const POINTS_PER_SESSION = 10;
 const POINTS_PER_PR = 15;
 function sessionPointsFor(prCount) { return POINTS_PER_SESSION + (prCount || 0) * POINTS_PER_PR; }

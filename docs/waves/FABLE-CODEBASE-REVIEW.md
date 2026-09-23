@@ -35,7 +35,7 @@ Supabase backend, deployed on Netlify. Read these first:
 
 **Where previous sessions found drift. Start here, then go wider:**
 - **Rules copied in two places.** PR points were 5 in JS and 25 in the SQL view (unified
-  2026-09-23; `migrations/0018` is pending). Hunt for any other rule that lives in both a
+  2026-09-23; both halves applied). Hunt for any other rule that lives in both a
   view or trigger and JS: points, streaks, PRs, 1RM, week counting.
 - **Sync layer.**
   - `sets` writes are not conflict-tolerant; see the header of
