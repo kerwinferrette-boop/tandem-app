@@ -949,10 +949,43 @@ safety:
            jsonb, created_at) — no migration needed, no schema change, just discipline. Skipping
            this step is itself a finding worth flagging next time it's caught missing, the same
            way a missed should/could/did audit is."
+    amended_2026_09_23: "TIGHTENED — supersedes the 'rule' text above wherever they differ. Kept as a
+           separate commit on top of Kerwin's merged text so it can be reverted on its own. Source:
+           a 5-advisor llm-council pre-ship review of the merge, unanimous, 2026-09-23. Trigger: on
+           2026-09-23 the BUG-131 personal_records row (Good Morning, 1267 -> 133) was corrected by a
+           direct write that left NO agent_log row and did not move updated_at, so nobody can say who
+           ran it. That is the exact BUG-125 failure, and the original 'more than one row' threshold
+           exempted it. Changes:
+           (1) THRESHOLD: ONE OR MORE rows. A single personal_records / working-1RM row feeds load
+               prescription directly; row count is the wrong proxy for risk.
+           (2) OPERATIONS: INSERT, UPDATE, UPSERT, DELETE and any DDL — not only delete/update.
+           (3) SCOPE BY ACTOR, NOT TRANSPORT: any write NOT made by the app on behalf of the
+               signed-in user. A service-role REST/supabase-js call goes through PostgREST and is
+               still in scope; 'non-PostgREST' is dropped as a loophole.
+           (4) 'REAL DATA' = any row belonging to a user who is not one of the two allowlisted test
+               accounts (kerwinferrette+test@gmail.com, kerwinferrette+testdani@gmail.com).
+           (5) REQUIRED details ADDED: actor (Claude-Session URL, or skill/agent name, or 'human:
+               <name>' — never blank), connection used (MCP execute_sql / SQL editor / script), and
+               per-row primary keys with before/after values (totals alone cannot reconstruct a
+               single-row change).
+           (6) ORDER: write the agent_log row BEFORE the data write, then update it (or add a second
+               row) with the after-values. 'Immediately after' loses the record exactly when the
+               session dies mid-write.
+           (7) This ADDS to destructive_ops_require_human — a log row never substitutes for the
+               human authorization that flag requires.
+           ENFORCEMENT, stated honestly per CLAUDE.md's self-correction protocol: judgment — not
+           mechanically checkable today. A future, stronger version would be an AFTER
+           INSERT/UPDATE/DELETE trigger on personal_records / sets / workout_sessions that writes to
+           agent_log whenever the writer is not the app's role — that is a schema change and is
+           Kerwin's call, noted here as the next step, not taken."
     retroactive_fix: "2026-09-20: backfilled one `agent_log` row (id 12b06564-8604-40aa-afaa-bc61a1e8f8ef,
            created_at 2026-09-20 17:07:40 UTC) documenting the 2026-09-18 sets/personal_records
            cleanup after the fact, cross-linked to BUG-16 and BUG-125. This does not change what
-           happened; it makes the record queryable instead of Notion-prose-only, going forward."
+           happened; it makes the record queryable instead of Notion-prose-only, going forward.
+           2026-09-23: backfilled a second row (id 8ce5ee1c-9ca7-449b-94b1-d5efbdf8cc38, created_at
+           2026-09-23 06:02:08 UTC) for the BUG-131 Good Morning personal_records correction
+           (1267 -> 133), performed in the 05:55-06:02 UTC window, actor recorded as UNKNOWN — see
+           amended_2026_09_23 above."
   forbidden:
     - "writing to sb.from('sessions') — ghost table, correct name is workout_sessions"
     - "writing to sb.from('prs') — ghost table, correct name is personal_records"

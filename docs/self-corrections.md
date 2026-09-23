@@ -827,3 +827,32 @@ The mechanical proxy that actually caught this instance was noticing an unexplai
 an unexplained diff-size mismatch and treating both as signal rather than noise — worth naming
 explicitly as the trigger, since "the gates failed in a way my change can't explain" is a concrete,
 checkable-by-a-human-reading-output signal even though no script currently raises it automatically.
+
+---
+
+## SC-22 — I wrote a timestamp into a prod audit row from a guessed clock
+
+**What I believed.** That it was roughly 16:30 UTC on 2026-09-23, so the window in which the
+BUG-131 `personal_records` fix had landed ran from 05:55 UTC to "~16:30 UTC". I wrote that upper
+bound straight into the assertion of a new `agent_log` row (`8ce5ee1c-9ca7-449b-94b1-d5efbdf8cc38`).
+
+**What was true.** The row's own `created_at` came back as **06:02:08 UTC**. The real window was
+seven minutes (05:55 → 06:02), not ten and a half hours. I never checked the clock. I inferred the
+time from how long the conversation felt, and the session had resumed across a date change, which
+made that worse. The row was corrected in the same turn from its own `created_at`, and the
+correction is recorded inside the row (`details.correction_note`).
+
+**Why it matters more than a typo.** This row exists to make an unattributed write *attributable*,
+and a seven-minute window is evidence: it lands inside the minutes right after Kerwin's own
+Decision Queue answer ("I'll fix the one record myself now", submitted 05:53 UTC). A ten-hour window
+destroys that evidence. A wrong bound in an audit record is worse than no bound, because the next
+reader trusts it.
+
+> **THE RULE — SC-22.** Never write a wall-clock time into a durable record (an `agent_log` row, a
+> Notion status, a commit body) from inference. Get it from a source first: `date -u` in the shell,
+> `now()` in the same SQL statement, or the `created_at` a write returns. When a record needs "now"
+> as a bound, compute it in the same statement that writes the record (`now()`), not in prose
+> typed beforehand.
+
+**Enforced by:** judgment — not mechanically checkable. The practical guard is to use `now()` inside
+the INSERT whenever a row describes "up to this moment", so the bound cannot drift from the write.
