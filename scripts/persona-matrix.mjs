@@ -115,6 +115,24 @@ function checkR9(days, tier) {
   return fails;
 }
 
+// R10 — every exercise id is unique across the whole program. The tracker
+// resolves a card by id (getElementById → first match), so a repeated id makes a
+// set logged on one card record as another exercise (5/6-day id collision, 2026-09-23).
+function checkR10(days) {
+  const seen = new Map();
+  const fails = [];
+  days.forEach((day, i) => {
+    for (const b of (day.blocks || [])) {
+      for (const ex of (b.exs || [])) {
+        if (!ex || !ex.id) continue;
+        if (seen.has(ex.id)) fails.push({ id: ex.id, first: seen.get(ex.id), day: i + 1, exercise: ex.name });
+        else seen.set(ex.id, `Day ${i + 1} ${ex.name}`);
+      }
+    }
+  });
+  return fails;
+}
+
 // ── Run the matrix ────────────────────────────────────────
 const results = [];
 
@@ -136,13 +154,14 @@ for (const { combo, goal, days, sex, tier, injury, args } of combos()) {
     r7: checkR7(program),
     r8: checkR8(program, injury.value),
     r9: checkR9(program, tier),
+    r10: checkR10(program),
   });
 }
 
 // ── Summary ──────────────────────────────────────────────
 const total = results.length;
 let errored = 0;
-const r6Fails = [], r7Fails = [], r8Fails = [], r9Fails = [];
+const r6Fails = [], r7Fails = [], r8Fails = [], r9Fails = [], r10Fails = [];
 
 for (const row of results) {
   if (row.error) { errored++; continue; }
@@ -150,6 +169,7 @@ for (const row of results) {
   if (row.r7.length) r7Fails.push(row);
   if (row.r8.length) r8Fails.push(row);
   if (row.r9.length) r9Fails.push(row);
+  if (row.r10.length) r10Fails.push(row);
 }
 
 console.log(`\nPersona/SKU matrix: ${total} combos (${GOALS.length} goals × ${DAY_COUNTS.length} day-counts × ${SEXES.length} sexes × ${TIERS.length} tiers × ${INJURY_PROFILES.length} injury profiles)\n`);
@@ -158,6 +178,7 @@ console.log(`R6 (missing core block):       ${r6Fails.length} combos`);
 console.log(`R7 (missing cardio block):     ${r7Fails.length} combos`);
 console.log(`R8 (injury-contraindicated leak): ${r8Fails.length} combos`);
 console.log(`R9 (equipment-tier violation):    ${r9Fails.length} combos`);
+console.log(`R10 (exercise id repeated in program): ${r10Fails.length} combos`);
 
 function summarizeByTierDay(fails, ruleName) {
   if (!fails.length) return;
@@ -197,6 +218,15 @@ if (r9Fails.length) {
   }
 }
 
-const allPass = errored === 0 && r6Fails.length === 0 && r7Fails.length === 0 && r8Fails.length === 0 && r9Fails.length === 0;
+if (r10Fails.length) {
+  console.log(`\nR10 failures (repeated exercise id) — first 10:`);
+  for (const row of r10Fails.slice(0, 10)) {
+    for (const f of row.r10) {
+      console.log(`  ${row.combo} — id "${f.id}" on ${f.first} AND Day ${f.day} ${f.exercise}`);
+    }
+  }
+}
+
+const allPass = errored === 0 && r6Fails.length === 0 && r7Fails.length === 0 && r8Fails.length === 0 && r9Fails.length === 0 && r10Fails.length === 0;
 console.log(allPass ? '\nAll persona-matrix rules PASS.\n' : '\nOne or more persona-matrix rules FAILED.\n');
 process.exit(allPass ? 0 : 1);

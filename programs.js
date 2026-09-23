@@ -4000,6 +4000,30 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
      cues:['Lie face down; arms straight out to the sides (T position), thumbs up.','Lift arms by squeezing shoulder blades; lower slowly with full range of motion.']},
   ];
 
+  // Exercise ids are the tracker's DOM identity — logSet() resolves a card with
+  // getElementById, which returns the FIRST match — so an id must be unique across
+  // the whole program. build5 renumbers Upper Pull/Lower Quad to day4/day5, build6
+  // reuses the same Push/Pull/Legs days for A and B, and build2 merges four days
+  // into two, all without re-stamping ids; a set logged on the later day was then
+  // written as the earlier day's exercise (and could write a false PR). Re-derive
+  // every 'dayN-<slot>' id from the day it actually lands on; suffix any remaining
+  // same-day clash. Returns copies; nothing else keys on ex.id.
+  const ensureUniqueExerciseIds = (program) => {
+    if (!Array.isArray(program)) return program;
+    const seen = new Set();
+    return program.map(day => ({ ...day, blocks: (day.blocks || []).map(b => ({
+      ...b, exs: (b.exs || []).map(e => {
+        if (!e || !e.id) return e;
+        const slot = /^day\d+-(.+)$/.exec(e.id);
+        const base = slot && day.key ? `${day.key}-${slot[1]}` : e.id;
+        let id = base;
+        for (let n = 2; seen.has(id); n++) id = `${base}-${n}`;
+        seen.add(id);
+        return id === e.id ? e : { ...e, id };
+      }),
+    })) }));
+  };
+
   // ── BUG-31: remove consecutive-day exercise name collisions ──────────────
   // Operates on name.trim().toLowerCase() — catches id-mismatches like
   // s5-ap ("Arnold Press") vs tr-press ("Arnold Press").
@@ -4752,7 +4776,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // Final injury prune — catches statically-injected exercises (build5's
     // shoulder block) that bypass the bank-level filter inside the generator.
     // Then apply the deload week (Part B / doctrine D4) on every path.
-    const built = days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : days === 6 ? build6(generated) : generated;
+    const built = ensureUniqueExerciseIds(days === 2 ? build2(generated) : days === 3 ? ppl(generated) : days === 5 ? build5(generated) : days === 6 ? build6(generated) : generated);
     return flagAdvanced(applyDeload(applySupersets(applyGoalVolume(pruneInjuries(built, injuries), goal), goal), rotation, weeks));
   }
 
@@ -4764,7 +4788,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   if (!activePrograms[goal]) return applyDeload(activePrograms.build_muscle?.[4] || programs.build_muscle[4], rotation, weeks);
 
   const base = activePrograms[goal][4] || programs.build_muscle[4];
-  const built = days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : days === 6 ? build6(base) : base;
+  const built = ensureUniqueExerciseIds(days === 2 ? build2(base) : days === 3 ? ppl(base) : days === 5 ? build5(base) : days === 6 ? build6(base) : base);
   // honorAuthoredRest FIRST, so applySupersets' shorter superset window still wins:
   // pairIntoSupersets sets authoredRest explicitly and therefore overwrites it.
   return applyDeload(applySupersets(applyGoalVolume(honorAuthoredRest(built), goal), goal), rotation, weeks);
