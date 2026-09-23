@@ -6347,12 +6347,24 @@ function sessionPointsFor(prCount) { return POINTS_PER_SESSION + (prCount || 0) 
 
 // Read back the streak the database just derived (migrations/0020). Its triggers run
 // inside the write that completed the session, so the value is already current.
+// The DB stores the streak as of the last workout (migrations/0020). It is only CURRENT
+// if that last counted day is today or yesterday in the user's LOCAL date — skip a day
+// and the streak is over, so show 0 instead of a stale number. Done here, not in SQL,
+// because the database's "today" is UTC (an evening workout in Pacific time is already
+// tomorrow there). Kerwin 2026-09-23: "fix it".
+function liveStreak(row) {
+  if (!row || !row.last_session_date) return 0;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return row.last_session_date >= localDateStr(yesterday) ? (row.current_streak_days || 0) : 0;
+}
+
 async function readCreditedStreak() {
   const { data } = await sb.from('streaks')
-    .select('current_streak_days')
+    .select('current_streak_days, last_session_date')
     .eq('user_id', currentUser.id)
     .maybeSingle();
-  return data?.current_streak_days ?? 0;
+  return liveStreak(data);
 }
 
 function finishSession() {
@@ -8514,9 +8526,12 @@ async function loadDashboard() {
 
     // 2b. Own streak — EPIC-13 Step 4: persistent badge, independent of partner pairing
     // (the competition-scoreboard streak stat below only populates when partnered).
-    const { data: streakRow } = await sb.from('streaks')
-      .select('current_streak_days').eq('user_id', uid).maybeSingle();
-    dashboardData.streak = streakRow?.current_streak_days ?? 0;
+    // Partner's row too (RLS: self or mutual partner) so the duel's streak stat is live as well.
+    const { data: streakRows } = await sb.from('streaks')
+      .select('user_id, current_streak_days, last_session_date')
+      .in('user_id', [uid, userRow?.partner_id].filter(Boolean));
+    dashboardData.streakRows = Object.fromEntries((streakRows || []).map(r => [r.user_id, r]));
+    dashboardData.streak = liveStreak(dashboardData.streakRows[uid]);
 
     if (userRow?.partner_id) {
       const pid = userRow.partner_id;
@@ -8709,7 +8724,8 @@ function renderDashboard() {
       }
     };
     setStatPair('dashStatSessionsMine','dashStatSessionsTheirs', myLbRow?.sessions_completed, theirLbRow?.sessions_completed);
-    setStatPair('dashStatStreakMine','dashStatStreakTheirs', myLbRow?.current_streak, theirLbRow?.current_streak);
+    const sr = dashboardData.streakRows || {};
+    setStatPair('dashStatStreakMine','dashStatStreakTheirs', liveStreak(sr[myLbRow?.user_id]), liveStreak(sr[theirLbRow?.user_id]));
     setStatPair('dashStatPRsMine','dashStatPRsTheirs', myLbRow?.prs_earned, theirLbRow?.prs_earned);
   }
 
