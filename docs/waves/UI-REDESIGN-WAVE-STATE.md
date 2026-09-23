@@ -103,7 +103,11 @@ The already-built reference pieces:
   gets bigger targets with a solid-accent Finish, day title on display type. The set logger
   is deliberately untouched; #bottomNav still owns in-workout nav (ruling 1). Shots in
   `docs/screenshots/wave6/` (`scripts/shots-wave6.mjs`).
-- **Wave 7:** Onboarding and sign-in.
+- **Wave 7:** Onboarding and sign-in. — **DONE `16dc5d9`** (2026-09-23). Sign-in: duotone hero
+  band (new `auth` moment in `HERO_MOMENTS`, shared pool/tint recipe), 36px display heading,
+  solid-accent pill CTA + pill skip. Onboarding: Next/Build → solid-accent pills (dark text,
+  glow), Back → circle; hero band/step dots/goal cards were already on the target look,
+  untouched. Shots in `docs/screenshots/wave7/` (`scripts/shots-wave7.mjs`).
 - **Wave 8:** The remaining modals.
 
 ## Per-wave definition of done
