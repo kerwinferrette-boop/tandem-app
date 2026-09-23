@@ -14,12 +14,19 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    steps:
+        steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # No dependencies to install — the gates are pure Node built-ins.
+          cache: 'npm'
+      # Most gates are pure Node built-ins, but verify check #14 (BUG-128
+      # bottom-nav pin smoke) drives a real browser via Playwright — install
+      # deps + chromium or that check dies with ERR_MODULE_NOT_FOUND.
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
       - name: Ship gate + doctrine conformance
         run: npm run verify
       - name: Persona / SKU matrix (504 combos, Rules 6-9)
