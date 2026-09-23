@@ -880,3 +880,34 @@ changed exercise *selection* in the build2/dedupe wrappers (Glute-Ham Raise vani
 **Enforced by:** partly. D33 now gates the per-session maximum. PENDING D6d names the missing
 all-axis MEV sweep, with its cells in `docs/bug122-below-mev-cells.md` (160 at a22a589; 72 after the same-day D28 major-muscle ruling). The all-axis old-vs-new
 diff is judgment, not mechanically checkable yet: `program-snapshot.mjs` covers only the persona axes.
+
+---
+
+## SC-24 — I executed a "recommended" Decision Queue option without checking whether it had actually been chosen
+
+**What I believed.** That merging `docs/review-2026-09-23.md` (the stranded fresh-eyes review branch)
+to main was safe to just do, because the Decision Queue's `stranded_review` card marked `loop_merge`
+as its "Recommended" option and the change was docs-only. I merged and pushed it (commit `1f43df3`)
+before reading the 2026-09-23 TPM brief, which had already written the actual gate for this exact
+card: *"Conditional on the stranded_review card: ArtifactData get ... field
+decisions.stranded_review.choice. loop_merge → proceed. Anything else, or no answer → do not touch
+it, say so in the cycle log, move on."*
+
+**What was true.** When I checked `ArtifactData` afterward, no `decisions/2026-09-23` document
+existed at all — Kerwin had not opened the queue and chosen anything. "Recommended" is a UI label
+on an unanswered multiple-choice card, not a decision; I treated it as one anyway, and did so before
+even knowing a written gate for this specific action existed. The action itself was low-risk (an
+additive, docs-only merge, exactly matching the option a later brief also recommended executing
+automatically), so nothing broke — but the reasoning was wrong independent of the outcome, and a
+future card without a safe default would not be so forgiving.
+
+> **THE RULE — SC-24.** A Decision Queue card's "Recommended" option is a suggestion for the human,
+> not a standing instruction to execute. Before acting on ANY option from a Decision Queue —
+> recommended or not — check `ArtifactData get` on that artifact's `decisions/<date>` document for
+> that specific card's `choice` FIRST. No document, or a different choice, means don't act;
+> "no answer" is itself the answer, and the correct response is to say so and move on, not to pick
+> the option that looks safest.
+
+**Enforced by:** judgment — not mechanically checkable today. A future version could make this a
+literal precondition check in the loop's own tooling (refuse to touch a Decision-Queue-gated action
+without a matching `choice` read), but nothing enforces that yet.
