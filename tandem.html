@@ -228,26 +228,28 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .pb-reps{font-family:var(--font-mono);font-size:12px;color:var(--accent2);margin-top:4px;}
 
 .week-nav{display:flex;align-items:center;gap:8px;padding:8px 16px 0;}
-.wn-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border2);background:var(--s1);
-  color:var(--muted2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.wn-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:var(--s1);
+  color:var(--muted2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .wn-btn:hover{border-color:var(--accent);color:var(--accent);}
 .wn-label{flex:1;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.08em;}
 .wn-reset{font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;
-  padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--s1);}
+  padding:8px 13px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);}
 
 /* ═══════════════════════════════
    SESSION TIMER (FEAT: persistent workout session state + running timer,
    in-app report 14f6baca, 2026-07-03 — "a start button... continuous timer
    that goes until finish is hit... doesnt lose my spot")
 ═══════════════════════════════ */
-.session-timer-row{padding:8px 16px 0;display:flex;justify-content:center;}
-.session-timer-start{width:100%;padding:9px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
-  background:var(--accent-dim);color:var(--accent);font-family:var(--font-mono);font-size:11px;
-  letter-spacing:.07em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;gap:6px;transition:all .15s;}
-.session-timer-start:hover{background:color-mix(in srgb,var(--accent) 28%,transparent);}
+.session-timer-row{padding:10px 16px 0;display:flex;justify-content:center;}
+/* Wave 6: the Start button is the tracker's hero action — big accent pill,
+   same button language as the chooser CTAs (Kerwin: "I want to click buttons"). */
+.session-timer-start{width:100%;padding:15px 12px;border-radius:999px;border:none;
+  background:var(--accent);color:#04130b;font-family:var(--font-display);font-size:16px;
+  font-weight:800;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;box-shadow:0 6px 18px var(--accent-glow);transition:transform .15s;}
+.session-timer-start:active{transform:scale(.98);}
 .session-timer-live{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
-  padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--s1);
+  padding:11px 12px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);
   color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
 .session-timer-live svg{color:var(--accent);width:14px;height:14px;}
 /* EPIC-19 Slice 1 — advisory-only pacing text appended into the same live-timer
@@ -269,7 +271,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 ═══════════════════════════════ */
 .tools-row{display:flex;gap:6px;padding:8px 16px 0;overflow-x:auto;scrollbar-width:none;}
 .tools-row::-webkit-scrollbar{display:none;}
-.tool-btn{flex-shrink:0;padding:6px 12px;border-radius:7px;border:1px solid var(--border);
+/* Wave 6: pill chips — same language as the Log tab's .log-chip */
+.tool-btn{flex-shrink:0;padding:8px 14px;border-radius:999px;border:1px solid var(--border2);
   background:var(--s1);font-family:var(--font-mono);font-size:10px;
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transition:all .15s;}
 .tool-btn:hover,.tool-btn.on{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);}
@@ -282,10 +285,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:linear-gradient(to right,transparent,var(--bg));pointer-events:none;}
 .day-tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 16px 0;}
 .day-tabs::-webkit-scrollbar{display:none;}
-.day-tab{flex-shrink:0;padding:7px 13px;border-radius:8px;border:1px solid var(--border);
+.day-tab{flex-shrink:0;padding:8px 14px;border-radius:999px;border:1px solid var(--border2);
   background:var(--s1);font-family:var(--font-mono);font-size:10px;
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .15s;}
-.day-tab.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
+.day-tab.active{background:var(--accent);border-color:transparent;color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 
 /* ═══════════════════════════════
    WORKOUT VIEW
@@ -295,7 +298,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .day-header{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:16px;margin-bottom:10px;position:relative;overflow:hidden;}
 .day-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--dhc,var(--accent));}
 .dh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
-.dh-title{font-family:var(--font-display);font-size:24px;letter-spacing:.04em;color:#fff;line-height:1;}
+.dh-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;line-height:1;}
 .dh-chips{display:flex;gap:5px;flex-wrap:wrap;}
 .dh-chip{font-family:var(--font-mono);font-size:9px;padding:3px 9px;border-radius:5px;
   background:var(--s2);border:1px solid var(--border);color:var(--muted2);text-transform:uppercase;}
@@ -842,10 +845,11 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .bottom-nav{position:fixed;bottom:0;bottom:env(safe-area-inset-bottom,0);left:0;right:0;background:rgba(7,7,11,.96);
   backdrop-filter:blur(20px);border-top:1px solid var(--border);
   display:flex;padding:9px 14px 22px;gap:7px;z-index:300;max-width:580px;margin:0 auto;}
-.bnav-btn{flex:1;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--s1);
+/* Wave 6: bigger tap targets; Finish is the one solid-accent action down here */
+.bnav-btn{flex:1;padding:12px 6px;border-radius:13px;border:1px solid var(--border2);background:var(--s1);
   color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;cursor:pointer;transition:all .15s;text-align:center;}
-.bnav-btn.primary{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);font-weight:600;}
+.bnav-btn.primary{background:var(--accent);border-color:transparent;color:#04130b;font-weight:800;box-shadow:0 4px 14px var(--accent-glow);}
 .bnav-btn:active{transform:scale(.97);}
 
 @media(max-width:420px){
