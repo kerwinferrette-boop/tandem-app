@@ -4893,16 +4893,18 @@ function renderTracker() {
   document.getElementById('pbReps').textContent = `This week: ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · Phase range: ${phase.reps}`;
   document.getElementById('pbWeekNum').textContent = currentWeek;
   document.getElementById('pbTotalWeeks').textContent = cfg.weeks;
-  // Day label = the cycle slot OUT OF 7 (Kerwin 2026-07-23), not the workout number.
-  // A 4-day split's third workout lands on slot 4, so it reads "Day 4", not "Day 3".
-  const _sched = getWeekSchedule();
+  // BUG-146: day label unit switched from the 7-day CALENDAR cycle to the
+  // program's own split length (Kerwin's ruling, 2026-09-24, Decision Queue
+  // card dayof7_unit = switch_to_program_days) \u2014 a 4-day split's 3rd workout
+  // now reads "Day 3 of 4", not "Day 4 of 7". getProgramDayLabel() is the one
+  // shared source for this (also used by renderDashHero()) so the number shown
+  // can never drift from the workout the queue actually serves.
+  const _label = getProgramDayLabel();
   const _wn = document.getElementById('wnLabel');
-  if (_sched) {
-    const _slotNum = _sched.todayIndex + 1; // 1-7
-    const _isRest = _sched.cadence[_sched.todayIndex] === 'rest';
-    _wn.textContent = _isRest
-      ? `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_slotNum} of 7 \u00b7 Rest Day`
-      : `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_slotNum} of 7`;
+  if (_label && _label.num != null) {
+    _wn.textContent = _label.isRest
+      ? `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_label.num} of ${_label.denom} \u00b7 Rest Day`
+      : `Week ${currentWeek} of ${cfg.weeks} \u00b7 Day ${_label.num} of ${_label.denom}`;
   } else {
     _wn.textContent = `Week ${currentWeek} of ${cfg.weeks}`;
   }
@@ -4929,8 +4931,17 @@ function renderTracker() {
     <strong style="color:var(--text)">Load progression (compounds):</strong> +${progressionPct(phase, true)}%<br>
     <strong style="color:var(--text)">Load progression (accessories):</strong> +${progressionPct(phase, false)}%
     ${(() => {
-      // "Days out of 7" schedule (Kerwin 2026-07-23) — render the 7-day cycle so the
-      // user SEES which days are training vs rest (e.g. 4-day = Days 1,2,4,5 of 7).
+      // "Days out of 7" schedule (Kerwin 2026-07-23) — render the 7-day CALENDAR
+      // cycle so the user SEES which days are training vs rest (e.g. 4-day =
+      // Days 1,2,4,5 of 7). BUG-146 changed the Day-N-of-M COUNTER (above, and
+      // renderDashHero) to program-day units, but this list stays a calendar
+      // map by design — it answers "which weekdays train," a different question
+      // — so `isToday` is deliberately still the CALENDAR position
+      // (s.todayIndex), not getProgramDayLabel()'s queue position. Checked, not
+      // just left alone: the two can only visibly disagree (today's calendar
+      // slot highlighted here isn't the workout the counter/hero card serves)
+      // after a missed session, which is precisely the overdue state the badge
+      // above already surfaces — so it reads as "you're behind," not as a bug.
       const s = getWeekSchedule();
       if (!s) return '';
       const rows = s.cadence.map((key, i) => {
@@ -8514,6 +8525,31 @@ function getProgramDayNumber() {
   return nextProgramDayKey() || slot;
 }
 
+// ── getProgramDayLabel() — BUG-146. ONE numerator/denominator/served-day-key,
+// consumed by every "Day N of M" renderer (renderTracker's wnLabel,
+// renderDashHero's daySlot), so the label can never drift from the workout the
+// QUEUE actually serves. Before this, each renderer built its own string from
+// getWeekSchedule().todayIndex — a CALENDAR position — while the workout
+// content itself came from getProgramDayNumber()'s QUEUE position (BUG-93's
+// deliberate split: calendar decides train-vs-rest, completion decides which
+// workout). Those two agree most of the time and silently diverge after any
+// missed/skipped session, which is what put "Day 7 of 7" under a header for a
+// 5-day split's 4th workout.
+// Kerwin's ruling, 2026-09-24 (Decision Queue card dayof7_unit =
+// switch_to_program_days): the denominator is cfg.days (the program's own
+// split length), not the 7-day calendar cycle.
+// Delegates to getProgramDayNumber() for dayKey rather than recomputing it, so
+// the number shown and the workout served can never disagree by construction.
+function getProgramDayLabel() {
+  const dayKey = typeof getProgramDayNumber === 'function' ? getProgramDayNumber() : null;
+  if (dayKey == null) return null;
+  const isRest = dayKey === 'rest';
+  const perWeek = Number(cfg?.days);
+  if (!perWeek || perWeek < 1) return { isRest, dayKey, num: null, denom: null };
+  const num = (completedSessionCount() % perWeek) + 1;
+  return { isRest, dayKey, num, denom: perWeek };
+}
+
 // ── getOverdueDays() — BUG-030 rewrite ──
 // Derives the allowed gap from the cadence's minimum inter-session spacing (+ 1 grace day)
 // instead of the static ceil(7/days) which was goal-blind and plan-length-blind.
@@ -8992,7 +9028,12 @@ function renderDashHero() {
   const ctaEl = document.getElementById('dashHeroCta');
   applyHeroImages(document.getElementById('view-dashboard'));
   const sched = typeof getWeekSchedule === 'function' ? getWeekSchedule() : null;
-  const dayKey = typeof getProgramDayNumber === 'function' ? getProgramDayNumber() : null;
+  // BUG-146: dayKey + the "DAY N OF M" text both come from the one shared
+  // getProgramDayLabel() now (was a separate calendar-position computation
+  // here that could drift from the queue-based dayKey below it — see that
+  // function's own comment for the drift mechanism).
+  const label = typeof getProgramDayLabel === 'function' ? getProgramDayLabel() : null;
+  const dayKey = label?.dayKey ?? null;
   chipsEl.innerHTML = '';
   if (!sched || !dayKey) {
     metaEl.textContent = 'TODAY';
@@ -9001,15 +9042,15 @@ function renderDashHero() {
     if (ctaEl) ctaEl.textContent = 'Start workout →';
     return;
   }
-  const daySlot = `DAY ${sched.todayIndex + 1} OF 7`;
+  const daySlot = label.num != null ? `DAY ${label.num} OF ${label.denom}` : '';
   if (dayKey === 'rest') {
-    metaEl.textContent = `REST DAY · ${daySlot}`;
+    metaEl.textContent = daySlot ? `REST DAY · ${daySlot}` : 'REST DAY';
     titleEl.textContent = 'Rest & Recover';
     subEl.textContent = 'Recovery day on your plan — log a one-off or journal from here.';
     if (ctaEl) ctaEl.textContent = 'Open workouts →';
     return;
   }
-  metaEl.textContent = `TODAY · ${daySlot}`;
+  metaEl.textContent = daySlot ? `TODAY · ${daySlot}` : 'TODAY';
   titleEl.textContent = sched.labelFor(dayKey);
   if (ctaEl) ctaEl.textContent = 'Start workout →';
   const day = sched.program.find(d => d.key === dayKey);
