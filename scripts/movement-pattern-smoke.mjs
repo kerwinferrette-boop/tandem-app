@@ -68,7 +68,7 @@
 // clashing days in REAL getProgram() output — larger than this bug's own
 // scope-lock (select()/bank() comparator mechanism only). NOT asserted against
 // here; reported informationally so the number is on record. Filed as its own
-// Bug Log row (BUG-154) rather than fixed off-book, per this project's
+// Bug Log row (BUG-165) rather than fixed off-book, per this project's
 // discovery_handling rule.
 //
 // Run: node scripts/movement-pattern-smoke.mjs
@@ -190,7 +190,7 @@ check(`buildDynamicProgram (called directly): 0 UNEXPECTED same-pattern-compound
   weeklyUnexpected.length === 0);
 
 // ── 3. getProgram() full pipeline — INFORMATIONAL ONLY, does not gate ──
-// See KNOWN GAP #2 above. Filed as BUG-154, not fixed here.
+// See KNOWN GAP #2 above. Filed as BUG-165, not fixed here.
 let pipelineChecked = 0, pipelineClashDays = 0;
 for (const { args } of combos()) {
   pipelineChecked++;
@@ -205,7 +205,7 @@ console.log('── movement-pattern-smoke (D30 / BUG-151) ──');
 for (const c of oneOffUnexpected.slice(0, 10)) console.log(`  UNEXPECTED getSingleDay clash: ${JSON.stringify(c)}`);
 for (const c of weeklyUnexpected.slice(0, 10)) console.log(`  UNEXPECTED buildDynamicProgram clash: ${JSON.stringify(c)}`);
 console.log(`  (disclosed home-tier gap matched: ${oneOffKnownGap.length} one-off, ${weeklyKnownGap.length} weekly)`);
-console.log(`  INFORMATIONAL — getProgram() full pipeline (KNOWN GAP #2, BUG-154, not gated here): ${pipelineClashDays} clashing days across ${pipelineChecked} persona combos`);
+console.log(`  INFORMATIONAL — getProgram() full pipeline (KNOWN GAP #2, BUG-165, not gated here): ${pipelineClashDays} clashing days across ${pipelineChecked} persona combos`);
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) FAILED: ${fails.join('; ')}`);

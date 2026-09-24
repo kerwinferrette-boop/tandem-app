@@ -2648,7 +2648,7 @@ let d29Checked = 0;
 // whose build2()/ppl()/build5()/build6() day-recombination and
 // pruneInjuries()/applyGoalVolume()/applySupersets()/applyDeload() pipeline can
 // still reintroduce a clash this comparator-level invariant cannot see across
-// (measured: 432/630 combos in real getProgram() output, filed as BUG-154, a
+// (measured: 432/630 combos in real getProgram() output, filed as BUG-165, a
 // distinct architectural follow-up, not part of what D30 asserts). One
 // disclosed, allowlisted exception: 'home' tier has no non-horizontal_pull
 // back/pull compound in EXERCISE_BANK at all (even bodyweight Pull-Up/Chin-Up

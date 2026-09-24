@@ -1962,7 +1962,7 @@ function flagDropSet(day) {
 // compound exists at all for back/pull at 'home'), and a getProgram()
 // pipeline-layer gap (build2()/ppl()/build5()/build6() day-recombination +
 // pruneInjuries()'s static substitution can still reintroduce a clash across a
-// boundary this per-session comparator cannot see) — filed as BUG-154.
+// boundary this per-session comparator cannot see) — filed as BUG-165.
 const FOCUS_SLOTS = {
   chest:     [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
   back:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['lat_dorsi','','isolation'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation']],
