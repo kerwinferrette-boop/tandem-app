@@ -1,5 +1,9 @@
 [build]
-  command = "mkdir -p _site && cp tandem.html _site/index.html && cp programs.js _site/ && cp -r public _site/ 2>/dev/null || true"
+  # BUG-153: sed substitutes the __COMMIT_REF__ placeholder tandem.html carries for the
+  # programs.js <script> tag with Netlify's own $COMMIT_REF build var, so every deploy is a
+  # distinct URL and a cached engine can never pair with a fresh document. Grouped in
+  # parens so a missing public/ dir (cp -r ... || true) doesn't short-circuit the sed step.
+  command = "mkdir -p _site && cp tandem.html _site/index.html && cp programs.js _site/ && (cp -r public _site/ 2>/dev/null || true) && sed -i \"s/__COMMIT_REF__/${COMMIT_REF:-dev}/g\" _site/index.html"
   publish = "_site"
 
 [build.environment]
@@ -10,3 +14,22 @@
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
+
+# BUG-153: the document itself must always be revalidated — it's what carries the
+# programs.js?v=<commit> reference that makes cache-busting work at all.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# programs.js is now requested with a per-deploy ?v=<commit> query string (see tandem.html),
+# so the underlying file can be cached aggressively — a new commit is a new URL.
+[[headers]]
+  for = "/programs.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

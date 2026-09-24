@@ -57,6 +57,7 @@ const CHECKS = [
   { name: 'BUG-128 bottom-nav pin smoke (Playwright — nav stays pinned through scroll + under an open modal)', run: () => execFileSync('node', [join(scriptsDir, 'bug128-bottomnav-pin-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-135 Log tab shape smoke (session_date/date shape drift — no silent drop, no fabricated points)', run: () => execFileSync('node', [join(scriptsDir, 'logtab-shape-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-27 calendar-day DST smoke (no off-by-one across spring-forward/fall-back)', run: () => execFileSync('node', [join(scriptsDir, 'calendar-day-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-153 asset freshness smoke (cache-busting wired, HTML always revalidates)', run: () => execFileSync('node', [join(scriptsDir, 'asset-freshness-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];
