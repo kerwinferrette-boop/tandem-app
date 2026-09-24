@@ -973,8 +973,9 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .dash-day-label{font-family:var(--font-mono);font-size:9px;color:var(--muted2);}
 /* 3. Muscles this week */
 .dash-mmap{display:flex;gap:14px;align-items:center;margin-top:12px;}
-.dash-mmap-fig{width:96px;flex:0 0 auto;align-self:stretch;object-fit:contain;opacity:.5;
-  filter:grayscale(1) brightness(1.4);}
+.dash-mmap-fig{width:96px;flex:0 0 auto;align-self:stretch;object-fit:contain;}
+.dash-mmap-fig svg{width:100%;height:100%;}
+.dash-mmap-fig img{width:100%;height:100%;object-fit:contain;opacity:.5;filter:grayscale(1) brightness(1.4);}
 .dash-mrows{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0;}
 .dash-mr-top{display:flex;justify-content:space-between;font-size:12px;color:var(--text);}
 .dash-mr-top span:last-child{font-family:var(--font-mono);color:var(--muted2);font-size:11px;}
@@ -1812,11 +1813,13 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 
     <!-- 3. MUSCLES THIS WEEK — logged sets vs weekly MEV target (ruling 7's scale;
          crediting lives in programs.js computeMuscleWeeklyVolume — one rule, one
-         home). Per-muscle SVG heatmap art lands in Wave 4. -->
+         home). Per-muscle SVG heatmap art (BUG-147): renders via the same
+         renderMuscleHeatmap() the You tab and Finish card use — one renderer,
+         three surfaces. -->
     <div class="dash-panel">
       <div class="dash-label"><span>Muscles this week</span><span>vs weekly target</span></div>
       <div class="dash-mmap">
-        <img class="dash-mmap-fig" id="dashMuscleFig" alt="" aria-hidden="true">
+        <div class="dash-mmap-fig" id="dashMuscleMap"></div>
         <div class="dash-mrows" id="dashMuscleRows"></div>
       </div>
     </div>
@@ -9067,8 +9070,7 @@ function computeWeekMuscleGrouped() {
 function renderMuscleWeek() {
   const rowsEl = document.getElementById('dashMuscleRows');
   if (!rowsEl) return;
-  const fig = document.getElementById('dashMuscleFig');
-  if (fig) fig.src = `public/musclemap-${userSexKey()}.webp`;
+  renderMuscleHeatmap(document.getElementById('dashMuscleMap'));
   const { grouped, mev } = computeWeekMuscleGrouped();
   // Presentation labels over MAJOR_MUSCLE_GROUP_TOKENS (programs.js) — display only.
   const ROWS = [
