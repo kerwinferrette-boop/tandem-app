@@ -864,17 +864,6 @@ governance:                    # Added 2026-07-24 per LLM-council audit (5 advis
                                 # that is a governance failure: STOP adding new capability to this
                                 # loop (do not proceed to portfolio/reprioritize work that cycle)
                                 # and surface it to Kerwin directly instead of deferring again.
-    - target_cycle: 33
-      action: "Run the full ~40-item Needs-Human 'verified-then-lost' audit: for every story
-               currently Needs Human in feature_tracker_db, check whether its fix commit (per
-               Evidence/Resolved-In) actually landed on main (git log/git blame on the relevant
-               file + grep for the fix's known marker/function name) and whether its Notion
-               status still matches reality. Cycle 31 found this pattern 3-for-3 on a small
-               spot-check (EPIC-8a, BUG-46, BUG-48 — each verified Resolved, then lost to
-               container reclamation before this session's push-on-verify policy existed).
-               Record per-item results in the cycle log, correct any stale statuses found
-               (same unambiguous-completion rule as the portfolio RECONCILE step), then delete
-               this entry."
 
   session_coordination:          # New — not one of the original 7, raised independently by 3 of 5
                                 # council advisors: two concurrent sessions have already edited
