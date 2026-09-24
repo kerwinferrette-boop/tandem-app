@@ -61,6 +61,8 @@ const CHECKS = [
   { name: 'BUG-146 day-label smoke (Day N of M tracks the queue, not the calendar slot)', run: () => execFileSync('node', [join(scriptsDir, 'daylabel-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-49 exercise_name write smoke (no slot-id ever reaches sets.exercise_name)', run: () => execFileSync('node', [join(scriptsDir, 'exercise-name-write-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-57 calibration upsert smoke (runs computeCalibration1RMs — trigger-equal case must still write is_calibrated)', run: () => execFileSync('node', [join(scriptsDir, 'calibration-upsert-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'MOVEMENT_FAMILIES partition (R1-R7 — now wired via movementPatternOf(), BUG-151/D30)', run: () => execFileSync('node', [join(scriptsDir, 'movement-families-check.mjs')], { stdio: 'inherit' }) },
+  { name: 'movement-pattern smoke (D30/BUG-151 — no same-pattern compound clash within one session)', run: () => execFileSync('node', [join(scriptsDir, 'movement-pattern-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];

@@ -1610,10 +1610,16 @@ const EXERCISE_BANK = {
 // G8  There is no conventional Barbell Deadlift slug in EXERCISE_BANK, so the
 //     `Barbell Deadlift` canonical lift has no self-referential member here.
 //
-// ── STATUS: INERT DATA ────────────────────────────────────────────────
-// Nothing reads this. It is not wired into getProgram, buildDynamicProgram,
-// bank(), pick(), groupsMatch(), getExerciseSubstitutes, the trend view, or any
-// UI. It ships as a layer, deliberately, so it cannot regress behaviour.
+// ── STATUS: WIRED (2026-09-24, BUG-151/D30) ─────────────────────────────
+// Was inert data from 2026-08-21 to 2026-09-24, deliberately, so it could not
+// regress behaviour before it had a real reader. It now has its first and only
+// reader: movementPatternOf() (declared just above getSingleDay, shared by
+// select()'s and bank()'s patternClash comparator) — see D30 in /DOCTRINE.md.
+// Nothing else reads it (still not wired into getProgram's other paths,
+// groupsMatch(), getExerciseSubstitutes, the trend view, or any UI) —
+// movement-families-check.mjs's R7 rule now asserts "read by exactly
+// movementPatternOf(), nowhere else" instead of "read by nothing," so a future
+// reader still can't sneak in unnoticed.
 // Invariants are proven by `node scripts/movement-families-check.mjs`:
 // every EXERCISE_BANK slug appears in exactly one family, and every declared
 // variant slug exists in EXERCISE_BANK.
@@ -1919,28 +1925,44 @@ function flagDropSet(day) {
 // requested twice in one category): back ('lat_dorsi' vs 'lat_dorsi'+'rhomboid'),
 // legs ('quad' vs 'hamstring'+'glute_max'), shoulders (one compound slot only),
 // push ('pec_major'+'pec' vs 'anterior_delt'+'lateral_delt'), pull ('lat_dorsi'
-// vs 'lat_dorsi'+'rhomboid') — chest is the ONLY entry asking for the same tuple
-// twice; the others already request genuinely different muscle groups per slot.
+// vs 'lat_dorsi'+'rhomboid') — chest is the ONLY entry asking for the SAME TEXT
+// tuple twice; the others already request textually different muscle groups per
+// slot.
 // Fix: chest[1] now asks for anterior_delt/lateral_delt (a vertical press), the
 // exact pairing FOCUS_SLOTS.push's own second compound slot already uses without
 // issue — not an invented pairing, matching the app's own existing pattern. A
 // chest-focus day keeps its identity through chest[2] (pec isolation) and
 // chest[3] (tricep) and gains the overhead press it never had.
-// Citation for WHY two same-pattern presses in one session is undesirable
-// (mechanism only, not the rule itself — no source mandates "never twice", see
-// docs/council-science-application-2026-09-14.md R2 and
-// docs/citation-verification-2026-09-14.md Q2 for the full verification): ACSM
-// 2009 Position Stand (PMID 19204579), Exercise Order — "multiple-joint exercise
-// ... performance declines significantly when these exercises are performed
-// later ... rather than early in a workout."
-// SCOPE, stated honestly: this is the getSingleDay() one-off path only. The
-// weekly buildDynamicProgram() engine has an analogous but DIFFERENT-shaped
-// defect (TEMPLATES.day2's secondary slot requests 'quad', which can collide
-// with day4's 'quad' primary once a 3-day split merges both days into one
-// session) — its safe fix needs a real movement-pattern-uniqueness check in the
-// comparator (a naive group-tuple swap there would just trade this exact bug for
-// a new one, since day2's own primary and secondary would end up requesting the
-// same hip-hinge pattern twice). Not fixed here; flagged as its own follow-up.
+// CORRECTION, 2026-09-24 (BUG-151/D30): the "others already request genuinely
+// different muscle groups per slot" conclusion above was WRONG in effect for
+// back and pull — it compared slot-request TUPLE TEXT, not the resolved
+// CANDIDATE POOLS those tuples admit. back[0] ('lat_dorsi') and back[1]
+// ('lat_dorsi'+'rhomboid') are textually different, but every barbell-row-
+// family bank entry tags BOTH lat_dorsi and rhomboid as PRIMARY, so both slots
+// draw from the same horizontal_pull-pattern pool in practice — the exact
+// BUG-151 defect (Barbell Row + Pendlay Row served together). Same shape as
+// BUG-73/BUG-114 (CLAUDE.md's "fix the mechanism, not the instance"): a
+// vocabulary/text-level audit missed a pool-level collision. Fixed properly
+// this time by comparing POOLS, not text: patternClash() (declared above
+// getSingleDay, D30) reads each candidate's actual resolved movement pattern
+// via MOVEMENT_FAMILIES, so it catches this class regardless of how similar or
+// different the slot-request text looks.
+// Citation for WHY two same-pattern compounds in one session is undesirable
+// (mechanism only, not the rule itself — no source mandates "never twice";
+// see D30's DOCTRINE.md row for the 2026-09-24 citation re-verification):
+// ACSM 2009 Position Stand (PMID 19204579), Exercise Order — "multiple-joint
+// exercise ... performance declines significantly when these exercises are
+// performed later ... rather than early in a workout."
+// SCOPE, updated 2026-09-24: patternClash() now covers BOTH getSingleDay()
+// (this one-off path) AND buildDynamicProgram() (see its own bank() copy) —
+// within one generated SESSION (one getSingleDay() call, or one
+// buildDynamicProgram() TEMPLATES-day/Shoulders-day). Two residuals remain,
+// neither claimed fixed by this comparator and both disclosed in D30's
+// DOCTRINE.md row: a home-tier bank-coverage gap (no alternative-pattern
+// compound exists at all for back/pull at 'home'), and a getProgram()
+// pipeline-layer gap (build2()/ppl()/build5()/build6() day-recombination +
+// pruneInjuries()'s static substitution can still reintroduce a clash across a
+// boundary this per-session comparator cannot see) — filed as BUG-154.
 const FOCUS_SLOTS = {
   chest:     [['pec_major','pec','compound'],['anterior_delt','lateral_delt','compound'],['pec_major','pec','isolation'],['tricep','','isolation'],['anterior_delt','lateral_delt','isolation']],
   back:      [['lat_dorsi','','compound'],['lat_dorsi','rhomboid','compound'],['lat_dorsi','','isolation'],['bicep','','isolation'],['posterior_delt','rhomboid','isolation']],
@@ -2061,6 +2083,60 @@ const equipmentAvailabilityRank = (e) => EQUIPMENT_AVAILABILITY_RANK[e.equipment
 // both are otherwise tied, never removes them from the pool.
 const FREE_WEIGHT_RANK = { barbell:0, dumbbell:0, machine:1, cable:1, band:1, bodyweight:1 };
 const freeWeightRank = (e) => FREE_WEIGHT_RANK[e.equipment] ?? 1;
+
+// ── D30 (BUG-151) — movement-pattern uniqueness comparator ──────────────────────
+// PROVENANCE: reads the pre-existing MOVEMENT_FAMILIES table (declared above,
+// Exercise Science Schema v0.5 Part 3 Table 1's `movement_pattern` field —
+// horizontal_push | horizontal_pull | vertical_push | vertical_pull | squat |
+// hinge | carry | isolation) instead of inventing a second taxonomy. This is the
+// table's FIRST reader — it shipped 2026-08-21 as declared inert data ahead of
+// this exact use (see its own header comment), and its own
+// scripts/movement-families-check.mjs R7 rule ("nothing reads it") is retired in
+// the same commit that adds this reader, not left stale.
+//
+// Lazy name->pattern index, same idiom as bankEntryByName above: EXERCISE_BANK is
+// keyed by slug, MOVEMENT_FAMILIES.variants lists slugs, callers only have the
+// exercise OBJECT (keyed by display name in `used`), so this is the one bridge.
+const _movementPatternByName = {};
+function movementPatternOf(e) {
+  if (!e || !e.name) return null;
+  if (!_movementPatternByName.__built) {
+    for (const [slug, entry] of Object.entries(EXERCISE_BANK)) {
+      for (const fam of Object.values(MOVEMENT_FAMILIES)) {
+        if (fam.variants.includes(slug)) { _movementPatternByName[entry.name] = fam.pattern; break; }
+      }
+    }
+    Object.defineProperty(_movementPatternByName, '__built', { value: true });
+  }
+  return _movementPatternByName[e.name] ?? null;
+}
+// SHOULD (D30, promoted ACTIVE this commit — see /DOCTRINE.md): no two COMPOUND
+// exercises of the same movement pattern in one session. Ships as
+// ENGINEERING_DEFAULT, per D30's own pre-existing doctrine row: the research
+// corpus does not mandate "never twice," only the supporting mechanism (ACSM
+// 2009 PMID 19204579, Exercise Order — multi-joint exercise performance
+// declines when repeated later in a session). HONEST CITATION NOTE (2026-09-24
+// re-verification): D30's row cites docs/council-science-application-2026-09-14.md
+// and docs/citation-verification-2026-09-14.md for the original R2 ruling
+// text — neither file exists anywhere in this repo (checked root and docs/;
+// the closest same-day artifacts are council-report/transcript-2026-09-14-
+// synergy-selection, which cover a DIFFERENT proposal and do not contain this
+// ruling). Flagging rather than re-deriving a citation from memory: the ENGINEERING_
+// DEFAULT / ACSM-mechanism-only framing is preserved as-is because it is
+// independently the conservative, honestly-scoped claim either way — but the R2
+// artifact itself should be treated as UNVERIFIED-BY-FILE until Kerwin confirms
+// where it lives (possibly never committed, like next-skip-day-prompt.md was). SOFT, same
+// "never hard-excludes" shape as D18/D20/D31 above: demotes a same-pattern
+// candidate, never removes it, so a slot can never come up empty because every
+// remaining candidate happens to share a pattern (verified case: buildDynamicProgram's
+// TEMPLATES.day2/day4 'quad' collision, where every quad-primary compound is
+// 'squat'-pattern — see DOCTRINE.md D30 for the measured, honest residual).
+// isolation/core/cardio are unaffected: the rule is compound-only by definition.
+const patternClash = (e, usedPatterns) => {
+  if (!usedPatterns || !usedPatterns.size || e.category !== 'compound') return 0;
+  const p = movementPatternOf(e);
+  return (p && usedPatterns.has(p)) ? 1 : 0;
+};
 
 function getSingleDay(focus, opts = {}) {
   const key = String(focus || '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -2193,7 +2269,7 @@ function getSingleDay(focus, opts = {}) {
   // slot can never come up empty because of this (D20: "soft, never hard-excludes"),
   // and D9/D18 hold by construction rather than by a runtime check. With no
   // exposure the sort is unchanged from the pre-D20 comparator.
-  const select = (groups, cat, used, freshGroups = []) => {
+  const select = (groups, cat, used, freshGroups = [], usedPatterns = null) => {
     const freshSet = freshGroups.length ? new Set(freshGroups) : null;
     // PRIMARY tags only, deliberately — the same scope recentMuscleLoad() uses
     // (tandem.html comment ~5015). Most isolation lifts co-tag a synergist as
@@ -2239,6 +2315,28 @@ function getSingleDay(focus, opts = {}) {
       // equipment convenience.
       const ep = exercisePenalty(a) - exercisePenalty(b);
       if (ep !== 0) return ep;
+      // D30 (BUG-151) — see patternClash's declaration above. MEASURED
+      // placement, not the naive "above FREE_WEIGHT_RANK only" reading: ranked
+      // here, ABOVE coverageCount, not just above freeWeightRank. Verified by
+      // running the engine (CLAUDE.md's own non-negotiable) — placing this
+      // below coverageCount, as a first pass did, left BUG-151 UNFIXED:
+      // back's slot1 requests ['lat_dorsi','rhomboid'] (g.length>1), so
+      // coverageCount(Pendlay Row)=2 beats coverageCount(Pull-Up)=1 before
+      // patternClash is ever consulted — Barbell Row + Pendlay Row still both
+      // won. Coverage of a slot's OWN requested muscles is real (BUG-116), but
+      // it cannot outrank "don't repeat the movement pattern you already
+      // used this session," which is the actual BUG-151 defect — a lift with
+      // a different pattern is what the slot needs even at the cost of
+      // covering one fewer of its two requested muscles as PRIMARY (the other
+      // muscle is still trained as a SECONDARY by most such candidates, and by
+      // the day's OTHER slots regardless). No-op unless the caller passes a
+      // non-empty usedPatterns Set (every pre-existing call site omits it, so
+      // behavior is byte-identical there — including BUG-116's own fix, which
+      // is unaffected: hip-thrust-family and RDL-family candidates are BOTH
+      // 'hinge' pattern, so they always tie on patternClash and coverageCount
+      // still decides between them exactly as before).
+      const pc = patternClash(a, usedPatterns) - patternClash(b, usedPatterns);
+      if (pc !== 0) return pc;
       if (g.length > 1) {
         const covDiff = coverageCount(b) - coverageCount(a);
         if (covDiff !== 0) return covDiff;
@@ -2304,6 +2402,9 @@ function getSingleDay(focus, opts = {}) {
   });
 
   const used = new Set();
+  // D30 (BUG-151) — patterns already claimed by a compound pick earlier in THIS
+  // one-off session. See patternClash's declaration above.
+  const usedPatterns = new Set();
   const comp = [], acc = [];
   slots.forEach((s, i) => {
     const groups = [s[0], s[1]].filter(Boolean);
@@ -2327,9 +2428,13 @@ function getSingleDay(focus, opts = {}) {
         });
       });
     }
-    const chosen = select(groups, cat, used, freshGroups);
+    const chosen = select(groups, cat, used, freshGroups, usedPatterns);
     if (!chosen) return;
     used.add(chosen.name);
+    if (cat === 'compound') {
+      const p = movementPatternOf(chosen);
+      if (p) usedPatterns.add(p);
+    }
     (cat === 'compound' ? comp : acc).push(mk(chosen, i, cat === 'isolation' ? { sets: 3 } : {}));
   });
   // 2 core movements, then an optional Zone 2 finisher
@@ -2561,7 +2666,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   // see each rank's own declaration; oneRmFactor is no longer a ranking input
   // at all (2026-09-18, council ruling R1 — see the comment on that removal
   // below), only a load-estimation input read by defW()/seedWeight().
-  const bank = ({groups, cat, excl=[]}) => {
+  const bank = ({groups, cat, excl=[], usedPatterns=null}) => {
     const eligible = (e) => tierOk(e) && e.category===cat && groupsMatch(e, groups) && !excl.includes(e.name) && !injuryBlocked(e.name);
     // SOFT fallback — see identical rationale on getSingleDay's select() above:
     // never let the stricter primary-only compound filter silently empty a slot
@@ -2586,6 +2691,17 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // ("synergies... properly attributed") means at the single-slot level.
     const coverageCount = (e) => groups.filter(g => primaryOnlyMatch(e, [g])).length;
     return pool.sort((a, b) => {
+        // D30 (BUG-151) — rule-identical to select()'s copy above, via the
+        // SHARED patternClash helper. MEASURED placement — see select()'s copy
+        // above for the full "why above coverageCount" reasoning (running the
+        // engine showed placing this below coverageCount left the reported bug
+        // unfixed: a 2-muscle-group slot's coverageCount decisively favors a
+        // same-pattern candidate that primary-tags both requested muscles over
+        // a different-pattern candidate that only tags one). No-op unless the
+        // caller passes a non-empty usedPatterns Set (every pre-existing
+        // bank() call site omits it, so behavior is byte-identical there).
+        const pc = patternClash(a, usedPatterns) - patternClash(b, usedPatterns);
+        if (pc !== 0) return pc;
         if (groups.length > 1) {
           const covDiff = coverageCount(b) - coverageCount(a);
           if (covDiff !== 0) return covDiff;
@@ -2828,6 +2944,16 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   try {
     const result = TEMPLATES.map(tmpl => {
       const exs = {};
+      // D30 (BUG-151) — patterns already claimed by a compound pick earlier in
+      // THIS SESSION (one template day). Deliberately reset per tmpl, not
+      // shared across TEMPLATES like `used` above: D30 says "one session," and
+      // a session here is one day object. KNOWN, DISCLOSED GAP (see D30's
+      // DOCTRINE.md row): a day-count wrapper downstream (e.g. a 3-day split
+      // merging TEMPLATES.day2 + day4 into one physical session) can still
+      // recombine two independently-generated days that each individually
+      // satisfy D30 into a merged session that does not — this comparator
+      // cannot see across that merge, only within one tmpl's own slots.
+      const usedPatterns = new Set();
       tmpl.slots.forEach(s => {
         // EPIC-8a: beginner tier drops the Accessory Block's 3rd exercise slot
         // (2 accessories instead of 3) — skip selection entirely so acc3's
@@ -2844,9 +2970,16 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         // delt slot and left lateral delts under MEV (BUG-122 D6d, 88 cells). acc3
         // only when every accessory trains a major group.
         if ((exp === 'beginner' || isShortSession) && s.role === droppableAccessory(tmpl.slots)) return;
-        const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
+        const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
         const chosen = pick(cands, s, tmpl);
-        if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
+        if (chosen) {
+          used.add(chosen.name);
+          exs[s.role] = chosen;
+          if (chosen.category === 'compound') {
+            const p = movementPatternOf(chosen);
+            if (p) usedPatterns.add(p);
+          }
+        }
       });
       // GEN-fix: if every group-matched cardio candidate is excluded, allow
       // reuse rather than silently dropping the finisher (cardio repeats
@@ -2907,10 +3040,21 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
     // Build the Shoulders + Arms day and attach it for build5 (5-day split only).
     const sa = SHOULDER_TEMPLATE;
+    // D30 (BUG-151) — one Set shared across BOTH fillSlots calls below: shoulder
+    // and arm slots are the SAME physical session (one training day), so they
+    // must share one usedPatterns scope, not reset per call.
+    const saUsedPatterns = new Set();
     const fillSlots = (slots) => slots.map(s => {
-      const cands = bank({groups:s.groups, cat:s.cat, excl:[...used]});
+      const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns: saUsedPatterns});
       const chosen = pick(cands, s, sa);
-      if (chosen) { used.add(chosen.name); return makeEx(chosen, sa.key+'-'+s.role, {sets:s.cat==='compound'?4:3}); }
+      if (chosen) {
+        used.add(chosen.name);
+        if (chosen.category === 'compound') {
+          const p = movementPatternOf(chosen);
+          if (p) saUsedPatterns.add(p);
+        }
+        return makeEx(chosen, sa.key+'-'+s.role, {sets:s.cat==='compound'?4:3});
+      }
       return null;
     }).filter(Boolean);
     const shoulderExs = fillSlots(sa.shoulderSlots);

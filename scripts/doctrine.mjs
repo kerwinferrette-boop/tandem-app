@@ -40,8 +40,8 @@ import vm from 'node:vm';
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -2534,7 +2534,6 @@ const PENDING = [
   ['D6d', 'D6b\'s weekly MEV floor must hold on EVERY axis the generator branches on (tier × experience × duration), not only full_gym at default experience/duration, which is all D6b sweeps. After BUG-122 + the D28 major-muscle ruling (2026-09-23): 126 cells below MEV across that sweep (old engine: 144); the 72 new ones are cells the old engine reached only by stacking one lift past ~11 sets/session — 54 home 2-day anterior delt (blocked on tags: the only home-tier primary anterior-delt bank entry is Jumping Jacks), 18 3-day beginner full_gym hamstring. Every cell: docs/bug122-below-mev-cells.md', 'needs the engine to add a related lift for a muscle still under MEV (muscle_tag_rescope first for home front-delt tags)'],
   ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops ONE isolation accessory — the one training no major muscle group, acc3 only if all do (Kerwin 2026-09-23, droppableAccessory()) (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
-  ['D30', 'No two COMPOUND exercises of the same movement pattern in one session (council ruling R2, docs/council-science-application-2026-09-14.md, ENGINEERING_DEFAULT — the corpus does not support a citation for the rule itself, only its mechanism, ACSM 2009 PMID 19204579 Exercise Order). FOCUS_SLOTS.chest\'s literal byte-identical-slot instance was fixed directly (2026-09-18, commit 39d2187) without this invariant. The remaining, confirmed-still-live case — buildDynamicProgram\'s TEMPLATES.day2 secondary slot (\'quad\') colliding with day4\'s primary (\'quad\') once a 3-day split merges both days — needs the full movement-pattern-uniqueness comparator mechanism (MOVEMENT_PATTERN table + patternClash, present on the unmerged claude/muscle-tag-vocabulary branch but built against a now-stale snapshot of main) re-authored against current main\'s primaryOnlyMatch/coverageCount/D27/D31 comparator chain, not transplanted.', 'needs the movement-pattern comparator mechanism built against current main'],
 ];
 
 // ── D27 (SCIENCE_DEFAULT) — continuity across program regenerations ───────────
@@ -2632,6 +2631,94 @@ let d29Checked = 0;
     fail('D29', `tandem.html has ${tandemReads} .oneRmFactor read site(s), expected exactly 6 (known render-layer load-scaling reads) — a new reader was added without a doctrine update`);
 }
 
+// ── D30 (SCIENCE_DEFAULT) — no two COMPOUND exercises share a movement ─────────
+// pattern in one session (BUG-151, promoted PENDING → ACTIVE this commit,
+// together with the fix that makes it true — CLAUDE.md forbids promoting an
+// invariant in a later commit than the one that ships it). Full mechanism
+// (movementPatternOf()/patternClash(), threaded into select()/bank()) and full
+// citation/scope discussion: see their declarations in programs.js and the D30
+// row below. Mirrors scripts/movement-pattern-smoke.mjs's own sweep — one rule,
+// one home for "what does D30 actually promise" — but re-run independently
+// here rather than shelled out to, so the doctrine gate stays self-contained
+// like every other D-check.
+//
+// SCOPE, stated as honestly here as in programs.js: sweeps getSingleDay()
+// (every FOCUS_SLOTS × TIERS × GOALS combo) and buildDynamicProgram() called
+// DIRECTLY (every GOALS × DAY_COUNTS × SEXES × TIERS combo) — NOT getProgram(),
+// whose build2()/ppl()/build5()/build6() day-recombination and
+// pruneInjuries()/applyGoalVolume()/applySupersets()/applyDeload() pipeline can
+// still reintroduce a clash this comparator-level invariant cannot see across
+// (measured: 432/630 combos in real getProgram() output, filed as BUG-154, a
+// distinct architectural follow-up, not part of what D30 asserts). One
+// disclosed, allowlisted exception: 'home' tier has no non-horizontal_pull
+// back/pull compound in EXERCISE_BANK at all (even bodyweight Pull-Up/Chin-Up
+// are tier:'hotel_gym'), so a soft, never-hard-excludes comparator cannot fix
+// it — any clash outside that exact allowlist still fails the gate.
+let d30Checked = 0;
+{
+  const compoundPatternsInDay = (day) => {
+    const patterns = [];
+    for (const b of (day.blocks || [])) {
+      if (b.cardio) continue;
+      for (const ex of (b.exs || [])) {
+        if (!ex.compound) continue;
+        const p = movementPatternOf({ name: ex.name });
+        if (p) patterns.push({ name: ex.name, pattern: p });
+      }
+    }
+    return patterns;
+  };
+  const findClash = (patterns) => {
+    const seen = new Map();
+    for (const { name, pattern } of patterns) {
+      if (seen.has(pattern)) return { pattern, a: seen.get(pattern), b: name };
+      seen.set(pattern, name);
+    }
+    return null;
+  };
+  const isKnownHomeTierBackPullGap = (clash) =>
+    clash.pattern === 'horizontal_pull' && /Row$/.test(clash.a) && /Row$/.test(clash.b);
+
+  const goals = ['fat_burn', 'build_muscle', 'transform'];
+  const dayCounts = [2, 3, 4, 5, 6];
+  const sexes = ['male', 'female'];
+  const tiers = ['home', 'hotel_gym', 'full_gym'];
+
+  for (const focus of Object.keys(FOCUS_SLOTS)) {
+    for (const tier of tiers) {
+      for (const goal of goals) {
+        d30Checked++;
+        let day;
+        try { day = getSingleDay(focus, { tier, goal, sex: 'male' }); } catch { continue; }
+        if (!day) continue;
+        const clash = findClash(compoundPatternsInDay(day));
+        if (!clash) continue;
+        if (tier === 'home' && isKnownHomeTierBackPullGap(clash)) continue;
+        fail('D30', `getSingleDay(${focus}, {tier:${tier}, goal:${goal}}) has two COMPOUND exercises sharing pattern '${clash.pattern}': '${clash.a}' and '${clash.b}'`);
+      }
+    }
+  }
+
+  for (const goal of goals) {
+    for (const days of dayCounts) {
+      for (const sex of sexes) {
+        for (const tier of tiers) {
+          d30Checked++;
+          let program;
+          try { program = buildDynamicProgram(goal, days, 12, sex, tier, 'balanced', '', null, null); } catch { continue; }
+          if (!Array.isArray(program)) continue;
+          for (const day of program) {
+            const clash = findClash(compoundPatternsInDay(day));
+            if (!clash) continue;
+            if (tier === 'home' && isKnownHomeTierBackPullGap(clash)) continue;
+            fail('D30', `buildDynamicProgram(${goal}, ${days}d, ${sex}, ${tier}) day '${day.key}' has two COMPOUND exercises sharing pattern '${clash.pattern}': '${clash.a}' and '${clash.b}'`);
+          }
+        }
+      }
+    }
+  }
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────────
 console.log(`DOCTRINE CONFORMANCE — Notion law is enforced here (mirror: /DOCTRINE.md)\n`);
 console.log(`Active checks:`);
@@ -2643,6 +2730,7 @@ console.log(`  D7  per-length mesocycle layout matches spec Part B verbatim — 
 console.log(`  D5  superset/circuit goals (Transform + Fat Burn), never on primary — ${d5Checked} programs checked`);
 console.log(`  D27 continuity across regenerations — ${d27Checked} property checks`);
 console.log(`  D29 oneRmFactor is load-estimation only, never a selection/ranking key (council R1) — ${d29Checked} checks (630-combo-representative perturb-and-diff + programs.js/tandem.html read-site counts pinned)`);
+console.log(`  D30 no two COMPOUND exercises share a movement pattern in one session (BUG-151) — ${d30Checked} getSingleDay + buildDynamicProgram checks (home-tier back/pull bank-coverage gap allowlisted, not asserted against)`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
 console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);

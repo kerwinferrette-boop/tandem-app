@@ -18,8 +18,11 @@
 //       "v0.5 enum has no value for this" marker (core / conditioning).
 //   R6  Every non-null `canonicalLift` is one of the five barbell lifts v0.5's
 //       own load_coefficient table names. Nothing invented.
-//   R7  MOVEMENT_FAMILIES stays inert: no other identifier in programs.js or
-//       tandem.html reads it.
+//   R7  MOVEMENT_FAMILIES has exactly ONE reader: movementPatternOf()
+//       (BUG-151/D30, 2026-09-24). No OTHER identifier in programs.js or
+//       tandem.html reads it — the table was inert until this exact reader
+//       landed; this rule now proves the read surface stays that narrow
+//       instead of proving there is no read surface at all.
 //
 // Run: node scripts/movement-families-check.mjs
 // Exit 0 = partition proven. Exit 1 = one or more rules failed.
@@ -88,17 +91,30 @@ for (const [slug, keys] of owner) {
 const missing = bankSlugs.filter(s => !owner.has(s));
 for (const slug of missing) fail('R1', `slug '${slug}' (${EXERCISE_BANK[slug].name}) is in NO family`);
 
-// ── R7: inertness — nothing reads MOVEMENT_FAMILIES ──────
+// ── R7: exactly one reader — movementPatternOf() (BUG-151/D30) ──────
 const html = readFileSync(join(root, 'tandem.html'), 'utf8');
 const declLine = /^\s*const MOVEMENT_FAMILIES\s*=/m;
+const mpoMatch = src.match(/function movementPatternOf\([\s\S]*?\n\}/);
+if (!mpoMatch) {
+  fail('R7', 'movementPatternOf() not found in programs.js — R7 cannot confirm the sanctioned reader exists');
+} else if (!mpoMatch[0].includes('MOVEMENT_FAMILIES')) {
+  fail('R7', 'movementPatternOf() no longer references MOVEMENT_FAMILIES — the sanctioned reader is not actually reading it');
+}
+const mpoStart = mpoMatch ? src.indexOf(mpoMatch[0]) : -1;
+const mpoEnd = mpoStart >= 0 ? mpoStart + mpoMatch[0].length : -1;
+let offset = 0;
 const readsInPrograms = src.split('\n')
-  .map((line, i) => ({ line, n: i + 1 }))
+  .map((line, i) => {
+    const start = offset; offset += line.length + 1;
+    return { line, n: i + 1, start };
+  })
   .filter(({ line }) => line.includes('MOVEMENT_FAMILIES'))
-  .filter(({ line }) => !declLine.test(line) && !/^\s*(\/\/|\*|\/\*)/.test(line.trimStart()));
+  .filter(({ line }) => !declLine.test(line) && !/^\s*(\/\/|\*|\/\*)/.test(line.trimStart()))
+  .filter(({ start }) => !(mpoStart >= 0 && start >= mpoStart && start < mpoEnd));
 for (const { line, n } of readsInPrograms)
-  fail('R7', `programs.js:${n} references MOVEMENT_FAMILIES outside its declaration — it must stay inert: ${line.trim()}`);
+  fail('R7', `programs.js:${n} references MOVEMENT_FAMILIES outside movementPatternOf() — the sanctioned reader is the only one allowed: ${line.trim()}`);
 if (html.includes('MOVEMENT_FAMILIES'))
-  fail('R7', 'tandem.html references MOVEMENT_FAMILIES — it must stay inert');
+  fail('R7', 'tandem.html references MOVEMENT_FAMILIES — only programs.js\'s movementPatternOf() may read it');
 
 // ── Report ───────────────────────────────────────────────
 const patternCounts = {};
@@ -134,4 +150,4 @@ if (failures.length) {
 }
 console.log('PASS — R1 no slug missing · R2 no slug in two families · R3 every variant exists');
 console.log('       R4 shape ok · R5 patterns ⊆ v0.5 enum · R6 canonical lifts ⊆ v0.5 table');
-console.log('       R7 inert (nothing reads it)');
+console.log('       R7 exactly one reader (movementPatternOf(), BUG-151/D30)');
