@@ -675,10 +675,25 @@ notion:
   run_log_db: "0e481ffb-04f0-43db-bf39-09eb3551bd6c"      # existing Context Handoff, reused as-is
   # Goal Record (project-goal Step 1): this DB has NO Status/Objective/Cycle-Count columns,
   # so the Active Goal Record is a distinguished PAGE whose title starts
-  # "⭐ LOOP GOAL RECORD — ACTIVE". project-goal finds it via notion-search (NOT SQL — query
-  # mode is plan-gated on this workspace) and reads/writes its machine-checkable state from the
-  # page-body "## State" block (STATUS / CYCLE_COUNT / LAST_SNAPSHOT) + appends to "## Cycle log".
+  # "⭐ LOOP GOAL RECORD — ACTIVE". project-goal finds it via notion-search and reads/writes
+  # its machine-checkable state from the page-body "## State" block (STATUS / CYCLE_COUNT /
+  # LAST_SNAPSHOT) + appends to "## Cycle log".
   # Live page: https://app.notion.com/p/389ca37f935b81998d2bcebf0a364c52
+  #
+  # CORRECTED 2026-09-24 (Cycle 92, docs/self-corrections.md SC-26): this line previously
+  # said query/SQL mode (notion-query-data-sources) was "plan-gated on this workspace, do
+  # not use it" — copied forward from an earlier session's claim and never itself verified
+  # by running the tool, the exact SC-03 failure mode ("run, don't simulate/assume"). A
+  # Cycle 92 subagent tried it anyway (per SC-03) and it worked: a live
+  # `SELECT "Status", COUNT(*) FROM "collection://fcfd09db-...-90bed2abacdc" GROUP BY
+  # "Status"` against the Tandem User Story Coverage data source returned real counts
+  # (149 rows total: Resolved 97, Failing 14, Untested 15, Needs Human 12, Skipped 7,
+  # Passing 3, Fixing 2), re-confirmed independently in the same cycle. CATALOG and any
+  # future audit should PREFER notion-query-data-sources (rows or sql mode) over
+  # keyword-search-plus-fetch for enumerating tracker rows — it is exact and exhaustive
+  # where search is best-effort and can miss rows. If a future call genuinely hits a
+  # plan-gate error, record the actual error text here before reverting this guidance —
+  # don't restore the old blanket claim from memory.
 
   # Status-vocabulary note: the feature-loop/project-goal SKILL text says "Won't-Fix"
   # for the terminal "decided not to fix" state. The User Story Coverage DB encodes

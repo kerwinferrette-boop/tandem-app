@@ -971,3 +971,36 @@ function in the app exists, and the preview console logs nothing for it.
 **Enforced by:** `npm run verify`'s "syntax: tandem.html app block" check covers commits; the rule's
 mid-edit half (check BEFORE debugging behavior in the preview) is judgment — not mechanically
 checkable.
+
+---
+
+## SC-27 — I carried forward "Notion query/SQL mode is plan-gated" without ever having run it
+
+**What I believed, and where it came from.** `.claude/loop-config.md` and this project's own `/loop`
+prompt both stated, flatly, that `notion-query-data-sources` (SQL/rows mode against a data source)
+"is plan-gated on this workspace — do not use it," and every cycle since has taken that as settled
+and fallen back to `notion-search` keyword queries plus per-page `notion-fetch` calls — expensive,
+best-effort, and provably incomplete (a Cycle 92 governance audit could only reach ~12 of an assumed
+~40 Needs-Human rows this way before a fresh idea was tried).
+
+**What actually happened, Cycle 92 (2026-09-24).** A subagent doing that same audit tried the tool
+anyway, per SC-03's own rule ("verify availability by trying, don't assert from memory"), applied
+here to a *tooling* claim instead of a research claim. It worked on the first call. I re-verified
+independently in the same session: `SELECT "Status", COUNT(*) FROM
+"collection://fcfd09db-695c-4e01-93a2-90bed2abacdc" GROUP BY "Status"` returned real, exact counts
+(149 rows: 97 Resolved, 14 Failing, 15 Untested, 12 Needs Human, 7 Skipped, 3 Fixing, 3 Passing) in
+one call — something no amount of keyword search could have done exhaustively. Nobody had actually
+called the tool and hit the gate; the claim had just never been re-tested since whichever session
+first wrote it, and every session after copied it forward as fact.
+
+> **THE RULE — SC-27.** A claim that a *tool or integration* is unavailable/gated/broken is exactly
+> as perishable as a claim about a research fact or a file's contents (SC-01/SC-03) — don't carry it
+> forward from a prior session's prose without re-running the call yourself first, especially when
+> the workaround it justifies (keyword-search-and-fetch instead of a structured query) is markedly
+> more expensive and less complete. "X is unavailable" is a hypothesis until this session's own tool
+> call confirms it, not a standing fact inherited from `loop-config.md`.
+
+**Enforced by:** judgment — not mechanically checkable (there is no script that can verify a prior
+session's unverified claim before it's acted on). `.claude/loop-config.md`'s own `notion:` section
+was corrected in the same cycle this was found (see its `CORRECTED 2026-09-24` note) so the
+now-wrong guidance doesn't keep propagating forward the way this one did.
