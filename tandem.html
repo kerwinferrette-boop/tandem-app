@@ -3065,21 +3065,37 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   const existingMap = {};
   (existingPRs || []).forEach(p => { existingMap[p.exercise_name] = p.best_estimated_1rm_lbs || 0; });
 
-  // Only upsert where new estimate exceeds existing stored value.
+  // BUG-57: upsert EVERY exercise in the calibration session.
+  // The old gate was `.filter(name => best1RMs[name] > (existingMap[name] || 0))` and it
+  // could NEVER pass. `sets` carries the trigger sets_apply_1rm_and_pr, which writes
+  // best_estimated_1rm_lbs live DURING the session — so by the time finishSession() reaches
+  // this function the DB has already stored the identical calcRM value this function is
+  // about to compute. existingMap[name] === best1RMs[name] for every exercise, `>` is false,
+  // `rows` came out empty, no upsert fired at all, and is_calibrated / calibration_session_id
+  // / week_targets were never written — while the users.calibration_complete = true write
+  // below fired unconditionally. That divergence IS the reported symptom.
+  // The higher-of guarantee the filter appeared to protect never depended on the filter: it
+  // is preserved explicitly below by writing Math.max(new, existing) and deriving
+  // week_targets from that same stored best, so a genuinely higher historical PR is not
+  // regressed. D11/D12 are untouched — calcRM and computeWeekTargets are not called
+  // differently, and no 1RM is lowered. This is a persistence-gating fix, not a
+  // prescription change.
   // EPIC-9: also persist the full weekly target map (week_targets jsonb)
   // so prescriptions are queryable/syncable, not just computed in the UI.
   const calGoal = (typeof cfg !== 'undefined' && cfg && cfg.goal) || 'build_muscle';
   const calWeeks = (typeof cfg !== 'undefined' && cfg && cfg.weeks) || 8;
   const rows = exNames
-    .filter(name => best1RMs[name] > (existingMap[name] || 0))
-    .map(name => ({
-      user_id: userId,
-      exercise_name: name,
-      best_estimated_1rm_lbs: best1RMs[name],
-      is_calibrated: true,
-      calibration_session_id: sessionUUID,
-      week_targets: computeWeekTargets(best1RMs[name], calGoal, calWeeks)
-    }));
+    .map(name => {
+      const best = Math.max(best1RMs[name], existingMap[name] || 0);
+      return {
+        user_id: userId,
+        exercise_name: name,
+        best_estimated_1rm_lbs: best,
+        is_calibrated: true,
+        calibration_session_id: sessionUUID,
+        week_targets: computeWeekTargets(best, calGoal, calWeeks)
+      };
+    });
 
   if (rows.length) {
     await sb.from('personal_records')
@@ -5755,7 +5771,14 @@ async function saveExerciseToCloud(id) {
         return {
           session_id: currentCloudSessionId,
           user_id: currentUser.id,
-          exercise_name: id,
+          // BUG-49: `id` is the bank SLOT id (bm-bench, tr-row, oneoff-<key>-<i>), not a
+          // movement name. Everything downstream is name-keyed — getRecommendation's
+          // lastsets lookup (C7/BUG-45), the PR key, computeCalibration1RMs' best1RMs map —
+          // and slot ids are RECYCLED across rotations, so a slot-id row is not merely a
+          // wrong key, it is an unstable one. The resolved name is already on every element
+          // (logSet stamps `name: prExName`); `|| id` fires only when the card heading was
+          // unreadable, or for a snapshot from a build predating that stamp.
+          exercise_name: s.name || id,
           set_number: s.set || 1,
           weight_lbs: w,
           reps: r,
@@ -5772,10 +5795,39 @@ async function saveExerciseToCloud(id) {
       })
       .filter(s => s.weight_lbs > 0 && s.reps > 0);
     if (!setRows.length) return;
-    const { error: setsError } = await sb.from('sets').insert(setRows);
-    if (setsError) throw setsError;
 
-    showToast('✓ ' + id + ' saved');
+    // BUG-49 follow-on: Save is a REPAIR, not a second write.
+    // logSet() already inserts every set as it is logged, keyed by the SAME
+    // (session_id, exercise_name, set_number) this function uses now that
+    // exercise_name resolves to the movement name instead of the slot id. Before
+    // that fix the two writers collided only by accident — the manual copy landed
+    // under a slot id, so it never matched, and the app quietly carried two rows per
+    // set under different keys (which is also how slot ids reached personal_records
+    // via the sets_apply_1rm_and_pr trigger: 'tr-row' was live on prod). Re-inserting
+    // blindly now that the keys agree would manufacture a genuine duplicate group on
+    // every Save tap — the exact shape migration 0017's unique index exists to
+    // forbid, and the exact shape that required a 19-row manual repair on 2026-09-24.
+    // So: read what is already there and insert only what is missing. That makes this
+    // button idempotent and turns it into what its name implies — a way to push sets
+    // the live sync dropped.
+    const syncedNames = [...new Set(setRows.map(r => r.exercise_name))];
+    const { data: alreadyInCloud, error: readErr } = await sb.from('sets')
+      .select('exercise_name, set_number')
+      .eq('session_id', currentCloudSessionId)
+      .in('exercise_name', syncedNames);
+    // A failed read must not become a blind insert — that would trade a missing set
+    // for a duplicated one. Surface it instead; the sets are still safe locally.
+    if (readErr) throw readErr;
+    const present = new Set((alreadyInCloud || []).map(r => r.exercise_name + '\u0000' + r.set_number));
+    const missing = setRows.filter(r => !present.has(r.exercise_name + '\u0000' + r.set_number));
+
+    if (missing.length) {
+      const { error: setsError } = await sb.from('sets').insert(missing);
+      if (setsError) throw setsError;
+      showToast('✓ ' + id + ' saved');
+    } else {
+      showToast('✓ ' + id + ' already synced');
+    }
   } catch(e) {
     console.warn('Exercise sync error:', e);
     showToast('Sync error — saved locally');
@@ -6698,7 +6750,10 @@ function finishSession() {
               return {
                 session_id: resolvedId,
                 user_id: currentUser.id,
-                exercise_name: exId,
+                // BUG-49: same defect as saveExerciseToCloud — `exId` is a slot id, and
+                // snapshotExercises is a shallow copy of sessionSetsMap, which is keyed by
+                // slot id. Each set still carries the resolved `name`.
+                exercise_name: s.name || exId,
                 set_number: s.set || 1,
                 weight_lbs: w,
                 reps: r,

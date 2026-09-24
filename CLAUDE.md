@@ -128,6 +128,6 @@ checks is a suggestion. The current rules are SC-01 staleness · SC-02 retracted
 run-don't-simulate · SC-04 feedback is not a commit · SC-05 status docs are snapshots.
 
 ## Standing test gate (run before every commit that touches the engine)
-`npm run verify` (9 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
+`npm run verify` (20 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law
 directive.
