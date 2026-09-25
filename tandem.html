@@ -551,8 +551,16 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* Same duotone recipe as .hero-band (grayscale -> --accent at mix-blend-mode:color),
    so the 9 stock photos land in the app's palette instead of fighting it. Square
    cards: at a ~335px modal width each is ~103px, which is a real tap target and
-   still lets all 9 sit on screen at once — the reason for 3x3 over a long scroll. */
+   still lets all 9 sit on screen at once — the reason for 3x3 over a long scroll.
+   That packing constraint is the FOCUS step's (9 cards). The GOAL step only ever
+   renders 3 cards (ONEOFF_GOALS), so it takes .oneoff-grid--goal below: one column
+   of landscape cards with type at the .tc-card benchmark scale (BUG-157). */
 .oneoff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px;}
+.oneoff-grid--goal{grid-template-columns:1fr;gap:10px;}
+.oneoff-grid--goal .oneoff-card{aspect-ratio:2.5/1;}
+.oneoff-grid--goal .oneoff-cap{left:14px;right:14px;bottom:12px;}
+.oneoff-grid--goal .oneoff-eyebrow{font-size:var(--t-eyebrow);margin-bottom:3px;}
+.oneoff-grid--goal .oneoff-name{font-size:var(--t-h2);}
 .oneoff-card{position:relative;aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;
   isolation:isolate;border:none;padding:0;cursor:pointer;background:var(--s1);
   box-shadow:var(--e1);-webkit-tap-highlight-color:transparent;
@@ -583,6 +591,21 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .oneoff-back{margin-top:12px;background:none;border:none;padding:0;cursor:pointer;
   font-family:var(--font-mono);font-size:11px;color:var(--muted);-webkit-tap-highlight-color:transparent;}
 .oneoff-back:active{color:var(--text);}
+/* One-off chrome (BUG-150): affirmative actions speak the pill language
+   (.profile-save-btn primary + this neutral secondary) — .clear-btn is the
+   DESTRUCTIVE primitive and is not used in this modal anymore. */
+.oneoff-btn-secondary{width:100%;padding:13px;border-radius:999px;background:var(--s1);
+  border:1px solid var(--border2);color:var(--muted2);font-family:var(--font-display);
+  font-size:15px;font-weight:700;letter-spacing:.02em;cursor:pointer;margin-top:8px;transition:all .15s;}
+.oneoff-btn-secondary:active{transform:scale(.98);}
+.oneoff-saved-row{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;
+  background:var(--s1);border:1px solid var(--border2);border-radius:var(--r-md);
+  color:var(--text);cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.oneoff-saved-row:active{transform:scale(.98);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
+.oneoff-saved-name{font-weight:600;}
+.oneoff-saved-meta{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px;}
+.oneoff-list-note{font-family:var(--font-mono);font-size:11px;color:var(--muted);}
+.oneoff-recency-note{margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;}
 
 /* ═══════════════════════════════
    MODALS
@@ -2196,12 +2219,12 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <button id="oneoffBack" class="oneoff-back" style="display:none" onclick="oneOffBack()">← Back</button>
     <div id="oneoffStep0">
       <div class="oneoff-step-cap">New session, or one that worked before?</div>
-      <button class="clear-btn" style="margin-top:10px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="oneOffChooseCreate()">✨ Create New Workout</button>
-      <button class="clear-btn" style="margin-top:8px;" onclick="oneOffChoosePull()">🔁 Pull from Saved Workouts</button>
+      <button class="profile-save-btn" onclick="oneOffChooseCreate()">✨ Create New Workout</button>
+      <button class="oneoff-btn-secondary" onclick="oneOffChoosePull()">🔁 Pull from Saved Workouts</button>
     </div>
     <div id="oneoffStep1" style="display:none">
       <div class="oneoff-step-cap">What are you training for today?</div>
-      <div id="oneoffGoalRow" class="oneoff-grid"></div>
+      <div id="oneoffGoalRow" class="oneoff-grid oneoff-grid--goal"></div>
     </div>
     <div id="oneoffStepSaved" style="display:none">
       <div class="oneoff-step-cap">Your saved workouts</div>
@@ -2210,10 +2233,10 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <div id="oneoffStep2" style="display:none">
       <div class="oneoff-step-cap" id="oneoffFocusCap">What are you hitting?</div>
       <div id="oneoffFocusRow" class="oneoff-grid"></div>
-      <div id="oneoffRecency" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;"></div>
+      <div id="oneoffRecency" class="oneoff-recency-note"></div>
     </div>
     <div id="oneoffDay" style="margin-top:14px;"></div>
-    <button id="oneoffFinishBtn" class="clear-btn" style="display:none;margin-top:14px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="finishOneOff()">Finish — Save This Workout</button>
+    <button id="oneoffFinishBtn" class="profile-save-btn" style="display:none;margin-top:14px;" onclick="finishOneOff()">Finish — Save This Workout</button>
     <!-- Post-finish: naming + rating a template is a SEPARATE decision from logging
          the session (finishOneOff already did that above) — shown only after a
          successful finish, per spec (a)/(b). Skip leaves the logged session intact. -->
@@ -2222,8 +2245,8 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <input type="text" id="oneoffSaveName" class="modal-input" placeholder="Name this workout (e.g. Arms — Heavy)" style="margin-top:8px;">
       <div style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);">How'd it feel? (1-7)</div>
       <div id="oneoffRatingRow" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;"></div>
-      <button class="clear-btn" style="margin-top:10px;color:var(--accent);background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);" onclick="saveOneOffTemplate()">Save Template</button>
-      <button class="clear-btn" style="margin-top:8px;" onclick="closeModal('oneoff')">Skip</button>
+      <button class="profile-save-btn" onclick="saveOneOffTemplate()">Save Template</button>
+      <button class="oneoff-btn-secondary" onclick="closeModal('oneoff')">Skip</button>
     </div>
   </div>
 </div>
@@ -2551,8 +2574,14 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
   </div>
 </div>
 
-<!-- BOTTOM NAV -->
+<!-- BOTTOM NAV (in-workout toolbar, tracker only). BUG-155: before the Home
+     button below, the ONLY exits were Skip and Finish — both mutate workout
+     state — so users leaving the tracker felt the nav "disappeared" with no
+     way back. showView('dashboard') is the same non-destructive path the app
+     itself uses to boot mid-session (renderTracker(); showView('dashboard')),
+     so leaving and returning to a live session is already a supported state. -->
 <div class="bottom-nav" id="bottomNav">
+  <button class="bnav-btn" onclick="showView('dashboard')"><span data-icon="home"></span> Home</button>
   <button class="bnav-btn" onclick="openModal('plates')"><span data-icon="plate"></span> Plates</button>
   <button class="bnav-btn" onclick="openModal('calc')"><span data-icon="chart"></span> 1RM</button>
   <button class="bnav-btn" onclick="openModal('history')"><span data-icon="clipboard"></span> Log</button>
@@ -3403,7 +3432,7 @@ function templateGoalChip(t) {
 
 function templateCardHTML(t, actionHTML) {
   return `
-    <div style="border:1px solid var(--line);border-radius:12px;padding:14px;">
+    <div style="border:1px solid var(--border2);border-radius:12px;padding:14px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
         <div style="font-weight:700;font-size:15px;">${t.name}</div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${templateGoalChip(t)}</div>
@@ -3973,14 +4002,14 @@ function renderBuilderDays() {
   const wrap = document.getElementById('builderDays');
   if (!wrap || !builderState) return;
   wrap.innerHTML = builderState.days.map((d, di) => `
-    <div style="border:1px solid var(--line, var(--border2));border-radius:12px;padding:12px;margin-bottom:10px;">
+    <div style="border:1px solid var(--border2);border-radius:12px;padding:12px;margin-bottom:10px;">
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="text" class="modal-input" value="${String(d.label || '').replace(/"/g, '&quot;')}" placeholder="Day label (e.g. Push)" style="flex:1;" oninput="builderState.days[${di}].label=this.value">
         ${builderState.days.length > 2 ? `<button class="clear-btn" style="width:auto;padding:6px 10px;" onclick="removeBuilderDay(${di})">✕</button>` : ''}
       </div>
       <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
         ${d.exercises.map((x, xi) => `
-          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--line, var(--border2));padding-top:8px;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--border2);padding-top:8px;">
             <input type="text" class="modal-input" list="builderExerciseList" placeholder="Search exercise…" value="${String(x.name || '').replace(/"/g, '&quot;')}" style="flex:2;min-width:140px;width:auto;" oninput="builderSetExercise(${di},${xi},this.value)">
             <select class="modal-input" style="flex:1;min-width:120px;width:auto;" onchange="builderState.days[${di}].exercises[${xi}].role=this.value">
               ${Object.entries(BUILDER_ROLE_LABEL).map(([v, l]) => `<option value="${v}" ${x.role === v ? 'selected' : ''}>${l}</option>`).join('')}
@@ -7709,27 +7738,27 @@ let _savedWorkouts = [];
 async function renderSavedWorkoutsRow() {
   const host = document.getElementById('oneoffSavedList');
   if (!host) return;
-  host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Loading…</span>`;
+  host.innerHTML = `<span class="oneoff-list-note">Loading…</span>`;
   const { data, error } = await sb.from('saved_workouts')
     .select('id,name,focus,goal,rating,created_at')
     .eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
   if (error) {
     console.error('renderSavedWorkoutsRow failed:', error);
-    host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Could not load saved workouts.</span>`;
+    host.innerHTML = `<span class="oneoff-list-note">Could not load saved workouts.</span>`;
     return;
   }
   _savedWorkouts = data || [];
   if (!_savedWorkouts.length) {
-    host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Nothing saved yet — finish a one-off and save it as a template.</span>`;
+    host.innerHTML = `<span class="oneoff-list-note">Nothing saved yet — finish a one-off and save it as a template.</span>`;
     return;
   }
   host.innerHTML = _savedWorkouts.map(w => {
     const safeName = String(w.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const faceTitle = w.focus ? oneOffFace(w.focus).title : 'Custom';
-    return `<button class="clear-btn" style="width:100%;text-align:left;padding:12px;margin-bottom:8px;" onclick="pickSavedWorkout('${w.id}')">
-      <div style="font-weight:600;">${safeName}</div>
-      <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px;">
+    return `<button class="oneoff-saved-row" onclick="pickSavedWorkout('${w.id}')">
+      <div class="oneoff-saved-name">${safeName}</div>
+      <div class="oneoff-saved-meta">
         ${faceTitle}${w.rating ? ` · Felt ${w.rating}/7` : ''}
       </div>
     </button>`;
@@ -8073,7 +8102,7 @@ function promptSaveOneOffTemplate() {
   const row = document.getElementById('oneoffRatingRow');
   if (row) {
     row.innerHTML = Array.from({ length: 7 }, (_, i) => i + 1).map(n =>
-      `<button type="button" class="clear-btn" data-rating="${n}" style="width:auto;padding:8px 12px;" onclick="pickOneOffRating(${n})">${n}</button>`
+      `<button type="button" class="log-chip" data-rating="${n}" onclick="pickOneOffRating(${n})">${n}</button>`
     ).join('');
   }
   const finishBtn = document.getElementById('oneoffFinishBtn');
@@ -8084,10 +8113,7 @@ function promptSaveOneOffTemplate() {
 function pickOneOffRating(n) {
   _oneoffRating = n;
   document.querySelectorAll('#oneoffRatingRow [data-rating]').forEach(b => {
-    const on = Number(b.dataset.rating) === n;
-    b.style.color = on ? 'var(--accent)' : '';
-    b.style.background = on ? 'var(--accent-dim)' : '';
-    b.style.borderColor = on ? 'color-mix(in srgb,var(--accent) 30%,transparent)' : '';
+    b.classList.toggle('active', Number(b.dataset.rating) === n);
   });
 }
 
