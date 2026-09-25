@@ -2224,15 +2224,17 @@ function getSingleDay(focus, opts = {}) {
   // PRIMARY-MATCH RANK — 2026-09-18, council ruling R1 + reconciliation (see
   // FREE_WEIGHT_RANK's declaration above for the doc citations). Reuses
   // primaryOnlyMatch directly (one rule, one home) rather than a parallel
-  // anchored-matching copy. For COMPOUND slots this is a NO-OP: primaryOnlyMatch
-  // already filters the pool to primary-match-only (with its own empty-pool
-  // fallback), so every surviving candidate scores identically here — confirmed
-  // by trace: when the strict filter's pool is empty, every fallback survivor is
-  // synergist-only by definition, so this still ties uniformly. Its real, non-
-  // redundant effect is on isolation/core/cardio slots, which primaryOnlyMatch's
-  // `cat !== 'compound'` guard skips filtering entirely — those pools still
-  // legally admit synergist-only candidates, and this is the only mechanism that
-  // ever demotes one below a primary-match candidate for that category.
+  // anchored-matching copy. For COMPOUND and ISOLATION slots (BUG-119,
+  // 2026-09-25 — primaryOnlyMatch's hard filter now covers both, see its own
+  // declaration) this is normally a NO-OP: the pool is already primary-match-
+  // only, so every surviving candidate scores identically here — EXCEPT when the
+  // strict filter's pool was empty and the D18 fallback engaged, in which case
+  // this still usefully ranks any primary-tagged survivor (there may be none)
+  // above the synergist-only ones the fallback re-admitted. Its only remaining
+  // always-live, non-fallback-dependent effect is on core/cardio slots, which
+  // primaryOnlyMatch's `primaryScoped` guard never filters at all — those pools
+  // still legally admit synergist-only candidates by design, and this is the
+  // only mechanism that ever demotes one below a primary-match candidate there.
   const primaryMatchRank = (e, groups) => primaryOnlyMatch(e, groups) ? 0 : 1;
   // ── D20 (EPIC-028) — per-muscle recency SOFT de-prioritization ─────────────
   // opts.recentExposure: { muscleTag: hoursSinceLastTrained } — the exact shape
@@ -2338,8 +2340,32 @@ function getSingleDay(focus, opts = {}) {
     // press is machine/barbell/full_gym), fall back to the original primary+
     // secondary pool rather than silently dropping the slot (D18's exact failure
     // mode — BUG-82 — is what this fallback exists to avoid).
-    let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (cat !== 'compound' || primaryOnlyMatch(e, g)));
-    if (cat === 'compound' && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
+    //
+    // BUG-119 (2026-09-25): extended from compound-only to ISOLATION too. An
+    // isolation slot's `groups` request names the one muscle that slot exists to
+    // train (same framing primaryOnlyMatch's own declaration comment already
+    // uses, generically — it was never actually compound-specific in its
+    // reasoning, only in its applied scope). Before this fix, primaryOnlyMatch
+    // was a hard FILTER for compound but only a sort TIEBREAK for isolation
+    // (primaryMatchRank, below), so an isolation slot with zero tier-legal
+    // primary-tagged candidates silently accepted a candidate whose PRIMARY
+    // mover is a DIFFERENT muscle and only SECONDARY-tags the requested one —
+    // measured live: FOCUS_SLOTS.shoulders' isolation slot (['anterior_delt',
+    // 'lateral_delt']) at 'home' tier selects "Band Chest Fly" (primary=
+    // pec_major_sternal, secondary=anterior_delt) 100% of the time, because zero
+    // home-tier candidates primary-tag anterior_delt in isolation. No DOCTRINE.md
+    // or Notion source licenses secondary-credit ISOLATION selection specifically
+    // — D6b's 0.5 credit is volume ACCOUNTING once an exercise is already
+    // selected, not a slot-selection-legality rule (checked, confirmed silent).
+    // This is engineering correctness in D19's sense ("the pool is the right
+    // pool"), not a new science claim — same category as D19 itself. SOFT, same
+    // guarantee as the compound case: only engages when the strict pool is
+    // non-empty; an isolation slot with zero primary-tagged candidates ANYWHERE
+    // still falls back to the full primary+secondary pool exactly as before, so
+    // D18 (never leave a slot empty) is unaffected.
+    const primaryScoped = cat === 'compound' || cat === 'isolation';
+    let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (!primaryScoped || primaryOnlyMatch(e, g)));
+    if (primaryScoped && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
     // Coverage tiebreak — see identical rationale + worked example (Barbell Hip
     // Thrust orphaning hamstring) on buildDynamicProgram's bank() above. Ranked
     // after D20's recency (an established, unrelated precedence this doesn't
@@ -2721,8 +2747,16 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // (D18/BUG-82). Verified: at 'home' tier this fallback IS live (0 primary-
     // tagged shoulder-press compounds exist below full_gym), so removing it would
     // silently drop Day 1's secondary compound slot for every home-tier user.
-    let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (cat !== 'compound' || primaryOnlyMatch(e, groups)));
-    if (cat === 'compound' && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
+    //
+    // BUG-119 (2026-09-25) — see identical fix + full rationale on getSingleDay's
+    // select() above. Extended from compound-only to ISOLATION too: an isolation
+    // slot's `groups` request names the muscle it exists to train; before this
+    // fix a tier-starved isolation slot could silently accept a secondary-only
+    // match (e.g. home-tier anterior_delt isolation always resolving to Band
+    // Chest Fly, primary=pec). Same D18 empty-pool soft-fallback guarantee.
+    const primaryScoped = cat === 'compound' || cat === 'isolation';
+    let pool = Object.values(EXERCISE_BANK).filter(e => eligible(e) && (!primaryScoped || primaryOnlyMatch(e, groups)));
+    if (primaryScoped && !pool.length) pool = Object.values(EXERCISE_BANK).filter(eligible);
     // Coverage tiebreak (Kerwin, 2026-09-14, live — root cause of a SECOND
     // symptom of the same defect BUG-116 fixed): a slot requesting TWO muscles
     // (e.g. day2's hinge slot, groups:['hamstring','glute_max']) is an OR at the
