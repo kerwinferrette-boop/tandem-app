@@ -2450,10 +2450,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <!-- A. Program -->
     <div class="profile-section">
       <span class="profile-section-label">Program</span>
+      <!-- Canonical engine keys ONLY (match onboarding selectGoal + doctrine CANONICAL_GOALS).
+           The old 'burn_fat' pill value reached getProgram(cfg.goal, …) unaliased and generated
+           a silently-wrong program — see Bug & QA Log "Profile modal goal pills" (2026-09-24). -->
       <div class="profile-pill-row" id="profileGoalRow">
-        <button class="profile-pill" data-goal="burn_fat" onclick="selectProfileGoal('burn_fat')"><span data-icon="flame"></span> Burn</button>
+        <button class="profile-pill" data-goal="fat_burn" onclick="selectProfileGoal('fat_burn')"><span data-icon="flame"></span> Burn</button>
         <button class="profile-pill" data-goal="build_muscle" onclick="selectProfileGoal('build_muscle')"><span data-icon="dumbbell"></span> Muscle</button>
         <button class="profile-pill" data-goal="transform" onclick="selectProfileGoal('transform')"><span data-icon="zap"></span> Transform</button>
+        <button class="profile-pill" data-goal="strength" onclick="selectProfileGoal('strength')"><span data-icon="trophy"></span> Strength</button>
+        <button class="profile-pill" data-goal="maintenance" onclick="selectProfileGoal('maintenance')"><span data-icon="target"></span> Maintain</button>
       </div>
       <div style="margin-top:12px;">
         <span class="profile-input-label" style="display:block;margin-bottom:6px;">Days / week</span>
@@ -2709,7 +2714,7 @@ sb.auth.onAuthStateChange((event, session) => {
     if (document.getElementById('view-auth')?.classList.contains('active')) {
       const savedCfg = LS.get('tandem_cfg');
       if (savedCfg?.goal) {
-        cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
+        cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
         renderTracker(); showView('dashboard');
@@ -2961,13 +2966,24 @@ const ACCESSORY_ALIASES = {
   'Abductor Machine': 'Hip Abduction Machine'
 };
 
+// THE one home for the legacy-goal-key alias (one rule, one home per CLAUDE.md).
+// 'burn_fat' was the pre-2026-09 profile-pill value; 'fat_burn' is the canonical
+// engine key. It can still arrive from OLD persisted state (localStorage tandem_cfg,
+// Supabase users.program_goal) written before the pills were fixed, so every cfg
+// load site normalizes through here. Do NOT add a second inline `=== 'burn_fat'`
+// ternary anywhere — that silo is exactly what let getProgram(cfg.goal, …) receive
+// the raw key and generate a silently-wrong program (Bug & QA Log, 2026-09-24).
+function canonicalGoal(raw) {
+  return raw === 'burn_fat' ? 'fat_burn' : raw;
+}
+
 // EPIC-9: scale the authored 7-point intensity curve (weeks 2-8) across the
 // user's actual program length via linear interpolation. An 8-week program
 // reproduces the authored table exactly; a 12-week program stretches the same
 // wave (base → build → deload → reload → peak → deload) across weeks 2-12.
 // Week 1 is calibration; weeks past totalWeeks clamp to the final factor.
 function weekFactor(goal, week, totalWeeks) {
-  const g = goal === 'burn_fat' ? 'fat_burn' : goal;
+  const g = canonicalGoal(goal);
   const table = PROGRESSION[g] || PROGRESSION.build_muscle;
   const N = Math.max(Number(totalWeeks) || 8, 3);
   const wk = Math.min(Math.max(week, 2), N);
@@ -3246,7 +3262,7 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
 
   const tgt = getWeekTarget(exName || null, currentWeek, goal, oneRM || null, sex || null, compound1RMs, cfg.weeks);
   if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
-    const g = goal === 'burn_fat' ? 'fat_burn' : goal;
+    const g = canonicalGoal(goal);
     const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform', strength: 'Strength', maintenance: 'Maintain' };
     const goalLabel = goalLabels[g] || g;
     const displayName = exName || exId;
@@ -7265,7 +7281,7 @@ async function verifyOTP() {
 function skipAuth() {
   const savedCfg = LS.get('tandem_cfg');
   if (savedCfg?.goal) {
-    cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
+    cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
     currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
     renderTracker(); showView('dashboard');
@@ -7465,7 +7481,7 @@ async function restoreFromCloud() {
     mergeAvatarFieldsFromCloud(configData); // BUG-8: hydrate avatar_* independent of tandem_cfg gate below
     if (configData && !LS.get('tandem_cfg')) {
       LS.set('tandem_cfg', {
-        goal: configData.program_goal,
+        goal: canonicalGoal(configData.program_goal), // old accounts may still carry legacy 'burn_fat'
         days: configData.program_days_per_week,
         sex: configData.sex,
         experience: configData.fitness_level,
@@ -7708,10 +7724,9 @@ const oneOffState = { goal: null, focus: null, day: null, fromSaved: false };
 
 // Goal key for RECOVERY_PARAMS, PHASES and the goal-shaped opts below. The wizard's
 // pick wins; with no pick (or a stale/unknown one) this falls back to exactly the
-// previous behavior. 'burn_fat' is the onboarding pill's value and 'fat_burn' is the
-// canonical key — same alias weekFactor() already applies.
+// previous behavior. Legacy-key aliasing lives in canonicalGoal() — one home.
 function goalKeyFor(raw) {
-  const g = raw === 'burn_fat' ? 'fat_burn' : raw;
+  const g = canonicalGoal(raw);
   return RECOVERY_PARAMS[g] ? g : 'build_muscle';
 }
 function oneOffGoalKey() {
@@ -8783,7 +8798,7 @@ async function syncFromCloud() {
     mergeAvatarFieldsFromCloud(userData); // BUG-8: hydrate avatar_* even if this account has no program yet
     if (!userData?.program_goal) return false;
     cfg = {
-      goal: userData.program_goal,
+      goal: canonicalGoal(userData.program_goal), // old accounts may still carry legacy 'burn_fat'
       days: userData.program_days_per_week,
       weeks: userData.program_weeks || 12,
       sex: userData.sex,
@@ -10040,7 +10055,7 @@ function refreshAvatarPreview(){
     }
     const savedCfg = LS.get('tandem_cfg');
     if (savedCfg?.goal) {
-      cfg = savedCfg; selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
+      cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
       if (currentUser) {

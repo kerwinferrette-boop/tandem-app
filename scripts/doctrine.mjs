@@ -1259,8 +1259,12 @@ try {
   const overrideMatch = tandemHtml.match(/const DELOAD_INTENSITY_OVERRIDE = (\{[\s\S]*?\});/);
   const realizationMatch = tandemHtml.match(/const REALIZATION_INTENSITY = ([\d.]+);/);
   const weekFactorMatch = tandemHtml.match(/function weekFactor\(goal, week, totalWeeks\) \{[\s\S]*?\n\}\n/);
-  if (!progressionMatch || !overrideMatch || !realizationMatch || !weekFactorMatch) {
-    fail('D11', 'could not locate PROGRESSION / DELOAD_INTENSITY_OVERRIDE / REALIZATION_INTENSITY / weekFactor() in tandem.html');
+  // weekFactor() now normalizes via canonicalGoal() (the one home for the legacy
+  // 'burn_fat' alias, 2026-09-24) — extract the live helper too so the gate keeps
+  // running the REAL function, not a stub of it.
+  const canonicalGoalMatch = tandemHtml.match(/function canonicalGoal\(raw\) \{[\s\S]*?\n\}/);
+  if (!progressionMatch || !overrideMatch || !realizationMatch || !weekFactorMatch || !canonicalGoalMatch) {
+    fail('D11', 'could not locate PROGRESSION / DELOAD_INTENSITY_OVERRIDE / REALIZATION_INTENSITY / weekFactor() / canonicalGoal() in tandem.html');
   } else {
     const wf = vm.runInNewContext(`
       (function() {
@@ -1268,6 +1272,7 @@ try {
         const PROGRESSION = ${progressionMatch[1]};
         const DELOAD_INTENSITY_OVERRIDE = ${overrideMatch[1]};
         const REALIZATION_INTENSITY = ${realizationMatch[1]};
+        ${canonicalGoalMatch[0]}
         ${weekFactorMatch[0]}
         return { weekFactor, deloadWeeks, realizationWeek, DELOAD_INTENSITY_OVERRIDE, REALIZATION_INTENSITY };
       })()
@@ -1590,8 +1595,9 @@ try {
   const progMatch = tandemHtml.match(/const PROGRESSION = (\{[\s\S]*?\n\});/);
   const overrideMatch = tandemHtml.match(/const DELOAD_INTENSITY_OVERRIDE = (\{[^}]*\});/);
   const wfMatch = tandemHtml.match(/function weekFactor\(goal, week, totalWeeks\) \{[\s\S]*?\n\}/);
-  if (!progMatch || !overrideMatch || !wfMatch) {
-    fail('D13', 'could not locate PROGRESSION / DELOAD_INTENSITY_OVERRIDE / weekFactor in tandem.html');
+  const cgMatch = tandemHtml.match(/function canonicalGoal\(raw\) \{[\s\S]*?\n\}/); // weekFactor's live helper (one-home alias, 2026-09-24)
+  if (!progMatch || !overrideMatch || !wfMatch || !cgMatch) {
+    fail('D13', 'could not locate PROGRESSION / DELOAD_INTENSITY_OVERRIDE / weekFactor / canonicalGoal in tandem.html');
   } else {
     // IIFE-return pattern (matches D11/D12 above): const/function bindings declared
     // via vm.runInContext do NOT attach as properties of the sandbox object, so pull
@@ -1599,6 +1605,7 @@ try {
     const bundle = `(function(){
       const PROGRESSION = ${progMatch[1]};
       const DELOAD_INTENSITY_OVERRIDE = ${overrideMatch[1]};
+      ${cgMatch[0]}
       ${wfMatch[0]}
       return { weekFactor, PROGRESSION, DELOAD_INTENSITY_OVERRIDE };
     })()`;
@@ -1654,7 +1661,8 @@ try {
   const wfMatch = tandemHtml.match(/function weekFactor\(goal, week, totalWeeks\) \{[\s\S]*?\n\}/);
   const pwrMatch = tandemHtml.match(/function phaseWeekRep\(phase, week\) \{[\s\S]*?\n\}/);
   const erMatch = tandemHtml.match(/function effectiveReps\(phase, week, totalWeeks\) \{[\s\S]*?\n\}/);
-  if (!progMatch || !overrideMatch || !realIntensityMatch || !realRepsMatch || !wfMatch || !pwrMatch || !erMatch) {
+  const cgMatch14 = tandemHtml.match(/function canonicalGoal\(raw\) \{[\s\S]*?\n\}/); // weekFactor's live helper (one-home alias, 2026-09-24)
+  if (!progMatch || !overrideMatch || !realIntensityMatch || !realRepsMatch || !wfMatch || !pwrMatch || !erMatch || !cgMatch14) {
     fail('D14', 'could not locate realization-week machinery in tandem.html');
   } else {
     const bundle = `(function(){
@@ -1662,6 +1670,7 @@ try {
       const DELOAD_INTENSITY_OVERRIDE = ${overrideMatch[1]};
       const REALIZATION_INTENSITY = ${realIntensityMatch[1]};
       const REALIZATION_REPS = ${realRepsMatch[1]};
+      ${cgMatch14[0]}
       ${pwrMatch[0]}
       ${wfMatch[0]}
       ${erMatch[0]}
