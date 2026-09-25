@@ -1165,13 +1165,34 @@ const EXERCISE_BANK = {
     cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
-    muscleGroups:{primary:['hamstring_biceps_femoris'],secondary:['gastrocnemius']},
+    // BUG-103 (2026-09-25): all three hamstring heads are knee flexors, and EMG
+    // literature confirms semitendinosus is measurably active during prone/lying
+    // leg curl, not absent — it just differs in relative AMPLITUDE vs biceps
+    // femoris across leg-curl variants (hip position changes emphasis, not
+    // presence). Adding the tag brings this entry in line with its 3 siblings
+    // (nordic-curl, slider-leg-curl, glute-ham-raise), which already carry all
+    // three heads. Cite: PMC7872291 ("The task dependent differences in EMG
+    // activity of hamstring muscles during leg curls and hip extensions",
+    // PLOS ONE 2021) and the 2025 Journal of Sports Sciences systematic review +
+    // meta-analysis "Differences in activation amplitude between semitendinosus
+    // and biceps femoris during hamstring exercises" (DOI 10.1080/02640414.2025.2486879).
+    // Semimembranosus added alongside it for the same reason (fix the mechanism,
+    // not just the one named tag): semitendinosus and semimembranosus are the
+    // synergistic medial-hamstring pair, near-identical in knee-flexion action —
+    // this entry was the ONLY one of the 5 siblings missing semimembranosus too,
+    // the same incomplete-tag shape BUG-103 reports, just on a different tag.
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Knee flexion trains the short head of bicep femoris — the only head that cannot be reached with any hip hinge movement. Both hamstring functions (knee flexion AND hip extension) must be trained for complete development.',
     cues:['Pad just above the heel, not on the Achilles','Curl all the way up to maximum knee flexion','Do not let the hips lift off the pad','Lower slowly — do not let the weight slam']},
   'seated-leg-curl':{
     name:'Seated Leg Curl', videoId:'YyvSfVjQeL0',
-    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus'],secondary:['gastrocnemius']},
+    // BUG-103 (2026-09-25) — see the identical citation + rationale on lying-leg-curl
+    // above. Seated leg curl's own EMG literature (task-dependent hip-flexed
+    // position) confirms semitendinosus involvement too; this entry already
+    // carried 2 of 3 heads and was missing only this one, same incomplete-fix
+    // shape BUG-103 reports.
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'The seated position places hamstrings under stretch at both hip AND knee simultaneously — producing greater EMG activity than lying leg curl. A hamstring under hip-flexion tension is longer, increasing the hypertrophy stimulus.',
     cues:['Sit tall; thigh pad positioned just above the knee','Curl all the way to maximum knee flexion','Squeeze at peak — hold one count','Slow eccentric — resist the return all the way']},
