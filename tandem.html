@@ -5062,6 +5062,12 @@ function renderTracker() {
       // above already surfaces — so it reads as "you're behind," not as a bug.
       const s = getWeekSchedule();
       if (!s) return '';
+      // BUG-159 follow-up (Kerwin 2026-09-24): the same rhythm strip as Home, above the
+      // per-day list — one builder (rhythmStripParts) owns the markup for both surfaces.
+      const r = rhythmStripParts(s);
+      const strip = `<br><br><strong style="color:var(--text)">Week rhythm:</strong>`
+        + ` <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);">${r.shape}</span>`
+        + `<div class="dash-rhythm" style="margin:8px 0 2px;">${r.segsHtml}</div>`;
       const rows = s.cadence.map((key, i) => {
         const isRest = key === 'rest';
         const isToday = i === s.todayIndex;
@@ -5069,7 +5075,8 @@ function renderTracker() {
         return `<div style="display:flex;gap:8px;${isToday ? 'font-weight:700;color:var(--accent);' : isRest ? 'color:var(--muted);' : 'color:var(--text);'}">`
           + `<span style="width:52px;">Day ${i + 1}</span><span>${name}${isToday ? ' · today' : ''}</span></div>`;
       }).join('');
-      return `<br><br><strong style="color:var(--text)">Your 7-day schedule:</strong>`
+      return strip
+        + `<br><strong style="color:var(--text)">Your 7-day schedule:</strong>`
         + `<div style="margin-top:6px;font-size:13px;line-height:1.7;">${rows}</div>`;
     })()}
   `;
@@ -9274,12 +9281,10 @@ function renderDashboard() {
 // calendar somewhere." Renders the SAME getWeekSchedule() cadence the tracker and Goal
 // modal use (one rule, one home), in cycle order (Day 1..7 from startDate), each slot
 // labeled with its real weekday letter so it reads as a calendar; today is ringed.
-function renderDashRhythm() {
-  const panel = document.getElementById('dashRhythmPanel');
-  if (!panel) return;
-  const s = typeof getWeekSchedule === 'function' ? getWeekSchedule() : null;
-  if (!s) { panel.style.display = 'none'; return; }
-  panel.style.display = '';
+// rhythmStripParts(s) is the ONE builder for the strip's caption + segment markup —
+// consumed by both renderDashRhythm (Home) and the Goal modal's summary (renderTracker),
+// so the two surfaces can never drift apart.
+function rhythmStripParts(s) {
   // Run-length caption: ['day1','day2','rest',…] → "2 on · 1 off · …"
   const runs = [];
   s.cadence.forEach(k => {
@@ -9287,22 +9292,27 @@ function renderDashRhythm() {
     const last = runs[runs.length - 1];
     if (last && last.on === on) last.n++; else runs.push({ on, n: 1 });
   });
-  document.getElementById('dashRhythmShape').textContent =
-    runs.map(r => `${r.n} ${r.on ? 'on' : 'off'}`).join(' · ');
+  const shape = runs.map(r => `${r.n} ${r.on ? 'on' : 'off'}`).join(' · ');
   const letters = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const todayDow = new Date().getDay();
-  const strip = document.getElementById('dashRhythmStrip');
-  strip.innerHTML = '';
-  s.cadence.forEach((key, i) => {
-    const seg = document.createElement('div');
-    seg.className = 'dash-rhythm-seg' + (key !== 'rest' ? ' on' : '') + (i === s.todayIndex ? ' today' : '');
-    seg.title = key === 'rest' ? 'Rest' : s.labelFor(key);
-    const bar = document.createElement('span'); bar.className = 'dash-rhythm-bar';
-    const day = document.createElement('span'); day.className = 'dash-rhythm-day';
-    day.textContent = letters[(((todayDow + (i - s.todayIndex)) % 7) + 7) % 7];
-    seg.append(bar, day);
-    strip.append(seg);
-  });
+  const segsHtml = s.cadence.map((key, i) => {
+    const cls = 'dash-rhythm-seg' + (key !== 'rest' ? ' on' : '') + (i === s.todayIndex ? ' today' : '');
+    const title = key === 'rest' ? 'Rest' : s.labelFor(key);
+    const letter = letters[(((todayDow + (i - s.todayIndex)) % 7) + 7) % 7];
+    return `<div class="${cls}" title="${title}"><span class="dash-rhythm-bar"></span><span class="dash-rhythm-day">${letter}</span></div>`;
+  }).join('');
+  return { shape, segsHtml };
+}
+
+function renderDashRhythm() {
+  const panel = document.getElementById('dashRhythmPanel');
+  if (!panel) return;
+  const s = typeof getWeekSchedule === 'function' ? getWeekSchedule() : null;
+  if (!s) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const r = rhythmStripParts(s);
+  document.getElementById('dashRhythmShape').textContent = r.shape;
+  document.getElementById('dashRhythmStrip').innerHTML = r.segsHtml;
 }
 
 // ── Wave 2: hero card — today's session from the same schedule plumbing the
