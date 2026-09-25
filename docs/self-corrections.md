@@ -1004,3 +1004,38 @@ first wrote it, and every session after copied it forward as fact.
 session's unverified claim before it's acted on). `.claude/loop-config.md`'s own `notion:` section
 was corrected in the same cycle this was found (see its `CORRECTED 2026-09-24` note) so the
 now-wrong guidance doesn't keep propagating forward the way this one did.
+
+---
+
+## SC-28 — I guessed a Notion auto_increment_id instead of reading it back after create
+
+**What I did, Cycle 94 (2026-09-25).** Filed two new Bug & QA Log rows via `notion-create-pages`
+(discovery_handling, for the uncalibrated-PR-backfill gap and the one-off-save-wrong-session gap
+found while verifying BUG-49/BUG-57). `Bug ID` is `auto_increment_id` — read-only, assigned by
+Notion at create time, not knowable in advance. Instead of reading the create response (or
+re-fetching the page) to get the real assigned IDs, I guessed the next two sequential numbers after
+the highest one I'd seen that session (BUG-165) and named the two linked User Story Coverage rows
+"BUG-166"/"BUG-167" on that guess — then wrote both numbers into the Goal Record's cycle-94 log
+entry too. The real assigned IDs, confirmed by fetching the created pages back, were BUG-169/170
+(two IDs had already been consumed elsewhere in the workspace since I'd last checked). This is the
+identical mistake shape Cycle 93 already logged and fixed once (the BUG-154→165 misreference,
+`9f539e7`) — I made the same category of error again in the very next cycle instead of the rule
+generalizing.
+
+**Why this matters:** a wrong ID baked into a Story ID property, a cross-link, or a durable Goal
+Record entry is exactly the kind of small, boring drift that later makes `notion-search` for
+"BUG-166" return nothing (because it doesn't exist) while the real row sits under a different,
+unsearched name — silent breakage of the project's own cross-reference mechanism.
+
+> **THE RULE — SC-28.** Never write a Notion `auto_increment_id` value into ANY other field, page
+> title, or external doc (commit message, Goal Record, another page's Evidence) from a guess or a
+> sequential assumption — even a well-informed one, even under time pressure mid-cycle. Always read
+> it back from the create call's own response (`notion-create-pages` returns each new page's
+> properties) or a follow-up `notion-fetch`, and use that exact value. If a placeholder is
+> unavoidable before the real ID is known, mark it explicitly as a placeholder in the same edit,
+> never as a plain, confident-looking ID string.
+
+**Enforced by:** judgment — not mechanically checkable (there is no script that validates a
+Story ID's cross-reference against the live Bug Log before it's written). Caught and corrected
+same-cycle: both Story ID properties and the Goal Record cycle-94 entry were fixed to BUG-169/170
+before the cycle closed, per this same file's own SC-01/SC-10 same-session discipline.
