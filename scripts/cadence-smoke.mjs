@@ -40,7 +40,9 @@ vm.runInContext(programsSrc, ctx);
 vm.runInContext(`${recov}\n${mgfl}\n${cpd}\n${cwc}\nthis.computeWeekCadence = computeWeekCadence; this.RECOVERY_PARAMS = RECOVERY_PARAMS; this.muscleGroupFromLabel = muscleGroupFromLabel;`, ctx);
 const { getProgram, computeWeekCadence, RECOVERY_PARAMS, muscleGroupFromLabel } = ctx;
 
-const GOALS = ['build_muscle', 'fat_burn', 'transform'];
+// All 5 first-class goals (strength + maintenance added 2026-09-24, D8 promotion) — the
+// cadence mechanism branches on goal, so the sweep must cover every value of that axis.
+const GOALS = ['build_muscle', 'fat_burn', 'transform', 'strength', 'maintenance'];
 const failures = [];
 let checked = 0;
 
