@@ -75,8 +75,10 @@ let checked = 0;
 for (const goal of GOALS) {
   const baseCap = (RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle).maxConsecutive;
   for (const days of [2, 3, 4, 5, 6]) {
-    // mirror computeWeekCadence: ≥6-day plans are high-frequency (6 on / 1 off), cap relaxed
-    const cap = days >= 6 ? days : baseCap;
+    // mirror computeWeekCadence's derived feasible cap (BUG-159): circularly, (7−N) rest
+    // days allow at most (7−N) training runs, so min achievable max-run = ceil(N/(7−N)).
+    // Subsumes the old ≥6-day special case (ceil(6/1) = 6 = "6 on / 1 off", 2026-07-23).
+    const cap = days >= 7 ? days : Math.max(baseCap, Math.ceil(days / (7 - days)));
     const program = getProgram(goal, days, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 });
     if (!program?.length) { failures.push(`${goal}/${days}d: getProgram returned nothing`); continue; }
     const validKeys = new Set(program.map(d => d.key));
@@ -95,6 +97,23 @@ for (const goal of GOALS) {
     let maxRun = 0, run = 0;
     for (const s of cadence) { if (s !== 'rest') { run++; maxRun = Math.max(maxRun, run); } else run = 0; }
     if (maxRun > cap) failures.push(`${goal}/${days}d: ${maxRun} consecutive training days > cap ${cap}`);
+
+    // BUG-159 regression guards (2026-09-24):
+    // (a) WRAP-AROUND: getWeekSchedule() repeats this same 7-slot pattern every week
+    //     (startDate-anchored, diffDays % 7), so consecutive runs must be measured
+    //     CIRCULARLY — a run spanning slot 7 → next week's slot 1 is real training with
+    //     no rest between. Cap is the derived feasible cap max(goalCap, ceil(N/(7-N))):
+    //     (7-N) rest days can split the circle into at most (7-N) runs, so a 5-day week
+    //     mathematically cannot keep every run ≤ 2 (min feasible = 3).
+    const feasibleCap = days >= 7 ? days : Math.max(baseCap, Math.ceil(days / (7 - days)));
+    let cMax = 0, cRun = 0;
+    for (const s of cadence.concat(cadence)) { if (s !== 'rest') { cRun++; cMax = Math.max(cMax, cRun); } else cRun = 0; }
+    cMax = Math.min(cMax, 7);
+    if (cMax > feasibleCap) failures.push(`${goal}/${days}d: ${cMax} consecutive training days ACROSS THE WEEK SEAM > feasible cap ${feasibleCap} (BUG-159: cadence repeats weekly — the wrap is real)`);
+    // (b) A plan with ≥2 rest days (N ≤ 5) closes the week on rest — Kerwin 2026-09-24
+    //     (BUG-159): the slot-7 training day is why "Day 7 of 7" looked broken, and it is
+    //     what creates the hidden 3-day run across the seam for 5-day build/transform.
+    if (days <= 5 && cadence[6] !== 'rest') failures.push(`${goal}/${days}d: slot 7 is "${cadence[6]}", expected rest (BUG-159: ≤5-day weeks must close on rest — no seam run, no "Day 7 of 7")`);
 
     const training = cadence.filter(s => s !== 'rest').length;
 

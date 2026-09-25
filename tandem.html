@@ -982,6 +982,14 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
   border:none;box-shadow:0 6px 20px var(--accent-glow);cursor:pointer;}
 /* Shared panel chrome (duel, muscles, PR) */
 .dash-panel{background:var(--s1);border:1px solid var(--border2);border-radius:22px;padding:16px;margin-bottom:12px;}
+/* 1b. Week rhythm — BUG-159: the split SHAPE (2 on / 1 off / …) glanceable on Home */
+.dash-rhythm{display:flex;gap:6px;margin-top:10px;}
+.dash-rhythm-seg{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;}
+.dash-rhythm-bar{width:100%;height:26px;border-radius:8px;border:1px solid var(--border2);background:transparent;}
+.dash-rhythm-seg.on .dash-rhythm-bar{background:var(--accent);border-color:var(--accent);box-shadow:0 2px 10px var(--accent-glow);}
+.dash-rhythm-seg.today .dash-rhythm-bar{outline:2px solid var(--accent2);outline-offset:1px;}
+.dash-rhythm-day{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:var(--muted2);text-transform:uppercase;}
+.dash-rhythm-seg.on .dash-rhythm-day{color:var(--text);}
 .dash-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;}
 .dash-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;display:block;}
 /* 2. Duel */
@@ -1827,6 +1835,14 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <div class="dash-chips" id="dashHeroChips"></div>
       <span class="dash-cta" id="dashHeroCta">Start workout →</span>
     </button>
+
+    <!-- 1b. WEEK RHYTHM — BUG-159: the split SHAPE ("2 on / 1 off / 3 on / 1 off")
+         glanceable on Home instead of buried in the Goal modal. Same getWeekSchedule()
+         cadence the tracker and Goal modal render (one rule, one home). -->
+    <div class="dash-panel" id="dashRhythmPanel" style="display:none;">
+      <div class="dash-label"><span>Week rhythm</span><span id="dashRhythmShape"></span></div>
+      <div class="dash-rhythm" id="dashRhythmStrip"></div>
+    </div>
 
     <!-- 2. THE DUEL — tapping opens the Duel tab (breakdown ships in Wave 3) -->
     <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0">
@@ -8410,17 +8426,21 @@ function muscleGroupFromLabel(label) {
 // Returns false if placing dayIdx at slotIdx violates:
 //   - sameGroupMinGap: too few slots between same-muscle-group sessions (recovery science)
 //   - maxConsecutive: too many back-to-back training days without rest (fatigue accumulation)
+// BUG-159 (2026-09-24): both checks are CIRCULAR. getWeekSchedule() repeats this same
+// 7-slot pattern every week (startDate-anchored, diffDays % 7), so slot 7 is adjacent to
+// next week's slot 1 — the old linear scan let a 5-day plan train slots 6·7 + 1·2, a
+// hidden 3-day run across the week seam that no single-window check could see.
 function canPlaceDay(placed, groups, dayIdx, slotIdx, sameGroupMinGap, maxConsecutive) {
-  let streak = 0;
-  for (let s = slotIdx - 1; s >= 0; s--) {
-    if (placed.some(p => p.slot === s)) streak++;
-    else break;
-  }
-  if (streak >= maxConsecutive) return false;
+  const has = s => placed.some(p => p.slot === ((s % 7) + 7) % 7);
+  let run = 1; // the run this placement would create: contiguous placed slots before + self + after, wrapping
+  for (let s = slotIdx - 1; s > slotIdx - 7 && has(s); s--) run++;
+  for (let s = slotIdx + 1; s < slotIdx + 7 && has(s); s++) run++;
+  if (Math.min(run, 7) > maxConsecutive) return false;
   const myGroup = groups[dayIdx];
   if (myGroup !== 'full') {
     for (const p of placed) {
-      if (groups[p.dayIdx] === myGroup && (slotIdx - p.slot) < sameGroupMinGap) return false;
+      const d = Math.abs(slotIdx - p.slot);
+      if (groups[p.dayIdx] === myGroup && Math.min(d, 7 - d) < sameGroupMinGap) return false;
     }
   }
   return true;
@@ -8433,24 +8453,33 @@ function canPlaceDay(placed, groups, dayIdx, slotIdx, sameGroupMinGap, maxConsec
 function computeWeekCadence(numDays, goal, dayObjects) {
   const rec = RECOVERY_PARAMS[goal] || RECOVERY_PARAMS.build_muscle;
   const sameGroupMinGap = Math.ceil(rec.sameGroupHours / 24); // hours → day slots
-  // BUG-fix (Kerwin, 2026-07-23): a high-frequency plan (≥6 days) cannot fit into a
-  // 7-slot week under maxConsecutive=2 — the 6th day was silently DROPPED (5/6 scheduled).
-  // Kerwin's call: a 6-day split is "6 on, 1 off" — high-frequency by definition, where
-  // recovery comes from the split design (e.g. PPL×2 spaces each muscle ~72h) not from
-  // interspersed rest days. So relax the consecutive cap to fit all N days at ≥6 days.
-  const maxConsecutive  = numDays >= 6 ? numDays : rec.maxConsecutive;
+  // Derived feasible cap (BUG-159, 2026-09-24): circularly, the (7−N) rest days can split
+  // the week into at most (7−N) training runs, so the minimum achievable max-run is
+  // ceil(N/(7−N)). A 5-day week can NEVER keep every run ≤ 2 (min feasible = 3); a 6-day
+  // week needs 6 — which is exactly Kerwin's 2026-07-23 "6 on / 1 off" call, now derived
+  // instead of special-cased. The goal's own cap is tried FIRST per day; the feasible cap
+  // is a per-day fallback only when the stricter cap leaves a day unplaceable.
+  const feasibleCap = numDays >= 7 ? numDays : Math.max(rec.maxConsecutive, Math.ceil(numDays / (7 - numDays)));
+  // ≥6-day plans (Kerwin, 2026-07-23): high-frequency by definition — "6 on, 1 off".
+  // Recovery comes from the split design (PPL×2 spaces each muscle ~72h), not interspersed
+  // rest, so the relaxed cap is the FIRST choice there, keeping Day 7 = Rest.
+  const primaryCap  = numDays >= 6 ? feasibleCap : rec.maxConsecutive;
   const groups = dayObjects.map(d => muscleGroupFromLabel(d.label));
   const slots  = Array(7).fill('rest');
   const placed = [];
   let cursor = 0;
   for (let i = 0; i < numDays; i++) {
-    while (cursor < 7 && !canPlaceDay(placed, groups, i, cursor, sameGroupMinGap, maxConsecutive)) {
-      cursor++;
+    let slot = -1;
+    for (const cap of [primaryCap, feasibleCap]) {
+      for (let s = cursor; s < 7; s++) {
+        if (canPlaceDay(placed, groups, i, s, sameGroupMinGap, cap)) { slot = s; break; }
+      }
+      if (slot >= 0) break;
     }
-    if (cursor >= 7) break;
-    slots[cursor] = dayObjects[i].key;
-    placed.push({ slot: cursor, dayIdx: i });
-    cursor++;
+    if (slot < 0) break;
+    slots[slot] = dayObjects[i].key;
+    placed.push({ slot, dayIdx: i });
+    cursor = slot + 1;
   }
   return slots;
 }
@@ -9147,8 +9176,45 @@ function renderDashboard() {
 
   // Wave 2 sections — hero, muscles-this-week, latest PR (local-data renders)
   renderDashHero();
+  renderDashRhythm();
   renderMuscleWeek();
   renderLatestPR();
+}
+
+// ── BUG-159: week-rhythm strip — the split SHAPE on Home. ──
+// Kerwin 2026-09-24: "it's 2 days on, 1 day off… I wanted that to be shown in the
+// calendar somewhere." Renders the SAME getWeekSchedule() cadence the tracker and Goal
+// modal use (one rule, one home), in cycle order (Day 1..7 from startDate), each slot
+// labeled with its real weekday letter so it reads as a calendar; today is ringed.
+function renderDashRhythm() {
+  const panel = document.getElementById('dashRhythmPanel');
+  if (!panel) return;
+  const s = typeof getWeekSchedule === 'function' ? getWeekSchedule() : null;
+  if (!s) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  // Run-length caption: ['day1','day2','rest',…] → "2 on · 1 off · …"
+  const runs = [];
+  s.cadence.forEach(k => {
+    const on = k !== 'rest';
+    const last = runs[runs.length - 1];
+    if (last && last.on === on) last.n++; else runs.push({ on, n: 1 });
+  });
+  document.getElementById('dashRhythmShape').textContent =
+    runs.map(r => `${r.n} ${r.on ? 'on' : 'off'}`).join(' · ');
+  const letters = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const todayDow = new Date().getDay();
+  const strip = document.getElementById('dashRhythmStrip');
+  strip.innerHTML = '';
+  s.cadence.forEach((key, i) => {
+    const seg = document.createElement('div');
+    seg.className = 'dash-rhythm-seg' + (key !== 'rest' ? ' on' : '') + (i === s.todayIndex ? ' today' : '');
+    seg.title = key === 'rest' ? 'Rest' : s.labelFor(key);
+    const bar = document.createElement('span'); bar.className = 'dash-rhythm-bar';
+    const day = document.createElement('span'); day.className = 'dash-rhythm-day';
+    day.textContent = letters[(((todayDow + (i - s.todayIndex)) % 7) + 7) % 7];
+    seg.append(bar, day);
+    strip.append(seg);
+  });
 }
 
 // ── Wave 2: hero card — today's session from the same schedule plumbing the
