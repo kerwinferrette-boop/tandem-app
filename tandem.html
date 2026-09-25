@@ -1257,6 +1257,16 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
             <div class="goal-desc">Simultaneous fat loss and muscle building. Body recomposition through metabolic resistance training and moderate deficit.</div>
             <div class="goal-tags"><span class="goal-tag">8–15 Reps</span><span class="goal-tag">90 sec Rest</span><span class="goal-tag">MRT Circuits</span><span class="goal-tag">Hybrid Cardio</span></div>
           </div>
+          <div class="goal-card" style="--gc:var(--orange);--gd:color-mix(in srgb,var(--orange) 8%,transparent);--gb:color-mix(in srgb,var(--orange) 35%,transparent);" onclick="selectGoal('strength',this)">
+            <div class="goal-card-top"><div class="goal-icon" data-icon="trophy"></div><div class="goal-name">Strength</div></div>
+            <div class="goal-desc">Maximize force output on the big lifts. Heavy compound-first training at 85–100% 1RM with long, full-recovery rest — no supersets on primary lifts.</div>
+            <div class="goal-tags"><span class="goal-tag">1–5 Reps</span><span class="goal-tag">3–5 min Rest</span><span class="goal-tag">85–100% 1RM</span><span class="goal-tag">Heavy Compounds</span></div>
+          </div>
+          <div class="goal-card" style="--gc:var(--green);--gd:color-mix(in srgb,var(--green) 8%,transparent);--gb:color-mix(in srgb,var(--green) 35%,transparent);" onclick="selectGoal('maintenance',this)">
+            <div class="goal-card-top"><div class="goal-icon" data-icon="target"></div><div class="goal-name">Maintain</div></div>
+            <div class="goal-desc">Hold your current strength and size at a lower time cost. Moderate loads, capped volume, and flexible scheduling that fits around life.</div>
+            <div class="goal-tags"><span class="goal-tag">6–10 Reps</span><span class="goal-tag">60–120 sec Rest</span><span class="goal-tag">Capped Volume</span><span class="goal-tag">Flexible Schedule</span></div>
+          </div>
         </div>
       </div>
 
@@ -2800,7 +2810,17 @@ function getPhase(week, goal, totalWeeks) {
 const PROGRESSION = {
   fat_burn:     { 2: 0.65, 3: 0.67, 4: 0.69, 5: 0.71, 6: 0.73, 7: 0.76, 8: 0.80 },
   build_muscle: { 2: 0.67, 3: 0.69, 4: 0.71, 5: 0.73, 6: 0.75, 7: 0.77, 8: 0.80 },
-  transform:    { 2: 0.66, 3: 0.68, 4: 0.70, 5: 0.72, 6: 0.74, 7: 0.76, 8: 0.78 }
+  transform:    { 2: 0.66, 3: 0.68, 4: 0.70, 5: 0.72, 6: 0.74, 7: 0.76, 8: 0.78 },
+  // D8 goals (2026-09-24). Band ENDPOINTS are the Canonical Reference §2's (Notion
+  // 399ca37f935b8172acaafc541b703726): Strength 85-100% 1RM, Maintenance 65-80% 1RM.
+  // The week-by-week curve SHAPE inside each band is an engineering call, disclosed:
+  // strength ramps 85→95% and reserves the top 5% for logged top-set performance
+  // rather than prescription (no prescribed 1RM singles in an unsupervised app);
+  // maintenance holds a nearly flat 68-72% — retention, not overload, is the goal.
+  // Without these rows, weekFactor()'s `|| PROGRESSION.build_muscle` fallback would
+  // silently prescribe hypertrophy loads (67-80%) to both goals.
+  strength:     { 2: 0.85, 3: 0.86, 4: 0.88, 5: 0.89, 6: 0.91, 7: 0.93, 8: 0.95 },
+  maintenance:  { 2: 0.68, 3: 0.69, 4: 0.70, 5: 0.70, 6: 0.71, 7: 0.72, 8: 0.72 }
 };
 
 // D13 (goal-specific deload intensity): research-report(9) (Valyu, 2026-07-23) found
@@ -3211,7 +3231,7 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   const tgt = getWeekTarget(exName || null, currentWeek, goal, oneRM || null, sex || null, compound1RMs, cfg.weeks);
   if (tgt.weight != null && (tgt.source === 'calibrated' || tgt.source === 'derived')) {
     const g = goal === 'burn_fat' ? 'fat_burn' : goal;
-    const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform' };
+    const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform', strength: 'Strength', maintenance: 'Maintain' };
     const goalLabel = goalLabels[g] || g;
     const displayName = exName || exId;
     const reason = tgt.source === 'calibrated'
@@ -3421,13 +3441,14 @@ function getActiveProgram() {
 // will actually run (three values only). The card used to print parent_goal — so a
 // template authored as Strength but mapped onto the build_muscle chassis advertised
 // a program the engine cannot deliver. Kerwin ruled BOTH remedies:
-//   (a) FILTER — until D8 (Strength/Maintenance) ships, only list templates whose
-//       parent_goal is one the engine can deliver (D2: only canonical goals generate);
+//   (a) FILTER — only list templates whose parent_goal is one the engine can deliver
+//       (D2: only canonical goals generate). D8 shipped 2026-09-24: strength and
+//       maintenance are now canonical, so all five parent_goals are listable;
 //   (b) SURFACE — label the card with the engine goal, and when the two differ, say so
 //       out loud rather than silently substituting.
 // Onboarding fork (2026-09-14) reuses this same query/card pair, filtered to the
 // goal the user just picked — "one rule, one home" per CLAUDE.md.
-const LIVE_GOALS = ['build_muscle', 'fat_burn', 'transform']; // == doctrine.mjs CANONICAL_GOALS
+const LIVE_GOALS = ['build_muscle', 'fat_burn', 'transform', 'strength', 'maintenance']; // == doctrine.mjs CANONICAL_GOALS (D8 promoted 2026-09-24)
 const TEMPLATE_GOAL_LABEL = { build_muscle: 'Build Muscle', fat_burn: 'Fat Burn', transform: 'Transform', strength: 'Strength', maintenance: 'Maintenance' };
 
 async function fetchPublishedTemplates(goalFilter) {
@@ -3881,7 +3902,7 @@ async function createCustomTemplate(input) {
     }
   }
   const uid = currentUser.id;
-  const CODE_GOALS = ['build_muscle', 'fat_burn', 'transform']; // == doctrine.mjs CANONICAL_GOALS
+  const CODE_GOALS = ['build_muscle', 'fat_burn', 'transform', 'strength', 'maintenance']; // == doctrine.mjs CANONICAL_GOALS (D8 promoted 2026-09-24)
   const goal = CODE_GOALS.includes(cfg.goal) ? cfg.goal : 'build_muscle';
   const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'];
   const difficulty = EXPERIENCE_LEVELS.includes(cfg.experience) ? cfg.experience : 'intermediate';
@@ -4586,7 +4607,11 @@ function updateWeightGap() {
   const isGain = diff > 0;
   const isLoss = diff < 0;
 
-  // pace: fat loss ~2 lbs/week, muscle gain ~0.5 lbs/week, recomp ~1 lb/week
+  // pace: fat loss ~2 lbs/week, muscle gain ~0.5 lbs/week, recomp ~1 lb/week.
+  // strength/maintenance (D8, 2026-09-24) deliberately take the generic 1 lb/week
+  // else-branch: neither goal is DEFINED by a body-weight change (max force output /
+  // hold current size), so any weight gap the user enters is incidental — a generic
+  // estimate is honest where a goal-specific rate would be fabricated.
   let rateLabel, rateVal;
   if (selectedGoal === 'build_muscle') { rateVal = 0.5; rateLabel = '0.5 lbs/week'; }
   else if (selectedGoal === 'fat_burn') { rateVal = 2; rateLabel = '2 lbs/week'; }
@@ -4605,7 +4630,7 @@ function updateWeightGap() {
 }
 
 function populateReview() {
-  const goalMap = { fat_burn: { label: svgIcon('flame')+' Burn Fat', color: 'var(--red)' }, build_muscle: { label: svgIcon('dumbbell')+' Build Muscle', color: 'var(--blue)' }, transform: { label: svgIcon('zap')+' Transform', color: 'var(--teal)' } };
+  const goalMap = { fat_burn: { label: svgIcon('flame')+' Burn Fat', color: 'var(--red)' }, build_muscle: { label: svgIcon('dumbbell')+' Build Muscle', color: 'var(--blue)' }, transform: { label: svgIcon('zap')+' Transform', color: 'var(--teal)' }, strength: { label: svgIcon('trophy')+' Strength', color: 'var(--orange)' }, maintenance: { label: svgIcon('target')+' Maintain', color: 'var(--green)' } };
   const expMap = { beginner: svgIcon('sprout')+' Beginner', intermediate: svgIcon('zap')+' Intermediate', advanced: svgIcon('flame')+' Advanced' };
   const sexMap = { M: '♂ Male', F: '♀ Female' };
   const g = goalMap[selectedGoal] || { label: selectedGoal, color: 'var(--accent2)' };
@@ -5023,7 +5048,7 @@ function renderTracker() {
   // Nav
   document.getElementById('navRight').innerHTML = `
     <div class="nav-pill active" onclick="openModal('goal')">
-      ${cfg.goal === 'fat_burn' ? svgIcon('flame') : cfg.goal === 'build_muscle' ? svgIcon('dumbbell') : svgIcon('zap')}
+      ${cfg.goal === 'fat_burn' ? svgIcon('flame') : cfg.goal === 'build_muscle' ? svgIcon('dumbbell') : cfg.goal === 'strength' ? svgIcon('trophy') : cfg.goal === 'maintenance' ? svgIcon('target') : svgIcon('zap')}
       Wk ${currentWeek}
     </div>
     <div class="sync-dot" id="syncDot"></div>
@@ -7478,6 +7503,18 @@ const RECOVERY_PARAMS = {
   build_muscle: { sameGroupHours: 48, maxConsecutive: 2 }, // 48h between same groups; 2-on 1-off blocks
   fat_burn:     { sameGroupHours: 24, maxConsecutive: 3 }, // cardio tolerates more consecutive days
   transform:    { sameGroupHours: 36, maxConsecutive: 2 }, // intermediate
+  // D8 goals (2026-09-24). Neither the 5-Goal Taxonomy nor the Canonical Reference
+  // prescribes an inter-session recovery HOURS figure, so both values below are
+  // engineering calls, disclosed like D20's — Kerwin can override. Disclosure the
+  // task demanded: computeWeekCadence consumes these as Math.ceil(sameGroupHours/24),
+  // so strength's 48h collapses onto build_muscle's day-gap slot (ceil = 2 days) and
+  // maintenance's 24h collapses onto fat_burn's (ceil = 1 day). The hour values are
+  // therefore only *distinct* to D20's recency read, not to weekly cadence — chosen
+  // anyway because near-maximal loading recovers no faster than hypertrophy work
+  // (strength = 48/2) and "flexible scheduling" is part of maintenance's taxonomy
+  // definition (maintenance = 24/3, the most permissive cadence in the table).
+  strength:     { sameGroupHours: 48, maxConsecutive: 2 },
+  maintenance:  { sameGroupHours: 24, maxConsecutive: 3 },
 };
 
 // ══ EPIC-027 / EPIC-028 · SHARED RECENT-TRAINING-HISTORY READ ══

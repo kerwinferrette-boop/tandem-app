@@ -47,7 +47,7 @@ const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
 for (const e of Object.values(EXERCISE_BANK)) if (e && e.name) TIER_BY_NAME[e.name.trim().toLowerCase()] = e.tier;
 
-const CANONICAL_GOALS = ['build_muscle', 'fat_burn', 'transform']; // 5-Goal Taxonomy: 3 live (+strength, +maintenance pending)
+const CANONICAL_GOALS = ['build_muscle', 'fat_burn', 'transform', 'strength', 'maintenance']; // 5-Goal Taxonomy: all 5 live (D8 promoted 2026-09-24)
 
 // ── D16 tier map — every invariant's tier (Notion D16 page 3a7ca37f935b81ce8e88dff8a505fb12)
 // SAFETY = binds every path (generated, authored, adopted); no override exists.
@@ -946,7 +946,8 @@ for (const T of Object.keys(SPEC_PART_B_DELOAD_TABLE).map(Number)) {
 // Transform = antagonist supersets; Fat Burn = high-rep circuits (short-rest
 // supersets). Both must contain superset blocks whose paired exercises carry a
 // supersetGroup. (Supersets never touch the primary compound block — the never-on-
-// primary rule; Strength's stricter version is future D8.)
+// primary rule; Strength's stricter version is D8, ACTIVE since 2026-09-24 — its own
+// check block follows this one.)
 let d5Checked = 0;
 for (const goal of ['transform', 'fat_burn']) for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
   const p = gen(goal, days, sex, 1, 0);
@@ -1004,13 +1005,72 @@ if (typeof getSingleDay === 'function' && SUPERSET_CFG) {
   }
 }
 
+// ── D8 (ACTIVE, promoted 2026-09-24 — strength + maintenance shipped as first-class
+// goals, Kerwin's full-parity ruling) — SPLIT, both clauses executable:
+//
+// Clause 1 (SAFETY, no override — CLAUSE_TIERS['D8.no_supersets_on_primaries']):
+// Strength uses ZERO supersets on primary lifts (5-Goal Taxonomy row 4; Canonical
+// Reference §3 "never superset the main strength lift"). Enforcement is structural —
+// SUPERSET_CFG deliberately carries NO strength entry, so applySupersets cannot touch
+// a strength program, and D5's converse one-off check (above) now sweeps strength via
+// CANONICAL_GOALS — plus the behavioral assertions here so the structure itself is
+// pinned: a strength entry appearing in SUPERSET_CFG fails THIS gate, not just drifts.
+// We assert zero superset blocks ANYWHERE in a strength program (stronger than
+// never-on-primary, and true today by construction); the invariant's floor is the
+// primary lifts, so the Compound Block gets its own named assertion too.
+//
+// Clause 2 (SCIENCE_DEFAULT — CLAUSE_TIERS['D8.maintenance_mav_cap']): Maintenance
+// caps at MAV. Per-muscle weekly volume — the SAME computeMuscleWeeklyVolume() +
+// 1.0/0.5 credit accounting D6b uses, never a parallel implementation — must not
+// exceed VOLUME_LANDMARKS.maintenance.mav. MAV=15 mapping disclosed in DOCTRINE.md
+// and VOLUME_LANDMARKS' own comment: the Canonical Reference §1 table has no
+// Maintenance row (its MAV column is headed "MAV (Maintenance)"), so Maintenance
+// rides the Hypertrophy row's MEV 10 / MAV 12-15 as a disclosed engineering mapping.
+let d8Checked = 0;
+{
+  // Clause 1a — structural: SUPERSET_CFG has no entry for strength (or maintenance —
+  // the Taxonomy defines neither goal as superset-driven, so neither may be eligible).
+  for (const g of ['strength', 'maintenance']) {
+    d8Checked++;
+    if (SUPERSET_CFG[g]) fail('D8', `SUPERSET_CFG has a '${g}' entry — strength primaries must never superset (SAFETY, no override), and maintenance is not a superset-driven goal`);
+  }
+  // Clause 1b — behavioral, on the generated output: no superset block, no
+  // supersetGroup tag, and specifically no supersetted Compound Block, in any
+  // strength program across day-count × sex.
+  for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+    const p = gen('strength', days, sex, 1, 0);
+    d8Checked++;
+    for (const d of p || []) for (const b of d.blocks || []) {
+      if (b.superset || /superset/i.test(b.label || '')) fail('D8', `strength/${days}d/${sex}: superset block "${b.label}" — strength uses zero supersets on primary lifts (SAFETY)`);
+      if ((b.exs || []).some(e => e.supersetGroup)) fail('D8', `strength/${days}d/${sex}: exercise carries a supersetGroup tag in block "${b.label}"`);
+      if (/compound/i.test(b.label || '') && b.superset) fail('D8', `strength/${days}d/${sex}: a Compound Block was supersetted`);
+    }
+  }
+  // Clause 2 — maintenance per-muscle weekly volume ≤ MAV cap.
+  const mav = VOLUME_LANDMARKS.maintenance?.mav;
+  if (!mav) fail('D8', 'VOLUME_LANDMARKS.maintenance.mav is missing — the MAV cap has no number to gate against');
+  else for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+    const prog = getProgram('maintenance', days, 12, sex, 'full_gym', 'balanced', null, null, { week: 1, phase: 0 });
+    const vol = computeMuscleWeeklyVolume(prog, EXERCISE_BANK);
+    for (const token of MAJOR_MUSCLE_GROUP_TOKENS) {
+      d8Checked++;
+      const total = Object.entries(vol).filter(([tag]) => tag === token || tag.startsWith(token + '_'))
+        .reduce((sum, [, v]) => sum + v, 0);
+      if (total > mav) fail('D8', `maintenance/${days}d/${sex}: '${token}' weekly volume ${total} sets exceeds the MAV cap (${mav}) — Maintenance holds at MAV-level volume, never MRV (5-Goal Taxonomy row 5; Canonical Reference §1 "MAV (Maintenance)" column)`);
+    }
+  }
+}
+
 // ── D10 (ACTIVE) — Rep schemes honor each goal's taxonomy band ─────────────────
 // Science audit 2026-07-22. Fat Burn = high-rep circuits (>=10 reps); Build Muscle =
 // hypertrophy 6-15 (NEVER 1-5 max-strength — that is the separate Strength goal, and
 // reps 5-30 give equivalent hypertrophy volume-equated to failure); Transform = mixed
 // 8-12. This is what the "Peak Strength inside a hypertrophy goal" / "6-rep Fat Burn"
 // drift got wrong; the gate now blocks it.
-const REP_BANDS = { fat_burn: [10, 20], build_muscle: [6, 15], transform: [8, 12] };
+const REP_BANDS = { fat_burn: [10, 20], build_muscle: [6, 15], transform: [8, 12],
+  // D8 promotion 2026-09-24 — Canonical Reference §2: strength 1-5 @ 85-100% 1RM;
+  // maintenance 6-10 @ 65-80%. Taxonomy rows 4-5 state the same bands verbatim.
+  strength: [1, 5], maintenance: [6, 10] };
 let d10Checked = 0;
 for (const [goal, [lo, hi]] of Object.entries(REP_BANDS)) {
   for (const phase of (GOAL_PHASES[goal] || [])) {
@@ -2532,7 +2592,6 @@ const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
   ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b (now ACTIVE) as its real per-muscle baseline', 'needs numeric ramp cadence'],
   ['D6d', 'D6b\'s weekly MEV floor must hold on EVERY axis the generator branches on (tier × experience × duration), not only full_gym at default experience/duration, which is all D6b sweeps. After BUG-122 + the D28 major-muscle ruling (2026-09-23): 126 cells below MEV across that sweep (old engine: 144); the 72 new ones are cells the old engine reached only by stacking one lift past ~11 sets/session — 54 home 2-day anterior delt (blocked on tags: the only home-tier primary anterior-delt bank entry is Jumping Jacks), 18 3-day beginner full_gym hamstring. Every cell: docs/bug122-below-mev-cells.md', 'needs the engine to add a related lift for a muscle still under MEV (muscle_tag_rescope first for home front-delt tags)'],
-  ['D8', 'Strength goal uses ZERO supersets on primary lifts; Maintenance caps at MAV volume', 'when goals added'],
   ['D28', 'Time-constrained session drops ONE isolation accessory — the one training no major muscle group, acc3 only if all do (Kerwin 2026-09-23, droppableAccessory()) (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
 ];
 
@@ -2733,6 +2792,7 @@ console.log(`  D29 oneRmFactor is load-estimation only, never a selection/rankin
 console.log(`  D30 no two COMPOUND exercises share a movement pattern in one session (BUG-151) — ${d30Checked} getSingleDay + buildDynamicProgram checks (home-tier back/pull bank-coverage gap allowlisted, not asserted against)`);
 console.log(`  D9  one-off "Build Me a Workout" conformance — ${d9Checked} focus×tier sessions (exempt from D1/D4/D7 by design)`);
 console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — ${d6Checked} split×sex checked`);
+console.log(`  D8  strength: zero supersets (SAFETY, structural + behavioral); maintenance: per-muscle volume ≤ MAV ${VOLUME_LANDMARKS.maintenance?.mav} (SCIENCE_DEFAULT) — ${d8Checked} checks`);
 console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);
 console.log(`  D33 per-muscle per-session ceiling (~${SESSION_MUSCLE_CEILING} fractional sets, Remmert et al. 2025): no lift above it alone, extra sets only for a muscle still within it — ${d33Checked} exercise-sessions checked across goal×day-count×sex×tier`);
 console.log(`  D32 fat_burn cardio finisher gated by sex + weight delta (men optional <=20lb, women never gated, unknown delta keeps cardio on, build_muscle/transform unaffected) — ${d32Checked} day-count×sex×delta checks`);

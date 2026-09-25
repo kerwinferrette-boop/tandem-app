@@ -308,6 +308,33 @@ const PHASES = {
          why:'Maximum mechanical advantage for pec major at peak week. Flat barbell has the highest absolute load ceiling of all pressing variants. Peak phase is where the progression culminates — standard strength expression movement.',
          cues:['Retract and depress scapula into bench','Bar path: mid-chest to above lower pec','Drive heels into floor throughout','Full lockout without shoulder impingement']}
      }}
+  ],
+  strength: [
+    // 5-Goal Taxonomy (Notion 399ca37f935b81f193b4dd0d13775888): Strength = max force output.
+    // 1-5 reps @ 85-100% 1RM, 3-5 min rest on primary lifts, heavy compound-first, ZERO
+    // supersets on primary lifts (doctrine D8 clause 1, SAFETY — no override path).
+    // Canonical Reference §2: Strength 1-5 reps / 85-100% / 1-2 RIR / 3-5 min rest; §3:
+    // accessory work AFTER the main lift is hypertrophy-supportive, so restAcc stays 90s.
+    // Peak week uses heavy doubles, not true 1RM singles — engineering call (disclosed,
+    // not cited): unsupervised two-person app, no spotter; the taxonomy's 1-5 band
+    // licenses doubles without requiring max-single testing. pctComp runs 5→2 (inside
+    // D24's ACSM 2-10 band) — near-maximal loads progress slower than hypertrophy loads;
+    // the specific curve is an engineering call, disclosed like D20's values.
+    {name:'Strength Foundation', intent:'Groove heavy technique at 5s. Bar speed and position first — the nervous system learns the pattern before the load peaks. Long rest IS the work: full recovery between sets is what lets every set stay maximal.', weeks:[1,3],  reps:'5·5·4', restComp:180, restAcc:90, pctComp:5},
+    {name:'Strength Build',      intent:'Load climbs, reps drop to 4s. Every set heavy, every rep crisp — no grinding. Accessories stay moderate to support the primary lifts without stealing recovery from them.',                                       weeks:[4,6],  reps:'4·4·3', restComp:210, restAcc:90, pctComp:4},
+    {name:'Strength Intensify',  intent:'Triples and doubles at near-maximal load, 1-2 reps in reserve. Rest stretches toward 4 minutes — force output is the goal, accumulated fatigue is the enemy.',                                                    weeks:[7,9],  reps:'3·3·2', restComp:240, restAcc:90, pctComp:3},
+    {name:'Peak Strength',       intent:'Realization block — heavy doubles at the top of the cycle. The strongest you have been on every primary lift. Full 5-minute rest before each top set.',                                                          weeks:[10,12],reps:'2·2·2', restComp:300, restAcc:90, pctComp:2}
+  ],
+  maintenance: [
+    // 5-Goal Taxonomy (same page): Maintenance = hold current strength/size at lower time
+    // cost. Canonical Reference §2: Maintenance 6-10 reps / 65-80% 1RM / 2-3 RIR /
+    // 60-120s rest. Volume sits at MAV, never MRV (doctrine D8 clause 2, SCIENCE_DEFAULT).
+    // pctComp sits at/near PROGRESSION_PCT_MIN — retention, not overload, is the goal;
+    // the flat curve is an engineering call, disclosed.
+    {name:'Maintain Foundation', intent:'Re-establish every movement pattern at comfortable loads, 2-3 reps in reserve. Nothing here should feel like a grind — the stimulus to KEEP muscle is far smaller than the stimulus it took to build it.', weeks:[1,3],  reps:'10·9·8', restComp:120, restAcc:60, pctComp:3},
+    {name:'Maintain Hold',       intent:'Hold the working loads. Volume sits at MAV — enough stimulus to keep every adaptation, and no more time than that requires.',                                                                             weeks:[4,6],  reps:'9·8·8',  restComp:120, restAcc:60, pctComp:2},
+    {name:'Maintain Refresh',    intent:'Slight rep re-expansion for variety at the same loads. Flexible scheduling is part of this goal\u2019s definition — a moved session beats a missed one.',                                                     weeks:[7,9],  reps:'10·8·7', restComp:120, restAcc:60, pctComp:2},
+    {name:'Maintain Steady',     intent:'Close the cycle where it started: strength and size held, at a fraction of the weekly time a growth phase costs.',                                                                                        weeks:[10,12],reps:'8·7·6',  restComp:120, restAcc:60, pctComp:2}
   ]
 };
 
@@ -3111,6 +3138,14 @@ const GOAL_VOLUME = {
   transform:    { compound: 4, isolation: 4 },
   build_muscle: { compound: 4, isolation: 3 },
   fat_burn:     { compound: 3, isolation: 3 },
+  // D8 goals (2026-09-24). strength: 5-set compounds (classic 5×5/5×3 shape) target §1's
+  // Strength MAV 6-8 sets/muscle/wk with 3-set accessories; isolation stays supportive.
+  // maintenance: deliberately the LOWEST counts of any goal — the taxonomy defines it as
+  // "lower time cost", and D8 caps its weekly per-muscle volume at MAV (see
+  // VOLUME_LANDMARKS.maintenance.mav). The exact counts are an engineering call within
+  // those sourced bounds, disclosed like D20's values.
+  strength:     { compound: 5, isolation: 3 },
+  maintenance:  { compound: 3, isolation: 2 },
 };
 // D6b + BUG-122 (Kerwin, 2026-09-23, live: "focusing in on the muscle versus the lift
 // is the way to go … I want this checked for every muscle … ingrained in the engine").
@@ -3221,6 +3256,64 @@ function applyGoalVolume(program, goal, compoundRef) {
         }
       }
     }
+    // D8 clause 2 — MAV cap. The raise loop above owns the FLOOR; this owns the
+    // CEILING, and only for a goal whose source states a closed MAV bound (today:
+    // maintenance only — see VOLUME_LANDMARKS' own comment; every other goal's
+    // MAV/MRV is an open-ended range, so capping them would be fabrication and
+    // `landmark.mav` is absent). Trim isolation before compounds (Maintenance's
+    // point is HOLDING strength at lower time cost, so compound work is protected),
+    // take from the slot with the most sets first (undo stacking), never below
+    // 1 set (a slot is trimmed, never emptied — D18's no-dropped-slot principle),
+    // never touching a compoundRef-fixed slot, and never dropping ANY muscle the
+    // trimmed lift credits below the goal's own MEV floor UNLESS a clean restore
+    // slot exists (the floor and the cap must both hold; D6b gates the floor,
+    // D8 clause 2 gates the cap).
+    //
+    // Why the restore machinery exists (found by running the gate, 3-day split):
+    // a multi-sub-tag muscle (quad carries 4 quad_* tags, so one squat set is 4
+    // quad credits) blows past the cap while every OTHER muscle its lifts credit
+    // sits at exactly MEV — so a naive "never drop a floor" guard can never trim
+    // anything and the cap silently fails. The floor and the cap conflict only
+    // THROUGH shared slots, so the resolution is: trim the over-cap slot anyway
+    // when some OTHER slot can restore the dropped floor without pushing any
+    // token over the cap (e.g. trim Squat/Step-Up, restore hamstring via the
+    // quad-free Good Morning), then run that restore as a second pass. The
+    // restore pass reuses the MEV raise loop's own selection rules plus one
+    // extra guard: a restore raise may never push any token past the cap.
+    if (landmark.mav) {
+      const cleanRaise = (r) => Object.entries(r.mevW).every(([k, w]) => (weekly[k] || 0) + w <= landmark.mav);
+      const canRestore = (tok, exclude) => slots.some(r => r !== exclude && !r.fixed && r.mevW[tok] && cleanRaise(r) && fits(r, tok));
+      const mevSafe = (s) => Object.entries(s.mevW).every(([tok, w]) =>
+        (weekly[tok] || 0) - w >= landmark.mev || canRestore(tok, s));
+      for (const compound of [false, true]) {
+        for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+          while ((weekly[t] || 0) > landmark.mav) {
+            const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && s.sets > 1 && mevSafe(s));
+            if (!pool.length) break;
+            const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+            const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+              .sort((a, b) => (b.sets - a.sets) || (b.order - a.order))[0];
+            s.sets--;
+            credit(s, -1);
+          }
+        }
+      }
+      // Restore pass — same shape as the MEV raise loop above, restricted to
+      // clean raises so restoring one floor can never re-break the cap.
+      for (const compound of [true, false]) {
+        for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+          while ((weekly[t] || 0) < landmark.mev) {
+            const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && cleanRaise(s) && fits(s, t));
+            if (!pool.length) break;
+            const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+            const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+              .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
+            s.sets++;
+            credit(s, 1);
+          }
+        }
+      }
+    }
   }
   for (const s of slots) {
     const b = out[s.di].blocks[s.bi];
@@ -3237,11 +3330,19 @@ function applyGoalVolume(program, goal, compoundRef) {
 // per that page's own header). MEV is a closed lower bound in the source; MAV/MRV
 // are given as open-ended ranges ("20+", "15+", "18+") so only MEV is gated —
 // asserting a precise ceiling the source doesn't state would be fabrication.
+// ONE exception: maintenance carries a `mav` ceiling, because for that goal the
+// source DOES state a closed bound (see its entry below) and D8 clause 2 gates it.
 // ═══════════════════════════════════════════════════════
 const VOLUME_LANDMARKS = {
   build_muscle: { mev: 10 }, // Hypertrophy: MEV 10 sets/muscle/wk (MAV 12-15, MRV 20+ — documented, not gated)
   fat_burn:     { mev: 8 },  // Fat Loss: MEV 8 (MAV 10-12, MRV 15+ — documented, not gated)
   transform:    { mev: 10 }, // Concurrent: MEV 10-12, low end taken conservatively (MAV 12-16, MRV 18+ — documented, not gated)
+  strength:     { mev: 4 },  // Strength: MEV 4-6, low end conservatively (MAV 6-8, MRV 10-12 — closed ranges in §1, documented; not gated for this goal)
+  // §1 has NO Maintenance row — its MAV column is itself headed "MAV (Maintenance)",
+  // so Maintenance maps onto the Hypertrophy row: MEV 10 floor, MAV 12-15 → cap 15.
+  // The NUMBERS are the source's; the row MAPPING is an engineering call (disclosed —
+  // Kerwin can override). mav is gated by doctrine D8 clause 2 (SCIENCE_DEFAULT).
+  maintenance:  { mev: 10, mav: 15 },
 };
 // The muscle groups the day templates actually target directly (both engines'
 // compound slots), derived from FOCUS_SLOTS itself rather than a second hand-typed
@@ -3398,8 +3499,12 @@ function realizationWeek(weeks) {
 //   transform → antagonist supersets, 60s rest (recomp: strength + metabolic)
 //   fat_burn  → circuit-style supersets, 30s rest (high-rep, EPOC — its DEFINITION)
 //   build_muscle → none by default (optional on accessories; not required, and
-//                  changing it would reshuffle in-flight programs). strength (later)
-//                  forbids supersets on primary lifts specifically (future D8).
+//                  changing it would reshuffle in-flight programs).
+//   strength / maintenance → deliberately ABSENT (2026-09-24, D8 promoted ACTIVE).
+//                  D8 clause 1 (SAFETY) forbids supersets on strength primary lifts;
+//                  absence from this table means applySupersets() no-ops for the whole
+//                  goal, which satisfies it structurally. D5's converse check and D8's
+//                  own assertion in scripts/doctrine.mjs both verify this stays true.
 // Applied as a uniform post-process so it covers EVERY day-count path identically.
 // Each "Accessory Block" splits into paired "Superset A/B" blocks that the render
 // layer's coach-tip recognizes ("perform both back-to-back"). Odd leftover stays a
@@ -4093,6 +4198,245 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
             {label:'Metabolic Finisher · 15 min', cardio:true, exs:[
               {id:'tr-c4', name:'Incline Treadmill — Intervals', badge:'cardio', cardioOnly:true,
                cardioDesc:'1 min fast walk (4.0 mph, 10% incline) / 1 min easy (3.0 mph, 2% incline) × 7–8 rounds. Incline walking intervals are joint-friendly after heavy legs while creating significant calorie burn. Closes the training week.', zone:'HR 140–165 BPM intervals', duration:15}
+            ]}
+          ]
+        }
+      ]
+    },
+    // ── D8 static bases (2026-09-24) — strength & maintenance own their fallback,
+    // full parity with the three original goals (Kerwin's ruling: never re-label an
+    // existing goal's base). Like every base here, these are the EMERGENCY fallback
+    // only — the dynamic engine is always the primary source. Strength days carry no
+    // cardio finisher: the 5-Goal Taxonomy's Strength row prescribes none, and §3's
+    // day shape is Compound → Compound → Accessory. Maintenance carries none either —
+    // "lower time cost" is its definition.
+    strength: {
+      4: [
+        { key:'day1', label:'Day 1 · Upper Push Strength', color:'var(--red)', rationale:'Heavy pressing day. Two maximal compound lifts with full 3-minute rest, then supportive accessory volume. Force output first — nothing competes with the bar.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'st-bench', name:'Flat Barbell Press', badge:'compound', sets:5, w:185, r:5, rest:180, compound:true,
+               why:'Highest absolute-load pressing pattern available. At 85%+ of 1RM the flat barbell press trains maximal motor-unit recruitment across chest, anterior delt and triceps.',
+               cues:['Retract and depress scapulae into the bench.','Bar to mid-chest, forearms vertical at the bottom.','Leg drive through the floor. Full lockout, no bounce.']},
+              {id:'st-ohp', name:'Seated DB Shoulder Press', badge:'compound', sets:4, w:55, r:5, rest:180, compound:true,
+               why:'Heavy overhead pressing builds pressing strength the bench cannot — scapular-plane stability under maximal load with independent-arm control.',
+               cues:['Back flat against the pad. Core braced.','Press to full lockout without shrugging.','Lower to ear level under control — no bounce out of the bottom.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'st-incdb', name:'Incline DB Press', badge:'isolation', sets:3, w:60, r:8, rest:90, compound:false,
+               why:'Hypertrophy-range support work for the pressing muscles. Accessories after the main lifts grow the muscle that expresses the strength — without stealing recovery from the bar work.',
+               cues:['Bench at 30°.','Full stretch at the bottom without shoulder strain.','2-sec eccentric every rep.']},
+              {id:'st-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:65, r:8, rest:90, compound:false,
+               why:'Lockout strength lives in the triceps. Direct moderate-rep work here directly supports the top half of every press.',
+               cues:['Slight forward hinge.','Full extension, 1-sec squeeze.','Elbows pinned to sides.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'st-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-extension bracing is the same skill that keeps the trunk rigid under a heavy bar. Zero spinal shear.',
+               cues:['Lower back pressed to floor throughout.','Opposite arm and leg lower slowly.','10 per side = 1 set.']},
+              {id:'st-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core stiffness transfers directly to staying rigid under maximal loads.',
+               cues:['Elbow under shoulder, hips stacked.','Drive hips up — no sag.','35 sec each side.']},
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower Hinge Strength', color:'var(--orange)', rationale:'Heavy hip-hinge day. The posterior chain moves the most load of any pattern — long rest, low reps, maximal intent on every set.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'st-rdl', name:'Romanian Deadlift', badge:'compound', sets:5, w:205, r:5, rest:180, compound:true,
+               why:'The heaviest hinge available without floor-pull setup. At 5s and below the RDL trains hamstring and erector strength that carries every other lower lift.',
+               cues:['Hips back, bar against the legs the whole descent.','Neutral spine — brace before every rep.','Drive hips through at the top. No lumbar finish.']},
+              {id:'st-hip', name:'Hip Thrust', badge:'compound', sets:4, w:205, r:5, rest:180, compound:true,
+               why:'Maximal glute force production at the hip — the strongest joint action in the body, loaded directly.',
+               cues:['Bench at shoulder-blade base.','Drive through the full foot to lockout.','Chin tucked, ribs down — no hyperextension.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'st-curl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:95, r:8, rest:90, compound:false,
+               why:'Direct hamstring hypertrophy support for the hinge — knee-flexion work the RDL cannot provide.',
+               cues:['Hips pressed into the pad.','Full extension every rep.','3-sec eccentric.']},
+              {id:'st-calf', name:'Standing Calf Raise', badge:'isolation', sets:3, w:180, r:10, rest:90, compound:false,
+               why:'Ankle stiffness under load supports every standing heavy lift.',
+               cues:['Full hang at the bottom, 1-sec pause.','Full rise, 1-sec squeeze.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'st-be', name:'Back Extension', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Erector endurance is the insurance policy on every heavy hinge.',
+               cues:['Neutral spine throughout.','Rise to straight — never hyperextended.','2-sec hold at top.']},
+              {id:'st-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Loads the rectus through hip flexion with zero lumbar compression after a heavy hinge session.',
+               cues:['Curl hips off the floor with the abs, not momentum.','3-sec lower.','Feet never touch down between reps.']},
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Upper Pull Strength', color:'var(--red)', rationale:'Heavy pulling day. Balances the pressing work and builds the upper-back strength that anchors every big lift.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'st-pull', name:'Lat Pulldown', badge:'compound', sets:5, w:140, r:5, rest:180, compound:true,
+               why:'Heavy vertical pulling at low reps builds lat and grip strength with precise load control set to set.',
+               cues:['Chest up, slight lean back.','Pull to upper chest — elbows down and back.','2-sec controlled return, full stretch.']},
+              {id:'st-row', name:'Seated Cable Row', badge:'compound', sets:4, w:150, r:5, rest:180, compound:true,
+               why:'Heavy horizontal pulling loads the mid-back — the platform every press and hinge braces against.',
+               cues:['Neutral spine, no torso swing.','Pull to the sternum, squeeze the shoulder blades.','Full protraction at the stretch.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'st-hc', name:'Hammer Curl', badge:'isolation', sets:3, w:30, r:8, rest:90, compound:false,
+               why:'Elbow-flexor and forearm support for heavy pulling grip.',
+               cues:['Neutral grip, elbows pinned.','No swing.','Squeeze at the top.']},
+              {id:'st-fp', name:'Face Pull', badge:'isolation', sets:3, w:45, r:12, rest:90, compound:false,
+               why:'Rear-delt and external-rotator health work — the counterweight to a heavy pressing program.',
+               cues:['Pull to eye level, elbows high.','Thumbs point behind you at the finish.','Light and strict.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'st-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion under traction decompresses the spine and builds the grip endurance heavy pulling demands.',
+               cues:['Full hang.','Knees to hip height, controlled.','3-sec lower, no swing.']},
+              {id:'st-db3', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-extension bracing, second exposure of the week.',
+               cues:['Lower back pressed to floor.','Slow contralateral reach.','10 per side = 1 set.']},
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower Quad Strength', color:'var(--orange)', rationale:'Heavy knee-dominant day. The squat pattern under maximal load closes the week — the single biggest driver of total-body strength.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'st-hack', name:'Hack Squat', badge:'compound', sets:5, w:230, r:5, rest:180, compound:true,
+               why:'Maximal knee-dominant loading with the spine guided — lets the quads express full force at 85%+ without technique becoming the limiter.',
+               cues:['Feet mid-platform, shoulder width.','Depth to parallel or below, under control.','Drive through the full foot — knees track the toes.']},
+              {id:'st-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:40, r:6, rest:180, compound:true,
+               why:'Heavy unilateral strength evens left-right force output and stabilizes the hip under load.',
+               cues:['Front shin vertical.','Torso slightly forward, hips square.','Drive through the front heel.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'st-ext', name:'Leg Extension', badge:'isolation', sets:3, w:90, r:10, rest:90, compound:false,
+               why:'Direct quad hypertrophy support — the muscle that expresses squat strength.',
+               cues:['Pad at the base of the shin.','1-sec squeeze at full extension.','Controlled return.']},
+              {id:'st-calf2', name:'Standing Calf Raise', badge:'isolation', sets:3, w:180, r:10, rest:90, compound:false,
+               why:'Second weekly calf exposure — volume is what calves respond to.',
+               cues:['Full stretch at the bottom.','Full rise, 1-sec squeeze.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'st-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Highest anti-extension demand of any core movement — the trunk rigidity heavy squatting runs on.',
+               cues:['Roll out slowly, back neutral.','Only as far as form holds.','Pull back with the abs.']},
+              {id:'st-sp4', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral stiffness, second exposure — closes the week.',
+               cues:['Elbow under shoulder, hips stacked.','No sag.','35 sec each side.']},
+            ]}
+          ]
+        }
+      ]
+    },
+    maintenance: {
+      4: [
+        { key:'day1', label:'Day 1 · Upper Push Maintain', color:'var(--red)', rationale:'Efficient pressing day. Moderate loads, 2-3 reps in reserve, MAV-level volume — everything needed to hold the adaptation, nothing more.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mt-bench', name:'DB Bench Press', badge:'compound', sets:3, w:60, r:8, rest:120, compound:true,
+               why:'The pressing pattern at 65-80% keeps chest, delt and tricep strength exactly where you built it — retention needs far less than growth did.',
+               cues:['Scapulae set into the bench.','Full range, controlled eccentric.','Stop 2-3 reps shy of failure.']},
+              {id:'mt-press', name:'Arnold Press', badge:'compound', sets:3, w:35, r:8, rest:120, compound:true,
+               why:'Full-delt pressing keeps every head trained in one time-efficient movement.',
+               cues:['Rotate out as you press.','Core braced, no lumbar arch.','Controlled tempo throughout.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mt-lat', name:'Cable Lateral Raise', badge:'isolation', sets:2, w:15, r:12, rest:60, compound:false,
+               why:'Two hard sets is retention volume for the lateral delt.',
+               cues:['Lead with the elbow.','Stop at shoulder height.','Slow negative.']},
+              {id:'mt-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:2, w:55, r:10, rest:60, compound:false,
+               why:'Minimum effective tricep work to hold pressing lockout strength.',
+               cues:['Elbows pinned.','Full extension, 1-sec squeeze.','Strict form.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mt-db', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Core control maintained with two quality sets.',
+               cues:['Lower back pressed to floor.','Slow contralateral reach.','10 per side = 1 set.']},
+              {id:'mt-sp', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core stiffness held at maintenance dose.',
+               cues:['Hips stacked, body straight.','No sag.','30 sec each side.']},
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower Hinge Maintain', color:'var(--orange)', rationale:'Posterior-chain day at retention dose. The hinge pattern stays greased, hamstrings and glutes hold their size, and the session stays short.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mt-rdl', name:'Romanian Deadlift', badge:'compound', sets:3, w:155, r:8, rest:120, compound:true,
+               why:'Three moderate sets keep hinge strength and hamstring tissue exactly where the last block left them.',
+               cues:['Hips back, bar on the legs.','Neutral spine.','Drive hips through at the top.']},
+              {id:'mt-hip', name:'Hip Thrust', badge:'compound', sets:3, w:155, r:8, rest:120, compound:true,
+               why:'Direct glute loading at retention volume.',
+               cues:['Drive through the full foot.','1-sec hold at lockout.','Ribs down, no hyperextension.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mt-curl', name:'Lying Leg Curl', badge:'isolation', sets:2, w:85, r:10, rest:60, compound:false,
+               why:'Knee-flexion hamstring work the hinge misses — two sets holds it.',
+               cues:['Hips pressed into the pad.','Full range.','3-sec eccentric.']},
+              {id:'mt-calf', name:'Standing Calf Raise', badge:'isolation', sets:2, w:160, r:12, rest:60, compound:false,
+               why:'Retention dose for the calves.',
+               cues:['Full stretch, full rise.','1-sec pauses.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mt-be', name:'Back Extension', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Erector endurance maintained alongside the hinge.',
+               cues:['Neutral spine.','Rise to straight, never past.','2-sec hold.']},
+              {id:'mt-rc', name:'Reverse Crunch', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Lower rectus at maintenance dose, zero lumbar compression.',
+               cues:['Curl hips with the abs.','Slow lower.','No momentum.']},
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Upper Pull Maintain', color:'var(--red)', rationale:'Pulling day at retention dose. Back size and posture work stay intact on six working sets.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mt-pull', name:'Lat Pulldown', badge:'compound', sets:3, w:110, r:8, rest:120, compound:true,
+               why:'Vertical pull at 65-80% holds lat strength and width.',
+               cues:['Chest up.','Pull to upper chest.','2-sec controlled return.']},
+              {id:'mt-row', name:'Seated Cable Row', badge:'compound', sets:3, w:120, r:8, rest:120, compound:true,
+               why:'Horizontal pull keeps mid-back thickness and posture.',
+               cues:['No torso swing.','Squeeze the blades at the sternum.','Full stretch each rep.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mt-hc', name:'Hammer Curl', badge:'isolation', sets:2, w:25, r:10, rest:60, compound:false,
+               why:'Two sets holds elbow-flexor size.',
+               cues:['Neutral grip.','No swing.','Squeeze at the top.']},
+              {id:'mt-fp', name:'Face Pull', badge:'isolation', sets:2, w:40, r:12, rest:60, compound:false,
+               why:'Shoulder-health work stays in even at minimum volume.',
+               cues:['Pull to eye level.','Elbows high.','Strict and light.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mt-hkr', name:'Hanging Knee Raise', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Spinal decompression plus grip, maintenance dose.',
+               cues:['Full hang.','Controlled raise.','3-sec lower.']},
+              {id:'mt-db3', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Second core-control exposure of the week.',
+               cues:['Back pressed to floor.','Slow reach.','10 per side = 1 set.']},
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower Quad Maintain', color:'var(--orange)', rationale:'Knee-dominant day closes the week at retention dose. Quads and single-leg stability hold with a fraction of a growth block\u2019s volume.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mt-gob', name:'Goblet Squat', badge:'compound', sets:3, w:70, r:8, rest:120, compound:true,
+               why:'The squat pattern maintained with minimal setup cost — fits the goal\u2019s flexible-scheduling definition.',
+               cues:['Elbows inside the knees at depth.','Chest tall.','Drive through the full foot.']},
+              {id:'mt-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:25, r:8, rest:120, compound:true,
+               why:'Unilateral strength and balance retained per leg.',
+               cues:['Front shin vertical.','Hips square.','Drive through the front heel.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mt-ext', name:'Leg Extension', badge:'isolation', sets:2, w:70, r:12, rest:60, compound:false,
+               why:'Direct quad work at retention dose.',
+               cues:['1-sec squeeze at extension.','Controlled return.','No crashing.']},
+              {id:'mt-calf2', name:'Standing Calf Raise', badge:'isolation', sets:2, w:160, r:12, rest:60, compound:false,
+               why:'Second weekly calf exposure at maintenance volume.',
+               cues:['Full range.','1-sec pauses top and bottom.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mt-aw', name:'Ab Wheel Rollout', badge:'core', sets:2, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-extension strength held with two hard sets.',
+               cues:['Slow rollout, neutral back.','Range only as far as form holds.','Pull back with the abs.']},
+              {id:'mt-sp4', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Closes the week — lateral stiffness at maintenance dose.',
+               cues:['Hips stacked.','No sag.','30 sec each side.']},
             ]}
           ]
         }
@@ -4917,6 +5261,242 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
             {label:'Metabolic Finisher · 15 min', cardio:true, exs:[
               {id:'trf-c4', name:'Incline Treadmill — Intervals', badge:'cardio', cardioOnly:true,
                cardioDesc:'1 min fast walk (10% incline) / 1 min easy × 7–8 rounds. Joint-friendly after heavy legs.', zone:'HR 135–160 BPM intervals', duration:15}
+            ]}
+          ]
+        }
+      ]
+    },
+    // ── D8 female static bases (2026-09-24) — same parity rule as the male entries:
+    // strength & maintenance own their fallback. Structure mirrors the other female
+    // bases (DB-forward pressing, hip-thrust-led hinge day); loads scaled accordingly.
+    // No cardio finishers — same sourcing note as the male D8 bases above.
+    strength: {
+      4: [
+        { key:'day1', label:'Day 1 · Upper Push Strength', color:'var(--red)', rationale:'Heavy pressing day. Two maximal compound lifts with full 3-minute rest, then supportive accessory volume.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'stf-bench', name:'DB Bench Press', badge:'compound', sets:5, w:30, r:5, rest:180, compound:true,
+               why:'Heavy dumbbell pressing at 85%+ trains maximal recruitment across chest, anterior delt and triceps with independent-arm control.',
+               cues:['Scapulae set into the bench.','Full range without shoulder strain.','Press with maximal intent every rep.']},
+              {id:'stf-ohp', name:'Seated DB Shoulder Press', badge:'compound', sets:4, w:25, r:5, rest:180, compound:true,
+               why:'Heavy overhead pressing builds shoulder strength the bench cannot — stability under maximal load.',
+               cues:['Back flat against the pad.','Press to full lockout without shrugging.','Lower to ear level under control.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'stf-incdb', name:'Incline DB Press', badge:'isolation', sets:3, w:20, r:8, rest:90, compound:false,
+               why:'Hypertrophy-range support for the pressing muscles — grows the tissue that expresses the strength.',
+               cues:['Bench at 30°.','Full stretch at the bottom.','2-sec eccentric.']},
+              {id:'stf-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:40, r:8, rest:90, compound:false,
+               why:'Lockout strength lives in the triceps — direct support for the top half of every press.',
+               cues:['Slight forward hinge.','Full extension, 1-sec squeeze.','Elbows pinned.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'stf-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-extension bracing — the same skill that keeps the trunk rigid under heavy load.',
+               cues:['Lower back pressed to floor.','Slow contralateral reach.','10 per side = 1 set.']},
+              {id:'stf-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core stiffness transfers directly to bracing under maximal loads.',
+               cues:['Elbow under shoulder, hips stacked.','No sag.','35 sec each side.']},
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower Hinge Strength', color:'var(--orange)', rationale:'Heavy glute and hamstring day. The posterior chain moves the most load of any pattern — long rest, low reps, maximal intent.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'stf-hip', name:'Hip Thrust', badge:'compound', sets:5, w:135, r:5, rest:180, compound:true,
+               why:'Maximal glute force production at the hip — the strongest joint action in the body, loaded directly and heavy.',
+               cues:['Bench at shoulder-blade base.','Drive through the full foot to lockout.','Ribs down — no hyperextension.']},
+              {id:'stf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:95, r:5, rest:180, compound:true,
+               why:'The heaviest hinge available — hamstring and erector strength that carries every other lower lift.',
+               cues:['Hips back, bar on the legs.','Neutral spine, brace every rep.','Drive hips through at the top.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'stf-curl', name:'Lying Leg Curl', badge:'isolation', sets:3, w:70, r:8, rest:90, compound:false,
+               why:'Direct hamstring support — knee-flexion work the hinge cannot provide.',
+               cues:['Hips pressed into the pad.','Full range.','3-sec eccentric.']},
+              {id:'stf-calf', name:'Standing Calf Raise', badge:'isolation', sets:3, w:120, r:10, rest:90, compound:false,
+               why:'Ankle stiffness under load supports every standing heavy lift.',
+               cues:['Full hang, 1-sec pause.','Full rise, 1-sec squeeze.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'stf-be', name:'Back Extension', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Erector endurance is the insurance policy on every heavy hinge.',
+               cues:['Neutral spine.','Rise to straight, never past.','2-sec hold at top.']},
+              {id:'stf-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Rectus work through hip flexion, zero lumbar compression after heavy hinging.',
+               cues:['Curl hips with the abs.','3-sec lower.','No momentum.']},
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Upper Pull Strength', color:'var(--red)', rationale:'Heavy pulling day. Balances the pressing work and builds the upper-back strength that anchors every big lift.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'stf-pull', name:'Lat Pulldown', badge:'compound', sets:5, w:70, r:5, rest:180, compound:true,
+               why:'Heavy vertical pulling at low reps builds lat and grip strength with precise load control.',
+               cues:['Chest up, slight lean back.','Pull to upper chest.','2-sec controlled return.']},
+              {id:'stf-row', name:'Seated Cable Row', badge:'compound', sets:4, w:70, r:5, rest:180, compound:true,
+               why:'Heavy horizontal pulling loads the mid-back — the platform every press and hinge braces against.',
+               cues:['Neutral spine, no swing.','Pull to the sternum.','Full stretch each rep.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'stf-hc', name:'Hammer Curl', badge:'isolation', sets:3, w:15, r:8, rest:90, compound:false,
+               why:'Elbow-flexor and forearm support for heavy pulling grip.',
+               cues:['Neutral grip, elbows pinned.','No swing.','Squeeze at the top.']},
+              {id:'stf-fp', name:'Face Pull', badge:'isolation', sets:3, w:30, r:12, rest:90, compound:false,
+               why:'Rear-delt and external-rotator health — the counterweight to heavy pressing.',
+               cues:['Pull to eye level, elbows high.','Thumbs behind you at the finish.','Light and strict.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'stf-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Hip flexion under traction decompresses the spine and builds pulling grip endurance.',
+               cues:['Full hang.','Knees to hip height.','3-sec lower, no swing.']},
+              {id:'stf-db3', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-extension bracing, second exposure of the week.',
+               cues:['Back pressed to floor.','Slow reach.','10 per side = 1 set.']},
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower Quad Strength', color:'var(--orange)', rationale:'Heavy knee-dominant day closes the week — the squat pattern under maximal load is the biggest driver of total-body strength.',
+          blocks:[
+            {label:'Compound Block · Rest 180 sec', exs:[
+              {id:'stf-gob', name:'Goblet Squat', badge:'compound', sets:5, w:50, r:5, rest:180, compound:true,
+               why:'Heavy goblet squatting keeps the torso honest while the quads express maximal force — the safest heavy squat without a rack.',
+               cues:['Elbows inside the knees at depth.','Chest tall throughout.','Drive through the full foot.']},
+              {id:'stf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:25, r:6, rest:180, compound:true,
+               why:'Heavy unilateral strength evens left-right force output and stabilizes the hip.',
+               cues:['Front shin vertical.','Hips square.','Drive through the front heel.']},
+            ]},
+            {label:'Accessory Block · Rest 90 sec', exs:[
+              {id:'stf-ext', name:'Leg Extension', badge:'isolation', sets:3, w:55, r:10, rest:90, compound:false,
+               why:'Direct quad hypertrophy support — the muscle that expresses squat strength.',
+               cues:['Pad at the base of the shin.','1-sec squeeze.','Controlled return.']},
+              {id:'stf-calf2', name:'Standing Calf Raise', badge:'isolation', sets:3, w:120, r:10, rest:90, compound:false,
+               why:'Second weekly calf exposure — volume is what calves respond to.',
+               cues:['Full stretch.','Full rise, 1-sec squeeze.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'stf-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Highest anti-extension demand of any core movement — the trunk rigidity heavy squatting runs on.',
+               cues:['Slow rollout, neutral back.','Only as far as form holds.','Pull back with the abs.']},
+              {id:'stf-sp4', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral stiffness, second exposure — closes the week.',
+               cues:['Hips stacked.','No sag.','35 sec each side.']},
+            ]}
+          ]
+        }
+      ]
+    },
+    maintenance: {
+      4: [
+        { key:'day1', label:'Day 1 · Upper Push Maintain', color:'var(--red)', rationale:'Efficient pressing day. Moderate loads, 2-3 reps in reserve, MAV-level volume — everything needed to hold the adaptation, nothing more.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mtf-bench', name:'DB Bench Press', badge:'compound', sets:3, w:20, r:8, rest:120, compound:true,
+               why:'The pressing pattern at 65-80% keeps chest, delt and tricep strength exactly where you built it.',
+               cues:['Scapulae set into the bench.','Full range, controlled eccentric.','Stop 2-3 reps shy of failure.']},
+              {id:'mtf-press', name:'Arnold Press', badge:'compound', sets:3, w:15, r:8, rest:120, compound:true,
+               why:'Full-delt pressing keeps every head trained in one time-efficient movement.',
+               cues:['Rotate out as you press.','Core braced.','Controlled tempo.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mtf-lat', name:'Cable Lateral Raise', badge:'isolation', sets:2, w:10, r:12, rest:60, compound:false,
+               why:'Two hard sets is retention volume for the lateral delt.',
+               cues:['Lead with the elbow.','Stop at shoulder height.','Slow negative.']},
+              {id:'mtf-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:2, w:35, r:10, rest:60, compound:false,
+               why:'Minimum effective tricep work to hold pressing lockout strength.',
+               cues:['Elbows pinned.','Full extension.','Strict form.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mtf-db', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Core control maintained with two quality sets.',
+               cues:['Lower back pressed to floor.','Slow reach.','10 per side = 1 set.']},
+              {id:'mtf-sp', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Lateral core stiffness held at maintenance dose.',
+               cues:['Hips stacked.','No sag.','30 sec each side.']},
+            ]}
+          ]
+        },
+        { key:'day2', label:'Day 2 · Lower Hinge Maintain', color:'var(--orange)', rationale:'Glute and hamstring day at retention dose. The hinge pattern stays greased and the session stays short.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mtf-hip', name:'Hip Thrust', badge:'compound', sets:3, w:95, r:8, rest:120, compound:true,
+               why:'Direct glute loading at retention volume — holds everything the last block built.',
+               cues:['Drive through the full foot.','1-sec hold at lockout.','Ribs down.']},
+              {id:'mtf-rdl', name:'Romanian Deadlift', badge:'compound', sets:3, w:65, r:8, rest:120, compound:true,
+               why:'Three moderate sets keep hinge strength and hamstring tissue where the last block left them.',
+               cues:['Hips back, bar on the legs.','Neutral spine.','Drive hips through at the top.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mtf-curl', name:'Lying Leg Curl', badge:'isolation', sets:2, w:55, r:10, rest:60, compound:false,
+               why:'Knee-flexion hamstring work the hinge misses — two sets holds it.',
+               cues:['Hips pressed into the pad.','Full range.','3-sec eccentric.']},
+              {id:'mtf-calf', name:'Standing Calf Raise', badge:'isolation', sets:2, w:100, r:12, rest:60, compound:false,
+               why:'Retention dose for the calves.',
+               cues:['Full stretch, full rise.','1-sec pauses.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mtf-be', name:'Back Extension', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Erector endurance maintained alongside the hinge.',
+               cues:['Neutral spine.','Rise to straight.','2-sec hold.']},
+              {id:'mtf-rc', name:'Reverse Crunch', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Lower rectus at maintenance dose, zero lumbar compression.',
+               cues:['Curl hips with the abs.','Slow lower.','No momentum.']},
+            ]}
+          ]
+        },
+        { key:'day3', label:'Day 3 · Upper Pull Maintain', color:'var(--red)', rationale:'Pulling day at retention dose. Back strength and posture work stay intact on six working sets.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mtf-pull', name:'Lat Pulldown', badge:'compound', sets:3, w:50, r:8, rest:120, compound:true,
+               why:'Vertical pull at 65-80% holds lat strength and width.',
+               cues:['Chest up.','Pull to upper chest.','2-sec controlled return.']},
+              {id:'mtf-row', name:'Seated Cable Row', badge:'compound', sets:3, w:50, r:8, rest:120, compound:true,
+               why:'Horizontal pull keeps mid-back strength and posture.',
+               cues:['No torso swing.','Squeeze the blades.','Full stretch each rep.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mtf-hc', name:'Hammer Curl', badge:'isolation', sets:2, w:12, r:10, rest:60, compound:false,
+               why:'Two sets holds elbow-flexor size.',
+               cues:['Neutral grip.','No swing.','Squeeze at the top.']},
+              {id:'mtf-fp', name:'Face Pull', badge:'isolation', sets:2, w:25, r:12, rest:60, compound:false,
+               why:'Shoulder-health work stays in even at minimum volume.',
+               cues:['Pull to eye level.','Elbows high.','Strict and light.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mtf-hkr', name:'Hanging Knee Raise', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Spinal decompression plus grip, maintenance dose.',
+               cues:['Full hang.','Controlled raise.','3-sec lower.']},
+              {id:'mtf-db3', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Second core-control exposure of the week.',
+               cues:['Back pressed to floor.','Slow reach.','10 per side = 1 set.']},
+            ]}
+          ]
+        },
+        { key:'day4', label:'Day 4 · Lower Quad Maintain', color:'var(--orange)', rationale:'Knee-dominant day closes the week at retention dose. Quads and single-leg stability hold with a fraction of a growth block\u2019s volume.',
+          blocks:[
+            {label:'Compound Block · Rest 120 sec', exs:[
+              {id:'mtf-gob', name:'Goblet Squat', badge:'compound', sets:3, w:30, r:8, rest:120, compound:true,
+               why:'The squat pattern maintained with minimal setup cost — fits the goal\u2019s flexible-scheduling definition.',
+               cues:['Elbows inside the knees at depth.','Chest tall.','Drive through the full foot.']},
+              {id:'mtf-bss', name:'Bulgarian Split Squat', badge:'compound', sets:3, w:15, r:8, rest:120, compound:true,
+               why:'Unilateral strength and balance retained per leg.',
+               cues:['Front shin vertical.','Hips square.','Drive through the front heel.']},
+            ]},
+            {label:'Accessory Block · Rest 60 sec', exs:[
+              {id:'mtf-ext', name:'Leg Extension', badge:'isolation', sets:2, w:45, r:12, rest:60, compound:false,
+               why:'Direct quad work at retention dose.',
+               cues:['1-sec squeeze at extension.','Controlled return.','No crashing.']},
+              {id:'mtf-calf2', name:'Standing Calf Raise', badge:'isolation', sets:2, w:100, r:12, rest:60, compound:false,
+               why:'Second weekly calf exposure at maintenance volume.',
+               cues:['Full range.','1-sec pauses.','No bouncing.']},
+            ]},
+            {label:'Core Block · Rest 30 sec', exs:[
+              {id:'mtf-aw', name:'Ab Wheel Rollout', badge:'core', sets:2, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+               why:'Anti-extension strength held with two hard sets.',
+               cues:['Slow rollout, neutral back.','Range only as far as form holds.','Pull back with the abs.']},
+              {id:'mtf-sp4', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+               why:'Closes the week — lateral stiffness at maintenance dose.',
+               cues:['Hips stacked.','No sag.','30 sec each side.']},
             ]}
           ]
         }

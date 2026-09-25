@@ -19,7 +19,7 @@
 // signal.
 // ═══════════════════════════════════════════════════════
 
-export const GOALS      = ['fat_burn', 'build_muscle', 'transform'];
+export const GOALS      = ['fat_burn', 'build_muscle', 'transform', 'strength', 'maintenance']; // 5-Goal Taxonomy: all 5 live (D8 promoted 2026-09-24)
 export const DAY_COUNTS = [2, 3, 4, 5, 6];
 export const SEXES      = ['male', 'female'];
 export const TIERS      = ['full_gym', 'hotel_gym', 'home'];
