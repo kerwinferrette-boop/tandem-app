@@ -619,6 +619,27 @@ const EXERCISE_BANK = {
     emphasis:['shoulders','push','upper_body'], equipment:'cable', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Cable provides constant tension at the bottom of the front raise — where dumbbells are nearly tension-free. Useful as a finishing exercise after heavy pressing when the anterior delt needs targeted volume.',
     cues:['Cable at ankle height, facing away from stack','Raise the arm straight in front to shoulder height','Keep slight elbow bend throughout','Slow eccentric — resist the cable on the way down']},
+  'band-front-raise':{
+    // BUG-119b (2026-09-26, exercise-science-research pass): home tier had zero anterior_delt-
+    // primary isolation entries — db-front-raise/cable-front-raise (above) are hotel_gym+ only,
+    // so a home-tier anterior_delt request fell through D18's empty-pool fallback to Band Chest
+    // Fly (pec_major_sternal-primary). Same movement pattern as db-front-raise/cable-front-raise,
+    // band equipment. Band-modality equivalence citation CORRECTED this pass, not carried forward
+    // from the existing (mislabeled) in-bank comment: the real SAGE Open Medicine 2019 paper is
+    // Silva Lopes, Machado, Micheletti et al., "Effects of training with elastic resistance versus
+    // conventional resistance on muscular strength: A systematic review and meta-analysis," SAGE
+    // Open Medicine 2019, DOI 10.1177/2050312119831116 (18 trials; elastic ~= conventional
+    // resistance for strength gains) — the existing band-curl/band-lateral-raise/band-hammer-curl
+    // comments cite "Aboodarda et al. 2019, SAGE Open Medicine," which conflates two different real
+    // papers (Aboodarda, Page & Behm, Clinical Biomechanics 2016 vol 39 — a different journal/year)
+    // into one wrong byline. Verified live via WebSearch this cycle; filed as a new discovery
+    // (mislabeled citation, not fixed here — out of this story's declared scope) rather than
+    // silently correcting the other three entries in the same pass.
+    name:'Band Front Raise', videoId:null,
+    muscleGroups:{primary:['anterior_delt'],secondary:['pec_major_clavicular']},
+    emphasis:['shoulders','push','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Band version of the front raise — trains the anterior delt in a lengthened position using only a band anchored underfoot. Use sparingly: anterior delt is heavily loaded by all pressing movements and can become overdeveloped relative to lateral and posterior heads.',
+    cues:['Stand on the band, one or both handles in hand, palms down','Raise straight in front to shoulder height — stop there','Keep a slight elbow bend throughout','Lower slowly against the band — control the eccentric']},
   'face-pull':{
     name:'Face Pull', videoId:'eIq5CB9JfKE',
     muscleGroups:{primary:['posterior_delt','rhomboid','external_rotator'],secondary:['middle_trap','lower_trap']},
@@ -1701,7 +1722,7 @@ const MOVEMENT_FAMILIES = {
     variants:['db-lateral-raise','cable-lateral-raise','single-arm-cable-lateral-raise',
               'lateral-raise-machine','band-lateral-raise']},
   'front-raise':{ label:'Front Raise', pattern:'isolation', canonicalLift:null,
-    variants:['db-front-raise','cable-front-raise']},
+    variants:['db-front-raise','cable-front-raise','band-front-raise']},
   'rear-delt-fly':{ label:'Rear Delt Fly', pattern:'isolation', canonicalLift:null,
     variants:['rear-delt-fly','reverse-fly','cable-rear-delt-fly','reverse-pec-deck',
               'face-pull','band-pull-apart']},
