@@ -7427,6 +7427,74 @@ function mergeAvatarFieldsFromCloud(row) {
   if (changed) LS.set('tandem_profile', p);
 }
 
+// ── mergeCloudSessionsIntoHistory() — BUG-178, one rule one home ──
+//
+// restoreFromCloud() and syncFromCloud() each hydrated tandem_history behind an
+// ALL-OR-NOTHING EMPTY GUARD: once local history was non-empty, no cloud
+// workout_sessions row could ever reach it again. This is the SAME defect class the
+// PR merge and the lastsets merge below were already fixed for by the 2026-07-13
+// C-fix, one field over — that fix's own comment says the old guard meant data "was
+// invisible to another [device] that already had any local data." History never got
+// that treatment, and a row that only ever existed server-side (BUG-131's repair
+// insert, written directly in Postgres, never present on this device) sat
+// permanently invisible to completedSessionCount()/nextProgramDayKey() — a completed
+// workout was re-served as "next" (BUG-154/BUG-156/BUG-178).
+//
+// Identity is NOT `id`. A row Finish()/skipAhead()/etc. write locally carries a
+// numeric Date.now() id; the SAME session, once syncToCloud() has pushed it, comes
+// back from Supabase with a completely different uuid id. Those never match, so
+// deduping on id alone would double-count every session that exists on both sides.
+// The one thing both representations share is the business key — session_date plus
+// day_type/day plus session_type — so that composite is the primary identity here.
+// `id` is kept as a secondary fast-path for the case both sides already carry the
+// identical id (a row hydrated from cloud once, re-fetched on a later sync).
+//
+// Only ADDS a cloud row with no existing match; every local row is preserved
+// untouched, including one Finish() wrote offline that has not synced up yet. Keeps
+// the newest-first order tandem_history relies on elsewhere (see the comment near
+// buildLiftSeries()'s `hist.slice().reverse()`), and the 100-row cap every other
+// tandem_history writer respects. Does NOT change `completed`/`session_type`/
+// `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
+// stays the only home for that test.
+function _historyRowKey(row) {
+  if (row && row.session_date != null) {
+    return 'k:' + row.session_date + '|' + (row.day_type ?? row.day ?? '') + '|' + (row.session_type ?? '');
+  }
+  return (row && row.id != null) ? 'id:' + row.id : null;
+}
+function _historySortKey(row) {
+  if (!row) return '';
+  if (row.session_date) return row.session_date;
+  if (row.created_at) return row.created_at;
+  if (typeof row.id === 'number') { const d = new Date(row.id); if (!isNaN(d)) return d.toISOString(); }
+  if (row.date) { const d = new Date(row.date); if (!isNaN(d)) return d.toISOString(); }
+  return '';
+}
+function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
+  const existing = Array.isArray(existingLocal) ? existingLocal : [];
+  const cloud = Array.isArray(cloudSessions) ? cloudSessions : [];
+  if (!cloud.length) return existing;
+  const seenKeys = new Set(existing.map(_historyRowKey).filter(Boolean));
+  const seenIds = new Set(existing.filter(r => r && r.id != null).map(r => r.id));
+  const toAdd = [];
+  for (const row of cloud) {
+    const { user_id, ...s } = row || {}; // never let the DB's user_id leak into local storage
+    const key = _historyRowKey(s);
+    if (key && seenKeys.has(key)) continue;
+    if (s.id != null && seenIds.has(s.id)) continue;
+    if (key) seenKeys.add(key);
+    if (s.id != null) seenIds.add(s.id);
+    toAdd.push(s);
+  }
+  if (!toAdd.length) return existing;
+  const merged = existing.concat(toAdd);
+  merged.sort((a, b) => {
+    const ka = _historySortKey(a), kb = _historySortKey(b);
+    return ka < kb ? 1 : ka > kb ? -1 : 0; // newest-first
+  });
+  return merged.slice(0, 100);
+}
+
 async function restoreFromCloud() {
   if (!currentUser) { closeModal('history'); showView('auth'); return; }
   setSyncStatus('syncing');
@@ -7438,12 +7506,14 @@ async function restoreFromCloud() {
     if (se) throw se;
     if (sessions?.length) {
       const existing = LS.get('tandem_history') || [];
-      if (!existing.length) {
-        LS.set('tandem_history', sessions.map(({user_id, ...s}) => s));
-        showToast('History restored from cloud (' + sessions.length + ' sessions)');
-      } else {
-        showToast('Local data exists — no overwrite');
-      }
+      // BUG-178: MERGE cloud rows into local instead of the old empty-guard —
+      // see mergeCloudSessionsIntoHistory()'s own comment for why.
+      const merged = mergeCloudSessionsIntoHistory(existing, sessions);
+      const added = merged.length - existing.length;
+      LS.set('tandem_history', merged);
+      showToast(added > 0
+        ? `History synced from cloud (${added} session${added === 1 ? '' : 's'} merged in)`
+        : 'History already up to date with the cloud');
     } else {
       showToast('No cloud data found');
     }
@@ -8831,11 +8901,14 @@ async function syncFromCloud() {
     currentWeek = userData.current_week || 1;
     LS.set('tandem_cfg', cfg);
     LS.set('tandem_week', currentWeek);
-    // History — only fill if local is empty (never clobber local data)
+    // History — MERGE cloud rows into local (BUG-178: the old empty-guard made a
+    // server-side-only row, e.g. BUG-131's repair insert, permanently invisible to
+    // completedSessionCount()/nextProgramDayKey() the moment local history was
+    // non-empty — see mergeCloudSessionsIntoHistory()'s own comment).
     const { data: sessions } = await sb.from('workout_sessions')
       .select('*').eq('user_id', uid).order('created_at', { ascending: false });
-    if (sessions?.length && !(LS.get('tandem_history') || []).length) {
-      LS.set('tandem_history', sessions.map(({user_id, ...s}) => s));
+    if (sessions?.length) {
+      LS.set('tandem_history', mergeCloudSessionsIntoHistory(LS.get('tandem_history') || [], sessions));
     }
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);

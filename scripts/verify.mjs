@@ -63,6 +63,7 @@ const CHECKS = [
   { name: 'BUG-57 calibration upsert smoke (runs computeCalibration1RMs — trigger-equal case must still write is_calibrated)', run: () => execFileSync('node', [join(scriptsDir, 'calibration-upsert-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'MOVEMENT_FAMILIES partition (R1-R7 — now wired via movementPatternOf(), BUG-151/D30)', run: () => execFileSync('node', [join(scriptsDir, 'movement-families-check.mjs')], { stdio: 'inherit' }) },
   { name: 'movement-pattern smoke (D30/BUG-151 — no same-pattern compound clash within one session)', run: () => execFileSync('node', [join(scriptsDir, 'movement-pattern-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-178 history-merge smoke (cloud history hydration merges, never overwrites past an empty-guard)', run: () => execFileSync('node', [join(scriptsDir, 'history-merge-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];
