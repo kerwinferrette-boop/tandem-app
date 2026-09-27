@@ -1039,3 +1039,43 @@ unsearched name — silent breakage of the project's own cross-reference mechani
 Story ID's cross-reference against the live Bug Log before it's written). Caught and corrected
 same-cycle: both Story ID properties and the Goal Record cycle-94 entry were fixed to BUG-169/170
 before the cycle closed, per this same file's own SC-01/SC-10 same-session discipline.
+
+---
+
+## SC-29 — I applied the generic VERIFY-can-Resolve rule and overrode the row's own explicit "leave In Fix" instruction
+
+**What I did, Cycle 96 (2026-09-27).** Fixed BUG-178 (P0, live-blocking, third report of the same
+symptom as BUG-154/BUG-156), had it independently re-verified by a fresh subagent that reproduced
+the bug pre-fix and confirmed the fix post-fix, ran `npm run verify` (23/23) and
+`npm run validate:personas` (1050/1050) myself, and pushed to main (`fdb5b31`). Then I flipped the
+Bug Log row and its linked story straight to Resolved, on the strength of the generic feature-loop
+rule "a fresh, independent subagent re-runs the assertion... only Verify may set a story to
+Resolved." But BUG-178's own TPM-authored "Claude Code Prompt" — the exact field I had carried
+onto the story as its scope-lock at FIX time — had its own explicit SHIP PATH clause: "THEN Kerwin
+device-verifies (this is user-visible program position on his phone — exactly the class that needs
+his eyes) -> only then flip Notion. Leave BUG-178 In Fix after pushing; do not resolve it
+yourself." I read that clause when I built the FIX prompt, then didn't re-check it before writing
+the RESOLVE at ship time — the generic rule and the specific one both apply, and I let the generic
+one win by default instead of checking whether a more specific instruction on the same row
+overrode it.
+
+**Why this matters:** program-position display is exactly the class of change where "the code is
+provably correct against a fixture" and "it looks/feels right on the real device" can diverge —
+this project's own `live_test_account_verification` scope note draws that line deliberately. Marking
+it Resolved on code-verification alone would have told a future cycle (and Kerwin, scanning the
+tracker) that this needed no further human attention, silently reopening the exact gap that clause
+exists to close.
+
+> **THE RULE — SC-29.** Before writing ANY status transition to a Bug Log row or its linked story,
+> re-read that row's OWN "Claude Code Prompt"/scope-lock text for a ship-path or verification
+> instruction specific to it — not just the generic feature-loop VERIFY-stage rule — even when the
+> generic rule would already justify the transition on its own. A row-specific instruction that
+> narrows or delays a status transition (e.g. "leave In Fix pending device-verify") always wins over
+> the generic default; only widen from the generic rule when the specific text does, never the
+> reverse.
+
+**Enforced by:** judgment — not mechanically checkable today (no script diffs a row's own prompt
+text against the status transition being written before it lands). Caught and corrected same-turn:
+BUG-178 was set back to In Fix and its story to Passing (code-verified, pending Kerwin's live
+device confirmation) before this cycle's RECORD step, per this file's own SC-01/SC-10 same-session
+discipline.
