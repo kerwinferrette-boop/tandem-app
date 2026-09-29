@@ -68,6 +68,7 @@ const iphrSrc = grab('isProgramHistoryRow', /function isProgramHistoryRow\([\s\S
 const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/);
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
+const ldsSrc = grab('localDateStr', /function localDateStr\([\s\S]*?\n\}/);
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
 const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
@@ -75,7 +76,7 @@ const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessi
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hrkSrc, hskSrc, mergeSrc].join('\n'), ctx);
+  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hrkSrc, hskSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -162,6 +163,68 @@ function buildContext() {
   const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), cloudSessions);
   check('(e) newest-first order preserved after merge (03-10 before 03-01)',
     merged[0].session_date === '2026-03-10' && merged[1].session_date === '2026-03-01');
+}
+
+
+// ── 2(f). BUG-178 REOPENED (2026-09-27, again 2026-09-29): a REAL local row vs its OWN cloud twin ──
+// fdb5b31's smoke passed with the double-count live because four of five "local" fixtures
+// were cloud-shaped ({session_date, day_type, session_type}) — a shape NO local writer
+// produces — and case (c) paired the real finishSession() literal with a DIFFERENT session.
+// The collision that matters is one real workout on both sides. finishSession() stamps
+// {id: Date.now(), date: <locale string>, week, goal, day, exercises}: no session_date,
+// no day_type, no session_type, and a number id — while the cloud twin has a uuid id,
+// session_date, day_type and session_type 'strength'. Both identity inputs differ.
+{
+  const finishSrc = grab('finishSession', /function finishSession\(\) \{[\s\S]*?\n\}\n/);
+  const literalSrc = finishSrc.match(/hist\.unshift\(\{[\s\S]*?\n  \}\);/);
+  if (!literalSrc) throw new Error('could not locate finishSession()\'s hist.unshift literal');
+
+  // (f1) the LEGACY shape already persisted on devices (pre-stamp finishSession rows)
+  {
+    const ctx = buildContext();
+    ctx.cfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-09-01', startEpoch: 0 };
+    const legacy = { id: 1790100000000, date: 'Tue, Sep 22, 2026', week: 3, goal: 'build_muscle', day: 'day3', exercises: { squat: [{ w: 100, r: 5 }] } };
+    const twin = { id: '8e058465-0000-4000-8000-000000000001', user_id: 'u', session_date: '2026-09-22', day_type: 'day3', session_type: 'strength', completed: true, created_at: '2026-09-23T03:52:00Z' };
+    ctx.LS.set('tandem_history', [legacy]);
+    const before = ctx.completedSessionCount();
+    const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [twin]);
+    ctx.LS.set('tandem_history', merged);
+    check('(f1) a legacy finishSession() row and its own cloud twin merge to ONE row, not two', merged.length === 1);
+    check('(f1) completedSessionCount() counts that session once after a sync', ctx.completedSessionCount() === before && before === 1);
+    check('(f1) syncing does not advance the program queue on its own', ctx.nextProgramDayKey() === 'day2');
+  }
+
+  // (f2) the row finishSession() writes NOW — extracted from the live source, not retyped
+  {
+    const ctx = buildContext();
+    ctx.cfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-01-01', startEpoch: 0 };
+    ctx.currentWeek = 1; ctx.currentDay = 'day1'; ctx.sessionSetsMap = { squat: [{ w: 100, r: 5 }] };
+    ctx.hist = [];
+    vm.runInContext(literalSrc[0], ctx);
+    const local = ctx.hist[0];
+    const today = ctx.localDateStr();
+    const twin = { id: '11111111-0000-4000-8000-000000000002', user_id: 'u', session_date: today, day_type: 'day1', session_type: 'strength', completed: true, created_at: new Date().toISOString() };
+    ctx.LS.set('tandem_history', [local]);
+    const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [twin]);
+    ctx.LS.set('tandem_history', merged);
+    check("(f2) finishSession()'s CURRENT literal and its own cloud twin merge to ONE row", merged.length === 1);
+    check('(f2) completedSessionCount() === 1 after that sync', ctx.completedSessionCount() === 1);
+  }
+
+  // (f3) N real workouts, ALL round-tripped — the 7-row production shape from the row's repro
+  {
+    const ctx = buildContext();
+    ctx.cfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-09-01', startEpoch: 0 };
+    const days = ['Thu, Sep 3, 2026', 'Fri, Sep 4, 2026', 'Mon, Sep 7, 2026', 'Tue, Sep 8, 2026', 'Wed, Sep 9, 2026', 'Thu, Sep 10, 2026', 'Fri, Sep 11, 2026'];
+    const iso = ['2026-09-03', '2026-09-04', '2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11'];
+    const local = days.map((d, i) => ({ id: 1790000000000 + i, date: d, week: 1 + Math.floor(i / 5), goal: 'build_muscle', day: 'day' + ((i % 5) + 1), exercises: {} })).reverse();
+    const cloud = iso.map((d, i) => ({ id: 'c0000000-0000-4000-8000-00000000000' + i, user_id: 'u', session_date: d, day_type: 'day' + ((i % 5) + 1), session_type: 'strength', completed: true, created_at: d + 'T20:00:00Z' })).reverse();
+    ctx.LS.set('tandem_history', local);
+    const before = ctx.completedSessionCount();
+    ctx.LS.set('tandem_history', ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), cloud));
+    check('(f3) 7 round-tripped workouts: count is 7 before AND after sync (was 14)', before === 7 && ctx.completedSessionCount() === 7);
+    check("(f3) 7 round-tripped workouts: next day is 'day3' before AND after sync (was 'day5')", ctx.nextProgramDayKey() === 'day3');
+  }
 }
 
 console.log('HISTORY-MERGE SMOKE — BUG-178 (cloud history hydration merge, not empty-guard overwrite)\n');
