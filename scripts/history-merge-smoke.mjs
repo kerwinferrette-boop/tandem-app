@@ -69,6 +69,9 @@ const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
 const ldsSrc = grab('localDateStr', /function localDateStr\([\s\S]*?\n\}/);
+const hdoSrc = grab('_historyDateOf', /function _historyDateOf\([\s\S]*?\n\}/);
+const twinCapSrc = grab('HISTORY_TWIN_MAX_MS', /const HISTORY_TWIN_MAX_MS = [^;]*;/);
+const twinSrc = grab('_historyIsMidnightTwin', /function _historyIsMidnightTwin\([\s\S]*?\n\}/);
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
 const ddSrc = grab('dedupeHistoryRows', /function dedupeHistoryRows\([\s\S]*?\n\}/);
@@ -78,7 +81,7 @@ const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessi
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hrkSrc, hskSrc, ddSrc, repairSrc, mergeSrc].join('\n'), ctx);
+  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdoSrc, twinCapSrc, twinSrc, hrkSrc, hskSrc, ddSrc, repairSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -275,7 +278,7 @@ function buildContext() {
   {
     const ctx = mk();
     ctx.cfg.days = 1;
-    const yesterdayCloud = { id: 'bbbbbbbb-0000-4000-8000-00000000000a', user_id: 'u', session_date: '2026-09-20', day_type: 'day1', session_type: 'strength', completed: true, created_at: '2026-09-20T18:00:00Z' };
+    const yesterdayCloud = { id: 'bbbbbbbb-0000-4000-8000-00000000000a', user_id: 'u', session_date: '2026-09-20', day_type: 'day1', session_type: 'strength', completed: true, created_at: new Date(Date.parse('2026-09-20T18:00:00')).toISOString() };
     const todayLocal = { id: Date.parse('2026-09-21T18:00:00'), date: 'Mon, Sep 21, 2026', session_date: '2026-09-21', week: 1, goal: 'build_muscle', day: 'day1', exercises: {} };
     ctx.LS.set('tandem_history', [todayLocal]);
     const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [yesterdayCloud]);

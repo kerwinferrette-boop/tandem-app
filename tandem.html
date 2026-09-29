@@ -7458,6 +7458,15 @@ function mergeAvatarFieldsFromCloud(row) {
 // tandem_history writer respects. Does NOT change `completed`/`session_type`/
 // `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
 // stays the only home for that test.
+function _historyDateOf(row) {
+  if (!row) return null;
+  if (row.session_date != null) return row.session_date;
+  if (row.date) {
+    const p = new Date(row.date);
+    if (!isNaN(p)) return localDateStr(p);
+  }
+  return null;
+}
 function _historyRowKey(row) {
   if (!row) return null;
   // BUG-178 (reopened 2026-09-27): the key must be computable IDENTICALLY from both row
@@ -7467,15 +7476,34 @@ function _historyRowKey(row) {
   // back to row.date normalised through localDateStr() — the same YYYY-MM-DD local-day
   // convention completedSessionCount() reads — and the kind half is the single-owner
   // program/one-off discriminator, not the raw session_type a local row lacks.
-  let d = row.session_date;
-  if (d == null && row.date) {
-    const p = new Date(row.date);
-    if (!isNaN(p)) d = localDateStr(p);
-  }
+  const d = _historyDateOf(row);
   if (d != null) {
     return 'k:' + d + '|' + (row.day_type ?? row.day ?? '') + '|' + (isProgramHistoryRow(row) ? 'program' : 'oneoff');
   }
   return row.id != null ? 'id:' + row.id : null; // last resort: a row with neither date field
+}
+// BUG-178 residual (2026-09-29 verifier): a workout begun before local midnight and
+// finished after it has twins on DIFFERENT dates — the cloud row's session_date is stamped
+// at the FIRST logged set (start day), the local row's at finish (finish day). Exact keys
+// never match, so it double-counted. A local program row (numeric Date.now() id = finish
+// instant) is the twin of a cloud program row when: same day key, local date is exactly
+// the cloud date + 1, and the cloud row was created 0-12h before the local finish instant.
+// The 12h bound is what keeps a 1-day program's genuine next-day repeat (same day key,
+// consecutive dates, but ~a day apart) from being eaten. 12h is an engineering bound on
+// workout length, not a sourced number.
+const HISTORY_TWIN_MAX_MS = 12 * 3600 * 1000;
+function _historyIsMidnightTwin(local, cloud) {
+  if (!local || !cloud || typeof local.id !== 'number' || typeof cloud.id === 'number') return false;
+  if (!isProgramHistoryRow(local) || !isProgramHistoryRow(cloud)) return false;
+  if ((local.day_type ?? local.day ?? '') !== (cloud.day_type ?? cloud.day ?? '')) return false;
+  const ld = _historyDateOf(local), cd = _historyDateOf(cloud);
+  if (!ld || !cd) return false;
+  const gapDays = Math.round((new Date(ld + 'T12:00:00Z') - new Date(cd + 'T12:00:00Z')) / 86400000);
+  if (gapDays !== 1) return false;
+  const created = Date.parse(cloud.created_at);
+  if (isNaN(created)) return false;
+  const dt = local.id - created;
+  return dt >= 0 && dt <= HISTORY_TWIN_MAX_MS;
 }
 function _historySortKey(row) {
   if (!row) return '';
@@ -7503,7 +7531,8 @@ function dedupeHistoryRows(rows) {
     const i = at.get(key);
     if (typeof kept[i].id !== 'number' && typeof r.id === 'number') kept[i] = r;
   }
-  return kept;
+  // Midnight-crossing twins (see _historyIsMidnightTwin): drop the cloud row, keep the local one.
+  return kept.filter((r, i) => !(r && typeof r.id !== 'number' && kept.some((o, j) => j !== i && _historyIsMidnightTwin(o, r))));
 }
 // One-time-safe boot repair for duplicates a pre-fix Restore already persisted to
 // localStorage (they do not self-heal — every launch reads them back). Idempotent, so
@@ -7531,6 +7560,7 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
     const key = _historyRowKey(s);
     if (key && seenKeys.has(key)) continue;
     if (s.id != null && seenIds.has(s.id)) continue;
+    if (existing.some(l => _historyIsMidnightTwin(l, s))) continue;
     if (key) seenKeys.add(key);
     if (s.id != null) seenIds.add(s.id);
     toAdd.push(s);
