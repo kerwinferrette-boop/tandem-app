@@ -79,6 +79,30 @@ function check(label, cond) {
   check('auth listener scopes storage to the signed-in user', /setLSScope\s*\(\s*currentUser\.id\s*\)/.test(authListener));
   check('auth listener re-scopes on SIGNED_OUT', /setLSScope\s*\(\s*null\s*\)/.test(authListener));
 
+  // Sign-out lands on the auth view, so the auth view must be at its ENTRY state.
+  // sendOTP() hides authFormInner / shows authOTPState and nothing restored it, so a
+  // signed-out user was dropped onto a stale "Enter Your Code" screen with no way back
+  // (Kerwin, device test, 2026-09-29). Centralised in showView so the two buried entry
+  // points (History > Account, Goal modal's "Sign in") are covered too.
+  const showViewSrc = html.slice(html.indexOf('function showView(id)'), html.indexOf('function showView(id)') + 1400);
+  check('showView() resets the auth view on entry', /id === ['"]auth['"]\s*\)\s*resetAuthView\(\)/.test(showViewSrc));
+
+  // Bounded to the function's OWN body: a fixed-size window ran past it into sendOTP,
+  // whose error branch also sets disabled = false, so the button assertion passed on
+  // the wrong function's code and survived a deliberate mutation (caught 2026-09-29
+  // while mutation-testing this very check — the window, not the fix, was at fault).
+  const resetStart = html.indexOf('function resetAuthView() {');
+  const resetEnd = html.indexOf('\n}', resetStart);
+  check('resetAuthView() body is locatable', resetStart !== -1 && resetEnd > resetStart);
+  const resetSrc = html.slice(resetStart, resetEnd);
+  check('resetAuthView() shows the email form', /authFormInner[\s\S]{0,120}display\s*=\s*['"]block['"]/.test(resetSrc));
+  check('resetAuthView() hides the code screen', /authOTPState[\s\S]{0,120}display\s*=\s*['"]none['"]/.test(resetSrc));
+  check('resetAuthView() clears the stale code field', /authOTPCode[\s\S]{0,120}value\s*=\s*['"]{2}/.test(resetSrc));
+  check('resetAuthView() re-enables the send button (sendOTP only restores it on error)',
+    /disabled\s*=\s*false/.test(resetSrc));
+  check('the "Back" button uses the shared reset rather than its own inline toggle',
+    /onclick="resetAuthView\(\)"/.test(html));
+
   const init = html.slice(html.indexOf('// INIT — check auth session then restore program'));
   const scopeAt = init.search(/setLSScope\s*\(\s*currentUser\.id\s*\)/);
   const cfgReadAt = init.search(/LS\.get\(\s*['"]tandem_cfg['"]\s*\)/);
@@ -236,7 +260,7 @@ const UID_B = '3a6e34b7-d197-47b4-bedb-de49bbe552fb'; // Dani
 }
 
 // ── Report ──
-const total = 30;
+const total = 37;
 if (failures) {
   console.error(`auth scope smoke — FAIL (${failures} of ${total})`);
   fails.forEach(f => console.error('  ✗ ' + f));

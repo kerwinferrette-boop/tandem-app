@@ -1798,7 +1798,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <span class="auth-field-label" style="margin-top:14px;">Sign-in code</span>
         <input class="auth-input" type="text" inputmode="numeric" id="authOTPCode" placeholder="00000000" maxlength="8" autocomplete="one-time-code" style="text-align:center;font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:.3em;">
         <button class="auth-send-btn" onclick="verifyOTP()">Verify →</button>
-        <button class="auth-skip" style="margin-top:4px;" onclick="document.getElementById('authOTPState').style.display='none';document.getElementById('authFormInner').style.display='block';">← Back</button>
+        <button class="auth-skip" style="margin-top:4px;" onclick="resetAuthView()">← Back</button>
         <button class="auth-skip" onclick="skipAuth()" style="margin-top:4px;">Continue without signing in</button>
       </div>
     </div>
@@ -7123,6 +7123,12 @@ function showView(id) {
   document.getElementById('view-' + id).classList.add('active');
   document.getElementById('bottomNav').style.display = id === 'tracker' ? 'flex' : 'none';
   setTabBar(id);
+  // Entering the auth view always means "start a sign-in", so it always starts at the
+  // email form. Centralised here rather than at the call sites because there are four
+  // of them (signOut, the SIGNED_OUT listener, the History modal's Account button, and
+  // the Goal modal's signed-out "Sign in" chip) and the two buried ones are exactly the
+  // ones a later change would forget.
+  if (id === 'auth') resetAuthView();
   if (id === 'dashboard') loadDashboard();
   if (id === 'log') renderLogTab();
   if (id === 'you') { renderYouTab(); loadDashboard(); } // render cached state now; loadDashboard refreshes both
@@ -7353,6 +7359,31 @@ function toggleSW(key, total) {
 // ═══════════════════════════════════════════════════════
 let pendingAuthEmail = '';
 
+// Returns the auth view to its ENTRY state: the email form, not the code screen.
+//
+// sendOTP() hides authFormInner and shows authOTPState, and nothing ever put it back
+// except the "← Back" button's inline handler. So once a user signed in via a code, the
+// auth view stayed in "Enter Your Code" state for the life of the page — and sign-out,
+// which now lands on that view, dropped them onto a stale code prompt instead of a way
+// to sign in (Kerwin, 2026-09-29, device-testing the sign-out fix: "return me to the
+// device verify screen, not the exact homepage").
+//
+// It also re-enables the send button. sendOTP() disables it and restores it ONLY on
+// error, so after a successful send the button stayed "Sending..." and disabled
+// forever — a second dead end behind the first.
+function resetAuthView() {
+  const form = document.getElementById('authFormInner');
+  const otp = document.getElementById('authOTPState');
+  if (form) form.style.display = 'block';
+  if (otp) otp.style.display = 'none';
+  const code = document.getElementById('authOTPCode');
+  if (code) code.value = '';
+  pendingAuthEmail = null;
+  document.querySelectorAll('.auth-send-btn').forEach(b => { b.disabled = false; });
+  const send = document.querySelector('#authFormInner .auth-send-btn');
+  if (send) send.textContent = 'Send Sign-in Code →';
+}
+
 async function sendOTP() {
   const email = document.getElementById('authEmail')?.value?.trim();
   if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
@@ -7417,7 +7448,7 @@ async function signOut() {
   // would re-render an empty program rather than offering a way back in.
   setLSScope(null);
   rehydrateFromScope();
-  showView('auth');
+  showView('auth'); // showView resets the auth view to the email form
   showToast('Signed out');
 }
 
