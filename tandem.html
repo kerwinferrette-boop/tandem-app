@@ -7524,15 +7524,21 @@ function dedupeHistoryRows(rows) {
   const list = Array.isArray(rows) ? rows : [];
   const kept = [];
   const at = new Map();
+  const paired = new Set(); // kept indices that already absorbed an exact-key partner
   for (const r of list) {
     const key = (r && isProgramHistoryRow(r)) ? _historyRowKey(r) : null;
     if (!key) { kept.push(r); continue; }
     if (!at.has(key)) { at.set(key, kept.length); kept.push(r); continue; }
     const i = at.get(key);
+    paired.add(i);
     if (typeof kept[i].id !== 'number' && typeof r.id === 'number') kept[i] = r;
   }
-  // Midnight-crossing twins (see _historyIsMidnightTwin): drop the cloud row, keep the local one.
-  return kept.filter((r, i) => !(r && typeof r.id !== 'number' && kept.some((o, j) => j !== i && _historyIsMidnightTwin(o, r))));
+  // Midnight-crossing twins (see _historyIsMidnightTwin): drop the cloud row, keep the local one —
+  // but ONLY for a local row with no exact-key partner. One that already has its own partner is
+  // a complete session, so a nearby cloud row is a DIFFERENT session (a 1-day program can repeat
+  // one day key on consecutive dates within 12h) and must survive.
+  return kept.filter((r, i) => !(r && typeof r.id !== 'number'
+    && kept.some((o, j) => j !== i && !paired.has(j) && _historyIsMidnightTwin(o, r))));
 }
 // One-time-safe boot repair for duplicates a pre-fix Restore already persisted to
 // localStorage (they do not self-heal — every launch reads them back). Idempotent, so
@@ -7554,13 +7560,15 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
   if (!cloud.length) return existing;
   const seenKeys = new Set(existing.map(_historyRowKey).filter(Boolean));
   const seenIds = new Set(existing.filter(r => r && r.id != null).map(r => r.id));
+  const cloudKeys = new Set(cloud.map(r => { const { user_id, ...x } = r || {}; return _historyRowKey(x); }).filter(Boolean));
   const toAdd = [];
   for (const row of cloud) {
     const { user_id, ...s } = row || {}; // never let the DB's user_id leak into local storage
     const key = _historyRowKey(s);
     if (key && seenKeys.has(key)) continue;
     if (s.id != null && seenIds.has(s.id)) continue;
-    if (existing.some(l => _historyIsMidnightTwin(l, s))) continue;
+    // Twin only for a local row with no exact-key cloud partner of its own (else it is a different session).
+    if (existing.some(l => !cloudKeys.has(_historyRowKey(l)) && _historyIsMidnightTwin(l, s))) continue;
     if (key) seenKeys.add(key);
     if (s.id != null) seenIds.add(s.id);
     toAdd.push(s);
