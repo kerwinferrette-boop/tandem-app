@@ -6561,6 +6561,7 @@ function skipAhead() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    session_date: localDateStr(), // BUG-178: stamp at write time, as finishOneOff()/saveJournal() already do
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -6712,6 +6713,7 @@ function finishSession() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    session_date: localDateStr(), // BUG-178: stamp at write time, as finishOneOff()/saveJournal() already do
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -7457,10 +7459,23 @@ function mergeAvatarFieldsFromCloud(row) {
 // `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
 // stays the only home for that test.
 function _historyRowKey(row) {
-  if (row && row.session_date != null) {
-    return 'k:' + row.session_date + '|' + (row.day_type ?? row.day ?? '') + '|' + (row.session_type ?? '');
+  if (!row) return null;
+  // BUG-178 (reopened 2026-09-27): the key must be computable IDENTICALLY from both row
+  // shapes. finishSession()/skipAhead() rows written before session_date was stamped carry
+  // only a locale `date` string ('Tue, Sep 22, 2026') and a numeric id, while their cloud
+  // twin has session_date + a uuid id + session_type 'strength'. So the date half falls
+  // back to row.date normalised through localDateStr() — the same YYYY-MM-DD local-day
+  // convention completedSessionCount() reads — and the kind half is the single-owner
+  // program/one-off discriminator, not the raw session_type a local row lacks.
+  let d = row.session_date;
+  if (d == null && row.date) {
+    const p = new Date(row.date);
+    if (!isNaN(p)) d = localDateStr(p);
   }
-  return (row && row.id != null) ? 'id:' + row.id : null;
+  if (d != null) {
+    return 'k:' + d + '|' + (row.day_type ?? row.day ?? '') + '|' + (isProgramHistoryRow(row) ? 'program' : 'oneoff');
+  }
+  return row.id != null ? 'id:' + row.id : null; // last resort: a row with neither date field
 }
 function _historySortKey(row) {
   if (!row) return '';
@@ -7470,8 +7485,42 @@ function _historySortKey(row) {
   if (row.date) { const d = new Date(row.date); if (!isNaN(d)) return d.toISOString(); }
   return '';
 }
+// BUG-178 repair: collapse rows that share a _historyRowKey. Only PROGRAM rows are
+// collapsed — the program queue counts them, and the cloud enforces one program row per
+// user per day (migrations/0015's partial unique index), so two with one key are one
+// session. One-off rows are left alone (a user can legitimately log two in a day and
+// they never move the queue). When a local row and its cloud twin collide, the LOCAL
+// row (numeric Date.now() id) is kept: isBeforeProgramStart()'s same-day startEpoch
+// test needs a real instant, which a uuid id cannot supply. Pure and idempotent.
+function dedupeHistoryRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const kept = [];
+  const at = new Map();
+  for (const r of list) {
+    const key = (r && isProgramHistoryRow(r)) ? _historyRowKey(r) : null;
+    if (!key) { kept.push(r); continue; }
+    if (!at.has(key)) { at.set(key, kept.length); kept.push(r); continue; }
+    const i = at.get(key);
+    if (typeof kept[i].id !== 'number' && typeof r.id === 'number') kept[i] = r;
+  }
+  return kept;
+}
+// One-time-safe boot repair for duplicates a pre-fix Restore already persisted to
+// localStorage (they do not self-heal — every launch reads them back). Idempotent, so
+// it is safe to run on every boot; writes only when it actually removed something.
+function repairHistoryDuplicates() {
+  try {
+    const hist = LS.get('tandem_history');
+    if (!Array.isArray(hist) || !hist.length) return 0;
+    const fixed = dedupeHistoryRows(hist);
+    if (fixed.length === hist.length) return 0;
+    LS.set('tandem_history', fixed);
+    return hist.length - fixed.length;
+  } catch (e) { console.warn('history duplicate repair skipped:', e); return 0; }
+}
 function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
-  const existing = Array.isArray(existingLocal) ? existingLocal : [];
+  // Collapse `existing` first so a Restore repairs prior duplicates instead of compounding them.
+  const existing = dedupeHistoryRows(existingLocal);
   const cloud = Array.isArray(cloudSessions) ? cloudSessions : [];
   if (!cloud.length) return existing;
   const seenKeys = new Set(existing.map(_historyRowKey).filter(Boolean));
@@ -7505,7 +7554,7 @@ async function restoreFromCloud() {
       .select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (se) throw se;
     if (sessions?.length) {
-      const existing = LS.get('tandem_history') || [];
+      const existing = dedupeHistoryRows(LS.get('tandem_history') || []);
       // BUG-178: MERGE cloud rows into local instead of the old empty-guard —
       // see mergeCloudSessionsIntoHistory()'s own comment for why.
       const merged = mergeCloudSessionsIntoHistory(existing, sessions);
@@ -10126,6 +10175,7 @@ function refreshAvatarPreview(){
       updateSyncUserInfo();
       await refreshLiftHistory();   // D27 — must precede the first getActiveProgram()
     }
+    repairHistoryDuplicates(); // BUG-178: heal duplicates a pre-fix Restore persisted (idempotent)
     const savedCfg = LS.get('tandem_cfg');
     if (savedCfg?.goal) {
       cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;

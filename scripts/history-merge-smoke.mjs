@@ -71,12 +71,14 @@ const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\
 const ldsSrc = grab('localDateStr', /function localDateStr\([\s\S]*?\n\}/);
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
+const ddSrc = grab('dedupeHistoryRows', /function dedupeHistoryRows\([\s\S]*?\n\}/);
+const repairSrc = grab('repairHistoryDuplicates', /function repairHistoryDuplicates\([\s\S]*?\n\}/);
 const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
 
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hrkSrc, hskSrc, mergeSrc].join('\n'), ctx);
+  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hrkSrc, hskSrc, ddSrc, repairSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -225,6 +227,39 @@ function buildContext() {
     check('(f3) 7 round-tripped workouts: count is 7 before AND after sync (was 14)', before === 7 && ctx.completedSessionCount() === 7);
     check("(f3) 7 round-tripped workouts: next day is 'day3' before AND after sync (was 'day5')", ctx.nextProgramDayKey() === 'day3');
   }
+}
+
+
+// ── 2(g). BUG-178 repair: duplicates a pre-fix Restore ALREADY persisted heal on boot ──
+{
+  const ctx = buildContext();
+  ctx.cfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-09-01', startEpoch: 0 };
+  const local = { id: 1790100000000, date: 'Tue, Sep 22, 2026', week: 3, goal: 'build_muscle', day: 'day3', exercises: {} };
+  const twin = { id: '8e058465-0000-4000-8000-000000000001', session_date: '2026-09-22', day_type: 'day3', session_type: 'strength', completed: true, created_at: '2026-09-23T03:52:00Z' };
+  const oneOffA = { id: 5, date: 'Tue, Sep 22, 2026', session_date: '2026-09-22', day: 'chest', session_type: 'oneoff', completed: true, exercises: {} };
+  const oneOffB = { id: 6, date: 'Tue, Sep 22, 2026', session_date: '2026-09-22', day: 'chest', session_type: 'oneoff', completed: true, exercises: {} };
+  ctx.LS.set('tandem_history', [twin, local, oneOffA, oneOffB]); // twin FIRST: the uuid row must not win
+  check('(g) pre-repair the persisted duplicate inflates the count (2)', ctx.completedSessionCount() === 2);
+  const removed = ctx.repairHistoryDuplicates();
+  const after = ctx.LS.get('tandem_history');
+  check('(g) repair removes exactly the one duplicate program row', removed === 1 && after.length === 3);
+  check('(g) repair keeps the LOCAL row (numeric id) over its cloud twin', after.some(r => r.id === local.id) && !after.some(r => r.id === twin.id));
+  check('(g) repair never collapses one-off rows (two same-day one-offs both survive)', after.filter(r => r.session_type === 'oneoff').length === 2);
+  check('(g) completedSessionCount() is 1 after repair', ctx.completedSessionCount() === 1);
+  check('(g) repair is idempotent (second run removes nothing, writes nothing)', ctx.repairHistoryDuplicates() === 0 && ctx.LS.get('tandem_history').length === 3);
+  // a Restore over already-duplicated local history repairs rather than compounds
+  ctx.LS.set('tandem_history', [twin, local]);
+  const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [twin]);
+  check('(g) mergeCloudSessionsIntoHistory() over already-duplicated history returns it de-duplicated', merged.length === 1);
+}
+
+// ── 2(h). Structural: stamp at write time, repair at boot — the mechanism, not the fixture ──
+{
+  const skipSrc = grab('skipAhead', /function skipAhead\(\) \{[\s\S]*?\n  \}\);/);
+  const finishHead = grab('finishSession', /function finishSession\(\) \{[\s\S]*?hist\.unshift\(\{[\s\S]*?\n  \}\);/);
+  check('finishSession() stamps session_date at write time', /session_date:\s*localDateStr\(\)/.test(finishHead));
+  check('skipAhead() stamps session_date at write time', /session_date:\s*localDateStr\(\)/.test(skipSrc));
+  check('boot runs repairHistoryDuplicates() before cfg/queue are read', /repairHistoryDuplicates\(\);[^\n]*\n\s*const savedCfg = LS\.get\('tandem_cfg'\)/.test(html));
 }
 
 console.log('HISTORY-MERGE SMOKE — BUG-178 (cloud history hydration merge, not empty-guard overwrite)\n');
