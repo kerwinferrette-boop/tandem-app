@@ -1079,3 +1079,32 @@ text against the status transition being written before it lands). Caught and co
 BUG-178 was set back to In Fix and its story to Passing (code-verified, pending Kerwin's live
 device confirmation) before this cycle's RECORD step, per this file's own SC-01/SC-10 same-session
 discipline.
+
+---
+
+## SC-30 — Called a tracker row "stale vs code" from a list query, without opening the row (2026-09-29)
+
+**What happened.** On the 2026-09-29 scheduled cycle I listed open Bug Log rows with a SQL query
+(id, title, status, dates), saw BUG-178 at `New` while `fdb5b31` — its cited fix — was on
+`origin/main` with a green smoke, and wrote into the Goal Record and a PushNotification that the
+row was "stale vs code" and needed only a Verify pass. I had not opened the row. Its own page
+(reopened 2026-09-27, ruled `leave_new` 2026-09-28) says `fdb5b31` introduced a double-count that
+inverts the symptom, and that the smoke passes with the bug live. A fresh verify agent later
+reproduced that on HEAD (real `finishSession()` row + its cloud twin → count 2, queue jumps). The
+tracker was right and I was wrong, and I pushed the wrong claim to the owner's phone.
+
+**Mechanism, not a trait.** A green gate on the cited commit was treated as evidence the row was
+finished, and a status column as the whole state of a row. Neither is: a gate proves only what its
+fixtures model (here, four of five "local" fixtures were a shape no writer produces), and a
+reopened row carries its reason in its page body, which a property query does not return.
+
+> **THE RULE — SC-30.** Before asserting that a tracker row disagrees with the code (in any
+> report, Goal Record entry or notification), open the row itself and read its body and Claude
+> Code Prompt. A property-only query (status, dates, ids) may nominate a row for inspection; it
+> may never support a "stale" or "already fixed" claim. A cited fix being on `origin/main` with
+> a green gate is not evidence the row is done — check whether the gate could have failed for
+> this defect.
+
+**Enforced by:** judgment — not mechanically checkable today. Same-session correction: BUG-178
+rebuilt on this branch (red test `1bdcfec`, fix `9c07222`), the Goal Record entry corrected, and
+a correcting notification sent. Related: SC-29 (row-specific text outranks the generic rule).
