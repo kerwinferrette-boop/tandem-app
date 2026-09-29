@@ -294,6 +294,47 @@ function buildContext() {
   }
 }
 
+
+// ── 2(i5). The twin rule must not eat a GENUINE session (found by the 2026-09-29 verifier of 4776500) ──
+// A 1-day program repeats one day key on consecutive dates. Local holds only s2; the cloud holds
+// s1 AND s2. Cloud s1 (date D, created 0-12h before local s2's finish) looks like s2's midnight
+// twin — but s2 already has its OWN exact-key cloud partner, so s1 is a different session.
+{
+  const mk = () => { const c = buildContext(); c.cfg = { goal: 'build_muscle', days: 1, weeks: 12, startDate: '2026-09-01', startEpoch: 0 }; return c; };
+  const at = (iso) => Date.parse(iso); // local wall clock
+  const cl = (id, date, createdIso) => ({ id, user_id: 'u', session_date: date, day_type: 'day1', session_type: 'strength', completed: true, created_at: new Date(at(createdIso)).toISOString() });
+  const loc = (finishIso, date) => ({ id: at(finishIso), date: new Date(at(finishIso)).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }), session_date: date, week: 1, goal: 'build_muscle', day: 'day1', exercises: {} });
+  // Case A: s1 19:00 D, s2 06:00 D+1 (finishes 11h apart)
+  {
+    const ctx = mk();
+    const s1 = cl('aaaaaaaa-0000-4000-8000-0000000000a1', '2026-09-20', '2026-09-20T19:00:00');
+    const s2c = cl('aaaaaaaa-0000-4000-8000-0000000000a2', '2026-09-21', '2026-09-21T06:00:00');
+    const s2l = loc('2026-09-21T07:00:00', '2026-09-21');
+    const merged = ctx.mergeCloudSessionsIntoHistory([s2l], [s2c, s1]);
+    check('(i5-A) local s2 + cloud {s1,s2} 11h apart -> BOTH sessions survive (2 rows, s1 not eaten)', merged.length === 2);
+  }
+  // Case B: s1 23:00-23:59 D, s2 00:01-01:00 D+1
+  {
+    const ctx = mk();
+    const s1 = cl('bbbbbbbb-0000-4000-8000-0000000000b1', '2026-09-20', '2026-09-20T23:00:00');
+    const s2c = cl('bbbbbbbb-0000-4000-8000-0000000000b2', '2026-09-21', '2026-09-21T00:01:00');
+    const s2l = loc('2026-09-21T01:00:00', '2026-09-21');
+    const merged = ctx.mergeCloudSessionsIntoHistory([s2l], [s2c, s1]);
+    check('(i5-B) adjacent sessions across midnight -> BOTH survive (2 rows)', merged.length === 2);
+  }
+  // Case C: the persisted version (local s2 + cloud s2 already merged earlier, cloud s1 added) must survive repair
+  {
+    const ctx = mk();
+    const s1 = cl('cccccccc-0000-4000-8000-0000000000c1', '2026-09-20', '2026-09-20T19:00:00');
+    const s2c = cl('cccccccc-0000-4000-8000-0000000000c2', '2026-09-21', '2026-09-21T06:00:00');
+    const s2l = loc('2026-09-21T07:00:00', '2026-09-21');
+    ctx.LS.set('tandem_history', [s2l, s2c, s1]);
+    ctx.repairHistoryDuplicates();
+    const after = ctx.LS.get('tandem_history');
+    check('(i5-C) repair collapses the exact-key pair but keeps the genuine s1 (2 rows)', after.length === 2 && after.some(r => r.id === s1.id));
+  }
+}
+
 // ── 2(g). BUG-178 repair: duplicates a pre-fix Restore ALREADY persisted heal on boot ──
 {
   const ctx = buildContext();
