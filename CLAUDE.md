@@ -127,6 +127,44 @@ This is the same discipline as the doctrine gate, pointed at your own reasoning:
 checks is a suggestion. The current rules are SC-01 staleness · SC-02 retracted claims · SC-03
 run-don't-simulate · SC-04 feedback is not a commit · SC-05 status docs are snapshots.
 
+## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
+
+**You probably cannot see Kerwin's machine.** Most sessions run in a cloud container whose
+filesystem is a fresh clone from GitHub, not his Mac. Saying "run this in your repo" and
+handing over a `/path/to/repo` placeholder wastes his time — he has to go find it, and a
+placeholder pasted literally just errors. Two rules:
+
+1. **State the limitation before asking.** "I can't see your machine" is one line and it stops
+   him assuming you are withholding effort while you quietly guess.
+2. **Never assume there is one clone.** As of 2026-09-29 there were ELEVEN working copies on
+   his Mac — several sibling clones with different names (not all called `tandem-app`), plus
+   git worktrees under one of them, some not repos at all. "Your repo" is ambiguous; ask which,
+   or have the finder below report all of them.
+
+To locate them, send this — it is null-delimited because **the parent folder name contains a
+space**, and the naive `find … | head -1 | xargs dirname` version silently corrupts the path
+(learned the hard way, 2026-09-29):
+
+```sh
+find ~ -maxdepth 6 -name tandem.html -not -path "*/node_modules/*" -print0 2>/dev/null |
+while IFS= read -r -d '' f; do
+  d=$(dirname "$f")
+  printf '%s | %s\n' "$(git -C "$d" log --oneline -1 2>/dev/null || echo not-a-repo)" "$d"
+done
+```
+
+Add a `grep -c <marker> "$f"` column when you need to know which copy actually contains a given
+change. That check is not paranoia: on 2026-09-29 a patch believed to be applied turned out to
+be present in **zero** of the eleven copies, and several rounds of "the fix doesn't work" were
+really "the fix was never there." **Confirm the code under test is the code you think it is,
+by a marker grep, before drawing any conclusion from a manual test.**
+
+Prefer `git fetch origin <branch> && git checkout <branch>` over sending a patch file — the
+branch is already on GitHub, and checkout either succeeds or fails loudly, where `git am` can
+fail quietly. Run `git status --short` first and never move branches over uncommitted work.
+
+Local paths are deliberately not recorded here: **this repository is public.**
+
 ## Standing test gate (run before every commit that touches the engine)
 `npm run verify` (20 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law
