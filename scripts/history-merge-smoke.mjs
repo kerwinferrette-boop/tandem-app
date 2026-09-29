@@ -230,6 +230,67 @@ function buildContext() {
 }
 
 
+
+// ── 2(i). Midnight-crossing session: cloud session_date = START day, local = FINISH day ──
+// saveExerciseToCloud() stamps the cloud row's session_date on the first logged set;
+// finishSession() stamps the local row at finish. A workout begun 23:50 and finished 00:10
+// therefore has twins on DIFFERENT dates. Found by the 2026-09-29 independent verifier
+// (residual gap of the BUG-178 rebuild; the base code had it too).
+{
+  const start = Date.parse('2026-09-20T23:50:00');   // local instant: cloud row created
+  const finish = Date.parse('2026-09-21T00:10:00');  // local instant: finishSession() ran
+  const mk = () => {
+    const ctx = buildContext();
+    ctx.cfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-09-01', startEpoch: 0 };
+    return ctx;
+  };
+  const cloud = (day) => ({ id: 'aaaaaaaa-0000-4000-8000-000000000009', user_id: 'u', session_date: '2026-09-20', day_type: day, session_type: 'strength', completed: true, created_at: new Date(start).toISOString() });
+  // (i1) legacy local row (locale date only) — finish day differs from cloud day by one
+  {
+    const ctx = mk();
+    const local = { id: finish, date: 'Mon, Sep 21, 2026', week: 1, goal: 'build_muscle', day: 'day2', exercises: {} };
+    ctx.LS.set('tandem_history', [local]);
+    const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [cloud('day2')]);
+    ctx.LS.set('tandem_history', merged);
+    check('(i1) a session that crossed midnight merges with its own cloud twin to ONE row', merged.length === 1);
+    check('(i1) completedSessionCount() === 1 after that sync', ctx.completedSessionCount() === 1);
+  }
+  // (i2) same, but the local row is already stamped (new finishSession()) with the FINISH day
+  {
+    const ctx = mk();
+    const local = { id: finish, date: 'Mon, Sep 21, 2026', session_date: '2026-09-21', week: 1, goal: 'build_muscle', day: 'day2', exercises: {} };
+    ctx.LS.set('tandem_history', [local]);
+    const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [cloud('day2')]);
+    check('(i2) a STAMPED midnight-crossing local row merges with its cloud twin to ONE row', merged.length === 1);
+  }
+  // (i3) a persisted pair (from a pre-fix Restore) heals on repair
+  {
+    const ctx = mk();
+    const local = { id: finish, date: 'Mon, Sep 21, 2026', week: 1, goal: 'build_muscle', day: 'day2', exercises: {} };
+    ctx.LS.set('tandem_history', [cloud('day2'), local]);
+    check('(i3) repair collapses a persisted midnight-crossing pair (removed 1)', ctx.repairHistoryDuplicates() === 1);
+  }
+  // (i4) NEGATIVES — must NOT collapse: a 1-day program legitimately repeats the same day key
+  //      on consecutive days; the twin test must not eat a real second session.
+  {
+    const ctx = mk();
+    ctx.cfg.days = 1;
+    const yesterdayCloud = { id: 'bbbbbbbb-0000-4000-8000-00000000000a', user_id: 'u', session_date: '2026-09-20', day_type: 'day1', session_type: 'strength', completed: true, created_at: '2026-09-20T18:00:00Z' };
+    const todayLocal = { id: Date.parse('2026-09-21T18:00:00'), date: 'Mon, Sep 21, 2026', session_date: '2026-09-21', week: 1, goal: 'build_muscle', day: 'day1', exercises: {} };
+    ctx.LS.set('tandem_history', [todayLocal]);
+    const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [yesterdayCloud]);
+    check('(i4) consecutive-day same-day-key sessions (>12h apart) are two sessions, not one', merged.length === 2);
+  }
+  {
+    const ctx = mk();
+    const cl = cloud('day3'); // different day key than local
+    const local = { id: finish, date: 'Mon, Sep 21, 2026', week: 1, goal: 'build_muscle', day: 'day2', exercises: {} };
+    ctx.LS.set('tandem_history', [local]);
+    const merged = ctx.mergeCloudSessionsIntoHistory(ctx.LS.get('tandem_history'), [cl]);
+    check('(i4) a different day key one day apart is never treated as a twin', merged.length === 2);
+  }
+}
+
 // ── 2(g). BUG-178 repair: duplicates a pre-fix Restore ALREADY persisted heal on boot ──
 {
   const ctx = buildContext();
