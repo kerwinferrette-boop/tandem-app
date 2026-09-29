@@ -1781,13 +1781,13 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       </div>
     </div>
     <div class="auth-heading">Sync your training</div>
-    <div class="auth-sub">Sign in to back up sessions, PRs, and progressive overload data across devices. Your data lives on-device — cloud is the safety net.</div>
+    <div class="auth-sub">Sign in to track your training. Sessions, PRs and progressive overload are saved to your account and follow you across devices. You can look around without an account, but nothing will be saved.</div>
     <div class="auth-form">
       <div id="authFormInner">
         <span class="auth-field-label">Your email</span>
         <input class="auth-input" type="email" inputmode="email" id="authEmail" placeholder="you@email.com" autocomplete="email">
         <button class="auth-send-btn" onclick="sendOTP()">Send Sign-in Code →</button>
-        <button class="auth-skip" onclick="skipAuth()">Continue without signing in</button>
+        <button class="auth-skip" onclick="skipAuth()">Look around without saving</button>
       </div>
       <div id="authOTPState">
         <div class="auth-sent">
@@ -1798,7 +1798,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <span class="auth-field-label" style="margin-top:14px;">Sign-in code</span>
         <input class="auth-input" type="text" inputmode="numeric" id="authOTPCode" placeholder="00000000" maxlength="8" autocomplete="one-time-code" style="text-align:center;font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:.3em;">
         <button class="auth-send-btn" onclick="verifyOTP()">Verify →</button>
-        <button class="auth-skip" style="margin-top:4px;" onclick="document.getElementById('authOTPState').style.display='none';document.getElementById('authFormInner').style.display='block';">← Back</button>
+        <button class="auth-skip" style="margin-top:4px;" onclick="resetAuthView()">← Back</button>
         <button class="auth-skip" onclick="skipAuth()" style="margin-top:4px;">Continue without signing in</button>
       </div>
     </div>
@@ -2712,8 +2712,14 @@ sb.auth.onAuthStateChange((event, session) => {
     currentUser = session.user;
     setSyncStatus('synced');
     updateSyncUserInfo();
-    // Transition away from auth view if currently on it
-    if (document.getElementById('view-auth')?.classList.contains('active')) {
+    // Point storage at THIS account before reading a single key. Previously the keys
+    // were global to the browser, so whoever signed in adopted whatever program the
+    // device already held — the "my program follows the phone, not me" bug.
+    const scopeChanged = setLSScope(currentUser.id);
+    if (scopeChanged) rehydrateFromScope();
+    // Transition away from auth view if currently on it — or if the scope just changed
+    // under a dashboard still showing the previous occupant's program.
+    if (document.getElementById('view-auth')?.classList.contains('active') || scopeChanged) {
       const savedCfg = LS.get('tandem_cfg');
       if (savedCfg?.goal) {
         cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
@@ -2730,15 +2736,111 @@ sb.auth.onAuthStateChange((event, session) => {
     currentUser = null;
     setSyncStatus('offline');
     updateSyncUserInfo();
+    // Storage follows the token. Without this, a SIGNED_OUT arriving from anywhere
+    // other than signOut() (token expiry, another tab) would leave the previous
+    // account's scope live and its program on screen.
+    if (setLSScope(null)) { rehydrateFromScope(); showView('auth'); }
   }
 });
 
 // ── LS helpers ──
-const LS = {
-  get: k => { try{return JSON.parse(localStorage.getItem(k));}catch{return null;} },
-  set: (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn(e);} },
-  del: k => { try{localStorage.removeItem(k);}catch(e){console.warn(e);} }
+//
+// Every tandem_* key is scoped to the account that owns it. Before this, the keys were
+// flat and global to the browser: the dashboard, the day queue and the in-progress
+// session pointer all read the same storage no matter who was signed in — so signing
+// out changed nothing on screen, and a second account on the same phone inherited the
+// first one's program. Identity gated only the cloud-sync functions, never the local
+// render path, which is why the program behaved as if it belonged to the device.
+//
+// Scope is the user id. "Continue without signing in" is a LOOK-AROUND mode, per
+// Kerwin's ruling: you may browse and build, but nothing is saved — tracking your
+// training requires an account. So the anonymous scope is backed by an in-memory map
+// that dies with the page, never localStorage. Signing out drops back to it, which is
+// what makes sign-out actually sign you out: there is nothing durable left to render.
+const ANON_SCOPE = 'anon';
+const _anonStore = new Map(); // ephemeral by design — never persisted
+const isAnon = () => _lsScope === ANON_SCOPE;
+const LS_LEGACY_CLAIMED = 'tandem_legacy_claimed'; // unscoped by design — a one-time marker
+const LS_SCOPED_KEYS = [
+  'tandem_cfg','tandem_history','tandem_prs','tandem_profile','tandem_week',
+  'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
+  'tandem_skipped_cardio','tandem_skips','tandem_day_order',
+  'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id'
+];
+let _lsScope = ANON_SCOPE;
+const lsKey = k => k + '::' + _lsScope;
+
+// Raw string storage (no JSON), scoped. The session-pointer keys store bare strings and
+// historically called localStorage directly, bypassing LS entirely — leaving the
+// in-progress session id shared across accounts. Same scoping rule, one home.
+const LSraw = {
+  get: k => { try{ return isAnon() ? (_anonStore.has(k) ? _anonStore.get(k) : null)
+                                   : localStorage.getItem(lsKey(k)); }catch{return null;} },
+  set: (k,v) => { try{ isAnon() ? _anonStore.set(k, String(v))
+                                : localStorage.setItem(lsKey(k),v); }catch(e){console.warn(e);} },
+  del: k => { try{ isAnon() ? _anonStore.delete(k)
+                            : localStorage.removeItem(lsKey(k)); }catch(e){console.warn(e);} }
 };
+
+const LS = {
+  get: k => { try{ const v = LSraw.get(k); return v === null ? null : JSON.parse(v); }catch{return null;} },
+  set: (k,v) => { LSraw.set(k, JSON.stringify(v)); },
+  del: k => { LSraw.del(k); }
+};
+
+// Pre-scoping installs wrote flat keys. That data is real training history and belongs
+// to whoever was using this device, so the first REAL account to sign in claims it.
+// The anonymous scope never claims: it saves nothing, and letting a look-around session
+// consume the previous owner's history would destroy it. Claimed once, then the marker
+// stops a second account that later signs in here from inheriting the first one's data.
+function claimLegacyKeysInto(scope) {
+  try {
+    if (!scope || scope === ANON_SCOPE) return;
+    if (localStorage.getItem(LS_LEGACY_CLAIMED)) return;
+    const prev = _lsScope;
+    _lsScope = scope;
+    let claimed = false;
+    for (const k of LS_SCOPED_KEYS) {
+      const legacy = localStorage.getItem(k);
+      if (legacy === null) continue;
+      if (localStorage.getItem(lsKey(k)) === null) localStorage.setItem(lsKey(k), legacy);
+      localStorage.removeItem(k);
+      claimed = true;
+    }
+    _lsScope = prev;
+    if (claimed) localStorage.setItem(LS_LEGACY_CLAIMED, scope);
+  } catch(e) { console.warn('legacy claim failed:', e); }
+}
+
+// Switches which account's local data the app reads. Returns true when the scope
+// actually changed, so callers know they must re-hydrate in-memory state (cfg,
+// currentWeek, currentDay) — those are copies of storage, and a scope switch makes
+// every one of them stale.
+function setLSScope(uid) {
+  const next = uid || ANON_SCOPE;
+  if (_lsScope === next) return false;
+  _anonStore.clear(); // a look-around session never survives a scope change
+  _lsScope = next;
+  claimLegacyKeysInto(next);
+  return true;
+}
+
+// Re-reads the in-memory mirrors of storage after a scope switch. Anything derived
+// from LS and cached in a module-level variable has to come back through here, or the
+// previous account's values stay on screen.
+function rehydrateFromScope() {
+  const savedCfg = LS.get('tandem_cfg');
+  cfg = savedCfg || {};
+  selectedGoal = cfg.goal || null;
+  selectedDays = cfg.days || 4;
+  selectedSex = cfg.sex || null;
+  selectedExperience = cfg.experience || null;
+  selectedEmphasis = cfg.emphasis || 'balanced';
+  currentWeek = cfg.goal ? currentWeekFromStorage() : 1;
+  currentDay = '';
+  S.logged = {}; S.sessionSets = {};
+  return !!cfg.goal;
+}
 
 // ── App state ──
 let cfg = {};        // program config
@@ -4904,7 +5006,7 @@ function renderSessionTimer() {
   const row = document.getElementById('sessionTimerRow');
   if (!row) return;
   if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
-  const startTime = localStorage.getItem('tandem_session_start_time');
+  const startTime = LSraw.get('tandem_session_start_time');
   if (startTime) {
     const start = Number(startTime);
     const tick = () => {
@@ -4991,8 +5093,8 @@ function renderSessionPace(elapsedMs) {
 async function startWorkoutTimer() {
   try {
     if (currentUser) await startOrResumeSession();
-    else if (!localStorage.getItem('tandem_session_start_time')) {
-      localStorage.setItem('tandem_session_start_time', String(Date.now()));
+    else if (!LSraw.get('tandem_session_start_time')) {
+      LSraw.set('tandem_session_start_time', String(Date.now()));
     }
   } catch (e) {
     console.warn('startWorkoutTimer failed:', e);
@@ -5536,7 +5638,7 @@ const pendingSetInserts = {};
 
 async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
-  const storedId = localStorage.getItem('tandem_active_session_id');
+  const storedId = LSraw.get('tandem_active_session_id');
   if (storedId) {
     const { data } = await sb.from('workout_sessions')
       .select('id')
@@ -5545,17 +5647,17 @@ async function startOrResumeSession() {
       .eq('completed', false)
       .maybeSingle();
     if (data?.id) {
-      if (!localStorage.getItem('tandem_session_start_time')) {
-        localStorage.setItem('tandem_session_start_time', String(Date.now()));
+      if (!LSraw.get('tandem_session_start_time')) {
+        LSraw.set('tandem_session_start_time', String(Date.now()));
       }
       // C11 diagnostic: remember the FIRST session id this workout ran under
-      if (!localStorage.getItem('tandem_c11_first_session_id')) {
-        localStorage.setItem('tandem_c11_first_session_id', data.id);
+      if (!LSraw.get('tandem_c11_first_session_id')) {
+        LSraw.set('tandem_c11_first_session_id', data.id);
       }
       return data.id;
     }
     console.error('[C11] stored active session id was stale/invalid — minting a new session', { storedId });
-    localStorage.removeItem('tandem_active_session_id');
+    LSraw.del('tandem_active_session_id');
   }
   const today = localDateStr(); // BUG-018/027: local day, not UTC
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
@@ -5569,13 +5671,13 @@ async function startOrResumeSession() {
     completed: false
   }).select('id').single();
   if (error) throw error;
-  localStorage.setItem('tandem_active_session_id', newSession.id);
-  if (!localStorage.getItem('tandem_session_start_time')) {
-    localStorage.setItem('tandem_session_start_time', String(Date.now()));
+  LSraw.set('tandem_active_session_id', newSession.id);
+  if (!LSraw.get('tandem_session_start_time')) {
+    LSraw.set('tandem_session_start_time', String(Date.now()));
   }
   // C11 diagnostic: remember the FIRST session id this workout ran under
-  if (!localStorage.getItem('tandem_c11_first_session_id')) {
-    localStorage.setItem('tandem_c11_first_session_id', newSession.id);
+  if (!LSraw.get('tandem_c11_first_session_id')) {
+    LSraw.set('tandem_c11_first_session_id', newSession.id);
   }
   return newSession.id;
 }
@@ -6378,7 +6480,7 @@ function clearHistory() {
     // BUG-91: tandem_working1rm belongs in this list. Omitting it left an orphaned
     // working 1RM that survived the clear, outranked the (now-empty) PR store via
     // earnedOneRM, and could not be cleared by any UI path.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm'].forEach(k=>localStorage.removeItem(k));
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm'].forEach(k=>LS.del(k));
     buildHistoryModal();
   }
 }
@@ -6641,9 +6743,9 @@ function skipAhead() {
         }
         // Never let a future real session resume INTO the row we just marked
         // skipped — the same cleanup finishSession() does on real completion.
-        localStorage.removeItem('tandem_active_session_id');
-        localStorage.removeItem('tandem_session_start_time');
-        localStorage.removeItem('tandem_c11_first_session_id');
+        LSraw.del('tandem_active_session_id');
+        LSraw.del('tandem_session_start_time');
+        LSraw.del('tandem_c11_first_session_id');
         renderSessionTimer(); // FEAT persistent-session-timer: back to "Start Workout"
       } catch (skipSyncErr) {
         console.warn('BUG-56 skip cloud sync failed (local history unaffected):', skipSyncErr);
@@ -6760,10 +6862,10 @@ function finishSession() {
 
   // Cloud: mark session complete + update streaks
   if (currentUser) {
-    const sessionUUID = localStorage.getItem('tandem_active_session_id');
-    const startTime = localStorage.getItem('tandem_session_start_time');
+    const sessionUUID = LSraw.get('tandem_active_session_id');
+    const startTime = LSraw.get('tandem_session_start_time');
     // C11 diagnostic: capture synchronously — outer block clears storage below
-    const c11FirstId = localStorage.getItem('tandem_c11_first_session_id');
+    const c11FirstId = LSraw.get('tandem_c11_first_session_id');
 
     // BUG-017: recover cloud session ID if localStorage entry was lost
     // (lazy cloud create in logSet failed, or ID cleared before Finish was tapped).
@@ -6928,9 +7030,9 @@ function finishSession() {
       }
     })();
 
-    localStorage.removeItem('tandem_active_session_id');
-    localStorage.removeItem('tandem_session_start_time');
-    localStorage.removeItem('tandem_c11_first_session_id'); // C11 diagnostic reset
+    LSraw.del('tandem_active_session_id');
+    LSraw.del('tandem_session_start_time');
+    LSraw.del('tandem_c11_first_session_id'); // C11 diagnostic reset
     currentCloudSessionId = null;
     sessionStartTime = null;
     Object.keys(sessionPrCache).forEach(k => delete sessionPrCache[k]);
@@ -6941,7 +7043,7 @@ function finishSession() {
   // tandem_working1rm dir:'pr' entries (the same store showSessionSummary's
   // gold rows read); streak lives in the cloud streaks table, so it stays '—'.
   if (!currentUser) {
-    const startTime = localStorage.getItem('tandem_session_start_time');
+    const startTime = LSraw.get('tandem_session_start_time');
     const duration = startTime ? Math.round((Date.now() - Number(startTime)) / 60000) : null;
     const today = localDateStr();
     const working = LS.get('tandem_working1rm') || {};
@@ -6952,7 +7054,7 @@ function finishSession() {
   // currentUser branch above — a signed-out/local-only session must also stop
   // showing a running timer once Finish is tapped, otherwise the previous
   // session's clock silently keeps counting into the next one.
-  localStorage.removeItem('tandem_session_start_time');
+  LSraw.del('tandem_session_start_time');
   renderSessionTimer();
 }
 
@@ -6994,7 +7096,7 @@ function updateProgress() {
   document.getElementById('progPct').textContent = pct + '%';
   // EPIC-19 Slice 1: refresh the pace indicator immediately on progress change
   // (logging/unlogging a set) rather than waiting up to 1s for the next tick.
-  const _startTime = localStorage.getItem('tandem_session_start_time');
+  const _startTime = LSraw.get('tandem_session_start_time');
   if (_startTime) renderSessionPace(Date.now() - Number(_startTime));
 }
 
@@ -7021,6 +7123,12 @@ function showView(id) {
   document.getElementById('view-' + id).classList.add('active');
   document.getElementById('bottomNav').style.display = id === 'tracker' ? 'flex' : 'none';
   setTabBar(id);
+  // Entering the auth view always means "start a sign-in", so it always starts at the
+  // email form. Centralised here rather than at the call sites because there are four
+  // of them (signOut, the SIGNED_OUT listener, the History modal's Account button, and
+  // the Goal modal's signed-out "Sign in" chip) and the two buried ones are exactly the
+  // ones a later change would forget.
+  if (id === 'auth') resetAuthView();
   if (id === 'dashboard') loadDashboard();
   if (id === 'log') renderLogTab();
   if (id === 'you') { renderYouTab(); loadDashboard(); } // render cached state now; loadDashboard refreshes both
@@ -7251,6 +7359,31 @@ function toggleSW(key, total) {
 // ═══════════════════════════════════════════════════════
 let pendingAuthEmail = '';
 
+// Returns the auth view to its ENTRY state: the email form, not the code screen.
+//
+// sendOTP() hides authFormInner and shows authOTPState, and nothing ever put it back
+// except the "← Back" button's inline handler. So once a user signed in via a code, the
+// auth view stayed in "Enter Your Code" state for the life of the page — and sign-out,
+// which now lands on that view, dropped them onto a stale code prompt instead of a way
+// to sign in (Kerwin, 2026-09-29, device-testing the sign-out fix: "return me to the
+// device verify screen, not the exact homepage").
+//
+// It also re-enables the send button. sendOTP() disables it and restores it ONLY on
+// error, so after a successful send the button stayed "Sending..." and disabled
+// forever — a second dead end behind the first.
+function resetAuthView() {
+  const form = document.getElementById('authFormInner');
+  const otp = document.getElementById('authOTPState');
+  if (form) form.style.display = 'block';
+  if (otp) otp.style.display = 'none';
+  const code = document.getElementById('authOTPCode');
+  if (code) code.value = '';
+  pendingAuthEmail = null;
+  document.querySelectorAll('.auth-send-btn').forEach(b => { b.disabled = false; });
+  const send = document.querySelector('#authFormInner .auth-send-btn');
+  if (send) send.textContent = 'Send Sign-in Code →';
+}
+
 async function sendOTP() {
   const email = document.getElementById('authEmail')?.value?.trim();
   if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
@@ -7287,16 +7420,17 @@ async function verifyOTP() {
   // Success — onAuthStateChange listener handles the rest
 }
 
+// Look-around mode. Kerwin's ruling: browsing without an account is fine, but tracking
+// requires signing in — so this runs in the anonymous scope, which is backed by an
+// in-memory store and saves nothing. A program built here works for the session and is
+// gone on reload, by design. It deliberately does NOT fall through to a previous
+// occupant's saved program: that was the old behaviour, and it is how a signed-out
+// device kept showing someone's real training data.
 function skipAuth() {
-  const savedCfg = LS.get('tandem_cfg');
-  if (savedCfg?.goal) {
-    cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;
-    selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
-    currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
-    renderTracker(); showView('dashboard');
-  } else {
-    showView('onboard');
-  }
+  setLSScope(null);
+  rehydrateFromScope();
+  showToast('Browsing without an account — nothing will be saved');
+  showView('onboard');
 }
 
 async function signOut() {
@@ -7305,6 +7439,16 @@ async function signOut() {
   setSyncStatus('offline');
   updateSyncUserInfo();
   closeModal('goal');
+  // Sign-out used to end here: it dropped the token, then left the dashboard on screen
+  // rendering the signed-out user's program from storage, because no render path ever
+  // consulted currentUser. Dropping back to the anonymous scope is what makes it real —
+  // the account's data stays on this device under its own scope, but nothing in the
+  // anonymous scope reads it, so there is no program left to show until someone signs
+  // back in. The view change is part of the fix, not cosmetic: staying on the dashboard
+  // would re-render an empty program rather than offering a way back in.
+  setLSScope(null);
+  rehydrateFromScope();
+  showView('auth'); // showView resets the auth view to the email form
   showToast('Signed out');
 }
 
@@ -10126,17 +10270,25 @@ function refreshAvatarPreview(){
     // the tab sat open (R3) — see their own re-check just before reading it.
     const sdInput = document.getElementById('ob-start-date');
     if (sdInput && !sdInput.value) { sdInput.value = localDateStr(); sdInput.dataset.autofilled = '1'; }
-    // Restore saved color theme immediately
-    const savedProfile = LS.get('tandem_profile');
-    if (savedProfile?.colorTheme) {
-      applyAccentColor(savedProfile.colorTheme);
-    }
+    // Resolve identity BEFORE reading any key. Storage is scoped per account now, so a
+    // read taken before the session is known would hit the anonymous (empty) scope and
+    // the app would boot as though this device had never been used — and, worse, a
+    // later write would land in the wrong bucket. Session first, scope second, storage
+    // third: that order is the whole point.
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
       currentUser = session.user;
+      setLSScope(currentUser.id);
       setSyncStatus('synced');
       updateSyncUserInfo();
       await refreshLiftHistory();   // D27 — must precede the first getActiveProgram()
+    } else {
+      setLSScope(null); // look-around scope: reads nothing durable, writes nothing
+    }
+    // Restore saved color theme — after scoping, so it is this account's theme
+    const savedProfile = LS.get('tandem_profile');
+    if (savedProfile?.colorTheme) {
+      applyAccentColor(savedProfile.colorTheme);
     }
     const savedCfg = LS.get('tandem_cfg');
     if (savedCfg?.goal) {
