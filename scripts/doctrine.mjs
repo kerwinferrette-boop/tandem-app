@@ -41,7 +41,7 @@ import vm from 'node:vm';
 // ONE home, shared with verify check #27 — see the header of the lib for why.
 import {
   loadProgressionLayer, loadlessEntries, weightedEntries,
-  loadlessViolations, loadedViolations, NON_LOAD_INPUTS,
+  loadlessViolations, loadedViolations, missingLoadViolations, NON_LOAD_INPUTS,
 } from './lib/progression-layer.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
@@ -708,6 +708,32 @@ let d34Checked = 0;
         continue;
       }
       for (const v of loadlessViolations(rec, where)) {
+        fail('D34', `${tierOf('D34.no_fabricated_load')} — ${v}`);
+      }
+    }
+  }
+
+  // (1b) CLAUSE (a2), SAFETY — missing data is not a modality (BUG-208, Kerwin's
+  // Option-1 ruling 2026-09-29). The SAME adversarial set fed to a LOADED ('reps')
+  // row must yield a PROMPT — weight:null, no rep coaching, no fabricated number.
+  // "Logged 0 on a band pull-apart" and "logged blank on a barbell squat" are
+  // different events; rep-coaching the second is advice premised on a load never
+  // lifted. logSet now stores the blank as null; legacy rows stored 0 — both shapes
+  // land on the read-path guard, so both are swept here.
+  const loadedProbe = weighted[0];
+  for (const bad of NON_LOAD_INPUTS) {
+    for (const minReps of [30, 12, 2]) {
+      d34Checked++;
+      setLast(loadedProbe.name, bad, minReps);
+      const where = `${loadedProbe.name} [${loadedProbe.equipment}] stored weight=${JSON.stringify(bad)} minReps=${minReps}`;
+      let rec;
+      try {
+        rec = recommend(loadedProbe);
+      } catch (err) {
+        fail('D34', `${tierOf('D34.no_fabricated_load')} — ${where}: getRecommendation threw (${err.message}); a missing load on a loaded row must yield a prompt, not a crash`);
+        continue;
+      }
+      for (const v of missingLoadViolations(rec, where)) {
         fail('D34', `${tierOf('D34.no_fabricated_load')} — ${v}`);
       }
     }
@@ -2962,7 +2988,7 @@ console.log(`  D20 one-off soft-deprioritizes a recently-trained muscle, reuses 
 console.log(`  D22 onboarding estimate is a submaximal RM — converted via D12's live calcRM, never prescribed raw, never outranks an earned number — ${d22Checked} assertions (conversion identity + conservative range-bottom + no invented RM + no private copy of the formula + earned-always-wins resolution order + the raw-prefill branch is gone)`);
 console.log(`  D23 one rest owner (PHASES; authoredRest is the only deviation channel) + no heading claims a rest it does not own — ${d23Checked} assertions over one-off focus×goal and weekly goal×split (generated days author no rest + supersets surface SUPERSET_CFG where the renderer can see it + heading numbers match their lines + experience cannot move rest)`);
 console.log(`  D24 load progression is a PERCENTAGE of the load actually lifted, from one owner, rounded in one home — ${d24Checked} assertions over goal×phase (dead incComp/incAcc/pctTop/pctInc columns gone + every rate inside ACSM's 2-10% band + accessory rate derived not tabulated + degenerate phase falls back to the floor + the step provably scales with the load + no private copy of the rounding + each granularity declared exactly once + no display advertises pounds)`);
-console.log(`  D34 no load lifted, no load prescribed — loadless work progresses by REPS, and the guard is weight-keyed not equipment-keyed — ${d34Checked} assertions (every non-load input {0,-5,-0.5,NaN,null,undefined,''} × all 3 branches yields weight:null + rep coaching with no "null lbs"/fabricated "0 lbs" + a bodyweight-equipment movement carrying +25 lb STILL ladders + the rep-surplus trigger is D24's, declared once and actually read by the loadless branch). SPLIT: no_fabricated_load=${tierOf('D34.no_fabricated_load')}, rep_progression_mode=${tierOf('D34.rep_progression_mode')} — no override key registered, so neither clause authorizes a deviation today. Breadth (whole bank × goal × week) is verify check #27.`);
+console.log(`  D34 no load lifted, no load prescribed — loadless work progresses by REPS, and the guard is weight-keyed not equipment-keyed — ${d34Checked} assertions (every non-load input {0,-5,-0.5,NaN,null,undefined,''} × all 3 branches yields weight:null + rep coaching with no "null lbs"/fabricated "0 lbs" + the SAME set on a LOADED row PROMPTS and never rep-coaches (clause a2, BUG-208) + a bodyweight-equipment movement carrying +25 lb STILL ladders + the rep-surplus trigger is D24's, declared once and actually read by the loadless branch). SPLIT: no_fabricated_load=${tierOf('D34.no_fabricated_load')}, rep_progression_mode=${tierOf('D34.rep_progression_mode')} — no override key registered, so neither clause authorizes a deviation today. Breadth (whole bank × goal × week) is verify check #27.`);
 console.log(`  D25 one owner per generated default; the uncited timed-hold fallback is proved unreachable — ${d25Checked} assertions (both engines route through defaultPrescription + no inline copy survives + every unit:'sec' bank entry declares its own secs + the helper returns the entry's number, never the fallback)`);
 console.log(`  D26 one sex-aware seed-weight owner; no lookup key names an exercise that does not exist — ${d26Checked} assertions (seedWeight/bankEntryByName own it + SEED_WEIGHTS/SEED_BASE_LBS declared once + DEFAULT_WEIGHTS/NSCA_DEFAULTS stay deleted + no inline equipment-ternary table regrows + every matrix key resolves in EXERCISE_BANK + no loaded lift is sex-blind + all three engines hand the same user the same number, proved by running them + every call site passes sex)`);
 if (d26SeedCoverageGaps.length) {
