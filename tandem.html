@@ -2726,7 +2726,7 @@ sb.auth.onAuthStateChange((event, session) => {
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
         renderTracker(); showView('dashboard');
-        // BUG-190: the SECOND returning-user entry point with a saved cfg (magic-link
+        // BUG-207: the SECOND returning-user entry point with a saved cfg (magic-link
         // click / session restore / home-screen icon). It had the identical stale-cache
         // hole as the init IIFE: renderTracker() asks the queue what today's workout is
         // while tandem_history still holds only whatever this browser happened to have.
@@ -6719,7 +6719,7 @@ function skipAhead() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-    session_date: localDateStr(), // BUG-190: see finishSession() — same omission, same fix
+    session_date: localDateStr(), // BUG-207: see finishSession() — same omission, same fix
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -6871,7 +6871,7 @@ function finishSession() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-    session_date: localDateStr(), // BUG-190: the merge's business key — without it this
+    session_date: localDateStr(), // BUG-207: the merge's business key — without it this
     // row can never match its own synced cloud twin and the session double-counts.
     week: currentWeek,
     goal: cfg.goal,
@@ -7659,7 +7659,7 @@ function mergeAvatarFieldsFromCloud(row) {
 // tandem_history writer respects. Does NOT change `completed`/`session_type`/
 // `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
 // stays the only home for that test.
-// BUG-190: the business key must be derivable from BOTH representations of one
+// BUG-207: the business key must be derivable from BOTH representations of one
 // session, or the dedupe below is dead for exactly the rows it exists to dedupe.
 // A row finishSession()/skipAhead() wrote locally carries only `date`, a human locale
 // string ("Tue, Sep 29, 2026"); its synced cloud twin carries `session_date`
@@ -7763,7 +7763,7 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
   return merged.slice(0, 100);
 }
 
-// ── hydrateHistoryFromCloud() — BUG-190, the self-heal half ──
+// ── hydrateHistoryFromCloud() — BUG-207, the self-heal half ──
 //
 // The program QUEUE (completedSessionCount() -> nextProgramDayKey()) reads ONE input:
 // the local tandem_history cache. Nothing refreshed that cache on the everyday path —
@@ -7805,7 +7805,7 @@ async function restoreFromCloud() {
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-    // Sessions — BUG-190: through the shared hydrator, so the manual Restore button and
+    // Sessions — BUG-207: through the shared hydrator, so the manual Restore button and
     // the automatic on-load self-heal can never reconcile history two different ways.
     const { sessions, added } = await hydrateHistoryFromCloud(uid);
     if (sessions.length) {
@@ -9203,7 +9203,7 @@ async function syncFromCloud() {
     // server-side-only row, e.g. BUG-131's repair insert, permanently invisible to
     // completedSessionCount()/nextProgramDayKey() the moment local history was
     // non-empty — see mergeCloudSessionsIntoHistory()'s own comment).
-    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-190: one owner for fetch+merge
+    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-207: one owner for fetch+merge
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
     // C-fix (2026-07-13): MERGE cloud PRs into local instead of the old
@@ -10437,7 +10437,7 @@ function refreshAvatarPreview(){
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
       if (currentUser) {
-        // BUG-190: reconcile local history against the cloud BEFORE anything asks the
+        // BUG-207: reconcile local history against the cloud BEFORE anything asks the
         // queue what today's workout is. This is the ONLY path a returning user takes,
         // and until now it never refreshed tandem_history at all — so a session that
         // existed only server-side left completedSessionCount() short and the app

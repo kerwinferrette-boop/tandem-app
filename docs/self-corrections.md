@@ -1226,7 +1226,7 @@ P1 Wrong Data / P2 Visual UX / P3 Low.
 
 ## SC-33 — My call-site gate located sites by regex and never asserted how many it found, so it silently guarded a subset
 
-**What happened (2026-09-30, BUG-190).** Writing the regression gate for the stale-history bug, I
+**What happened (2026-09-30, BUG-207).** Writing the regression gate for the stale-history bug, I
 wrote a check that grabbed "the returning-user init path" with a single `html.match(...)` and
 asserted it contained the new hydrate call. It passed. It was also wrong: `match()` returns the
 FIRST hit, and there are **two** `if (savedCfg?.goal) {` entry points in `tandem.html` — the init

@@ -52,7 +52,7 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
 {
   const restoreSrc = grab('restoreFromCloud', /async function restoreFromCloud\(\) \{[\s\S]*?\n\}\n/);
   const syncSrc = grab('syncFromCloud', /async function syncFromCloud\(\) \{[\s\S]*?\n  \}\n\}/);
-  // BUG-190: the fetch+merge now has ONE owner, hydrateHistoryFromCloud(). All three
+  // BUG-207: the fetch+merge now has ONE owner, hydrateHistoryFromCloud(). All three
   // callers must route through it — restore (manual button), sync (fresh sign-in) and
   // the on-load self-heal — so they cannot reconcile history three different ways.
   const hydrateSrc = grab('hydrateHistoryFromCloud', /async function hydrateHistoryFromCloud\([\s\S]*?\n\}/);
@@ -62,7 +62,7 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
     /hydrateHistoryFromCloud\(/.test(restoreSrc) && !/from\('workout_sessions'\)/.test(restoreSrc));
   check('syncFromCloud() routes through the shared hydrator, not a re-implementation',
     /hydrateHistoryFromCloud\(/.test(syncSrc));
-  // THE mechanism guard for BUG-190: the returning-user init path (saved cfg, the ONLY
+  // THE mechanism guard for BUG-207: the returning-user init path (saved cfg, the ONLY
   // path a daily user takes) must hydrate history BEFORE renderTracker() asks the queue
   // what today's workout is. This is what was missing — BUG-178 fixed the merge but left
   // it unreachable from here, so the queue ran on a cache nothing ever refreshed.
@@ -84,15 +84,15 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
     if (paint === -1) continue;
     savedCfgBranches.push(html.slice(at, paint + 2000));
   }
-  check(`BUG-190: found both saved-cfg entry points (got ${savedCfgBranches.length}, expected 2)`,
+  check(`BUG-207: found both saved-cfg entry points (got ${savedCfgBranches.length}, expected 2)`,
     savedCfgBranches.length === 2);
   const unhydrated = savedCfgBranches.filter(b => !/hydrateHistoryFromCloud\(/.test(b));
-  check(`BUG-190: EVERY returning-user saved-cfg path hydrates history before trusting the queue — ${unhydrated.length} do not`,
+  check(`BUG-207: EVERY returning-user saved-cfg path hydrates history before trusting the queue — ${unhydrated.length} do not`,
     unhydrated.length === 0);
   const initSrc = savedCfgBranches.find(b => /await hydrateHistoryFromCloud\(/.test(b)) || '';
   // Compare against the PAINT call specifically, not a bare 'renderTracker()' — the
   // surrounding comment mentions renderTracker() by name and would match first.
-  check('BUG-190: the init path AWAITS the hydrate before renderTracker() reads the queue',
+  check('BUG-207: the init path AWAITS the hydrate before renderTracker() reads the queue',
     !!initSrc && initSrc.indexOf('await hydrateHistoryFromCloud(') < initSrc.indexOf("renderTracker(); showView('dashboard');"));
   check('restoreFromCloud() no longer contains the old all-or-nothing empty-guard',
     !/if \(!existing\.length\)/.test(restoreSrc));
@@ -205,7 +205,7 @@ function buildContext() {
     merged[0].session_date === '2026-03-10' && merged[1].session_date === '2026-03-01');
 }
 
-// ── 2(f)/(g)/(h). BUG-190: the merge must dedupe a row finishSession() WROTE LOCALLY
+// ── 2(f)/(g)/(h). BUG-207: the merge must dedupe a row finishSession() WROTE LOCALLY
 // against that same session's synced cloud twin.
 //
 // Why this gate exists on top of (a)-(e): every "local" fixture above is CLOUD-SHAPED
