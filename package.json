@@ -11,7 +11,8 @@
     "outcome": "node scripts/outcome.mjs",
     "integration": "node scripts/prod-integration.mjs",
     "sweep:doctrine": "node scripts/pending-doctrine-sweep.mjs",
-    "claims:check": "node scripts/claims-on-origin.mjs"
+    "claims:check": "node scripts/claims-on-origin.mjs",
+    "walkthrough:controls": "node scripts/control-reachability-walkthrough.mjs"
   },
   "devDependencies": {
     "playwright": "1.56.1"
