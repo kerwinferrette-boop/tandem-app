@@ -1224,7 +1224,44 @@ P1 Wrong Data / P2 Visual UX / P3 Low.
 
 ---
 
-## SC-33 — I built an audit that asked whether a value is written, never whether it is read, and reported the app healthy
+## SC-33 — My call-site gate located sites by regex and never asserted how many it found, so it silently guarded a subset
+
+**What happened (2026-09-30, BUG-190).** Writing the regression gate for the stale-history bug, I
+wrote a check that grabbed "the returning-user init path" with a single `html.match(...)` and
+asserted it contained the new hydrate call. It passed. It was also wrong: `match()` returns the
+FIRST hit, and there are **two** `if (savedCfg?.goal) {` entry points in `tandem.html` — the init
+IIFE and the `onAuthStateChange` handler (magic link / session restore / home-screen icon). Both
+render the tracker straight off the local cache; both had the identical defect. My gate looked at
+one of them. Had I not gone looking for the second call site by hand, I would have shipped a fix
+for one entry point, a green gate asserting that entry point, and left the *same* bug live on the
+path a returning user hits most often.
+
+**The mechanism, not the trait.** A locator regex answers "show me a site that looks like this",
+which I read as "show me the sites that look like this". Those differ by exactly the failure mode
+this repo keeps paying for (BUG-73 → BUG-114: one function, one fix, one vocabulary, the other
+vocabulary still broken). The defect is not that I chose a bad regex — it is that the assertion had
+**no cardinality**, so a regex that found 1 of 2, or 0 of 2 after a later refactor renamed the
+anchor, reads exactly the same as one that found all of them. `grab()`-style helpers make this
+worse, not better: they throw on zero matches, which *feels* like a safety net and actually just
+guarantees the "found 1 of 2" case fails silently.
+
+> **THE RULE — SC-33.** A gate that finds call sites by pattern must assert the COUNT it found
+> before asserting anything about them, and that count must be a literal number written in the
+> check's own label (`expected 2`). Use `matchAll`/`indexOf`-loop, never `match()`, whenever "every
+> site that does X" is the thing being guarded. If the expected count changes, that is a
+> deliberate edit to the gate, which is the point — a new call site should break the gate and make
+> someone look, not be quietly excluded from it. The same applies to the fix itself: before
+> shipping, enumerate the other sites the defect's shared code path can reach (CLAUDE.md's
+> fix-the-mechanism rule) and confirm the gate's count matches that enumeration.
+
+**Enforced by:** partially mechanical. `scripts/history-merge-smoke.mjs` now asserts
+`savedCfgBranches.length === 2` and that ZERO of them lack the hydrate call, and both halves are
+mutation-tested (removing the hydrate from *either* branch fails the gate — verified, not assumed).
+The general habit across other gates is judgment — not mechanically checkable. Operational tell: if
+a check's label says "the X path" rather than "every X path, N of them", I have not written a
+mechanism gate, I have written a spot check.
+
+## SC-34 — I built an audit that asked whether a value is written, never whether it is read, and reported the app healthy
 
 **What I believed.** That `scripts/audit-dead-handlers.mjs` answered "is this control dead?" Its
 EPIC-40 run reported **1 cosmetic-only handler out of 159**, and `docs/epic-40-dead-handler-audit.md`
@@ -1252,7 +1289,7 @@ low finding count from a weak detector reads identically to a healthy codebase. 
 named this failure ("'Wired' is not 'working'"), and the audit written to enforce that rule was built
 to violate it.
 
-> **THE RULE — SC-33.** An audit or gate that asserts a value is WRITTEN has proven nothing about
+> **THE RULE — SC-34.** An audit or gate that asserts a value is WRITTEN has proven nothing about
 > whether it is USED. For every value a control produces, name the read site — a line that consumes
 > it for a calculation or renders it — or record it as a chain break. A Supabase write, a `cfg.x =`,
 > a localStorage `set`, and a call to a calc-named function are all write-side evidence and none of
@@ -1280,7 +1317,7 @@ for writing the check instead of trusting the sweep.
 
 ---
 
-## SC-34 — I wrote four static checks that matched the comments explaining the thing they were checking for
+## SC-35 — I wrote four static checks that matched the comments explaining the thing they were checking for
 
 **What I believed.** That a check which greps `tandem.html` for a code pattern is testing the code.
 
@@ -1305,7 +1342,7 @@ program, and prose about a defect necessarily contains the defect's own signatur
 explaining a fix is the single most likely place for the anti-pattern's exact text to appear. So the
 false-positive rate is not random; it is concentrated precisely where I had just been writing.
 
-> **THE RULE — SC-34.** Strip comments before matching source for a code pattern. `//`-lines for JS,
+> **THE RULE — SC-35.** Strip comments before matching source for a code pattern. `//`-lines for JS,
 > `<!-- -->` blocks for HTML, and for string-context matches restrict to the real read surfaces
 > (a `.select()` list, a filter argument) rather than "the name appears inside any string." Do this
 > in the first draft, not after a failure. And when a detector returns a *reassuringly small*
@@ -1320,7 +1357,7 @@ concrete tell: if a check's own source contains the string it greps for, it will
 
 ---
 
-## SC-35 — I published a subagent's "X is never read" conclusions without verifying the read sites myself
+## SC-36 — I published a subagent's "X is never read" conclusions without verifying the read sites myself
 
 **What I believed.** That a thorough delegated sweep's negative findings could be written into a
 committed audit and filed as tracker rows on the strength of the sweep.
@@ -1346,7 +1383,7 @@ grep cannot see: database triggers, RLS policies, views, and `dataset.camelCase`
 `data-kebab-case` attribute, which no search for the literal attribute name will find. I forwarded
 whole-program negatives at the confidence appropriate to line-local positives.
 
-> **THE RULE — SC-35.** Never publish "nothing reads X" from a search alone. Before it goes in a
+> **THE RULE — SC-36.** Never publish "nothing reads X" from a search alone. Before it goes in a
 > document or a tracker row, (a) name the read surfaces actually checked, (b) check the ones a grep
 > structurally cannot reach — `pg_proc`, `pg_policy`, views, and the `dataset.camelCase` ↔
 > `data-kebab-case` transform — and (c) state the negative as scoped ("no client read site; triggers
@@ -1360,7 +1397,7 @@ cannot be asserted there without having checked `pg_proc`/`pg_policy`. The DOM/a
 
 ---
 
-## SC-36 — I wrote one gate per bug, so nothing watched the seam between two fixes, and one silently reverted the other
+## SC-37 — I wrote one gate per bug, so nothing watched the seam between two fixes, and one silently reverted the other
 
 **What I believed.** That a branch where every fix carries its own mutation-tested gate, with
 `npm run verify` 35/35 green and `validate:personas` passing, was safe to merge. I had proved each
@@ -1387,7 +1424,7 @@ surface between them was entirely unguarded. The mutation test I was proud of ma
 likely, not less: reverting fix A and watching gate A fail confirms gate A is wired to fix A, which
 is precisely the scoping that blinds it to fix B.
 
-> **THE RULE — SC-36.** When a change makes two code paths share a value, ask what ELSE writes that
+> **THE RULE — SC-37.** When a change makes two code paths share a value, ask what ELSE writes that
 > value and whether the shared path preserves it. Concretely: a function that returns a **whole
 > replacement object** for shared state must be checked against *every* writer of that state, not
 > just the fields the current bug is about — enumerate the writers and diff them against the
@@ -1403,3 +1440,4 @@ incumbent AND that every call site passes it, since a builder that *can* carry b
 without the incumbent carries nothing. Teeth proved in both directions: removing the `maxDb` carry
 fails [A]/[D1] naming the uncapped prescription, and dropping the second argument at one call site
 fails [C] naming that site.
+

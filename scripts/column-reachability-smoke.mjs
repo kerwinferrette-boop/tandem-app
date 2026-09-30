@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * column-reachability-smoke.mjs — the READS-SIDE gate. (SC-33's enforcement.)
+ * column-reachability-smoke.mjs — the READS-SIDE gate. (SC-34's enforcement.)
  *
  * WHY THIS EXISTS
  * ---------------
@@ -42,7 +42,7 @@
  *       This exists because the first three drafts of this detector each produced
  *       a reassuringly short list by accident (one counted a console.warn string
  *       as a read). A low finding count from a weak detector is indistinguishable
- *       from a healthy codebase — SC-33's actual lesson.
+ *       from a healthy codebase — SC-34's actual lesson.
  */
 import fs from 'fs';
 

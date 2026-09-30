@@ -35,7 +35,7 @@ const raw = fs.readFileSync(new URL('../tandem.html', import.meta.url), 'utf8');
 // quotes role="button" in order to explain the fix, and check [A] flagged that
 // comment as an unfixed element on the first run. This is the FOURTH time in one
 // session that scanning source for a pattern matched the prose documenting the
-// pattern (see docs/self-corrections.md SC-34) — strip first, always.
+// pattern (see docs/self-corrections.md SC-35) — strip first, always.
 const html = raw.replace(/<!--[\s\S]*?-->/g, '');
 let failures = 0;
 const check = (label, cond, detail) => {

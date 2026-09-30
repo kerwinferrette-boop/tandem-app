@@ -49,7 +49,7 @@ const TRANSIENT = {
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const raw = readFileSync(path.join(root, 'tandem.html'), 'utf8');
-// SC-34: strip comments first — this file's comments quote `cfg.maxDb =` etc.
+// SC-35: strip comments first — this file's comments quote `cfg.maxDb =` etc.
 const code = raw.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
 
 let failures = 0;

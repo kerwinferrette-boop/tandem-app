@@ -5,7 +5,7 @@
 Status: Scoped, P1 High, Effort L.
 `https://app.notion.com/3ebca37f935b8170be4bf2d71a62e533`
 **Evidence artifact:** `docs/control-reachability-audit-2026-09-30.md` (all findings, line-cited).
-**Mechanism entry:** `docs/self-corrections.md` SC-33.
+**Mechanism entry:** `docs/self-corrections.md` SC-34.
 **Linked Bug rows:** BUG-191 … BUG-205 (15 rows, all Status=New, each carrying a SCOPE-LOCK
 `Claude Code Prompt`).
 
@@ -123,7 +123,7 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
 - **2026-09-30 — Epic opened; audit and metadata reconciliation shipped.**
   - `db2c3c0` — corrected the record: CLAUDE.md's Prime-Directive example cited `REST_SECONDS`,
     which D23 deleted and which is now honored end-to-end via `authoredRest`; replaced with three
-    verified-live examples (BUG-191, BUG-202, BUG-195). Added SC-33. Annotated
+    verified-live examples (BUG-191, BUG-202, BUG-195). Added SC-34. Annotated
     `docs/epic-40-dead-handler-audit.md` as write-side-only and retracted its "Color Takeover is
     fully wired" claim. Retracted `docs/ui-gap-audit-2026-09-23.md`'s "QA badge visible to all
     users" claim in 3 places — verified false: owner-only in the client (3 gates) AND enforced by
@@ -166,9 +166,9 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
     explicitly not to touch them. Gate: `a11y-keyboard-smoke.mjs`.
   - `37ef1c5` **BUG-195** local notes persistence + staged migration `0022`.
     Gate: `ex-notes-smoke.mjs`.
-  - **Two self-corrections earned:** SC-34 (four static checks written today each matched the
+  - **Two self-corrections earned:** SC-35 (four static checks written today each matched the
     comments explaining what they check for — one failed *silently*, in the safe direction) and
-    SC-35 (I published a delegated sweep's "X is never read" negatives without verifying them; two
+    SC-36 (I published a delegated sweep's "X is never read" negatives without verifying them; two
     were wrong — this wave's D13 retraction, and `estimated_1rm_lbs`/`total_volume_lbs`, which
     triggers read).
   - **Wave 0 unblocked, for real:** EPIC-39's gate cited a deleted branch. Verified against git +

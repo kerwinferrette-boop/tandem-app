@@ -36,7 +36,7 @@ import path from 'node:path';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const raw = readFileSync(path.join(root, 'tandem.html'), 'utf8');
-// SC-34: strip comments before matching — this file's own comments quote the
+// SC-35: strip comments before matching — this file's own comments quote the
 // anti-patterns being checked for.
 const code = raw.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
 const markup = raw.replace(/<!--[\s\S]*?-->/g, '');

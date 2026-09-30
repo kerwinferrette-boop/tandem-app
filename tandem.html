@@ -2734,6 +2734,21 @@ sb.auth.onAuthStateChange((event, session) => {
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
         renderTracker(); showView('dashboard');
+        // BUG-190: the SECOND returning-user entry point with a saved cfg (magic-link
+        // click / session restore / home-screen icon). It had the identical stale-cache
+        // hole as the init IIFE: renderTracker() asks the queue what today's workout is
+        // while tandem_history still holds only whatever this browser happened to have.
+        // Fixing only the init path would be the BUG-73 -> BUG-114 mistake again — same
+        // defect, same shared function, a different call site the first fix never
+        // generalised past. Paint from cache first (fast), then reconcile and re-render.
+        // Deliberately .then() rather than await: this runs inside the
+        // onAuthStateChange callback, and awaiting a Supabase call there holds the auth
+        // lock — the same reason the sibling branch below already uses .then().
+        hydrateHistoryFromCloud(currentUser.id).then(({ added }) => {
+          if (!added) return;            // cache was already correct — no re-render churn
+          currentWeek = currentWeekFromStorage(); // the merge may have advanced the week
+          renderTracker();
+        });
       } else {
         // BUG-003 fix: new context (home screen icon, new device) — try cloud restore before onboarding
         syncFromCloud().then(restored => { if (!restored) showView('onboard'); });
@@ -6768,6 +6783,7 @@ function skipAhead() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    session_date: localDateStr(), // BUG-190: see finishSession() — same omission, same fix
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -6919,6 +6935,8 @@ function finishSession() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    session_date: localDateStr(), // BUG-190: the merge's business key — without it this
+    // row can never match its own synced cloud twin and the session double-counts.
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -7718,9 +7736,32 @@ function mergeAvatarFieldsFromCloud(row) {
 // tandem_history writer respects. Does NOT change `completed`/`session_type`/
 // `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
 // stays the only home for that test.
+// BUG-190: the business key must be derivable from BOTH representations of one
+// session, or the dedupe below is dead for exactly the rows it exists to dedupe.
+// A row finishSession()/skipAhead() wrote locally carries only `date`, a human locale
+// string ("Tue, Sep 29, 2026"); its synced cloud twin carries `session_date`
+// ('2026-09-29'). Parsing the former back to the latter is what lets the two match.
+// This fallback is for rows ALREADY sitting in a user's localStorage — both writers
+// now stamp session_date too (locked by history-merge-smoke.mjs section 3), but rows
+// written before this change will never gain it retroactively, and without this they
+// would DOUBLE-COUNT the moment the self-heal merge runs.
+function _historyDateKey(row) {
+  if (!row) return null;
+  if (row.session_date != null) return String(row.session_date).slice(0, 10);
+  if (row.date) { const d = new Date(row.date); if (!isNaN(d)) return localDateStr(d); }
+  return null;
+}
 function _historyRowKey(row) {
-  if (row && row.session_date != null) {
-    return 'k:' + row.session_date + '|' + (row.day_type ?? row.day ?? '') + '|' + (row.session_type ?? '');
+  const day = _historyDateKey(row);
+  if (day) {
+    // D9: `session_type` is the SOLE program-vs-one-off discriminator and
+    // isProgramHistoryRow() is its ONE owner — an absent session_type is a program row
+    // "by construction". Keying on the raw string was a second, unowned copy of that
+    // test, and it disagreed with the owner: a local finishSession() row (no
+    // session_type) and its cloud twin ('strength') produced different keys, so every
+    // synced workout was counted TWICE on merge. Normalising through the owner is the
+    // same one-rule-one-home move the rest of this file already makes.
+    return 'k:' + day + '|' + (row.day_type ?? row.day ?? '') + '|' + (isProgramHistoryRow(row) ? 'prog' : 'oneoff');
   }
   return (row && row.id != null) ? 'id:' + row.id : null;
 }
@@ -7824,22 +7865,47 @@ function cfgFromUserRow(u, prev) {
   };
 }
 
+// ── hydrateHistoryFromCloud() — BUG-190, the self-heal half ──
+//
+// The program QUEUE (completedSessionCount() -> nextProgramDayKey()) reads ONE input:
+// the local tandem_history cache. Nothing refreshed that cache on the everyday path —
+// a returning user with a saved cfg never reached syncFromCloud() (that branch only
+// runs when there is NO local cfg) or restoreFromCloud() (a manual button). So a
+// completed session that existed only server-side — a row written on another device,
+// or inserted out of order directly in Postgres — stayed invisible to the queue and
+// the app re-served a workout the user had already done. BUG-178 fixed the MERGE but
+// left it reachable only from two paths the daily user never takes: the classic
+// "wired is not working" shape CLAUDE.md names.
+//
+// This is the one owner of "pull sessions down and reconcile them into local history."
+// Returns { sessions, added } so a caller can report what changed; never throws — an
+// offline load must still render from whatever the cache already holds.
+async function hydrateHistoryFromCloud(uid) {
+  if (!uid || typeof sb === 'undefined' || !sb) return { sessions: [], added: 0 };
+  try {
+    const { data: sessions, error } = await sb.from('workout_sessions')
+      .select('*').eq('user_id', uid).order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!sessions?.length) return { sessions: [], added: 0 };
+    const existing = LS.get('tandem_history') || [];
+    const merged = mergeCloudSessionsIntoHistory(existing, sessions);
+    LS.set('tandem_history', merged);
+    return { sessions, added: merged.length - existing.length };
+  } catch (e) {
+    console.warn('history hydrate skipped (offline or query failed):', e);
+    return { sessions: [], added: 0 };
+  }
+}
+
 async function restoreFromCloud() {
   if (!currentUser) { closeModal('history'); showView('auth'); return; }
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-    // Sessions
-    const { data: sessions, error: se } = await sb.from('workout_sessions')
-      .select('*').eq('user_id', uid).order('created_at', { ascending: false });
-    if (se) throw se;
-    if (sessions?.length) {
-      const existing = LS.get('tandem_history') || [];
-      // BUG-178: MERGE cloud rows into local instead of the old empty-guard —
-      // see mergeCloudSessionsIntoHistory()'s own comment for why.
-      const merged = mergeCloudSessionsIntoHistory(existing, sessions);
-      const added = merged.length - existing.length;
-      LS.set('tandem_history', merged);
+    // Sessions — BUG-190: through the shared hydrator, so the manual Restore button and
+    // the automatic on-load self-heal can never reconcile history two different ways.
+    const { sessions, added } = await hydrateHistoryFromCloud(uid);
+    if (sessions.length) {
       showToast(added > 0
         ? `History synced from cloud (${added} session${added === 1 ? '' : 's'} merged in)`
         : 'History already up to date with the cloud');
@@ -9201,11 +9267,7 @@ async function syncFromCloud() {
     // server-side-only row, e.g. BUG-131's repair insert, permanently invisible to
     // completedSessionCount()/nextProgramDayKey() the moment local history was
     // non-empty — see mergeCloudSessionsIntoHistory()'s own comment).
-    const { data: sessions } = await sb.from('workout_sessions')
-      .select('*').eq('user_id', uid).order('created_at', { ascending: false });
-    if (sessions?.length) {
-      LS.set('tandem_history', mergeCloudSessionsIntoHistory(LS.get('tandem_history') || [], sessions));
-    }
+    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-190: one owner for fetch+merge
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
     // C-fix (2026-07-13): MERGE cloud PRs into local instead of the old
@@ -10458,6 +10520,16 @@ function refreshAvatarPreview(){
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
       if (currentUser) {
+        // BUG-190: reconcile local history against the cloud BEFORE anything asks the
+        // queue what today's workout is. This is the ONLY path a returning user takes,
+        // and until now it never refreshed tandem_history at all — so a session that
+        // existed only server-side left completedSessionCount() short and the app
+        // re-served an already-completed day. Awaited on purpose: renderTracker() below
+        // reads the queue, so hydrating after it would render the stale answer first.
+        // Idempotent (history-merge-smoke.mjs case (h)) and non-throwing, so a cold or
+        // offline start still renders from whatever the cache holds.
+        await hydrateHistoryFromCloud(currentUser.id);
+        currentWeek = currentWeekFromStorage(); // recompute: the merge may have advanced it
         const { data: lastSession } = await sb.from('workout_sessions')
           .select('session_date,day_type')
           .eq('user_id', currentUser.id)

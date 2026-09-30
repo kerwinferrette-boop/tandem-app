@@ -36,6 +36,13 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+// D34's subject under test lives inside tandem.html's inline <script>, so it is
+// vm-extracted, not imported. That extraction + the honest-output predicates have
+// ONE home, shared with verify check #27 — see the header of the lib for why.
+import {
+  loadProgressionLayer, loadlessEntries, weightedEntries,
+  loadlessViolations, loadedViolations, NON_LOAD_INPUTS,
+} from './lib/progression-layer.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
@@ -139,15 +146,26 @@ const TIERS = {
   // lookup key is a silent one: a miss returns undefined and the caller falls through.
   D26: 'SAFETY',          // one sex-aware seed-weight owner; no lookup key may name a non-existent exercise
   D32: 'SCIENCE_DEFAULT', // fat_burn cardio finisher gated by sex + weight delta (men: optional <=20lb; women: never gated)
+  // SPLIT, and the split is a CONFIDENCE split, not a permission split — see the
+  // CLAUSE_TIERS entries below. "Never render a fabricated load" is honesty to the
+  // user about what a number is (the D23/D25/D26 family) and binds absolutely.
+  // "Progress loadless work by reps" is a real physiological claim resting on ONE
+  // 8-week study, so it is labelled revisable-with-a-citation rather than eternal.
+  // Note what that label does NOT do: no override key is registered for D34, so
+  // tierGuard() still fails every authored deviation (see OVERRIDE_KEYS) — the
+  // SCIENCE_DEFAULT clause binds every path today exactly as SAFETY does.
+  D34: 'SPLIT',           // no fabricated load = SAFETY; rep-progression mode = SCIENCE_DEFAULT
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
-// the only two split invariants (see the comment block above for why).
+// the only three split invariants (see the comment block above for why).
 const CLAUSE_TIERS = {
   'D5.never_on_primary':       'SAFETY',           // never superset the primary compound block
   'D5.superset_required':      'SCIENCE_DEFAULT',  // transform/fat_burn must superset
   'D8.no_supersets_on_primaries': 'SAFETY',        // identical rule to D5.never_on_primary
   'D8.maintenance_mav_cap':    'SCIENCE_DEFAULT',  // Maintenance caps at MAV
+  'D34.no_fabricated_load':    'SAFETY',           // weight<=0 ⇒ weight:null, never "null lbs"/"0 lbs"
+  'D34.rep_progression_mode':  'SCIENCE_DEFAULT',  // loadless work progresses by reps (Plotkin 2022)
 };
 
 // EPIC-033 F7 / BUG-70. TIERS used to be decorative — nothing read it but the report
@@ -627,6 +645,133 @@ let d24Checked = 0;
   for (const line of htmlCode.split('\n')) {
     if (/Load progression/i.test(line) && /\+?\$?\{?[^%]*\blbs?\b/.test(line.replace(/Load progression[^<]*/i, m => m)) && !/%/.test(line)) {
       fail('D24', `a "Load progression" display renders pounds instead of a percentage: ${line.trim()}`);
+    }
+  }
+}
+
+// ── D34 (ACTIVE) — no load lifted, no load prescribed ────────────────────
+//
+// WHY THIS BLOCK EXISTS AND D24's WAS NOT ENOUGH. D24 assertion (5) already proves
+// `progressLoad(0) === null`. That is the ENGINE half, and it has been law since D24
+// shipped. Nothing asserted the CONSUMER half — that the caller must HONOR that null
+// before interpolating it into user-facing text. So getRecommendation took
+// progressLoad's honest null and rendered it: the chip read "↑ null lbs", reason
+// "15 reps — 2 over target, add 4% (0 lbs)" (BUG-188, fixed cdbcf19). D24's gate was
+// green the whole time. Same failure class as D23/D25/D26 — a value the engine
+// computes correctly and the render layer then misuses has shipped nothing — one
+// layer further out, which is exactly why it needs its own invariant rather than a
+// D24 clause. Promotion ruled by council: docs/council-transcript-2026-09-29-d24-loadless-promotion.md
+//
+// DIVISION OF LABOUR. This block is the LAW: adversarial non-load inputs (the whole
+// NON_LOAD_INPUTS set, not just the 0 a user actually produces), the weight-keyed
+// clause, and the single-trigger clause. The BREADTH — every loadless bank entry ×
+// goal × week × rep case — is verify check #27 (loadless-progression-smoke.mjs).
+// Both call ONE extraction + ONE honest-output predicate in
+// scripts/lib/progression-layer.mjs, so the two can never fork. Never re-inline it.
+//
+// SOURCE (clause c): Plotkin et al., PeerJ 2022, PMID 36199287 — 8wk, LOAD arm vs
+// REPS arm, "Both progressions of repetitions and load appear to be viable strategies".
+// Do NOT cite research-report (8).pdf §3's 5-30 rep equivalence for this: that answers
+// rep-RANGE interchangeability, a different question (corrected in 2b8e879).
+let d34Checked = 0;
+{
+  const layer = loadProgressionLayer();
+  const { EXERCISE_BANK: bank, PROGRESSION_REP_SURPLUS, setLast, recommend } = layer;
+
+  // A representative loadless movement and a loaded control. Picked by equipment
+  // ONLY to choose fixtures — the rule itself is weight-keyed, which is what (2)
+  // below proves. Bank-wide coverage is check #27's job, not this gate's.
+  const loadless = loadlessEntries(bank);
+  const weighted = weightedEntries(bank);
+  d34Checked++;
+  if (!loadless.length || !weighted.length) {
+    fail('D34', `fixture selection collapsed (loadless=${loadless.length}, weighted=${weighted.length}) — EXERCISE_BANK shape changed; fix the selector, do not weaken the gate`);
+  }
+
+  // (1) CLAUSE (a), SAFETY — no fabricated load may reach the user, for ANY value
+  // that is not a real load. The app's guard is `!(Number(weight) > 0)`; 0 is merely
+  // the one a blank cell produces today (parseFloat('')||0). A future guard written
+  // as `weight === 0` would still pass check #27 and would ship "null lbs" the first
+  // time a null or '' reached it from a different code path — so the gate feeds the
+  // whole adversarial set. Straddle all three branches of the progression tail.
+  const probe = loadless[0];
+  for (const bad of NON_LOAD_INPUTS) {
+    for (const minReps of [30, 12, 2]) {
+      d34Checked++;
+      setLast(probe.name, bad, minReps);
+      const where = `${probe.name} logged weight=${JSON.stringify(bad)} minReps=${minReps}`;
+      let rec;
+      try {
+        rec = recommend(probe);
+      } catch (err) {
+        fail('D34', `${tierOf('D34.no_fabricated_load')} — ${where}: getRecommendation threw (${err.message}); a non-load input must yield rep coaching, not a crash`);
+        continue;
+      }
+      for (const v of loadlessViolations(rec, where)) {
+        fail('D34', `${tierOf('D34.no_fabricated_load')} — ${v}`);
+      }
+    }
+  }
+
+  // (2) CLAUSE (b), SAFETY — the guard is keyed on the MEASURED WEIGHT, never on
+  // equipment. BUG-42 (Kerwin, 2026-07-13) deliberately kept the bodyweight cell
+  // editable: "For weighted ones ... those can have the progressive weight overload.
+  // Otherwise, no need." So a pull-up/dip logged at +25 lb is NOT a loadless case and
+  // must ladder under D24. An equipment-keyed guard passes clause (a) perfectly while
+  // silently killing load progression for exactly the movements BUG-42 protected —
+  // this is the assertion that catches an over-broad "fix".
+  for (const [fixture, logged, label] of [
+    [loadless.find(e => /pull-?up|chin-?up|dip/i.test(e.name)), 25, 'a LOADLESS-equipment movement carrying added load'],
+    [weighted[0], 100, 'a loaded movement'],
+  ]) {
+    d34Checked++;
+    if (!fixture) {
+      fail('D34', 'fixture: expected a pull-up/chin-up/dip among bodyweight-equipment bank entries — selector or bank changed');
+      continue;
+    }
+    setLast(fixture.name, logged, 30);
+    const rec = recommend(fixture, { sex: 'male', week: 4 });
+    for (const v of loadedViolations(rec, logged, `${fixture.name} [${fixture.equipment}] logged ${logged} lb × 30 reps (${label})`)) {
+      fail('D34', `${tierOf('D34.no_fabricated_load')} — ${v}`);
+    }
+  }
+
+  // (3) CLAUSE (c), SCIENCE_DEFAULT — the rep-surplus trigger has ONE home, and it
+  // is D24's. D34 reuses PROGRESSION_REP_SURPLUS rather than inventing a loadless
+  // threshold; a second literal that "happens to match today" is the silo pattern
+  // CLAUDE.md forbids, and it would let the loaded and loadless branches drift apart
+  // so the same rep count means two different things on two different chips.
+  d34Checked++;
+  if (!(Number.isFinite(PROGRESSION_REP_SURPLUS) && PROGRESSION_REP_SURPLUS > 0)) {
+    fail('D34', `PROGRESSION_REP_SURPLUS is ${JSON.stringify(PROGRESSION_REP_SURPLUS)} — the loadless branch reuses D24's trigger, so it must resolve to a positive number`);
+  }
+  d34Checked++;
+  {
+    // Strip line comments first — this very block names the constant in prose, and
+    // so does the app's own citation comment; grepping raw bytes would self-trip.
+    const htmlNoComments = layer.sources.html.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+    const decls = (htmlNoComments.match(/\b(?:const|let|var)\s+PROGRESSION_REP_SURPLUS\b/g) || []).length
+      + (code.match(/\b(?:const|let|var)\s+PROGRESSION_REP_SURPLUS\b/g) || []).length;
+    if (decls !== 1) {
+      fail('D34', `PROGRESSION_REP_SURPLUS is declared ${decls} time(s) across programs.js + tandem.html — the trigger's one home is D24's single declaration; the loadless branch must READ it, never redeclare it`);
+    }
+  }
+
+  // (4) CLAUSE (c) — the loadless branch must actually USE the shared trigger rather
+  // than hardcode its own surplus. "Wired is not working": (3) proves the constant is
+  // declared once, which says nothing about whether the branch under test reads it.
+  d34Checked++;
+  {
+    const src = layer.sources.progressionSrc;
+    const guardAt = src.search(/if\s*\(\s*!\s*\(\s*Number\(\s*weight\s*\)\s*>\s*0\s*\)\s*\)/);
+    if (guardAt === -1) {
+      fail('D34', 'could not find the `!(Number(weight) > 0)` loadless guard in the live progression layer — if the guard was rewritten, re-point this assertion at the new form; do NOT delete it');
+    } else {
+      // The branch body runs from the guard to its closing brace at the same depth.
+      const body = src.slice(guardAt, guardAt + 900);
+      if (!body.includes('PROGRESSION_REP_SURPLUS')) {
+        fail('D34', 'the loadless branch does not reference PROGRESSION_REP_SURPLUS — it has invented its own rep-surplus threshold instead of reusing D24\'s trigger (one rule, one home)');
+      }
     }
   }
 }
@@ -2817,6 +2962,7 @@ console.log(`  D20 one-off soft-deprioritizes a recently-trained muscle, reuses 
 console.log(`  D22 onboarding estimate is a submaximal RM — converted via D12's live calcRM, never prescribed raw, never outranks an earned number — ${d22Checked} assertions (conversion identity + conservative range-bottom + no invented RM + no private copy of the formula + earned-always-wins resolution order + the raw-prefill branch is gone)`);
 console.log(`  D23 one rest owner (PHASES; authoredRest is the only deviation channel) + no heading claims a rest it does not own — ${d23Checked} assertions over one-off focus×goal and weekly goal×split (generated days author no rest + supersets surface SUPERSET_CFG where the renderer can see it + heading numbers match their lines + experience cannot move rest)`);
 console.log(`  D24 load progression is a PERCENTAGE of the load actually lifted, from one owner, rounded in one home — ${d24Checked} assertions over goal×phase (dead incComp/incAcc/pctTop/pctInc columns gone + every rate inside ACSM's 2-10% band + accessory rate derived not tabulated + degenerate phase falls back to the floor + the step provably scales with the load + no private copy of the rounding + each granularity declared exactly once + no display advertises pounds)`);
+console.log(`  D34 no load lifted, no load prescribed — loadless work progresses by REPS, and the guard is weight-keyed not equipment-keyed — ${d34Checked} assertions (every non-load input {0,-5,-0.5,NaN,null,undefined,''} × all 3 branches yields weight:null + rep coaching with no "null lbs"/fabricated "0 lbs" + a bodyweight-equipment movement carrying +25 lb STILL ladders + the rep-surplus trigger is D24's, declared once and actually read by the loadless branch). SPLIT: no_fabricated_load=${tierOf('D34.no_fabricated_load')}, rep_progression_mode=${tierOf('D34.rep_progression_mode')} — no override key registered, so neither clause authorizes a deviation today. Breadth (whole bank × goal × week) is verify check #27.`);
 console.log(`  D25 one owner per generated default; the uncited timed-hold fallback is proved unreachable — ${d25Checked} assertions (both engines route through defaultPrescription + no inline copy survives + every unit:'sec' bank entry declares its own secs + the helper returns the entry's number, never the fallback)`);
 console.log(`  D26 one sex-aware seed-weight owner; no lookup key names an exercise that does not exist — ${d26Checked} assertions (seedWeight/bankEntryByName own it + SEED_WEIGHTS/SEED_BASE_LBS declared once + DEFAULT_WEIGHTS/NSCA_DEFAULTS stay deleted + no inline equipment-ternary table regrows + every matrix key resolves in EXERCISE_BANK + no loaded lift is sex-blind + all three engines hand the same user the same number, proved by running them + every call site passes sex)`);
 if (d26SeedCoverageGaps.length) {

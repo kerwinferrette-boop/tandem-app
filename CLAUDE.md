@@ -94,7 +94,7 @@ for — run it *before* shipping, not after he catches it.
   Trace every new value end-to-end to a pixel, or say plainly that you did not. **A value being
   written — even written to Supabase — is not evidence it is read.** `scripts/audit-dead-handlers.mjs`
   made exactly that mistake and reported 1 dead handler out of 159; see `docs/self-corrections.md`
-  SC-33.
+  SC-34.
 - **One rule, one home.** If a named table encodes a rule (`SUPERSET_CFG`, `RECOVERY_PARAMS`,
   `PHASES`, `REP_BANDS` — not `REST_SECONDS`, deleted under D23), every path reads that table. A literal that merely
   happens to match today is a silo, and silos drift. When two tables both claim the same rule,

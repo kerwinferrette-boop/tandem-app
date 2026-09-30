@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Council Report — D24 Loadless-Clause Promotion</title>
+<style>
+  :root {
+    --ink: #1a1d21; --muted: #5c6470; --line: #e3e6ea; --bg: #ffffff; --soft: #f6f7f9;
+    --safety: #b4232a; --science: #1b6ec2; --accent: #2d6a4f;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         color: var(--ink); background: var(--bg); margin: 0; line-height: 1.55; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 28px; }
+  .kicker { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  h1 { font-size: 26px; margin: 0 0 10px; line-height: 1.25; }
+  .q { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; font-size: 15px; }
+  h2 { font-size: 18px; margin: 36px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .verdict { border: 2px solid var(--accent); border-radius: 10px; padding: 20px 22px; margin-top: 24px; background: #f4faf7; }
+  .verdict h2 { border: none; margin-top: 0; color: var(--accent); }
+  .verdict h3 { font-size: 15px; margin: 18px 0 6px; }
+  .tierrow { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+  .tier { flex: 1 1 300px; border-radius: 8px; padding: 12px 14px; font-size: 14px; border: 1px solid var(--line); }
+  .tier.safety { border-left: 5px solid var(--safety); }
+  .tier.science { border-left: 5px solid var(--science); }
+  .tier b { display: block; margin-bottom: 4px; }
+  .grid { width: 100%; border-collapse: collapse; font-size: 14px; margin: 14px 0; }
+  .grid th, .grid td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  .grid th { background: var(--soft); font-size: 13px; }
+  .yes { color: var(--accent); font-weight: 600; }
+  .no { color: var(--safety); font-weight: 600; }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); color: var(--muted); margin-left: 6px; }
+  details { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; background: var(--bg); }
+  details summary { cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 15px; list-style: none; }
+  details summary::before { content: "▸ "; color: var(--muted); }
+  details[open] summary::before { content: "▾ "; }
+  details .body { padding: 0 18px 16px; font-size: 14.5px; color: #2a2e33; white-space: pre-wrap; }
+  .one-thing { border-left: 5px solid var(--ink); background: var(--soft); padding: 14px 18px; border-radius: 0 8px 8px 0; margin-top: 16px; font-size: 15px; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+  ul { margin: 8px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">LLM Council · Tandem · 2026-09-29</div>
+  <h1>Should the BUG-188 loadless-progression rule be promoted to doctrine?</h1>
+  <div class="q">The rule (shipped, gated by verify check #27): a logged load of 0 must never yield a fabricated load — the engine returns <code>weight:null</code> plus rep-progression coaching, reusing D24's rep-surplus trigger. Weighted lifts still ladder (guard is weight-keyed, not equipment-keyed). Question: keep it smoke-gated, amend D24, or mint a new numbered invariant — and at which tier?</div>
+</header>
+
+<div class="verdict">
+  <h2>Chairman's Verdict — PROMOTE, as a NEW numbered invariant, SPLIT tier</h2>
+  <p><strong>The decisive reframe (First Principles, endorsed 5/5 in peer review):</strong> check #27 asserts a semantic correctness property against the live engine with a verified negative control (2,800 failures on guard deletion). By the project's own definitions that is a correctness gate, not a change detector — <em>the promotion already happened in substance; recording it is the only open decision.</em> An unrecorded correctness invariant has doctrine's rigidity with none of doctrine's memory.</p>
+  <p><strong>New invariant, not a D24 clause:</strong> D24 answers "how does load progress?"; this rule answers "what happens when load does not exist?" The new row <em>cross-references</em> D24's rep-surplus trigger — the trigger's home stays D24, so one-rule-one-home survives without co-location.</p>
+  <div class="tierrow">
+    <div class="tier safety"><b>SAFETY half</b>Logged load ≤ 0 ⇒ no fabricated or interpolated load may reach the user; <code>weight:null</code> + rep coaching. Kin to D23/D25/D26 ("no invented number reaches the user"). Promotable today under ANY resolution of the 0-semantics question.</div>
+    <div class="tier science"><b>SCIENCE_DEFAULT half</b>Loadless work progresses by REPS via D24's rep-surplus trigger. Plotkin et al., PeerJ 2022 (PMID 36199287) — one 8-week study; explicitly revisable.</div>
+  </div>
+  <h3>Three honestly-flagged caveats the row must carry (D24's own style)</h3>
+  <ul>
+    <li><strong>0-semantics:</strong> a logged 0 conflates genuine loadless modality with a blank weight cell on a loaded lift (Contrarian's dissent → file as its own bug; affects coaching copy, not the SAFETY half).</li>
+    <li><strong>Inherited trigger defect:</strong> D24's ACSM 2-for-2 consecutive-session half is unimplemented; the new rule reuses that trigger as-is, and Plotkin's protocol has not been checked against the trigger as implemented.</li>
+    <li><strong>Retroactive Notion backfill:</strong> the rule shipped before any Notion doctrine page existed — acknowledge the sequence inversion; don't pretend Notion-first was followed.</li>
+  </ul>
+  <p><strong>Implementation:</strong> Notion page → DOCTRINE.md row → doctrine.mjs in ONE change. Extract check #27's sweep into <code>scripts/lib/</code> so the smoke and the doctrine gate are two callers of one sweep (exercise-seed precedent). No text-presence shortcut — that would be "wired, not working."</p>
+  <div class="one-thing"><strong>The one thing to do first:</strong> draft the new invariant's Notion page — rule text, SPLIT tier, Plotkin citation, all three caveats — and get Kerwin's sign-off on that page before touching DOCTRINE.md or doctrine.mjs.</div>
+</div>
+
+<h2>Advisor alignment</h2>
+<table class="grid">
+  <tr><th>Advisor</th><th>Promote?</th><th>Placement</th><th>Tier</th><th>Core argument</th></tr>
+  <tr><td>First Principles <span class="pill">strongest, 5/5 reviewers</span></td><td class="yes">Yes</td><td>New invariant</td><td>SPLIT</td><td>Check #27 is a mislabeled correctness gate; promotion records what already exists. Domain guard ≠ progression function.</td></tr>
+  <tr><td>Outsider</td><td class="yes">Yes</td><td>New invariant</td><td>SPLIT</td><td>Institutional memory is the real (buried) argument; D24-amendment is a false equivalence. Write down why doctrine outranks a smoke.</td></tr>
+  <tr><td>Expansionist</td><td class="yes">Yes</td><td>New invariant</td><td>SPLIT</td><td>Founding clause of the second progression system (<code>progression_mode</code> vocabulary); anchor for BUG-44/EPIC-34, bands, tempo, unilateral ladders.</td></tr>
+  <tr><td>Executor <span class="pill">biggest blind spot, 5/5 reviewers</span></td><td class="yes">Yes</td><td>D24 clause</td><td>SPLIT</td><td>"90% done, two hours" — placement argument unanimously ruled backwards in review, but his shared-lib dedup mechanism was retained.</td></tr>
+  <tr><td>Contrarian <span class="pill">dissent</span></td><td class="no">Not yet</td><td>—</td><td>—</td><td>Logged 0 conflates missing data with loadless modality; single 8-week study; D24 already half-honored. Answered via caveat #1, not overruled.</td></tr>
+</table>
+
+<h2>Where the council clashes</h2>
+<ul>
+  <li><strong>What does a logged 0 mean?</strong> Contrarian: blocking ambiguity — resolve first. Reviewers' resolution: the SAFETY half is correct under both readings (never fabricate), so promote now and flag the ambiguity on the science half.</li>
+  <li><strong>Speed as a criterion.</strong> Executor's "ships today" clause vs. everyone else's conceptual placement; review sided with placement, kept his mechanism.</li>
+</ul>
+
+<h2>Blind spots caught only in peer review</h2>
+<ul>
+  <li>Notion-first inversion — the rule shipped before its source-of-truth page (Reviewers 1, 3, 5).</li>
+  <li>The new rule inherits D24's admitted unimplemented 2-for-2 trigger half; nobody checked Plotkin's protocol against the trigger as implemented (Reviewer 2).</li>
+  <li>The tier split is also a confidence split — SAFETY half promotable today, SCIENCE half carries the caveats (Reviewer 4).</li>
+  <li>Dedup ownership: without a shared-lib extraction the smoke and doctrine assertion will fork (Reviewers 1, 3).</li>
+</ul>
+
+<h2>Full advisor responses</h2>
+
+<details><summary>The Contrarian — keep the smoke, fix blank-cell semantics first</summary><div class="body">The flaw nobody's naming: the guard is weight-keyed, and that conflates two different states. "Logged load = 0 because this is a band pull-apart" and "logged load = 0 because the user left the weight cell blank on a barbell squat" are not the same event. The first deserves rep coaching; the second is missing data, and answering missing data with "Add reps" is itself a fabricated recommendation — exactly the sin the rule claims to prevent. Promote this to doctrine and you enshrine that ambiguity as "wrong by definition" to fix. Resolve the data-vs-modality question first.
+
+Second: what does promotion actually buy here? The smoke already runs on every push with a verified negative control — 2800 failures on guard deletion. The stated upside is "protection unless someone deletes the smoke," but that argument proves nothing: someone can delete a doctrine.mjs check too. The real differences are institutional memory and rejection authority, which is a documentation problem, not a promotion problem. You're paying doctrine-dilution cost for a Notion page's worth of benefit.
+
+Third: the science half rests on one 8-week study of comparable adaptations. One study, one duration, in a project whose D30 citation already turned out unverifiable-by-file. SCIENCE_DEFAULT tier on a single PMID is how doctrine accumulates the caveat barnacles you're already complaining about on D24 — which, note, carries two admitted unimplemented/broken caveats right now. Bolting a third clause onto a half-honored invariant makes D24 a junk drawer, and minting D31 canonizes a rule whose core predicate (what 0 means) is unsettled.
+
+Keep the smoke. Fix the blank-cell semantics. Then talk promotion.</div></details>
+
+<details><summary>The First Principles Thinker — the promotion already happened in substance</summary><div class="body">Strip the framing. You're asking "amend D24 or new number?" — but the real question is: what actually distinguishes doctrine from a smoke in this project? Answer, by your own governance model: a smoke asserts sameness ("green = same as last ship"), doctrine asserts correctness. Now look at check #27. It vm-extracts the live engine and asserts a semantic property — weight:null, rep coaching, weighted lifts still ladder — with a verified negative control. That is not a change detector. It is a correctness gate that you have mislabeled as a smoke. The promotion already happened in substance; you're only deciding whether to record it. An unrecorded correctness invariant is the worst of both worlds: it has doctrine's rigidity with none of doctrine's memory (citation, tier, Notion mirror) — the exact failure mode your "gate is the memory" directive exists to prevent. So promote. Not promoting means the check's authority rests on nobody asking "why does this smoke fail my refactor?"
+
+On amend-vs-new, first principles again: D24 answers "how does load progress?" The new rule answers "what happens when load does not exist?" Those are different questions — one is a progression function, the other is a domain guard on its input. Bolting a null-domain clause onto D24 (which already carries two open caveats) conflates the function with its preconditions. New invariant, cross-referencing D24's rep-surplus trigger as its shared mechanism — one rule, one home, and the trigger's home stays D24.
+
+Tier: the two halves are genuinely different kinds of claims. "Never render a fabricated number" is an invariant about honesty to the user — SAFETY. "Progress by reps" is one 8-week study — SCIENCE_DEFAULT, revisable. D8's SPLIT precedent exists precisely for this shape. Use it.</div></details>
+
+<details><summary>The Expansionist — founding clause of the second progression system</summary><div class="body">Promote it — as a new invariant, and here's the upside everyone's about to undersize: this isn't a rule about zero-pound rows, it's the founding clause of Tandem's second progression system.
+
+Look at what's already sitting on file: the prior council's progression_mode vocabulary — external_load | rep_volume | unilateral_ladder. BUG-188 just shipped the first working member of that taxonomy in production, with a citation, a negative control, and 2800-failure teeth. Folding it into D24 as a caveat buries a platform seed inside a percentage rule. A new numbered invariant — call it the rep-volume progression charter — becomes the anchor that BUG-44/EPIC-34 (rep-target scaling), band work, tempo work, and unilateral ladders all cite when they arrive. Doctrine rows are the institutional memory; give the second mode its own memory address and every future loadless feature inherits a home instead of renegotiating scope against D24's load-centric text.
+
+There's a market-shaped upside hiding here too: couples train together, and couples are asymmetric — one partner benches, the other does band rows and push-ups. An app whose law says "bodyweight athletes get real, cited progression coaching, never a fabricated number" is quietly the only couples app whose engine treats the loadless partner as first-class. That's competitive-strategy material, not a bug patch.
+
+Take the D8 split-tier precedent and run: SAFETY for "no fabricated load reaches a pixel," SCIENCE_DEFAULT for the Plotkin rep-progression half. The split isn't a compromise — it's the template for every future mode you add. Dilution risk is backwards: doctrine gets stronger when it stops being a monoculture of barbell rules. The smoke already proved this rule is invariant-grade. Promotion just tells the future what it's allowed to build on.</div></details>
+
+<details><summary>The Outsider — institutional memory is the buried strongest argument</summary><div class="body">Three things insiders here treat as obvious that aren't, from where I sit:
+
+1. Your own brief undermines the promotion's main selling point. You say promotion buys authority to reject future changes as "wrong by definition." But the smoke already runs on every push, already fails loudly (2800 failures on guard deletion), already blocks CI. The only scenario doctrine protects against that the smoke doesn't is "someone deletes the smoke itself" — and nothing in your brief explains why that same someone couldn't delete a doctrine.mjs check. If doctrine checks are harder to delete, that's the actual load-bearing fact, and you never state it. To an outsider, "doctrine" looks like the same script with a fancier filename plus a Notion page. If the difference is social ("we've agreed never to weaken the gate") rather than mechanical, say so — because then promotion is really about ceremony creating deterrence, and you should evaluate it on those terms.
+
+2. "Institutional memory" is your strongest argument and you buried it. The citation, the tier, the "weight-keyed not equipment-keyed" design decision — that reasoning is precisely what evaporates between sessions. Check #27's filename won't tell a future maintainer why a weighted pull-up ladders. That justifies promotion regardless of authority questions.
+
+3. The D24-amendment option smuggles in a false equivalence. D24 governs how loads progress; this rule governs when loads don't exist. "Silent on loadless" doesn't make it D24's gap — by that logic every rule amends D24. And you'd be attaching a fresh rule to an invariant already carrying two confessed caveats. New number.
+
+Verdict: promote, new invariant, SPLIT tier per your D8 precedent — but write down honestly why doctrine outranks a smoke, because right now you're assuming it.</div></details>
+
+<details><summary>The Executor — promote as a D24 clause, two hours of work</summary><div class="body">Promote it. As a D24 clause. And the reason is pure execution math: the work is already 90% done.
+
+Look at what Monday morning actually requires. The enforcement code exists — check #27 runs the full 2800-assertion sweep with a verified negative control. The citation exists (PMID 36199287). The vm-extraction slice markers are documented. D24's Notion mirror page id is in hand. The remaining work is: (1) one Notion page edit, (2) one paragraph added to the D24 row in DOCTRINE.md, (3) one doctrine.mjs assertion that invokes the existing smoke's extraction recipe — do NOT rewrite the sweep, import or call the same module the smoke uses, exactly like the seed-emitter dedup precedent (scripts/lib/exercise-seed.mjs, one emitter, two callers). One commit, maybe two hours including verify runs. That's it.
+
+A new numbered invariant, by contrast, means drafting standalone rule text, creating a fresh Notion mirror page, and duplicating D24's rep-surplus trigger language in a second row — which immediately violates one-rule-one-home, because the loadless rule explicitly reuses D24's trigger. Two rows encoding one trigger is the exact drift silo the project keeps paying for. The clause is less work AND less future maintenance. Done.
+
+The double-maintenance worry evaporates if you do the lib extraction: smoke calls the shared sweep, doctrine asserts the shared sweep, one home. If you're lazy, just have doctrine.mjs assert the guard's presence via the slice markers and let #27 keep the heavy sweep — also fine, ships today.
+
+Tier: SPLIT, copy D8's format verbatim — "no fabricated load" = SAFETY, "rep progression" = SCIENCE_DEFAULT. There's a template. Use it.
+
+First step Monday: open the Notion page, paste the clause. Everything else follows in the same sitting.</div></details>
+
+<h2>Peer review highlights</h2>
+<details><summary>Review round (anonymized A–E; mapping: A=Executor, B=Contrarian, C=Outsider, D=Expansionist, E=First Principles)</summary><div class="body">All 5 reviewers independently ranked E (First Principles) strongest — the "mislabeled correctness gate / promotion already happened in substance" reframe, plus the cleanest amend-vs-new resolution (cross-reference the trigger; its home stays D24).
+
+All 5 reviewers independently named A (Executor) the biggest blind spot — optimizing Monday-morning effort over conceptual placement, inverting one-rule-one-home (citing ≠ duplicating), never engaging B's blank-cell ambiguity, and proposing a text-presence fallback that would be "wired, not working."
+
+What ALL five advisors missed (surfaced only in review):
+• The Notion-first change order was inverted — the rule shipped before its doctrine page; promotion is a retroactive backfill and must say so (R1, R3, R5).
+• The new rule inherits D24's admitted unimplemented 2-for-2 trigger half; Plotkin's protocol was never checked against the trigger as implemented (R2).
+• The middle path: promote the SAFETY half now, carry the 0-semantics question as a flagged caveat on the SCIENCE half rather than blocking (R3, R4).
+• Nobody assigned ownership of the smoke↔doctrine.mjs shared-sweep extraction, without which the two will fork (R1, R3).</div></details>
+
+<footer>
+  LLM Council · run 2026-09-29 · Topic: D24 loadless-clause promotion (BUG-188 → doctrine) · 5 advisors + 5 anonymized peer reviews + chairman synthesis · Full transcript: <code>docs/council-transcript-2026-09-29-d24-loadless-promotion.md</code>
+</footer>
+
+</div>
+</body>
+</html>

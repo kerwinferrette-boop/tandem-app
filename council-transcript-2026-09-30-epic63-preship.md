@@ -31,7 +31,7 @@ erased on essentially every load. Widening the check found two more members of t
 **pre-date** the branch: `cfg.startEpoch` (read `:8985`) and `cfg.revertedAt` (read `:9142`).
 
 Fixed in `89ae5a2`. Mechanism gate added (`cfg-field-parity-smoke.mjs`) that enumerates every
-`cfg.X =` writer and diffs it against the builder's output. Recorded as **SC-36**.
+`cfg.X =` writer and diffs it against the builder's output. Recorded as **SC-37**.
 
 The Contrarian's second finding — notes keyed by exercise name survive `clearHistory()` — was also
 true and is fixed in the same commit (BUG-91's exact precedent, cited in that function's own comment).
@@ -58,14 +58,14 @@ Principles, Outsider and Executor all said not as-is. This was a genuine disagre
 branch is *for*, not about facts.
 
 **Chairman's resolution:** the Expansionist's premise ("nothing here is worse than what's live") was
-false at the time it was written — the SC-36 regression made one fix actively worse than live. Once
+false at the time it was written — the SC-37 regression made one fix actively worse than live. Once
 that was fixed, the disagreement collapsed to cost, and the Executor priced the browser pass at one
 afternoon against a template that already exists. When the cheap option is also the one four
 advisors want, take it.
 
 ## 4. Blind spots the council caught that no check did
 
-- **The SC-36 seam regression** (Contrarian) — invisible to 36 green checks.
+- **The SC-37 seam regression** (Contrarian) — invisible to 36 green checks.
 - **`verify` wires exactly ONE Playwright check** (Executor, verified: `bug128-bottomnav-pin-smoke`
   at `verify.mjs:57`). `walkthrough:onboarding` and `walkthrough:render` exist and are **not** in
   `verify`. So the 36/36 had never opened a browser on any path this branch touches — and the
@@ -81,7 +81,7 @@ advisors want, take it.
 
 | Step | Commit |
 |---|---|
-| Seam regression fixed + mechanism gate + SC-36 | `89ae5a2` |
+| Seam regression fixed + mechanism gate + SC-37 | `89ae5a2` |
 | Browser walkthrough, 6 assertions, wired into `verify` (37) | `38d41b3` |
 
 **The browser pass then paid for itself twice over.** The first DOM assertion written

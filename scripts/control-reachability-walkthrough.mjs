@@ -16,7 +16,7 @@
  *     `walkthrough:render` is in `verify` — so a 36/36 green run had never opened
  *     a browser on any path this branch touches.
  *   · BUG-192 and BUG-193 cancelled each other out and ALL gates stayed green
- *     (see docs/self-corrections.md SC-36). Assertion [1] below is that exact
+ *     (see docs/self-corrections.md SC-37). Assertion [1] below is that exact
  *     regression, observed in the DOM. It is the merge gate.
  *
  * SHAPE. The program is built as a FIXTURE in-page (seed cfg, call the real
@@ -130,7 +130,7 @@ async function boot(page) {
     // which pushes the render onto the CALIBRATED branch that dbCap was never designed
     // to clamp — so the assertion then failed on correct code. Either way it measures
     // something other than the fix. [1c] below is the real detector: it reads
-    // resolveMaxDb() after the exact cloud rebuild that caused SC-36, and it does
+    // resolveMaxDb() after the exact cloud rebuild that caused SC-37, and it does
     // discriminate (mutation-tested).
     // The investigation did surface a genuine separate gap — an EARNED dumbbell 1RM is
     // not clamped by the gym's cap, so a traveller with an earned 60 lb press is
@@ -152,7 +152,7 @@ async function boot(page) {
       return { maxDb: cfg.maxDb, resolved: resolveMaxDb() };
     });
     check('[1c] SEAM: the cap survives the cloud rebuild + a fresh tab', afterSync.resolved === 25,
-      `cfg.maxDb=${JSON.stringify(afterSync.maxDb)}, resolveMaxDb()=${afterSync.resolved} — 0 means UNCAPPED dumbbell prescriptions, the BUG-192 defect restored by BUG-193 (SC-36)`);
+      `cfg.maxDb=${JSON.stringify(afterSync.maxDb)}, resolveMaxDb()=${afterSync.resolved} — 0 means UNCAPPED dumbbell prescriptions, the BUG-192 defect restored by BUG-193 (SC-37)`);
 
     // ── [2] BUG-196: the "Today" button actually moves the week ──
     await page.evaluate(() => { currentWeek = 1; LS.set('tandem_week', 1); renderTracker(); });

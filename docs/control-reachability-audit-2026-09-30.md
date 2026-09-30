@@ -31,7 +31,7 @@ CLAUDE.md's `"Wired" is not "working"` rule, and it had never been audited.
 is read by **nothing** (§D9). `preferred_workout_time` and `secondary_goal` both earn the script's
 strongest verdict, `Generative (DB write)`, and are consumed by nothing (§D10).
 
-Mechanism recorded as `docs/self-corrections.md` **SC-33**. Gate being added in Phase 5.
+Mechanism recorded as `docs/self-corrections.md` **SC-34**. Gate being added in Phase 5.
 
 **Inventory shape, for orientation:** ~247 interactive controls; **223 inline `onclick`**, **0
 `addEventListener`**, 0 event delegation; **0 undefined handlers**. So class (1) is almost clean —
@@ -170,7 +170,7 @@ apply.
 >
 > Why the sweep missed it: the reads go through `dataset.oneoffGoal`, the camelCase form of
 > `data-oneoff-goal`. **No search for the literal attribute name can find them.** That transform is
-> now named in `docs/self-corrections.md` SC-35 as a surface a grep structurally cannot reach.
+> now named in `docs/self-corrections.md` SC-36 as a surface a grep structurally cannot reach.
 
 > ### CORRECTION, 2026-09-30 (same day) — two D15 claims were wrong
 >
@@ -227,7 +227,7 @@ stale and has been replaced with D1/D5/D6.
 
 **Already fixed in this session:** (1) the QA-feed badge counted already-filed reports and could
 never drain (badge 21 → 3, verified against production) — commit `6f339fd`, gated by
-`scripts/qa-feed-status-smoke.mjs`. (2) The reads-side gate this audit's mechanism (SC-33) demanded
+`scripts/qa-feed-status-smoke.mjs`. (2) The reads-side gate this audit's mechanism (SC-34) demanded
 now exists: `scripts/column-reachability-smoke.mjs`, in `npm run verify` (now 30 checks), with a
 one-way ratchet so a NEW write-only column fails the build and a fixed one must have its allowlist
 entry removed. It is scoped to Supabase columns — DOM values like `.ex-notes` and localStorage keys
