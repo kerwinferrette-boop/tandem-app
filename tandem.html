@@ -3513,8 +3513,12 @@ function selectorTierFromCfg() {
 }
 // Dumbbell weight cap for hotel/small-DB tiers (0/NaN = uncapped).
 function resolveMaxDb() {
+  // BUG-192: the session override wins (it is this tab's explicit choice), but
+  // fall back to the durable cfg.maxDb so a reload does not silently uncap.
   const v = parseInt(sessionStorage.getItem('eq_max_db'), 10);
-  return Number.isFinite(v) && v > 0 ? v : 0;
+  if (Number.isFinite(v) && v > 0) return v;
+  const d = parseInt(cfg?.maxDb, 10);
+  return Number.isFinite(d) && d > 0 ? d : 0;
 }
 // Variety context for the engine: current week and phase index, so
 // accessories rotate weekly and primary compounds rotate only at phase
@@ -4453,6 +4457,15 @@ function applySetupSelection() {
     // this only ever reads its OUTPUT (the live cfg.equipment), same as
     // resolveEquipmentTier() already did before this fix.
     sessionStorage.setItem('eq_tier_baseline', cfg.equipment || '');
+    // BUG-192: the CAP now persists on the same durable path as the TIER above.
+    // It used to live in sessionStorage only, so on a fresh tab the tier still
+    // read "Hotel · Small DB" while resolveMaxDb() returned 0 and dumbbell
+    // prescriptions went UNCAPPED — the UI claiming a constraint the engine had
+    // forgotten. Safety-adjacent: it prescribes load the user's gym lacks.
+    // Local-only for now: there is no users.max_db column, and adding one is a
+    // migration (human-only). So this survives a reload but not a new device;
+    // the cloud half is still owed on BUG-192.
+    cfg.maxDb = maxDb || null;
     // Write local FIRST so the choice survives a reload even if the cloud
     // round-trip is slow, offline, or the tab closes before it resolves —
     // every other cfg-mutation call site in this file does the same
@@ -5240,7 +5253,7 @@ function renderTracker() {
   // though the engine was already correctly building the durable tier's
   // workout from cfg.equipment.
   const _eTier = sessionStorage.getItem('eq_tier') || selectorTierFromCfg();
-  const _eDb   = parseInt(sessionStorage.getItem('eq_max_db')) || 0;
+  const _eDb   = resolveMaxDb();   // BUG-192: was raw sessionStorage, so a reload showed a blank cap
   if (_eTier && _eTier !== 'full_gym') {
     document.querySelectorAll('.eq-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.tier === _eTier);
@@ -10022,8 +10035,13 @@ function openProfileModal() {
   const w = document.getElementById('profileWeightInput');
   if (w) w.value = cfg.weight || '';
   const gw = document.getElementById('profileGoalWeightInput');
-  if (gw) gw.value = profile.goalWeight || '';
-  const heightIn = profile.heightInches || cfg.height_inches || 0;
+  // BUG-194: fall back to cfg so a cloud-restored goal weight (which lands on
+  // cfg.targetWeight/goalWeight, not tandem_profile) still shows here.
+  if (gw) gw.value = profile.goalWeight || cfg.targetWeight || cfg.goalWeight || '';
+  // BUG-194 (c): cfg.height_inches is a key NOTHING ever sets — cfg uses
+  // heightIn/height — so on a fresh login these inputs rendered blank even
+  // though users.height_inches held the value.
+  const heightIn = profile.heightInches || cfg.heightIn || cfg.height || 0;
   const hft = document.getElementById('profileHeightFt');
   const hin = document.getElementById('profileHeightIn');
   if (hft) hft.value = heightIn ? Math.floor(heightIn / 12) : '';
@@ -10125,13 +10143,27 @@ function saveProfileStats() {
   const inches = parseInt(document.getElementById('profileHeightIn')?.value) || 0;
   const totalInches = ft * 12 + inches;
   if (weight) cfg.weight = weight;
+  // BUG-194 (b): goal weight must land on the keys the GENERATOR reads.
+  // getActiveProgram() reads (cfg.targetWeight ?? cfg.goalWeight) at :3596, and
+  // this handler only ever wrote profile.goalWeight — so the D29 weight-delta
+  // cardio gate could not see a Settings edit until a full cloud restore. The
+  // comment at :3592 already noted the two flows disagree on this field name;
+  // write both, matching what syncToCloud() reads at :7572.
+  if (goalWeight) { cfg.targetWeight = goalWeight; cfg.goalWeight = goalWeight; }
+  // BUG-194 (c): keep cfg's height on its REAL keys (heightIn/height — the ones
+  // cfgFromUserRow and syncToCloud use). The modal used to hydrate from
+  // cfg.height_inches, a snake_case key nothing ever set.
+  if (totalInches) { cfg.heightIn = totalInches; cfg.height = totalInches; }
   LS.set('tandem_cfg', cfg);
   const profile = LS.get('tandem_profile') || {};
   profile.goalWeight = goalWeight;
   profile.heightInches = totalInches;
   LS.set('tandem_profile', profile);
   if (currentUser) {
-    sb.from('users').upsert({ id: currentUser.id, goal_weight_lbs: goalWeight || null, height_inches: totalInches || null }, { onConflict: 'id' });
+    // BUG-194 (a): current_weight_lbs was MISSING from this payload, so an edited
+    // current weight never reached the cloud — lost on a new device, and the
+    // 7-day trend and weightDeltaLbs desynced from what Settings displayed.
+    sb.from('users').upsert({ id: currentUser.id, current_weight_lbs: weight || null, goal_weight_lbs: goalWeight || null, height_inches: totalInches || null }, { onConflict: 'id' });
   }
   showToast('Stats saved');
 }
