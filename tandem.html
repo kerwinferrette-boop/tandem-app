@@ -3388,6 +3388,22 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   if (!entry) return { weight: null, arrow: 'new', label: 'First session', reason: 'Log this session to set your baseline' };
 
   const { minReps, weight } = entry;
+
+  // BUG-188 (P2): a 0-lb logged set (bodyweight/band weight cell left blank — logSet stores 0)
+  // has no external load to ladder. progressLoad() guards w<=0 by returning null, and these
+  // branches used to interpolate that null straight into the chip ("null lbs", "(0 lbs)").
+  // No load exists to prescribe, so progress by REPS (double progression — 5-30 rep
+  // equivalence when volume equated, research-report (8).pdf §3), matching the
+  // timed/bodyweight core copy in buildDayHTML. weight:null keeps startW on ex.w and
+  // the BW placeholder untouched.
+  if (!(Number(weight) > 0)) {
+    if (minReps >= topRange + PROGRESSION_REP_SURPLUS)
+      return { weight: null, arrow: 'up', label: 'Add reps', reason: `${minReps} reps with no added load — progress by adding reps next session` };
+    if (minReps >= topRange - 3)
+      return { weight: null, arrow: 'same', label: 'Hold steady', reason: `${minReps} reps — reach the top of the rep range first` };
+    return { weight: null, arrow: 'down', label: 'Build reps', reason: `Only ${minReps} reps — build back to the target range` };
+  }
+
   let rec, arrow, reason;
 
   if (minReps >= topRange + PROGRESSION_REP_SURPLUS) {
