@@ -1131,3 +1131,54 @@ shared with parallel sessions that change branches, configs, and `main` mid-conv
 **Enforced by:** judgment — not mechanically checkable. No script can know which artifact a given
 command was *supposed* to exercise. The operational tell is cheap though: a negative result from a
 harness whose trace never names the artifact under test is not a finding.
+
+---
+
+## SC-31 — I told Kerwin a job would keep emailing him without checking what GitHub actually emails on
+
+**What I said (2026-09-30).** Closing out the A2 fix, I volunteered: *"the **Outcome** job will stay
+red on every run... If you'd rather stop getting the failure email for it, that's a workflow change,
+not a code fix."* Kerwin reasonably acted on it and asked me to stop the Outcome job emailing him.
+
+**What was true.** The Outcome job has never emailed him. GitHub Actions notifications key on the
+**workflow run** conclusion, not on any individual job's conclusion. `outcome` carries
+`continue-on-error: true` at the *job* level, so its failure cannot move the run conclusion. The
+data across five runs is unambiguous — Outcome failed in **all** of them, and the run conclusion
+tracked only `Backend integration` (A2):
+
+| run | Outcome | Backend integration (A2) | **run conclusion** |
+|---|---|---|---|
+| 36611957977 | failure | failure | **failure** |
+| 36617631192 | failure | failure | **failure** |
+| 36652234033 | failure | success | **success** |
+| 36655372864 | failure | success | **success** |
+| 36656747164 | failure | success | **success** |
+
+Every Production Gates run before the seed was applied concluded `failure`; every run after it
+concluded `success`. The emails stopped when A2 went green, before he asked me to stop them.
+
+**The gap.** I reasoned from what the GitHub *UI* shows me — a red X next to the Outcome job — to
+what GitHub *sends*, which is a different system I never checked. Two seconds of `gh run list
+--json conclusion` was available the entire time and would have shown the inflection point. Worse,
+I had the answer in hand and misread it: I had *just* reported "Production Gates — `success`" with
+Outcome red in the very same message where I claimed Outcome would keep generating failure email.
+That is self-contradictory on its face.
+
+**Why this matters.** It is the project's plausibility-first failure mode pointed at tooling instead
+of exercise science: "a red job surely emails you" is exactly the kind of claim that *sounds* right
+and is cheap to check. It also cost Kerwin real time — he asked for a CI change to fix a problem
+that no longer existed, and had I complied without checking I would have edited a workflow, removed
+a live diagnostic signal, and "fixed" nothing. The standing rule against weakening a gate to make it
+look green nearly got violated on my own unverified say-so.
+
+> **THE RULE — SC-31.** Never assert what a notification, alert, or email *will* do from what a
+> dashboard *displays*. They are separate systems. Before telling Kerwin something is or will be
+> notifying him, check the mechanism that actually sends it — for GitHub Actions that is the **run**
+> conclusion (`gh run list --json conclusion`), not the job or step badge, and `continue-on-error`
+> at job level means that job can never move it. And when a proposed fix rests on a premise, verify
+> the premise is still true before touching config: a change that silences an already-silent signal
+> only destroys information.
+
+**Enforced by:** judgment — not mechanically checkable. The cheap operational tell: if I am about to
+recommend a config change to stop an alert, I must first be able to name the last run that actually
+fired it and show its conclusion. If I cannot, I have not established the alert exists.
