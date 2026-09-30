@@ -2734,7 +2734,7 @@ sb.auth.onAuthStateChange((event, session) => {
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
         renderTracker(); showView('dashboard');
-        // BUG-190: the SECOND returning-user entry point with a saved cfg (magic-link
+        // BUG-207: the SECOND returning-user entry point with a saved cfg (magic-link
         // click / session restore / home-screen icon). It had the identical stale-cache
         // hole as the init IIFE: renderTracker() asks the queue what today's workout is
         // while tandem_history still holds only whatever this browser happened to have.
@@ -6783,7 +6783,7 @@ function skipAhead() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-    session_date: localDateStr(), // BUG-190: see finishSession() — same omission, same fix
+    session_date: localDateStr(), // BUG-207: see finishSession() — same omission, same fix
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -6935,7 +6935,7 @@ function finishSession() {
   hist.unshift({
     id: Date.now(),
     date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-    session_date: localDateStr(), // BUG-190: the merge's business key — without it this
+    session_date: localDateStr(), // BUG-207: the merge's business key — without it this
     // row can never match its own synced cloud twin and the session double-counts.
     week: currentWeek,
     goal: cfg.goal,
@@ -7736,7 +7736,7 @@ function mergeAvatarFieldsFromCloud(row) {
 // tandem_history writer respects. Does NOT change `completed`/`session_type`/
 // `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
 // stays the only home for that test.
-// BUG-190: the business key must be derivable from BOTH representations of one
+// BUG-207: the business key must be derivable from BOTH representations of one
 // session, or the dedupe below is dead for exactly the rows it exists to dedupe.
 // A row finishSession()/skipAhead() wrote locally carries only `date`, a human locale
 // string ("Tue, Sep 29, 2026"); its synced cloud twin carries `session_date`
@@ -7773,8 +7773,50 @@ function _historySortKey(row) {
   if (row.date) { const d = new Date(row.date); if (!isNaN(d)) return d.toISOString(); }
   return '';
 }
+// ── dedupeLocalHistory() — BUG-178 part 3 (the repair half) ──
+//
+// Parts 1 and 2 stop NEW duplicates. They do nothing about the ones already sitting in
+// a user's localStorage: between fdb5b31 (2026-09-27) and this change, every tap of
+// Restore persisted a second copy of every session that existed both locally and in the
+// cloud, and those rows do not self-heal — mergeCloudSessionsIntoHistory() only ever
+// compared CLOUD rows against existing ones, never existing against existing. Verified
+// by running before this was written: a history holding 4 real sessions twice counts 8
+// and serves day4 forever, and today's self-heal merge leaves it at 8.
+//
+// Idempotent by construction (collapsing an already-collapsed list is a no-op), so it is
+// safe on every boot, which is how it is wired — it runs inside the merge below, so every
+// caller repairs, and on hydrateHistoryFromCloud()'s offline path too.
+//
+// A row with no derivable key is NEVER dropped: unkeyable means "cannot prove it is a
+// duplicate", and silently deleting a session we cannot identify would be worse than the
+// double-count. When two rows DO collapse, the survivor is the one carrying `exercises`
+// (a Finish()-written row holds the per-set data the History modal renders; its cloud
+// twin does not), and the dropped twin's fields are unioned in underneath it so the
+// session_date/completed/total_volume the cloud copy carries are kept rather than lost.
+function dedupeLocalHistory(hist) {
+  const rows = Array.isArray(hist) ? hist : [];
+  const seen = new Map(); // key -> index into out
+  const out = [];
+  for (const row of rows) {
+    const key = _historyRowKey(row);
+    if (!key) { out.push(row); continue; } // unidentifiable → always kept
+    if (!seen.has(key)) { seen.set(key, out.length); out.push(row); continue; }
+    const at = seen.get(key);
+    const prev = out[at];
+    // Keeper = whichever copy has the per-set data; ties go to the one already placed,
+    // which preserves the newest-first ordering the rest of the file relies on.
+    const keep = (prev && prev.exercises) ? prev : (row && row.exercises) ? row : prev;
+    const drop = keep === prev ? row : prev;
+    out[at] = { ...drop, ...keep }; // keeper wins; the twin only fills fields it lacks
+  }
+  return out;
+}
+
 function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
-  const existing = Array.isArray(existingLocal) ? existingLocal : [];
+  // BUG-178 part 3: collapse duplicates ALREADY in local history before doing anything
+  // else. Placed here, not at one call site, so restore / sync / the on-load self-heal
+  // all repair through the same owner.
+  const existing = dedupeLocalHistory(Array.isArray(existingLocal) ? existingLocal : []);
   const cloud = Array.isArray(cloudSessions) ? cloudSessions : [];
   if (!cloud.length) return existing;
   const seenKeys = new Set(existing.map(_historyRowKey).filter(Boolean));
@@ -7865,7 +7907,7 @@ function cfgFromUserRow(u, prev) {
   };
 }
 
-// ── hydrateHistoryFromCloud() — BUG-190, the self-heal half ──
+// ── hydrateHistoryFromCloud() — BUG-207, the self-heal half ──
 //
 // The program QUEUE (completedSessionCount() -> nextProgramDayKey()) reads ONE input:
 // the local tandem_history cache. Nothing refreshed that cache on the everyday path —
@@ -7881,6 +7923,11 @@ function cfgFromUserRow(u, prev) {
 // Returns { sessions, added } so a caller can report what changed; never throws — an
 // offline load must still render from whatever the cache already holds.
 async function hydrateHistoryFromCloud(uid) {
+  // BUG-178 part 3: repair first, so an offline or signed-out boot still un-poisons a
+  // history the pre-fix Restore duplicated. dedupeLocalHistory() is idempotent.
+  const _local = LS.get('tandem_history') || [];
+  const _repaired = dedupeLocalHistory(_local);
+  if (_repaired.length !== _local.length) LS.set('tandem_history', _repaired);
   if (!uid || typeof sb === 'undefined' || !sb) return { sessions: [], added: 0 };
   try {
     const { data: sessions, error } = await sb.from('workout_sessions')
@@ -7902,7 +7949,7 @@ async function restoreFromCloud() {
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-    // Sessions — BUG-190: through the shared hydrator, so the manual Restore button and
+    // Sessions — BUG-207: through the shared hydrator, so the manual Restore button and
     // the automatic on-load self-heal can never reconcile history two different ways.
     const { sessions, added } = await hydrateHistoryFromCloud(uid);
     if (sessions.length) {
@@ -9267,7 +9314,7 @@ async function syncFromCloud() {
     // server-side-only row, e.g. BUG-131's repair insert, permanently invisible to
     // completedSessionCount()/nextProgramDayKey() the moment local history was
     // non-empty — see mergeCloudSessionsIntoHistory()'s own comment).
-    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-190: one owner for fetch+merge
+    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-207: one owner for fetch+merge
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
     // C-fix (2026-07-13): MERGE cloud PRs into local instead of the old
@@ -10520,7 +10567,7 @@ function refreshAvatarPreview(){
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
       if (currentUser) {
-        // BUG-190: reconcile local history against the cloud BEFORE anything asks the
+        // BUG-207: reconcile local history against the cloud BEFORE anything asks the
         // queue what today's workout is. This is the ONLY path a returning user takes,
         // and until now it never refreshed tandem_history at all — so a session that
         // existed only server-side left completedSessionCount() short and the app

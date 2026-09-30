@@ -1226,7 +1226,7 @@ P1 Wrong Data / P2 Visual UX / P3 Low.
 
 ## SC-33 — My call-site gate located sites by regex and never asserted how many it found, so it silently guarded a subset
 
-**What happened (2026-09-30, BUG-190).** Writing the regression gate for the stale-history bug, I
+**What happened (2026-09-30, BUG-207).** Writing the regression gate for the stale-history bug, I
 wrote a check that grabbed "the returning-user init path" with a single `html.match(...)` and
 asserted it contained the new hydrate call. It passed. It was also wrong: `match()` returns the
 FIRST hit, and there are **two** `if (savedCfg?.goal) {` entry points in `tandem.html` — the init
@@ -1441,3 +1441,41 @@ without the incumbent carries nothing. Teeth proved in both directions: removing
 fails [A]/[D1] naming the uncapped prescription, and dropping the second argument at one call site
 fails [C] naming that site.
 
+---
+
+## SC-38 — Three of my new gate assertions were vacuous: the fixture could not reach the branch, so they passed with the defect live
+
+**What happened (2026-09-30, BUG-178 part 3).** I added four assertions guarding the
+localStorage de-dup repair, ran the gate, saw green, and would have shipped. Mutation-testing
+them found **three that never discriminated**:
+
+- *"a row with no derivable key is never dropped"* — my fixture was `{ id: 999, day, exercises }`.
+  `_historyRowKey()` keys that as `'id:999'`, so it was never unkeyable; the drop-unkeyable-rows
+  mutation left the gate green.
+- *"the survivor keeps the per-set data"* — only one of the two collapsing rows ever carries
+  `exercises`, so an object spread preserves it **whichever** row is chosen as keeper. The
+  assertion could not fail. The invariant that actually distinguishes them is the `id`: the local
+  row's numeric `Date.now()` must win, because `isBeforeProgramStart()`'s same-day refinement only
+  fires for `typeof h.id === 'number'`.
+- *"hydrate also repairs on the offline path"* — I grepped for the `dedupeLocalHistory(` **call**.
+  Deleting the `LS.set` that writes the result back left the call in place, so the check passed
+  while the repair was computed and thrown away.
+
+**The mechanism, not the trait.** All three are the same shape: I wrote the assertion against the
+*name* of the behaviour and never checked that the fixture or grep could reach the failing branch.
+A green assertion has two possible causes — the code is right, or the test cannot see the code —
+and reading it cannot tell them apart. This is SC-03 (run, don't simulate) pointed at test
+fixtures, and it is the same family as the gate bugs CLAUDE.md's no-emoji entry already records:
+two drafts of that script passed a file with a live injected emoji.
+
+> **THE RULE — SC-38.** Mutation-test every NEW assertion individually, not the gate as a whole.
+> For each one, name the specific mutation that should break it, apply that mutation, and confirm
+> **that assertion by name** appears in the failure list. An assertion that stays green under its
+> own mutation is not evidence, it is decoration — delete it or fix the fixture. Be especially
+> suspicious of (a) a "negative" fixture that a fallback path quietly makes positive, (b) a field
+> only one side of a merge carries, which survives any merge order, and (c) a source-grep for a
+> call rather than for its *effect*.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: if I cannot state
+"mutation M breaks assertion A, and I watched A fail," then A is unproven, no matter how green the
+run was. A gate's aggregate PASS is never that evidence.

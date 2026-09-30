@@ -52,7 +52,7 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
 {
   const restoreSrc = grab('restoreFromCloud', /async function restoreFromCloud\(\) \{[\s\S]*?\n\}\n/);
   const syncSrc = grab('syncFromCloud', /async function syncFromCloud\(\) \{[\s\S]*?\n  \}\n\}/);
-  // BUG-190: the fetch+merge now has ONE owner, hydrateHistoryFromCloud(). All three
+  // BUG-207: the fetch+merge now has ONE owner, hydrateHistoryFromCloud(). All three
   // callers must route through it — restore (manual button), sync (fresh sign-in) and
   // the on-load self-heal — so they cannot reconcile history three different ways.
   const hydrateSrc = grab('hydrateHistoryFromCloud', /async function hydrateHistoryFromCloud\([\s\S]*?\n\}/);
@@ -62,7 +62,7 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
     /hydrateHistoryFromCloud\(/.test(restoreSrc) && !/from\('workout_sessions'\)/.test(restoreSrc));
   check('syncFromCloud() routes through the shared hydrator, not a re-implementation',
     /hydrateHistoryFromCloud\(/.test(syncSrc));
-  // THE mechanism guard for BUG-190: the returning-user init path (saved cfg, the ONLY
+  // THE mechanism guard for BUG-207: the returning-user init path (saved cfg, the ONLY
   // path a daily user takes) must hydrate history BEFORE renderTracker() asks the queue
   // what today's workout is. This is what was missing — BUG-178 fixed the merge but left
   // it unreachable from here, so the queue ran on a cache nothing ever refreshed.
@@ -84,15 +84,15 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
     if (paint === -1) continue;
     savedCfgBranches.push(html.slice(at, paint + 2000));
   }
-  check(`BUG-190: found both saved-cfg entry points (got ${savedCfgBranches.length}, expected 2)`,
+  check(`BUG-207: found both saved-cfg entry points (got ${savedCfgBranches.length}, expected 2)`,
     savedCfgBranches.length === 2);
   const unhydrated = savedCfgBranches.filter(b => !/hydrateHistoryFromCloud\(/.test(b));
-  check(`BUG-190: EVERY returning-user saved-cfg path hydrates history before trusting the queue — ${unhydrated.length} do not`,
+  check(`BUG-207: EVERY returning-user saved-cfg path hydrates history before trusting the queue — ${unhydrated.length} do not`,
     unhydrated.length === 0);
   const initSrc = savedCfgBranches.find(b => /await hydrateHistoryFromCloud\(/.test(b)) || '';
   // Compare against the PAINT call specifically, not a bare 'renderTracker()' — the
   // surrounding comment mentions renderTracker() by name and would match first.
-  check('BUG-190: the init path AWAITS the hydrate before renderTracker() reads the queue',
+  check('BUG-207: the init path AWAITS the hydrate before renderTracker() reads the queue',
     !!initSrc && initSrc.indexOf('await hydrateHistoryFromCloud(') < initSrc.indexOf("renderTracker(); showView('dashboard');"));
   check('restoreFromCloud() no longer contains the old all-or-nothing empty-guard',
     !/if \(!existing\.length\)/.test(restoreSrc));
@@ -110,12 +110,13 @@ const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\
 const hdkSrc = grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/);
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
+const dedupSrc = grab('dedupeLocalHistory', /function dedupeLocalHistory\([\s\S]*?\n\}/);
 const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
 
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc, mergeSrc].join('\n'), ctx);
+  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc, dedupSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -204,7 +205,7 @@ function buildContext() {
     merged[0].session_date === '2026-03-10' && merged[1].session_date === '2026-03-01');
 }
 
-// ── 2(f)/(g)/(h). BUG-190: the merge must dedupe a row finishSession() WROTE LOCALLY
+// ── 2(f)/(g)/(h). BUG-207: the merge must dedupe a row finishSession() WROTE LOCALLY
 // against that same session's synced cloud twin.
 //
 // Why this gate exists on top of (a)-(e): every "local" fixture above is CLOUD-SHAPED
@@ -313,6 +314,96 @@ const kerwinCfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-0
   check(`3: found the tandem_history write sites (got ${sites.length}, expected 4)`, sites.length === 4);
   const missing = sites.filter(m => !/session_date:/.test(m[0]));
   check(`3: every hist.unshift() site stamps session_date — ${missing.length} do not`, missing.length === 0);
+}
+
+// ── 2(j)-(m). BUG-178 PART 3 — repair rows already written to localStorage ──
+//
+// Parts 1 and 2 stop NEW duplicates; they do nothing about the ones fdb5b31 already
+// persisted. Between 2026-09-27 and this change every Restore tap wrote a second copy
+// of every session present on both sides, and mergeCloudSessionsIntoHistory() only ever
+// compared CLOUD rows against existing ones — never existing against existing — so they
+// never self-healed. Proven before the fix: 4 real sessions held twice counted 8 and
+// served day4, and the self-heal merge left it at 8.
+{
+  const cloudish = (sd, day, id) => ({ id, session_date: sd, day_type: day, session_type: 'strength', completed: true, created_at: sd + 'T20:00:00Z' });
+  const poisoned = [
+    finished('Tue, Sep 29, 2026', 'day4'), cloudish('2026-09-29', 'day4', 'c4'),
+    finished('Tue, Sep 22, 2026', 'day3'), cloudish('2026-09-22', 'day3', 'c3'),
+    finished('Mon, Sep 21, 2026', 'day2'), cloudish('2026-09-21', 'day2', 'c2'),
+    finished('Thu, Sep 10, 2026', 'day1'), cloudish('2026-09-10', 'day1', 'c1'),
+  ];
+
+  // (j) the repair itself
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    ctx.LS.set('tandem_history', poisoned);
+    check("(j) a history poisoned by the pre-fix Restore serves 'day4' before repair (the fdb5b31 symptom)",
+      ctx.completedSessionCount() === 8 && ctx.nextProgramDayKey() === 'day4');
+    const repaired = ctx.dedupeLocalHistory(poisoned);
+    ctx.LS.set('tandem_history', repaired);
+    check(`(j) dedupeLocalHistory() collapses 8 rows to 4 (got ${repaired.length})`, repaired.length === 4);
+    check("(j) post-repair nextProgramDayKey() === 'day5'",
+      ctx.completedSessionCount() === 4 && ctx.nextProgramDayKey() === 'day5');
+  }
+
+  // (k) the repair reaches every caller through the merge, and stays idempotent across boots
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    let hist = ctx.mergeCloudSessionsIntoHistory(poisoned, KERWIN_CLOUD);
+    hist = ctx.mergeCloudSessionsIntoHistory(hist, KERWIN_CLOUD);
+    hist = ctx.mergeCloudSessionsIntoHistory(hist, KERWIN_CLOUD);
+    ctx.LS.set('tandem_history', hist);
+    check(`(k) the merge repairs pre-existing duplicates too, idempotently across 3 boots (got ${hist.length}, expected 4)`,
+      hist.length === 4);
+    check("(k) nextProgramDayKey() === 'day5' after three repaired merges", ctx.nextProgramDayKey() === 'day5');
+  }
+
+  // (l) what the repair must never do: drop per-set data, or drop a row it cannot identify
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    // Genuinely unkeyable: no session_date, no date AND no id. An earlier draft of this
+    // fixture carried `id: 999`, which _historyRowKey() happily keys as 'id:999' — so the
+    // row was never unkeyable and the assertion below was vacuous (it passed with the
+    // drop-unkeyable-rows mutation live). Caught by mutation-testing the gate, not by
+    // reading it; see docs/self-corrections.md SC-33.
+    const unkeyable = { week: 1, goal: 'build_muscle', day: 'day3', exercises: { bench: [{ w: 95, r: 5 }] } };
+    const localRow = finished('Tue, Sep 29, 2026', 'day4');
+    const out = ctx.dedupeLocalHistory([localRow, cloudish('2026-09-29', 'day4', 'c4'), unkeyable]);
+    check(`(l) a row with no date, no session_date and no id is never dropped (got ${out.length}, expected 2)`, out.length === 2);
+    const survivor = out.find(r => r.day === 'day4' || r.day_type === 'day4');
+    check('(l) the survivor keeps the per-set data the History modal renders',
+      !!(survivor && survivor.exercises && survivor.exercises.squat));
+    check('(l) the survivor also inherits session_date from the cloud twin it absorbed',
+      !!(survivor && survivor.session_date === '2026-09-29'));
+    // The keeper must be the LOCAL row, and the load-bearing proof of that is the id:
+    // isBeforeProgramStart()'s same-day refinement only fires for `typeof h.id === 'number'`
+    // (program-start-smoke.mjs's R5 floor), so letting the cloud twin's uuid win would
+    // silently disable that guard. `exercises` alone cannot prove it — only one side ever
+    // has that key, so it survives either choice of keeper.
+    check(`(l) the survivor keeps the LOCAL numeric Date.now() id, not the cloud uuid (got ${JSON.stringify(survivor && survivor.id)})`,
+      !!survivor && typeof survivor.id === 'number' && survivor.id === localRow.id);
+    check('(l) the unidentifiable row survived intact', out.some(r => r.exercises && r.exercises.bench));
+  }
+
+  // (m) one owner: the merge repairs through dedupeLocalHistory(), not its own copy
+  {
+    const mergeBody = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
+    check('(m) mergeCloudSessionsIntoHistory() repairs via the shared dedupeLocalHistory()',
+      /dedupeLocalHistory\(/.test(mergeBody));
+    const hydrateBody = grab('hydrateHistoryFromCloud', /async function hydrateHistoryFromCloud\([\s\S]*?\n\}/);
+    // Computing the repair is not performing it — an earlier draft only grepped for the
+    // dedupe CALL, and passed with the LS.set deleted. Require the write, and require it
+    // before the uid guard, which is what makes the offline/signed-out path repair too.
+    check('(m) hydrateHistoryFromCloud() computes the repair', /dedupeLocalHistory\(/.test(hydrateBody));
+    const wroteAt = hydrateBody.indexOf("LS.set('tandem_history'");
+    const guardAt = hydrateBody.indexOf('if (!uid');
+    check('(m) hydrateHistoryFromCloud() WRITES the repair back to localStorage', wroteAt !== -1);
+    check('(m) that write happens BEFORE the uid guard, so an offline/signed-out boot still repairs',
+      wroteAt !== -1 && guardAt !== -1 && wroteAt < guardAt);
+  }
 }
 
 console.log('HISTORY-MERGE SMOKE — BUG-178 (cloud history hydration merge, not empty-guard overwrite)\n');
