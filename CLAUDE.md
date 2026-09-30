@@ -73,12 +73,30 @@ for — run it *before* shipping, not after he catches it.
 - **"Wired" is not "working." Verify at the surface the USER sees, not the layer you edited.**
   A value the engine computes correctly and the render layer then discards has shipped nothing —
   and a green gate asserting that dead value is worse than no gate, because it manufactures
-  confidence. This is not hypothetical: EPIC-8a's per-experience `REST_SECONDS` table has been
-  computed-and-discarded since it shipped (`ex.rest` is read nowhere in `tandem.html`), and D17
-  exists because a live doctrine violation sat in Postgres while `verify` reported 9/9 green.
-  Trace every new value end-to-end to a pixel, or say plainly that you did not.
-- **One rule, one home.** If a named table encodes a rule (`SUPERSET_CFG`, `REST_SECONDS`,
-  `RECOVERY_PARAMS`, `PHASES`, `REP_BANDS`), every path reads that table. A literal that merely
+  confidence. This is not hypothetical, and the live examples are these (the `REST_SECONDS` example
+  this bullet carried until 2026-09-30 was STALE and has been replaced — D23 deleted that table
+  (`programs.js:1917-1940`) and `ex.rest` is now honored end-to-end: `honorAuthoredRest()`
+  (`programs.js:3618`) promotes it to `authoredRest`, rendered as `data-rest` (`tandem.html:5487`)
+  and read by the rest timer (`tandem.html:6124`). That chain is what "traced to a pixel" looks
+  like):
+    - **`reorderWeek()` (`tandem.html:6790`) — the worst shape, because the UI says it worked.**
+      It writes `tandem_day_order`, then toasts *"Moved to the back of this week — nothing lost."*
+      Nothing reads that key except `reorderWeek()` itself; `nextProgramDayKey()`
+      (`tandem.html:8931`) derives the day from `completedSessionCount() % perWeek` and never
+      consults the order. The reorder does not happen.
+    - **`personal_records.week_targets` — a green gate on a dead value.** Written
+      (`tandem.html:3166`, `:3297`), read by nothing, and *asserted* by
+      `scripts/calibration-upsert-smoke.mjs:119`. This is the "worse than no gate" case, in tree.
+    - **`.ex-notes` (`tandem.html:5545`)** — a textarea on every exercise of every session whose
+      `.value` is never read. Its backing table `exercise_notes` was then dropped for being empty
+      (`migrations/0008_bug72_dead_object_cleanup.sql:148`): the dead control starved its own schema.
+  D17 exists because a live doctrine violation sat in Postgres while `verify` reported 9/9 green.
+  Trace every new value end-to-end to a pixel, or say plainly that you did not. **A value being
+  written — even written to Supabase — is not evidence it is read.** `scripts/audit-dead-handlers.mjs`
+  made exactly that mistake and reported 1 dead handler out of 159; see `docs/self-corrections.md`
+  SC-33.
+- **One rule, one home.** If a named table encodes a rule (`SUPERSET_CFG`, `RECOVERY_PARAMS`,
+  `PHASES`, `REP_BANDS` — not `REST_SECONDS`, deleted under D23), every path reads that table. A literal that merely
   happens to match today is a silo, and silos drift. When two tables both claim the same rule,
   that is a doctrine question — run `llm-council`, do not pick.
 - **Fix the mechanism, not the instance (added 2026-09-11, Kerwin).** A bug report names ONE

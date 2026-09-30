@@ -1221,3 +1221,46 @@ right."
 sentence "this is PN because the enum's PN row is *<exact label>* and the wrongness is of that kind",
 I have not graded it, I have just reacted to it. The four legal rows are P0 Blocks Workout /
 P1 Wrong Data / P2 Visual UX / P3 Low.
+
+---
+
+## SC-33 — I built an audit that asked whether a value is written, never whether it is read, and reported the app healthy
+
+**What I believed.** That `scripts/audit-dead-handlers.mjs` answered "is this control dead?" Its
+EPIC-40 run reported **1 cosmetic-only handler out of 159**, and `docs/epic-40-dead-handler-audit.md`
+presented that as the catalog half being complete — including calling the color-theme path "fully
+wired… upserts `users.color_theme`".
+
+**What was true.** The classifier only ever tested the *write* side. `audit-dead-handlers.mjs:82`
+scores a handler `Generative (state mutation)` for any assignment to a known global, and `:84` scores
+it `Generative (feeds downstream calc)` for any call to a function whose name merely *begins*
+calc/render/update/apply/save/submit/sync/finish/build/generate. `:81` scores `Generative (DB write)`
+for any `sb.from(`. None of those asks whether a single line of code reads the value back. A
+reads-side sweep of the same file found ~40 chain breaks the script had scored as healthy, including:
+`users.color_theme` is read by **nothing** (every reader uses a different column, `theme_color`) —
+the exact path the write-up called "fully wired"; `preferred_workout_time` and `secondary_goal` both
+score `Generative (DB write)`, the script's *strongest* verdict, and are consumed by nothing, with
+the former gating onboarding (`tandem.html:4666`) on a value nothing reads; and `reorderWeek()`
+(`:6790`) writes `tandem_day_order` and toasts "nothing lost" while `nextProgramDayKey()` (`:8931`)
+never consults it.
+
+**The gap.** I encoded "does something happen?" as a proxy for "does it reach the engine or a pixel?"
+and then reported the proxy's answer as the real one. A write is trivially observable from one
+function body; a read requires searching the whole program, so the cheap test became the test. The
+number it produced (1 of 159) was reassuring, which is precisely why it went unchallenged — a
+low finding count from a weak detector reads identically to a healthy codebase. CLAUDE.md already
+named this failure ("'Wired' is not 'working'"), and the audit written to enforce that rule was built
+to violate it.
+
+> **THE RULE — SC-33.** An audit or gate that asserts a value is WRITTEN has proven nothing about
+> whether it is USED. For every value a control produces, name the read site — a line that consumes
+> it for a calculation or renders it — or record it as a chain break. A Supabase write, a `cfg.x =`,
+> a localStorage `set`, and a call to a calc-named function are all write-side evidence and none of
+> them close the question. When a detector reports suspiciously few findings, test the detector
+> against a known-bad fixture before believing the number.
+
+**Enforced by:** `scripts/audit-dead-handlers.mjs`'s reads-side check, wired into
+`scripts/verify.mjs`'s `CHECKS` — for each handler-written value it requires ≥1 read site that is not
+itself a write, a cloud round-trip, or a comment. Validated the way SC-10 requires: it must FAIL on
+the pre-fix tree (fixtures: `tandem_day_order`, `week_targets`, `.ex-notes`, `color_theme`,
+`preferred_workout_time`) before any green run is trusted.

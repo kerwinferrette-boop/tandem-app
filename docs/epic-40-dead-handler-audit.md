@@ -1,5 +1,19 @@
 # EPIC-40 CATALOG half — Dead/Cosmetic-Only Handler Audit
 
+> **SUPERSEDED IN PART, 2026-09-30 — this audit covered the WRITE side only.**
+> Its "1 confirmed dead handler out of 159" is an artifact of the classifier, not a health reading.
+> `scripts/audit-dead-handlers.mjs` scored a handler `Generative` for *assigning* to a global
+> (`:82`), for *calling* a calc/render/save-named function (`:84`), or for any `sb.from(` (`:81`).
+> None of those checks whether anything READS the value, so the whole "writes but is never read"
+> class was invisible to it — the class CLAUDE.md's *"'Wired' is not 'working'"* rule is about.
+> The clearest proof is in this very document: the **Color Takeover** callout below declares the
+> path "already resolved… fully wired today" because it "upserts `users.color_theme`". That column
+> is read by **nothing** — every reader uses a different column, `theme_color`, and the only value
+> actually driving the accent is `profile.colorTheme`. Three homes, one rule.
+> A reads-side sweep found ~40 chain breaks. See `docs/control-reachability-audit-2026-09-30.md`
+> and `docs/self-corrections.md` SC-33. The verdict table below remains accurate **as a
+> write-side inventory** and is kept for that purpose; do not cite it as evidence a control works.
+
 **Status: audit complete, read-only. Zero edits to `tandem.html`/`programs.js`.**
 **Reproduce:** `node scripts/audit-dead-handlers.mjs` (`--full` for every row).
 
@@ -48,10 +62,14 @@
 
 The Epic named three pre-audit suspects (from the README):
 
-- **Color Takeover UX** ("logic built, CSS integration pending") — **already resolved**, not
-  dead. `applyColorTheme(hex)` (tandem.html:5428) sets `--accent`/`--accent-dim`/`--accent-glow`
-  as live CSS custom properties AND upserts `users.color_theme` to Supabase when signed in. Fully
-  wired today; the README note predates this.
+- **Color Takeover UX** ("logic built, CSS integration pending") — **CLAIM RETRACTED
+  2026-09-30.** `applyColorTheme(hex)` does set the CSS custom properties locally, so the takeover
+  works *on the device that set it*. But the cloud half is broken: it upserts
+  **`users.color_theme`**, and that column is read by nothing — every read site uses
+  **`users.theme_color`** (`:9215`, `:9375`, `:9698`), while the accent is actually driven by a
+  third store, `profile.colorTheme` (`:10151`). So the theme is silently lost on a new device, and
+  onboarding's swatch never drives the app accent at all. Calling this "fully wired" because it
+  "upserts to Supabase" is the exact write-side error this audit's methodology encodes.
 - **Competition Leaderboard** ("structure exists, UI integration incomplete") — reads
   `competition_leaderboard` via Supabase and populates `dashboardData.leaderboard`, consumed by
   the dashboard render (tandem.html:4991-5144). Wired, not dead.
