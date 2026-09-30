@@ -3332,7 +3332,13 @@ async function computeCalibration1RMs(sessionUUID, userId) {
     .eq('id', userId);
 }
 
-function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
+// BUG-208: inputMode is the renderer's own 3-way row model ('sec'|'bw'|'reps',
+// buildDayHTML) — it tells THIS read path whether a non-positive stored weight is
+// a TRUE zero external load (bw/band row → rep coaching, D34) or MISSING DATA on
+// a loaded lift (reps row → prompt; never a prescription premised on a load that
+// was never lifted). It is a row-rendering fact, not an equipment key on the
+// progression rule: any weight > 0 still ladders regardless (D34 clause b).
+function getRecommendation(exId, compound, goal, exName, sex, repTarget, inputMode) {
   const lastSets = LS.get('tandem_lastsets') || {};
   // C-fix (2026-07-13): read by NAME (stable identity). No id fallback — a
   // recycled slot-id can hold another movement's set, which is exactly the
@@ -3436,6 +3442,13 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // the loadless complement, and it reuses D24's existing PROGRESSION_REP_SURPLUS trigger rather
   // than inventing a threshold. Rep-TARGET scaling for bodyweight is OUT of scope (BUG-44/EPIC-34).
   if (!(Number(weight) > 0)) {
+    // BUG-208 (Kerwin's Option-1 ruling, 2026-09-29): on a LOADED row ('reps') a
+    // non-positive/absent stored weight is MISSING DATA — logSet now stores it as
+    // null, and legacy rows stored blank-as-0 (read-path coercion lands here too).
+    // Rep coaching would be advice premised on a load never lifted; a number would
+    // be a fabricated load. The only honest chip is a prompt for the datum.
+    if (inputMode !== 'bw' && inputMode !== 'sec')
+      return { weight: null, arrow: 'new', label: 'No load recorded', reason: 'Log your weight to get a target next session' };
     if (minReps >= topRange + PROGRESSION_REP_SURPLUS)
       return { weight: null, arrow: 'up', label: 'Add reps', reason: `${minReps} reps with no added load — progress by adding reps next session` };
     if (minReps >= topRange - 3)
@@ -5459,7 +5472,9 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
         // EPIC-031: authored (template) exercises carry their own rep target
         // (ex.repRange low bound in ex.r) — progression measures against THAT,
         // not the generated phase rep. Generated path (no repRange) unchanged.
-        : getRecommendation(ex.id, ex.compound, goalKey, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null);
+        // BUG-208: pass the row's own inputMode so the read path can tell a true
+        // loadless row (bw/band) from a loaded lift whose weight was never recorded.
+        : getRecommendation(ex.id, ex.compound, goalKey, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null, inputMode);
       const _prStore = LS.get('tandem_prs') || {};
       // EPIC-9: effective 1RM = working (living) number first, then all-time PR.
       // C7/BUG-45: name-only when named — the id fallback was serving another
@@ -5799,11 +5814,23 @@ function logSet(id, i) {
   const rEl  = document.getElementById(`${id}-r${i}`);
 
   if (!already) {
-    const w = parseFloat(wEl.value) || 0;
+    // BUG-208 (Kerwin's Option-1 ruling, 2026-09-29): a blank/invalid weight cell
+    // on a LOADED row ('reps') is MISSING DATA, stored as null — the old
+    // `parseFloat(...)||0` coerced it to 0, which routed barbell lifts into D34's
+    // loadless rep coaching (a recommendation premised on a load never lifted).
+    // On a bw/sec row the blank is truthful: the external load IS 0.
+    // wNum is the numeric wire/aggregate form: sets.weight_lbs is NOT NULL and
+    // sessionSetsMap feeds volume sums — 0 there is wire format, and the read
+    // path (getRecommendation) coerces non-positives on loaded rows back to the
+    // missing-data case, so nothing downstream re-fabricates a prescription.
+    const rawW = parseFloat(wEl.value);
+    const rowUnit = document.getElementById(`sr-${id}-${i}`)?.dataset.unit || 'reps';
+    const w = Number.isFinite(rawW) && rawW > 0 ? rawW : (rowUnit === 'reps' ? null : 0);
+    const wNum = w ?? 0;
     const r = parseInt(rEl.value) || 0;
     // D12: calcRM selects Epley/Mayhew by rep range — a high-rep set counts toward
     // the PR at proper accuracy, not clamped to a 12-rep estimate.
-    const est1rm = Math.round(calcRM(w, r));
+    const est1rm = Math.round(calcRM(wNum, r));
     const prs = LS.get('tandem_prs') || {};
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
@@ -5823,7 +5850,7 @@ function logSet(id, i) {
     // different movements across rotations/weeks (see BUG-45), so a later
     // per-exercise history lookup that only trusted the id key would silently
     // mix in — or hide — sets logged under a since-rotated id.
-    sessionSetsMap[id].push({ set: i+1, w, r, est1rm, name: prExName, rpe: readSetRpe(id, i) });
+    sessionSetsMap[id].push({ set: i+1, w: wNum, r, est1rm, name: prExName, rpe: readSetRpe(id, i) });
 
     if (est1rm > prev && w > 0) {   // D12: est1rm already uses the correct formula for these reps
       prs[prExName] = est1rm;                 // C7: write by canonical name
@@ -5906,7 +5933,7 @@ function logSet(id, i) {
             exercise_name: rawName,
             exercise_category: exCat,
             set_number: i + 1,
-            weight_lbs: w,
+            weight_lbs: wNum, // wire shape — column is NOT NULL; 0 = no recorded load (BUG-208 read-path coerces)
             reps: r,
             rpe: readSetRpe(id, i),
             estimated_1rm_lbs: est1rm > 0 ? est1rm : null,
