@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Council — Hip-Thrust Family Split · Tandem · 2026-09-29</title>
+<style>
+  :root{
+    --ink:#16181d; --ink-2:#4a5058; --ink-3:#787f88;
+    --line:#e3e6ea; --line-2:#f0f2f5; --bg:#fff; --bg-2:#fafbfc;
+    --accent:#2f5fd0; --warn:#b4521a; --good:#1c7a52; --stop:#b0203a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:56px 28px 96px}
+  code{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--line-2);
+    padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+  h1{font-size:27px;line-height:1.25;letter-spacing:-.02em;margin:0 0 6px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);
+    margin:48px 0 14px;font-weight:600}
+  h3{font-size:17px;margin:26px 0 8px;letter-spacing:-.01em}
+  p{margin:0 0 12px}
+  .sub{color:var(--ink-3);font-size:13.5px;margin:0}
+  .eyebrow{font-size:11.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);
+    font-weight:650;margin:0 0 12px}
+  hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+  .q{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:26px 0 0}
+  .q p{margin:0 0 8px}
+  .q p:last-child{margin:0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin:14px 0}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2)}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);
+    border-bottom:1px solid var(--line)}
+  .verdict{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;
+    padding:4px 26px 22px;margin:14px 0 0;background:var(--bg-2)}
+  .verdict h3:first-of-type{margin-top:22px}
+  .callout{border-radius:8px;padding:16px 20px;margin:18px 0;font-size:14.5px}
+  .callout.stop{background:#fdf2f4;border:1px solid #f3d3da}
+  .callout.first{background:#f1f7f3;border:1px solid #cfe5d9}
+  .callout b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;
+    margin-bottom:6px;color:var(--ink-3)}
+  ul,ol{margin:0 0 12px;padding-left:22px}
+  li{margin:0 0 7px}
+  .grid{display:grid;grid-template-columns:1fr;gap:10px;margin:16px 0}
+  .adv{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:var(--bg-2)}
+  .adv .nm{font-weight:650;font-size:14px}
+  .adv .pos{font-size:12.5px;color:var(--ink-2);margin-top:3px}
+  .pill{display:inline-block;font-size:11px;font-weight:650;letter-spacing:.04em;
+    padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:1px}
+  .pill.agree{background:#e7f1eb;color:var(--good)}
+  .pill.out{background:#fdeee6;color:var(--warn)}
+  .spectrum{border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:16px 0}
+  .srow{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start;
+    padding:10px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+  .srow:last-child{border-bottom:0}
+  .srow .lbl{color:var(--ink-2);font-weight:600}
+  .bar{display:flex;height:22px;border-radius:5px;overflow:hidden;font-size:11px;font-weight:650;
+    color:#fff;letter-spacing:.03em}
+  .bar span{display:flex;align-items:center;justify-content:center}
+  .b5{background:#1c7a52;flex:5}
+  .b4{background:#2f7a5e;flex:4}
+  .b1{background:#c8823f;flex:1}
+  .b0{background:#cdd2d8;flex:1;color:var(--ink-2)}
+  details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--bg)}
+  details[open]{background:var(--bg-2)}
+  summary{cursor:pointer;padding:13px 18px;font-weight:600;font-size:14px;list-style:none;
+    display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+  summary::-webkit-details-marker{display:none}
+  summary .tag{font-size:11.5px;color:var(--ink-3);font-weight:500;white-space:nowrap}
+  details .body{padding:2px 18px 18px;border-top:1px solid var(--line-2);font-size:14px}
+  details .body p:first-child{margin-top:14px}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--ink-3)}
+  .mono{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-3)}
+  @media (max-width:640px){
+    .wrap{padding:36px 18px 72px}
+    h1{font-size:23px}
+    table{display:block;overflow-x:auto;white-space:nowrap}
+    .srow{grid-template-columns:1fr;gap:6px}
+    .verdict{padding:4px 18px 18px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">LLM Council · Tandem · 2026-09-29</p>
+  <h1>Should the three bodyweight hip-thrust variants be re-tagged <code>category:'compound'</code>?</h1>
+  <p class="sub">5 independent advisors → anonymized peer review → chairman synthesis.
+     Measured at <span class="mono">0ca5ae9</span>. No code was changed.</p>
+
+  <div class="q">
+    <p><strong>The one mixed-category family in the bank.</strong> <code>EXERCISE_BANK.category</code>
+       and <code>MOVEMENT_FAMILIES.movement_pattern</code> are two independent classifiers. They
+       disagree on exactly one family — <code>hip-thrust</code> (<code>pattern:'hinge'</code>):</p>
+    <table>
+      <tr><th>slug</th><th>category</th><th>tier</th><th>equipment</th></tr>
+      <tr><td><code>hip-thrust</code></td><td><strong>compound</strong></td><td>hotel_gym</td><td>dumbbell</td></tr>
+      <tr><td><code>barbell-hip-thrust</code></td><td><strong>compound</strong></td><td>full_gym</td><td>barbell</td></tr>
+      <tr><td><code>glute-bridge</code></td><td><strong>isolation</strong></td><td>home</td><td>bodyweight</td></tr>
+      <tr><td><code>single-leg-glute-bridge</code></td><td><strong>isolation</strong></td><td>home</td><td>bodyweight</td></tr>
+      <tr><td><code>frog-pump</code></td><td><strong>isolation</strong></td><td>home</td><td>bodyweight</td></tr>
+    </table>
+    <p class="sub">All five share the primary tag <code>glute_max</code>. The split correlates
+       perfectly with <em>equipment/tier</em>, not joint count. <code>category</code> drives both
+       prescribed sets (<code>GOAL_VOLUME</code>) and load progression rate
+       (<code>progressionPct</code>, doctrine D24). Flipping all three moves 60 of 150 swept combos
+       with <strong>0 MEV regressions and 0 deficits closed</strong> — yet hotel_gym glute volume
+       <em>drops</em> 17→14 while home rises 11→12.</p>
+  </div>
+
+  <h2>Council verdict</h2>
+  <div class="verdict">
+    <h3>Where the council agrees</h3>
+    <p>Five advisors, no cross-talk, converged on the same answer to a question none of them were
+       asked:</p>
+    <ol>
+      <li><strong>Do not flip the three tags.</strong> Not one advisor recommended the re-tag. The
+          question as framed ("compound or isolation?") has no correct answer.</li>
+      <li><strong><code>category</code> is one field carrying two unrelated rules</strong> — set
+          dosing and load progressability. Joint count is the right input for one; loadability for
+          the other. They coincide for a barbell hip thrust and diverge for a floor bridge.</li>
+      <li><strong>The bank's authors weren't confused — they were compressing.</strong> The
+          equipment/tier correlation plus <code>glute-bridge</code>'s own <code>why</code> string
+          ("identical mechanics to hip thrust") says the tagging deliberately resolved toward
+          loadability.</li>
+      <li><strong>This is a "one rule, one home" violation; the fix is to split the field</strong>,
+          not to pick a winner. Flipping either way makes half the app wrong.</li>
+      <li><strong>The 17→14 hotel_gym glute drop is the blocker, not a curiosity.</strong>
+          "Second-order effects" was called out as a label, not an explanation. SC-23 applies.</li>
+    </ol>
+
+    <h3>Where the council clashes</h3>
+    <p><strong>What a null gate result means.</strong> The Expansionist reads "60 combos changed,
+       0 MEV regressions" as proof the allocator has slack — rare, cheap permission to do the big
+       refactor now. The Executor and Contrarian read the identical number as proof the gate is
+       <em>blind by construction</em>: 0-and-0 is what you get when your only instrument cannot see
+       the change. Peer review settled it 5–0 against the Expansionist — but its product point
+       survives the loss: a movement where percentage load progression is meaningless is a real
+       modelling gap, and <code>progression_mode</code> is the best name anyone offered for the
+       second field.</p>
+    <p><strong>Which consumer is load-bearing.</strong> The Executor says only progression is a
+       doctrine claim (D24 cites NSCA on joints), so re-point <code>progressionPct()</code> at
+       <code>MOVEMENT_FAMILIES.pattern</code> and ship that alone. The First Principles Thinker
+       counters that D24's citation is about <em>load</em>, not joints — which would make that fix a
+       second compression rather than a clean win. Unresolved by the council.</p>
+
+    <h3>Blind spots the council caught</h3>
+    <ol>
+      <li><strong>Nobody ran the thing they were all arguing about.</strong> Two advisors assert an
+          8%/week ramp on a bodyweight frog-pump is either a no-op or a fabricated prescription —
+          neither established which. A direct violation of "verify by running, not by reading," on a
+          question that is one <code>node -e</code> away.</li>
+      <li><strong><code>category</code> also lives in Postgres.</strong> Prod <code>exercises</code>
+          carries these 180 rows via the seed, and the doctrine gate cannot see the database. A split
+          that ships only in <code>programs.js</code> leaves <code>verify</code> green while prod
+          diverges — the exact failure mode D17 exists to remember.</li>
+      <li><strong>The bank-wide version was never enumerated.</strong> If the tag encodes loadability,
+          every bodyweight-vs-loaded pair carries the same latent conflict (push-up vs bench, pistol
+          vs back squat). <code>hip-thrust</code> is only "the only mixed family" because the others
+          don't sit inside one pattern family. Under "fix the mechanism, not the instance," that
+          enumeration is a precondition.</li>
+      <li><strong>Nobody proposed a gate.</strong> Split the field and nothing stops it being
+          re-overloaded next quarter.</li>
+      <li><strong>In-flight mesocycles.</strong> Kerwin and Dani are mid-program. A set-count change
+          lands inside a program already running. Uncosted.</li>
+    </ol>
+    <p>Also caught, and cheap: <strong><code>isolation</code> is a value in <em>both</em> tables</strong>
+       — a <code>category</code> and a <code>movement_pattern</code>. Two orthogonal classifiers
+       sharing vocabulary guarantees future conflation.</p>
+
+    <h3>The recommendation</h3>
+    <div class="callout stop">
+      <b>Verdict</b>
+      Do not re-tag the hip-thrust family. Do not split the field yet either.
+    </div>
+    <p>The council is right that the split is the eventual answer — but it is a doctrine amendment
+       (Notion → <code>/DOCTRINE.md</code> → <code>doctrine.mjs</code> in one change, D24's text
+       rewritten around load rather than joints, plus a migration and seed re-apply for the Postgres
+       copy). That is not a change to start on the strength of an argument. It is a change to start
+       on the strength of a measurement nobody has taken.</p>
+    <p><em>The chairman departs from the Executor on ordering.</em> Its step 1 — instrument
+       <code>applyGoalVolume()</code> to explain the 17→14 drop — is only needed <em>if you flip the
+       tag</em>, and the council just decided not to. The Contrarian's unanswered question is needed
+       either way, and it is the only open item that changes the severity of the entire ticket:</p>
+    <ul>
+      <li>If <code>progressionPct</code> <strong>no-ops</strong> on a bodyweight movement, the D24
+          half-rate "harm" is cosmetic, the family split drops to a <strong>P3</strong> taxonomy tidy,
+          and it should be scheduled, not rushed.</li>
+      <li>If it <strong>renders a number on a card</strong> for a lift with no external load, Tandem
+          is showing Dani a fabricated load prescription. That is a <strong>P1</strong> independent of
+          the hip-thrust question — a made-up number on a screen, which is the project's first
+          principle violated where it hurts most.</li>
+    </ul>
+    <p>Same three lines of code to find out. Everything else is correctly sequenced behind that
+       answer. Keep <code>progression_mode: 'external_load' | 'rep_volume' | 'unilateral_ladder'</code>
+       on file as the vocabulary for the second field; drop the claim that this unblocks D6d — home
+       rising 11→12 against 126 sub-MEV cells unblocks nothing.</p>
+
+    <h3>The one thing to do first</h3>
+    <div class="callout first">
+      <b>Do this, nothing else</b>
+      Run <code>seedWeight</code> + <code>progressionPct</code> against <code>glute-bridge</code>,
+      <code>single-leg-glute-bridge</code> and <code>frog-pump</code>, and print what the user's card
+      actually <em>shows</em> in week 1 vs week 8 — not what the engine computes, what renders.
+      One script, no source edits, no branch. That output decides P1 vs P3, and the correct next step
+      is different in each case.
+    </div>
+  </div>
+
+  <h2>Where the advisors landed</h2>
+  <div class="spectrum">
+    <div class="srow">
+      <div class="lbl">Flip the 3 tags?</div>
+      <div>
+        <div class="bar"><span class="b5">NO — 5 of 5</span><span class="b0">yes — 0</span></div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="lbl">Root cause</div>
+      <div>
+        <div class="bar"><span class="b5">overloaded field — 5 of 5</span><span class="b0">mis-tag — 0</span></div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="lbl">17→14 drop is a blocker</div>
+      <div>
+        <div class="bar"><span class="b4">yes — 4</span><span class="b1">no (Expansionist)</span></div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="lbl">Act now vs measure first</div>
+      <div>
+        <div class="bar"><span class="b4">measure first — 4</span><span class="b1">act now — 1</span></div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="lbl">Peer review: strongest</div>
+      <div><strong>The Executor</strong> — picked by 5 of 5 reviewers. The only advisor who turned the
+        shared diagnosis into a sequenced, shippable plan and explicitly refused to bundle it.</div>
+    </div>
+    <div class="srow">
+      <div class="lbl">Peer review: blind spot</div>
+      <div><strong>The Expansionist</strong> — flagged by 5 of 5 reviewers, all for the same reason:
+        it read a blind gate's silence as a safety proof, then spent that permission on the largest
+        refactor on the table.</div>
+    </div>
+  </div>
+
+  <h2>Advisor positions</h2>
+  <div class="grid">
+    <div class="adv"><div class="nm">The Contrarian <span class="pill agree">no flip</span><span class="pill out">strongest single insight</span></div>
+      <div class="pos">"That is a field being used as two fields." Asks the question nobody answered:
+        what does an 8%/6%/5%/3% ramp <em>mean</em> on a bodyweight frog-pump? Either it no-ops
+        (D24 parity is cosmetic) or it ships a fabricated prescription — a P1. Also: your safety
+        argument is upside down.</div></div>
+    <div class="adv"><div class="nm">The First Principles Thinker <span class="pill agree">no flip</span></div>
+      <div class="pos">Two questions with different correct answers: how many sets (joint count) and
+        how fast load climbs (loadability). "They weren't confused. They were compressing."
+        8%/week of bodyweight is a fiction; percentage progression is the wrong model entirely.</div></div>
+    <div class="adv"><div class="nm">The Expansionist <span class="pill agree">no flip</span><span class="pill out">biggest blind spot</span></div>
+      <div class="pos">Name the second field <code>progression_mode</code>; treat
+        <code>MOVEMENT_FAMILIES</code> as a graph, not a classifier — family-level PRs make Dani's
+        bridge and Kerwin's barbell comparable. Reads 0 MEV regressions as slack to spend now.</div></div>
+    <div class="adv"><div class="nm">The Outsider <span class="pill agree">no flip</span></div>
+      <div class="pos">"Re-tagging is choosing which half to be wrong about." Catches that
+        <code>isolation</code> is a value in <em>both</em> tables. The unpredictable volume drop
+        "reads as: the engine's response to an input is not predictable by the people who wrote it."</div></div>
+    <div class="adv"><div class="nm">The Executor <span class="pill agree">no flip</span><span class="pill out">strongest overall</span></div>
+      <div class="pos">"Do not flip the three tags." Three steps, explicitly not one commit:
+        instrument <code>applyGoalVolume()</code> on one combo; re-point <code>progressionPct()</code>
+        at <code>MOVEMENT_FAMILIES.pattern</code> (zero set-count effect, zero churn); decide sets
+        separately.</div></div>
+  </div>
+
+  <h2>Full responses</h2>
+
+  <details>
+    <summary>The Contrarian <span class="tag">peer-review letter C</span></summary>
+    <div class="body">
+      <p><strong>The question is framed to hide the real defect.</strong> You're asking "which tag is
+        right for hip-thrust" when the evidence you gathered says <code>category</code> is a single
+        field carrying two unrelated rules: <em>dosing</em> (sets) and <em>progressability</em> (load
+        rate). Evidence 1 is the tell — the split tracks equipment/tier perfectly. That is not a
+        mislabeled exercise. That is a field being used as two fields. Flipping three rows resolves
+        nothing; it just picks which of the two meanings loses.</p>
+      <p><strong>The thing nobody asked:</strong> what does an 8%/6%/5%/3% compound progression mean
+        on a <em>bodyweight</em> glute bridge? Frog-pump has no load to multiply. Either
+        <code>progressionPct</code> no-ops there (in which case D24 parity is cosmetic and you changed
+        nothing that matters) or it produces a number on a card for a lift with no external load (in
+        which case you shipped a fabricated prescription to Dani). Go find out which. If it's the
+        second, the isolation tag is load-bearing for a reason nobody wrote down, and flipping it is a
+        P1.</p>
+      <p><strong>Your safety argument is upside down.</strong> "0 MEV regressions, 0 deficits closed"
+        means the only gate you ran is blind to this change by construction — and meanwhile hotel_gym
+        glute volume <em>falls</em> 17→14 and 18→14. You are proposing a change whose measured effect
+        is <strong>less glute work for the higher-equipped tier</strong> and unexplained
+        quad/hamstring selection churn. Under SC-23 that's a bug until you can name the MAV-trim path
+        that causes it. You reported the mechanism as "second-order effects" — that's a label, not an
+        explanation.</p>
+      <p><strong>And stop crediting this with unblocking D6d.</strong> Home rises 11→12 of 126
+        sub-MEV cells.</p>
+      <p>Split the field. Don't flip the tag.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The First Principles Thinker <span class="tag">peer-review letter E</span></summary>
+    <div class="body">
+      <p>You're asking the wrong question. The question isn't "is glute-bridge compound or
+        isolation?" It's: <strong>why does one field control two unrelated physical quantities?</strong></p>
+      <p><code>category</code> is being asked to answer two questions that have different correct
+        answers:</p>
+      <ol>
+        <li><strong>How many sets should this get?</strong> — a function of joint count, systemic
+          cost, fatigue per set.</li>
+        <li><strong>How fast can load increase?</strong> — a function of <em>loadability</em>:
+          absolute load magnitude, increment granularity, and how much headroom the movement has.</li>
+      </ol>
+      <p>For barbell-hip-thrust those answers coincide. For glute-bridge they diverge, and that's
+        exactly why your table is "inconsistent." It isn't inconsistent. It's a single field being
+        pulled in two directions by two real properties, and the bank's authors intuitively resolved
+        it toward loadability (evidence #1 — the split correlates perfectly with equipment, and the
+        <code>why</code> string tells you they knew the mechanics were identical). They weren't
+        confused. They were compressing.</p>
+      <p>A bodyweight glute bridge is mechanically a hip extension — multi-joint, deserves compound
+        set volume. It is also <em>unloadable</em>: the progression rate is nearly meaningless because
+        there's no load to multiply. 8%/week of bodyweight is a fiction. That's not an isolation lift;
+        it's a movement where percentage progression is the wrong progression model entirely (you
+        progress by unilateral, tempo, ROM, reps — not %).</p>
+      <p>So flipping the tag to <code>compound</code> buys correct set counts and ships a
+        <em>fabricated</em> 8% load ramp on a bodyweight movement. Keeping it <code>isolation</code>
+        ships correct-ish progression via a wrong mechanism and undercounts volume.</p>
+      <p>Split the field. <code>category</code> (mechanical, drives sets) and a load-progression class
+        (drives <code>progressionPct</code>). Both cite different sources already — D24's NSCA
+        citation is about <em>load</em>, not joints.</p>
+      <p>Then <code>hip-thrust</code> stops being an anomaly and becomes the case that revealed the
+        schema was underspecified.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Expansionist <span class="tag">peer-review letter A</span></summary>
+    <div class="body">
+      <p><strong>Stop treating this as a tagging bug. It's the discovery that <code>category</code> is
+        two fields wearing one hat — and the second field is worth more than the first.</strong></p>
+      <p>The evidence already proves it: the split correlates perfectly with equipment/tier, not joint
+        count. So <code>category</code> is silently carrying <em>loadability</em> alongside
+        <em>mechanics</em>. Name the second thing and you get a new axis:
+        <code>progression_mode: 'external_load' | 'rep_volume' | 'unilateral_ladder'</code>. Now
+        bodyweight glute bridges progress the way they actually progress in real life — reps, tempo,
+        single-leg — instead of pretending a 2%/week load bump means anything on a floor bridge.
+        That's not a fix, that's a feature the app currently cannot express at all.</p>
+      <p>Look at what that unblocks. D6d says <em>"the home cells are blocked on tagging."</em> 126
+        sub-MEV cells. You are one field away from making the entire home tier first-class — which is
+        the version of Tandem that works in a hotel room, on vacation, on a deload week, on the day
+        the gym is closed. That's the adjacent market hiding inside a five-row disagreement.</p>
+      <p>Second undervalued asset: <code>MOVEMENT_FAMILIES</code> is being used as a classifier when
+        it's really a graph. D30's movement-pattern comparator already exists. Push further —
+        family-level PR tracking (hip thrust and glute bridge are the same pattern, so Dani's bridge
+        PR and Kerwin's barbell PR become <em>comparable</em>), family-level volume accounting,
+        equipment-agnostic substitution, and fair couple-scoring when the two of them have different
+        gear. That's the competitive moat, not the sets count.</p>
+      <p>Third: the measured blast radius — 60 combos changed, <strong>zero MEV regressions</strong> —
+        is not a null result. It's proof the volume allocator has slack. That's rare permission to do
+        the <em>bigger</em> refactor cheaply. Spend it now, while it's free.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Outsider <span class="tag">peer-review letter D</span></summary>
+    <div class="body">
+      <p>Reading this cold, the thing that jumps out is that nobody has answered the actual question:
+        <strong>what does <code>category</code> mean?</strong> You have two consequences bolted to one
+        word — how many sets, and how fast load climbs — and your own evidence says those two things
+        want different answers. Joint count decides the progression rate (that's what NSCA's
+        core/assistance distinction is about). Loadability decides whether a set is even meaningful. A
+        bodyweight glute bridge is multi-joint AND unloadable. One field cannot say both, so whichever
+        way you flip it, half the app gets the wrong answer. Re-tagging is choosing which half to be
+        wrong about.</p>
+      <p>Second thing an outsider trips over: <code>isolation</code> is a value in <em>both</em>
+        tables — a <code>category</code> and a <code>movement_pattern</code>. That's not a subtle
+        naming issue, it's a guarantee that future readers (including future you) will conflate them.
+        If the two tables are genuinely orthogonal, they must not share vocabulary.</p>
+      <p>Third, and this is the part I'd stop on: flipping three exercises to a <em>higher</em> set
+        count makes hotel-gym glute volume go <strong>down</strong> 17→14, and silently swaps quads in
+        and hamstrings out. You describe that as "second-order effects through MEV-raise / MAV-trim /
+        trim-and-restore." From outside, that reads as: the engine's response to an input is not
+        predictable by the people who wrote it. That's a much bigger finding than the hip-thrust
+        question, and your own SC-23 says to treat it as a bug.</p>
+      <p>Also: 126 cells below MEV "blocked on tagging," yet all 24 gates are green. A gate suite that
+        reports perfect health while a known floor violation sits in the data is telling you something
+        reassuring and false.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Executor <span class="tag">peer-review letter B · strongest, 5 of 5</span></summary>
+    <div class="body">
+      <p><strong>Do not flip the three tags. You have an unexplained 20% volume DROP and shipping into
+        that is how you break a live app on a Tuesday.</strong></p>
+      <p>The blocker is evidence item 4: hotel_gym glute_max goes 17→14 when you make glutes
+        <em>more</em> compound. That is backwards. Until you can name the line of code that does it,
+        you don't have a fix, you have a coin flip that happens to pass 24 green gates. SC-23 already
+        tells you this is a bug until explained.</p>
+      <p>Monday morning, in order:</p>
+      <ol>
+        <li><strong>Instrument <code>applyGoalVolume()</code> for one combo only</strong> —
+          build_muscle/hotel_gym/male/intermediate. Log the exercise list and set counts before
+          MEV-raise, after MEV-raise, after MAV-trim, after trim-and-restore. Two runs, tags flipped
+          and not. Diff them. One afternoon. You'll find it in the trim pass: 4-set compounds trip the
+          MAV cap sooner and get trimmed or displaced, which is why the <em>loaded</em> tier loses
+          volume. Confirm that, don't assume it.</li>
+        <li><strong>Separate the two consumers before you touch any tag.</strong>
+          <code>category</code> is doing two unrelated jobs — set count and progression rate. Only the
+          progression rate is a doctrine claim (D24, NSCA multi-joint vs single-joint). So change
+          <code>progressionPct()</code> to take joint-count from <code>MOVEMENT_FAMILIES.pattern</code>
+          (hinge ⇒ multi-joint) instead of <code>category</code>. That fixes the actual user-visible
+          harm — glute-bridge under-progressing at half rate — with <strong>zero</strong> effect on set
+          counts, and therefore zero selection churn. Ship that alone. It's small, it's testable, and
+          it's defensible.</li>
+        <li><strong>Then, separately,</strong> decide whether set-count-by-<code>category</code> should
+          call bodyweight glute bridges 3 or 4 sets. That's a volume question, not a taxonomy
+          question, and it can wait for step 1's answer.</li>
+      </ol>
+      <p>Don't do 1, 2, and 3 in one commit. The whole reason this is confusing is that one field is
+        overloaded; a single big change keeps it overloaded.</p>
+    </div>
+  </details>
+
+  <h2>Peer review highlights</h2>
+
+  <details>
+    <summary>All five reviews <span class="tag">anonymization mapping revealed</span></summary>
+    <div class="body">
+      <table>
+        <tr><th>Letter</th><th>Advisor</th></tr>
+        <tr><td>A</td><td>The Expansionist</td></tr>
+        <tr><td>B</td><td>The Executor</td></tr>
+        <tr><td>C</td><td>The Contrarian</td></tr>
+        <tr><td>D</td><td>The Outsider</td></tr>
+        <tr><td>E</td><td>The First Principles Thinker</td></tr>
+      </table>
+
+      <h3>Reviewer 1</h3>
+      <p><strong>Strongest: B.</strong> Same diagnosis as C/D/E but the only response that converts it
+        into a shippable sequence, and it explicitly refuses the single big commit. <strong>Blind
+        spot: A</strong> — treats "0 MEV regressions" as slack, inverting the evidence; never engages
+        SC-23, never asks what 8%/week means on a frog pump, oversells 11→12 of 126 cells.
+        <strong>All five missed:</strong> nobody asked what the <em>rest of the bank</em> looks like
+        under the same lens — every bodyweight-vs-loaded pair (push-up/bench, pistol/squat) likely
+        carries the same latent conflict. Per "fix the mechanism, not the instance," enumerate the
+        bodyweight axis bank-wide first. Also: who owns the new field in Notion, and does D6d's
+        "blocked on tagging" text need amending first?</p>
+
+      <h3>Reviewer 2</h3>
+      <p><strong>Strongest: B</strong> — only one that sequences it and refuses to bundle.
+        <strong>Blind spot: A</strong> — spends false permission on family-level PR tracking and
+        couple-scoring, features layered on a schema whose behavior nobody can predict; never engages
+        the 17→14 drop at all. <strong>All five missed:</strong> nobody proposed a gate. No invariant
+        asserts a family is category-homogeneous, or that <code>progressionPct</code> reads the same
+        joint-count source as set dosing. Split the field and the next drift is undetectable again.
+        Also unexamined: whether <code>MOVEMENT_FAMILIES</code> actually claims joint count, or only
+        pattern.</p>
+
+      <h3>Reviewer 3</h3>
+      <p><strong>Strongest: B</strong> — C and E have the sharpest single insight (an 8% ramp on
+        frog-pump is fabricated) but B is the only one that says what to commit on Monday.
+        <strong>Blind spot: A</strong> — zero MEV regressions means the gate is blind, not that the
+        change is safe. <strong>All five missed:</strong> nobody checked what
+        <code>progressionPct</code> actually does when <code>seedWeight</code> is bodyweight — C and E
+        <em>speculate</em> about fabrication but neither ran it, violating "verify by running." Also:
+        splitting the field is a doctrine change, so D24 must be amended in Notion →
+        <code>DOCTRINE.md</code> → <code>doctrine.mjs</code> <em>before</em> code, and
+        program-snapshot must be re-baselined.</p>
+
+      <h3>Reviewer 4</h3>
+      <p><strong>Strongest: B</strong> — only one executable Monday. <strong>Blind spot: A</strong> —
+        reads a gate blind by construction as a safety proof, then argues for the largest refactor on
+        that false permission. <strong>All five missed:</strong> nobody asks what the DB thinks.
+        <code>category</code> also lives in prod <code>exercises</code> (180 rows, seed-applied); the
+        doctrine gate cannot see Postgres, so a field split needs a migration + seed + snapshot
+        refresh, or verify stays green while prod diverges. Also unraised: D24 must be amended in
+        Notion <em>before</em> code, and this is itself a "one rule, one home" doctrine fork — the
+        council output is the citable artifact.</p>
+
+      <h3>Reviewer 5</h3>
+      <p><strong>Strongest: B</strong> — bundling would preserve the overload. <strong>Blind spot:
+        A</strong> — proposes a schema migration on top of behavior nobody can predict, a direct
+        SC-23 violation; D6d credit inflated. <strong>All five missed</strong> the change-order and
+        durability requirements: splitting <code>category</code> is a doctrine amendment (Notion →
+        <code>/DOCTRINE.md</code> → <code>doctrine.mjs</code> in one change, D24's text rewritten
+        around load not joints) plus a new gate so the field cannot be re-overloaded. Nobody checked
+        the Postgres copy of these tags, and nobody asked what happens to Kerwin's and Dani's
+        <strong>in-flight</strong> mesocycles when set counts shift mid-program.</p>
+    </div>
+  </details>
+
+  <footer>
+    <p>Council convened 2026-09-29 · 5 advisors, parallel and independent → 5 anonymized peer reviews
+      → chairman synthesis. Evidence measured by running the engine at
+      <span class="mono">0ca5ae9</span> (150-combo volume sweep via
+      <code>computeMuscleWeeklyVolume()</code>); no source file was modified.</p>
+    <p>Counciled: should the three bodyweight hip-thrust variants be re-tagged
+      <code>category:'compound'</code>? · Verdict: no — the field is overloaded; measure what a
+      bodyweight progression actually renders before deciding anything else.</p>
+    <p>Full transcript: <code>docs/council-transcript-2026-09-29-hip-thrust-family-split.md</code></p>
+  </footer>
+
+</div>
+</body>
+</html>
