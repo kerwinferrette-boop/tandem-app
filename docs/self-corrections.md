@@ -1277,3 +1277,83 @@ Building it immediately disproved two claims in the audit that prompted it —
 `sets_apply_1rm_and_pr` and `streak_recompute` triggers — and surfaced two columns the audit had
 missed (`sets.exercise_category`, `users.start_weight_lbs`), which is the clearest possible argument
 for writing the check instead of trusting the sweep.
+
+---
+
+## SC-34 — I wrote four static checks that matched the comments explaining the thing they were checking for
+
+**What I believed.** That a check which greps `tandem.html` for a code pattern is testing the code.
+
+**What was true.** Four separate gates written in one session each failed on their first run by
+matching their own prose, and in one case by matching someone else's:
+- `qa-feed-status-smoke.mjs` check [C] ("no `.neq('status','resolved')` remains") flagged the
+  comment that documents the old, wrong filter.
+- `column-reachability-smoke.mjs` counted the name inside ANY string as a read, so
+  `console.warn('week_targets persist skipped')` masked `week_targets` — a genuinely dead column —
+  and the detector reported a reassuringly short list.
+- `week-pointer-smoke.mjs` check [C] ("does not call `currentWeekFromStorage`") flagged the comment
+  that warns against calling it.
+- `a11y-keyboard-smoke.mjs` check [A] ("every `role="button"` has a key handler") flagged the HTML
+  comment that explains the fix, reporting 2 elements where the file has 1.
+
+Three of the four were caught only because the check failed loudly on a tree I knew was correct.
+The `column-reachability` one was different and worse: it failed *silently*, in the safe-looking
+direction, producing 14 findings instead of 17.
+
+**The gap.** I treated the source file as the program. It is the program plus the prose about the
+program, and prose about a defect necessarily contains the defect's own signature — a comment
+explaining a fix is the single most likely place for the anti-pattern's exact text to appear. So the
+false-positive rate is not random; it is concentrated precisely where I had just been writing.
+
+> **THE RULE — SC-34.** Strip comments before matching source for a code pattern. `//`-lines for JS,
+> `<!-- -->` blocks for HTML, and for string-context matches restrict to the real read surfaces
+> (a `.select()` list, a filter argument) rather than "the name appears inside any string." Do this
+> in the first draft, not after a failure. And when a detector returns a *reassuringly small*
+> number, assume the detector before assuming the codebase: run it against a synthetic fixture with
+> a known answer.
+
+**Enforced by:** partially. Every gate written this session now strips comments and says so at the
+strip site, and `column-reachability-smoke.mjs` carries a synthetic self-test ([C]) whose expected
+answer never changes, so weakening the matcher fails the build. What is NOT mechanically enforced is
+a *new* check written later making the same mistake — nothing scans the scanners. Judgment, with one
+concrete tell: if a check's own source contains the string it greps for, it will match itself.
+
+---
+
+## SC-35 — I published a subagent's "X is never read" conclusions without verifying the read sites myself
+
+**What I believed.** That a thorough delegated sweep's negative findings could be written into a
+committed audit and filed as tracker rows on the strength of the sweep.
+
+**What was true.** Two of them were false, and I found both only by accident while doing other work:
+- The audit listed `sets.estimated_1rm_lbs` and `workout_sessions.total_volume_lbs` as write-only.
+  Both are read — server-side, by the `sets_apply_1rm_and_pr` and `streak_recompute` triggers. Found
+  because building the reads-side gate forced me to query `pg_proc`. The same query cleared
+  `workout_sessions.backdated`, `personal_records.achieved_reps`/`achieved_weight_lbs` and
+  `workout_templates.author_id` (eight RLS policies).
+- The audit's D13 said the one-off cards' `aria-pressed` and `data-oneoff` are "never read or
+  updated." All three are wired: `pickOneOffGoal` reads `b.dataset.oneoffGoal` (`:8258`),
+  `renderOneOff` reads `b.dataset.oneoff` (`:8308`), both call
+  `setAttribute('aria-pressed', String(on))`, and `openOneOff` resets them (`:8115`). Found because
+  a mechanism sweep for other `aria-pressed` instances showed three update sites.
+
+The audit that found them was otherwise strong, and its true findings are serious. That is the trap:
+accuracy on the positives bought unearned credibility for the negatives.
+
+**The gap.** A positive claim ("this line writes X") is self-verifying — the line is right there. A
+negative claim ("nothing reads X") is a claim about the whole program, including the parts a
+grep cannot see: database triggers, RLS policies, views, and `dataset.camelCase` reads of a
+`data-kebab-case` attribute, which no search for the literal attribute name will find. I forwarded
+whole-program negatives at the confidence appropriate to line-local positives.
+
+> **THE RULE — SC-35.** Never publish "nothing reads X" from a search alone. Before it goes in a
+> document or a tracker row, (a) name the read surfaces actually checked, (b) check the ones a grep
+> structurally cannot reach — `pg_proc`, `pg_policy`, views, and the `dataset.camelCase` ↔
+> `data-kebab-case` transform — and (c) state the negative as scoped ("no client read site; triggers
+> not checked") rather than absolute. A delegated sweep's positives may be taken at face value; its
+> negatives are hypotheses until independently confirmed.
+
+**Enforced by:** `scripts/column-reachability-smoke.mjs` for the Supabase-column half — its
+`SERVER_SIDE` allowlist requires the reading database object to be named, so "nothing reads it"
+cannot be asserted there without having checked `pg_proc`/`pg_policy`. The DOM/attribute half
+(D13's shape) is judgment — not mechanically checkable.

@@ -68,6 +68,7 @@ const CHECKS = [
   { name: 'BUG-173 muscle-tag vocabulary gate (bank ↔ DB vocabulary agreement; offline vs committed snapshot, live in CI)', run: () => execFileSync('node', [join(scriptsDir, 'muscle-tag-vocabulary-gate.mjs')], { stdio: 'inherit' }) },
   { name: 'bank↔seed freshness (committed seed SQL matches EXERCISE_BANK — does NOT prove it is applied)', run: () => execFileSync('node', [join(scriptsDir, 'bank-seed-freshness.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-188 loadless progression (0-lb logged set coaches reps — no "null lbs"/fabricated "0 lbs" chip; weighted lifts still ladder)', run: () => execFileSync('node', [join(scriptsDir, 'loadless-progression-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-200 a11y keyboard (every role=button element is operable by Enter and Space)', run: () => execFileSync('node', [join(scriptsDir, 'a11y-keyboard-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-192/194 settings persistence (DB cap survives a reload; stats reach the cloud and the generator)', run: () => execFileSync('node', [join(scriptsDir, 'settings-persistence-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-193 cfg builder (restoreFromCloud and syncFromCloud share one home; injuries survives a restore)', run: () => execFileSync('node', [join(scriptsDir, 'cfg-builder-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-196 week pointer (the "Today" button actually moves and persists the week)', run: () => execFileSync('node', [join(scriptsDir, 'week-pointer-smoke.mjs')], { stdio: 'inherit' }) },

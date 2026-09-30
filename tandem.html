@@ -1846,7 +1846,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     </div>
 
     <!-- 2. THE DUEL — tapping opens the Duel tab (breakdown ships in Wave 3) -->
-    <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0">
+    <!-- BUG-200: role="button" + tabindex="0" promised keyboard operability the
+         element could not deliver. tandem.html has ZERO addEventListener calls, so
+         no keydown handler existed anywhere in the file and Enter/Space did nothing
+         on the one element that announces itself as a button. Wired inline to match
+         this file's idiom (every other handler here is an on* attribute) and calling
+         the SAME goTab('duel') the click uses, rather than duplicating navigation.
+         preventDefault stops Space from also scrolling the page. -->
+    <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goTab('duel');}">
       <div class="dash-label"><span>This week</span><span>tap for details ›</span></div>
       <div class="dash-duel">
         <div><div class="dash-who" id="dashCompMyName">You</div><div class="dash-comp-pts" id="dashCompMyPts">—</div></div>
