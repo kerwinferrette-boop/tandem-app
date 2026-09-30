@@ -98,5 +98,20 @@ check('[D4] row data still WINS over a stale incumbent', out.goal === 'transform
 check('[D5] no incumbent is safe (first ever login)', build(row, undefined).maxDb === null);
 check('[D6] injuries still rebuilt from the row (BUG-193 SAFETY invariant)', out.injuries === 'knee');
 
+// ── [E] maxDb is ROW-BACKED as of migration 0023 — both directions ──
+// The read side alone is not enough. A column the client READS but never WRITES is
+// the exact mirror of BUG-192 (written, never read) and would leave users.max_db
+// permanently NULL, so the cap would still never follow a user to a new device
+// while every other check here stayed green.
+const out2 = build({ ...row, max_db: 40 }, { maxDb: 25 });
+check('[E1] users.max_db WINS over a stale local cap', out2.maxDb === 40,
+  `got ${JSON.stringify(out2.maxDb)} — the row is authoritative once the column exists`);
+const out3 = build({ ...row, max_db: null }, { maxDb: 25 });
+check('[E2] a pre-0023 local cap is still carried when the column is null', out3.maxDb === 25,
+  `got ${JSON.stringify(out3.maxDb)} — dropping it would re-open BUG-192 for that account`);
+check('[E3] syncToCloud WRITES max_db (read-but-never-written is the mirror of BUG-192)',
+  /max_db\s*:\s*cfg\.maxDb/.test(code),
+  'no users upsert payload sets max_db, so the column would stay NULL forever and the cap would never reach a second device');
+
 console.log(failures === 0 ? '\ncfg-field-parity-smoke: PASS' : `\ncfg-field-parity-smoke: ${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

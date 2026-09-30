@@ -224,6 +224,14 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
    the defect really did put contraindicated loading in front of an injured user after a restore.
    `max_db` confirmed absent, which is why item 3 below is still real.
 2. **BUG-195 cloud round-trip** — table exists, client does not use it.
-3. **BUG-192 cross-device** — needs a `users.max_db` column; on-device only today.
+3. ~~**BUG-192 cross-device**~~ **DONE 2026-09-30** — `users.max_db` added and APPLIED
+   (`migrations/0023_bug192_users_max_db.sql`, Kerwin-authorized in session). Wired BOTH
+   directions: `cfgFromUserRow` reads `u.max_db ?? keep.maxDb ?? null` (row wins, carry kept for a
+   pre-0023 local cap) and `syncToCloud` writes it — a column read but never written is the mirror
+   of BUG-192 and would have left it NULL forever. Verified on a brand-new device with an empty
+   sessionStorage: `resolveMaxDb()` = 25 from the cloud row alone, which local-only could never do.
+   The CHECK was attempted, not assumed: `max_db = 0` raises 23514. Guarded by
+   `cfg-field-parity-smoke.mjs` [E1]-[E3], each mutation-tested. Test account restored to NULL and
+   cleanup confirmed table-wide.
 4. Steps 3-5 below (council forks, research-gated rows, housekeeping) are untouched.
 5. Step 6 stays HELD.

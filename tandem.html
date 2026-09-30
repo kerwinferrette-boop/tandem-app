@@ -4485,9 +4485,10 @@ function applySetupSelection() {
     // read "Hotel · Small DB" while resolveMaxDb() returned 0 and dumbbell
     // prescriptions went UNCAPPED — the UI claiming a constraint the engine had
     // forgotten. Safety-adjacent: it prescribes load the user's gym lacks.
-    // Local-only for now: there is no users.max_db column, and adding one is a
-    // migration (human-only). So this survives a reload but not a new device;
-    // the cloud half is still owed on BUG-192.
+    // Persisted BOTH ways as of migration 0023: LS.set('tandem_cfg') below keeps it
+    // on this device, and syncToCloud() writes users.max_db so it follows the
+    // account to a new one. Before 0023 this was local-only and the cloud half was
+    // an open item on BUG-192; it is now closed.
     cfg.maxDb = maxDb || null;
     // Write local FIRST so the choice survives a reload even if the cloud
     // round-trip is slow, offline, or the tab closes before it resolves —
@@ -7642,6 +7643,10 @@ async function syncToCloud() {
         sex: cfg.sex,
         fitness_level: cfg.experience,
         equipment: cfg.equipment || null,
+        // BUG-192 / migration 0023: the gym's dumbbell ceiling. Written here so the
+        // cap follows the account; `|| null` because 0 means "no cap stated" and the
+        // column's CHECK rejects 0 outright (storing it would read as uncapped).
+        max_db: cfg.maxDb || null,
         muscle_emphasis: cfg.emphasis || 'balanced',
         workout_duration_minutes: cfg.workout_duration_minutes || null,
         preferred_workout_time: cfg.preferred_workout_time || null,
@@ -7865,6 +7870,10 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
 // resolveMaxDb() fell to 0 and dumbbell prescriptions went UNCAPPED again: exactly
 // the bug BUG-192 was filed to fix, restored by BUG-193, with a green gate over
 // both because each smoke was scoped to its own bug and neither could see the seam.
+// `maxDb` has since been given a real column (migration 0023), so it is row-backed
+// now and no longer relies on the carry — but the carry stays as the fallback for a
+// pre-0023 local value, and the PARITY RULE below is what actually prevents the
+// next field from repeating this.
 //
 // `startEpoch` and `revertedAt` are the same shape and PRE-DATE this branch (the old
 // inline literal erased them too). Both are read — startEpoch filters pre-program
@@ -7876,8 +7885,13 @@ function cfgFromUserRow(u, prev) {
   if (!u) return null;
   const keep = prev || {};
   return {
-    // ── LOCAL-ONLY: no users column backs these, so carry the incumbent or they die
-    maxDb: keep.maxDb ?? null,
+    // BUG-192: max_db is now a real users column (migration 0023), so the cap is
+    // RESTORED from the row rather than merely preserved — it follows the user to a
+    // new device. The `keep` fallback still matters: an account that set a cap
+    // before 0023, or in a tab that has not synced yet, has a local value and a
+    // null column, and dropping it would re-open the defect on that one load.
+    maxDb: u.max_db ?? keep.maxDb ?? null,
+    // ── LOCAL-ONLY: no users column backs these two, so carry them or they die
     startEpoch: keep.startEpoch ?? null,
     revertedAt: keep.revertedAt ?? null,
     goal: canonicalGoal(u.program_goal), // old accounts may still carry legacy 'burn_fat'
