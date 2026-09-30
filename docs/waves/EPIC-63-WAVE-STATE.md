@@ -41,8 +41,11 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
 
 ## Step status
 
-- [ ] **1. Zero-collision wires — BUG-192, BUG-193, BUG-194, BUG-196, BUG-200.**
-      **CODE SHIPPED + GATED 2026-09-30 — deliberately left UNCHECKED.** All five are pushed on
+- [x] **1. Zero-collision wires — BUG-192, BUG-193, BUG-194, BUG-196, BUG-200.**
+      **DONE 2026-09-30, merged to main in `a2dc2c6`.** Checked off only after the browser
+      verification below existed — the earlier note said this box would not be ticked on green
+      static gates, and it was not.
+      **ORIGINAL NOTE, kept because it was right:** All five are pushed on
       `claude/control-reachability-audit` with a gate each (`verify` 28 → 35). What is missing is
       the only thing this Epic is about: **verification at the surface the user sees.** None has
       been driven in a browser; the gates are static/vm-level. Checking this box on green gates
@@ -62,8 +65,12 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       not reading.
       **Suggested order:** BUG-193 first (safety), then 194, 192, 196, 200.
 
-- [ ] **2. BUG-195 — `.ex-notes` local persistence.**
-      **LOCAL HALF SHIPPED + GATED 2026-09-30 — two things still open, both named:**
+- [x] **2. BUG-195 — `.ex-notes` local persistence.**
+      **LOCAL HALF DONE + BROWSER-VERIFIED 2026-09-30** (type a note, re-render, it survives —
+      `control-reachability-walkthrough.mjs` [3], mutation-tested). Migration `0022` APPLIED, so
+      `exercise_notes` now exists with RLS + the unique(user_id, exercise_name) constraint.
+      **The CLIENT cloud round-trip is still unwired — notes remain LOCAL ONLY.** Do not describe
+      cloud notes as working. Original note:
       (a) the browser repro (type a note, force a re-render, reopen the app);
       (b) the CLOUD half — `migrations/0022_bug195_restore_exercise_notes.sql` is written and
       staged but **Kerwin must apply it**; `apply_migration` is denied in
@@ -178,3 +185,37 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
     Re-verified: all three tables 0 rows, deny-all RLS, zero refs in the codebase, **zero refs in
     any of the six wedding skills** (they use Drive/Gmail/Calendar, not Postgres), and the real 130
     guest rows live in a separate project (`xrgzaovididcizstwswy`). Kerwin applies `0013`.
+
+- **2026-09-30 (final) — council gate cleared; merged to main.**
+  - `llm-council` ran as `escalation.pre_ship_council_gate` requires. Verdict at the time of asking:
+    **DO NOT MERGE** — and it was right. The Contrarian found that BUG-192 and BUG-193 cancelled
+    out: `cfgFromUserRow()` returns a complete replacement cfg without `maxDb`, and
+    `syncFromCloud()` runs on app boot for any signed-in user, so the dumbbell cap was erased on
+    essentially every load and prescriptions went UNCAPPED. All 36 checks were green over it.
+    Verified in code, fixed in `89ae5a2`, mechanism-gated, recorded as **SC-37**.
+    Artifacts: `council-report-2026-09-30-epic63-preship.html` / `-transcript-…md`.
+  - Browser gate built and wired in `38d41b3`: `scripts/control-reachability-walkthrough.mjs`,
+    `npm run walkthrough:controls`, in `verify` (37). Six assertions, each mutation-tested.
+    The Executor's verified point on why this was missing: `verify` wired exactly ONE Playwright
+    check before it, and the two existing walkthroughs were never wired — which is why they rotted.
+  - **Two DOM assertions were DELETED as non-evidence**, not left green: "no rendered dumbbell load
+    exceeds the cap" passed with the fix removed. First because the fixture seeded a button tier
+    name (`hotel_small`) where cfg takes the cfg vocabulary (`home_dumbbells`) so nothing dumbbell
+    rendered; then, fixture corrected, because natural week-1 seeds already sit under the cap.
+    Forcing it to bind required a 200 lb working 1RM, which moves the render onto the calibrated
+    branch that `dbCap` never governed. Full account in that script's header.
+  - **New finding filed, not fixed:** an EARNED dumbbell 1RM is not clamped by the gym cap
+    (`dbCap` is consumed only in `seedWeight`, `programs.js:232`), so a traveller is prescribed
+    weight the gym lacks. Needs an exercise-science ruling; filed against this Epic.
+  - Merge resolved two real conflicts with main (BUG-190's `hydrateHistoryFromCloud` added at the
+    same point as `cfgFromUserRow` — kept both; and an SC-33 numbering collision — main's number
+    stands, mine renumbered to SC-34..37 with every cross-reference swept).
+
+## Still owed on this Epic — nothing above claims these are done
+
+1. **Real-Supabase run for BUG-193's restore.** The walkthrough stubs Supabase, so it cannot prove
+   the live `users` row shape. Use the `+test@gmail.com` accounts per `default_not_fallback`.
+2. **BUG-195 cloud round-trip** — table exists, client does not use it.
+3. **BUG-192 cross-device** — needs a `users.max_db` column; on-device only today.
+4. Steps 3-5 below (council forks, research-gated rows, housekeeping) are untouched.
+5. Step 6 stays HELD.
