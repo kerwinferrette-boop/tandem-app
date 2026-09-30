@@ -213,8 +213,16 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
 
 ## Still owed on this Epic — nothing above claims these are done
 
-1. **Real-Supabase run for BUG-193's restore.** The walkthrough stubs Supabase, so it cannot prove
-   the live `users` row shape. Use the `+test@gmail.com` accounts per `default_not_fallback`.
+1. ~~**Real-Supabase run for BUG-193's restore.**~~ **DONE 2026-09-30** —
+   `scripts/bug193-live-row-verification.mjs`, commit `9972120`. All 20 columns confirmed to exist
+   on live `public.users`; all 12 previously-dropped fields survive the rebuild from the real row.
+   **BUG-193 is Resolved in Notion.**
+   `injuries` was NULL on both test accounts, so a read-only check would have passed for the wrong
+   reason — a profile was seeded, verified, and restored, with cleanup confirmed by an independent
+   re-read of both accounts. **The control is the finding:** with `injuries` dropped (the pre-fix
+   behaviour) the real generator prescribes **Step-Up** and **Leg Extension**, both knee-banned. So
+   the defect really did put contraindicated loading in front of an injured user after a restore.
+   `max_db` confirmed absent, which is why item 3 below is still real.
 2. **BUG-195 cloud round-trip** — table exists, client does not use it.
 3. **BUG-192 cross-device** — needs a `users.max_db` column; on-device only today.
 4. Steps 3-5 below (council forks, research-gated rows, housekeeping) are untouched.
