@@ -1079,3 +1079,55 @@ text against the status transition being written before it lands). Caught and co
 BUG-178 was set back to In Fix and its story to Passing (code-verified, pending Kerwin's live
 device confirmation) before this cycle's RECORD step, per this file's own SC-01/SC-10 same-session
 discipline.
+
+---
+
+## SC-30 — My "confirmation" test silently didn't apply the thing under test, so a false negative read as proof
+
+**What I believed (2026-09-29).** That the repo's SSH deploy key was broken and would "bite the
+next session too." I reported that to Kerwin as current state and as a thing needing a fix.
+
+**What was true.** The key was fine. `ssh -vv -i .git/deploy_key/tandem_deploy ... -T git@github.com`
+completes the handshake — *"Hi kerwinferrette-boop/tandem-app! You've successfully authenticated"* —
+and `git ls-remote origin main` returns the ref. The private key derives to exactly the `.pub` on
+disk, and that key is registered on the repo as `tandem-app-cowork-deploy-key` with
+`read_only=false`.
+
+**The gap — two failures stacked, and the second one manufactured confidence in the first.**
+
+1. *Stale observation reported as current state.* My `git fetch` genuinely did fail at ~18:40 UTC:
+   `core.sshcommand` pointed at `/sessions/<sandbox-id>/mnt/...`, a dead mount path. A parallel
+   session repointed it to `/Users/dub/Desktop/...` at 18:46:50 (`.git/config` mtime) and pushed
+   over SSH at 18:49:50. I was still describing the 18:40 state at 19:15. This is **SC-01
+   recurring** — and note it recurred in this same session for branch state too: the worktree was
+   switched from `main` to `fix/per-account-storage-scope` under me mid-conversation.
+2. *The verification was malformed in a way that could only fail.* I ran
+   `GIT_SSH_COMMAND='ssh -i .git/deploy_key/tandem_deploy ...' ssh -T git@github.com`.
+   `GIT_SSH_COMMAND` is consumed by **git**; it has no effect on a direct `ssh` invocation. That
+   command authenticated with the *default* keys — never touching the deploy key at all — and
+   returned `Permission denied (publickey)`. I read that as "the key is rejected." The harness
+   silently did not apply the thing under test, so its failure carried no information about the
+   thing under test, and I treated it as evidence anyway.
+
+**Why this matters.** This is the project's own "verify by running, not by reading" rule failing in
+its most deceptive mode: I *did* run something. Running the wrong thing is worse than reading,
+because a red result feels like earned evidence. It is the same shape as the standing warning that a
+green gate asserting a dead value is worse than no gate — here, a red result from a harness that
+never reached the subject is worse than no test.
+
+> **THE RULE — SC-30.** When a diagnostic is meant to exercise a specific credential, path, config,
+> or code path, prove the harness actually reached it before believing the result — especially a
+> NEGATIVE result. Concretely: check that the mechanism you think is injecting the thing under test
+> applies to the command you are running (`GIT_SSH_COMMAND` → git only, not `ssh`; `.env` → the
+> process that loads it, not its children), and prefer a verbose/echoing form (`ssh -vv`, which
+> prints `Offering public key: <path>`) that names the artifact it used. If the trace does not name
+> the artifact, the test did not test it — re-run it correctly before drawing any conclusion, and
+> never escalate a failure to the user off an unproven harness.
+
+**Corollary (SC-01 restated for shared worktrees):** before reporting any environment/repo fact as
+*current* — branch, config, remote state — re-read it at the moment of reporting. This worktree is
+shared with parallel sessions that change branches, configs, and `main` mid-conversation.
+
+**Enforced by:** judgment — not mechanically checkable. No script can know which artifact a given
+command was *supposed* to exercise. The operational tell is cheap though: a negative result from a
+harness whose trace never names the artifact under test is not a finding.
