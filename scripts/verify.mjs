@@ -72,6 +72,7 @@ const CHECKS = [
   { name: 'BUG-200 a11y keyboard (every role=button element is operable by Enter and Space)', run: () => execFileSync('node', [join(scriptsDir, 'a11y-keyboard-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-192/194 settings persistence (DB cap survives a reload; stats reach the cloud and the generator)', run: () => execFileSync('node', [join(scriptsDir, 'settings-persistence-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-193 cfg builder (restoreFromCloud and syncFromCloud share one home; injuries survives a restore)', run: () => execFileSync('node', [join(scriptsDir, 'cfg-builder-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'cfg field parity (every cfg writer survives a cloud rebuild — the BUG-192/193 seam)', run: () => execFileSync('node', [join(scriptsDir, 'cfg-field-parity-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-196 week pointer (the "Today" button actually moves and persists the week)', run: () => execFileSync('node', [join(scriptsDir, 'week-pointer-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'SC-33 column reachability (reads-side: no NEW column written by the app and read by nothing)', run: () => execFileSync('node', [join(scriptsDir, 'column-reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'QA feed status rule (badge + feed share one open-status home; no un-drainable .neq)', run: () => execFileSync('node', [join(scriptsDir, 'qa-feed-status-smoke.mjs')], { stdio: 'inherit' }) },

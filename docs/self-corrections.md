@@ -1357,3 +1357,49 @@ whole-program negatives at the confidence appropriate to line-local positives.
 `SERVER_SIDE` allowlist requires the reading database object to be named, so "nothing reads it"
 cannot be asserted there without having checked `pg_proc`/`pg_policy`. The DOM/attribute half
 (D13's shape) is judgment — not mechanically checkable.
+
+---
+
+## SC-36 — I wrote one gate per bug, so nothing watched the seam between two fixes, and one silently reverted the other
+
+**What I believed.** That a branch where every fix carries its own mutation-tested gate, with
+`npm run verify` 35/35 green and `validate:personas` passing, was safe to merge. I had proved each
+gate's teeth individually by reverting its fix and confirming it failed.
+
+**What was true.** Two commits on that branch cancelled out, and the full green suite could not see
+it. BUG-192 made `cfg.maxDb` the durable home for the max-dumbbell cap. BUG-193 gave
+`restoreFromCloud` and `syncFromCloud` one shared `cfgFromUserRow` builder — which returns a
+**complete replacement** cfg and does not build `maxDb`. `syncFromCloud()` runs on app boot for any
+signed-in user (`tandem.html:10461`) and on scope change (`:2739`), so the cap was erased from
+`tandem_cfg` on essentially every load; `sessionStorage` is empty in a fresh tab, so
+`resolveMaxDb()` fell to 0 and dumbbell prescriptions went **uncapped** — the exact defect BUG-192
+was filed to fix, reintroduced, with two green gates over it. Widening the check found two more
+members of the class that **pre-date** the branch: `cfg.startEpoch` (read at `:8985`) and
+`cfg.revertedAt` (read at `:9142`) were also being erased on every cloud rebuild.
+
+It was caught by `llm-council` on the pre-ship gate. No check found it, and I would have merged.
+
+**The gap.** I scoped each gate to the bug that motivated it, which makes every gate a statement
+about one function in isolation. A green suite of N single-bug gates says "each fix still does its
+own job" — it says nothing about whether fix A destroys the precondition fix B depends on. Worse, my
+confidence scaled with the count: 35/36 green read as 35 units of safety when the interaction
+surface between them was entirely unguarded. The mutation test I was proud of made this *more*
+likely, not less: reverting fix A and watching gate A fail confirms gate A is wired to fix A, which
+is precisely the scoping that blinds it to fix B.
+
+> **THE RULE — SC-36.** When a change makes two code paths share a value, ask what ELSE writes that
+> value and whether the shared path preserves it. Concretely: a function that returns a **whole
+> replacement object** for shared state must be checked against *every* writer of that state, not
+> just the fields the current bug is about — enumerate the writers and diff them against the
+> builder's output. And never read a green suite of per-bug gates as evidence about interactions
+> between fixes in the same branch; that is the one thing it structurally cannot tell you.
+
+**Enforced by:** `scripts/cfg-field-parity-smoke.mjs`, wired into `scripts/verify.mjs`. It watches
+the **contract** rather than any field: it enumerates every `cfg.X =` writer in `tandem.html`,
+diffs them against the keys `cfgFromUserRow` produces, and fails on any orphan unless it is listed
+in that script's `TRANSIENT` map with a written reason — so "losing this on every signed-in load is
+correct" becomes a claim someone has to make out loud. It also asserts the builder accepts an
+incumbent AND that every call site passes it, since a builder that *can* carry but is called
+without the incumbent carries nothing. Teeth proved in both directions: removing the `maxDb` carry
+fails [A]/[D1] naming the uncapped prescription, and dropping the second argument at one call site
+fails [C] naming that site.

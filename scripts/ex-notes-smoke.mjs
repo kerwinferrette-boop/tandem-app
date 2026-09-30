@@ -102,5 +102,14 @@ check('[F2] ampersand escaped first (no double-encoding)',
   escNoteHtml('a & b') === 'a &amp; b' && escNoteHtml('<x>') === '&lt;x&gt;',
   `got ${escNoteHtml('a & b')} / ${escNoteHtml('<x>')}`);
 
+// ── [G] clearable by a UI path ──
+// BUG-91's own comment in clearHistory() records why this matters: a key omitted
+// from that list survives the clear, outranks the now-empty stores, and cannot be
+// removed by any UI path. Flagged by llm-council, 2026-09-30.
+const ch = code.slice(code.indexOf('function clearHistory('));
+check('[G] clearHistory() also clears tandem_ex_notes (BUG-91 precedent)',
+  /'tandem_ex_notes'/.test(ch.slice(0, ch.indexOf('\n}') + 2)),
+  'notes would survive a full history clear with no UI path to remove them');
+
 console.log(failures === 0 ? '\nex-notes-smoke: PASS' : `\nex-notes-smoke: ${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

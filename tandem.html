@@ -6573,7 +6573,10 @@ function clearHistory() {
     // BUG-91: tandem_working1rm belongs in this list. Omitting it left an orphaned
     // working 1RM that survived the clear, outranked the (now-empty) PR store via
     // earnedOneRM, and could not be cleared by any UI path.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm'].forEach(k=>LS.del(k));
+    // tandem_ex_notes belongs here for the SAME reason BUG-91 put tandem_working1rm
+    // here: a key omitted from this list survives the clear and cannot be removed by
+    // any UI path. Flagged by llm-council, 2026-09-30.
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes'].forEach(k=>LS.del(k));
     buildHistoryModal();
   }
 }
@@ -7766,9 +7769,34 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
 // Fixed at the mechanism, not the instance (CLAUDE.md's BUG-73/114 rule): a
 // field added here now reaches BOTH paths, and neither can drift again.
 // Callers keep their own guards and side effects; this only builds the object.
-function cfgFromUserRow(u) {
+// `prev` is the INCUMBENT cfg. It exists because this builder returns a COMPLETE
+// REPLACEMENT object and its callers assign it wholesale (`cfg = cfgFromUserRow(...)`,
+// then `LS.set('tandem_cfg', cfg)`). Any cfg field that no `users` column backs is
+// therefore ERASED by a cloud rebuild unless it is carried forward here.
+//
+// Found by llm-council on the pre-ship gate for this branch, 2026-09-30, and it was
+// a live regression this branch had itself created: BUG-192 made `cfg.maxDb` the
+// durable home for the dumbbell cap, and syncFromCloud() — which runs on app boot
+// for any signed-in user (:10461) and on scope change (:2739), not just on a new
+// device — dropped it on every load. sessionStorage is empty in a fresh tab, so
+// resolveMaxDb() fell to 0 and dumbbell prescriptions went UNCAPPED again: exactly
+// the bug BUG-192 was filed to fix, restored by BUG-193, with a green gate over
+// both because each smoke was scoped to its own bug and neither could see the seam.
+//
+// `startEpoch` and `revertedAt` are the same shape and PRE-DATE this branch (the old
+// inline literal erased them too). Both are read — startEpoch filters pre-program
+// history rows (:8985), revertedAt gates the revert notice (:9142) — so they were
+// silently lost on every cloud rebuild before anyone named the class.
+// Enforced by scripts/cfg-field-parity-smoke.mjs: a new `cfg.X =` writer must either
+// be produced from the row here or be listed there with a reason.
+function cfgFromUserRow(u, prev) {
   if (!u) return null;
+  const keep = prev || {};
   return {
+    // ── LOCAL-ONLY: no users column backs these, so carry the incumbent or they die
+    maxDb: keep.maxDb ?? null,
+    startEpoch: keep.startEpoch ?? null,
+    revertedAt: keep.revertedAt ?? null,
     goal: canonicalGoal(u.program_goal), // old accounts may still carry legacy 'burn_fat'
     days: u.program_days_per_week,
     weeks: u.program_weeks || 12,
@@ -7853,7 +7881,7 @@ async function restoreFromCloud() {
     if (configData && !LS.get('tandem_cfg')) {
       // BUG-193: was a 9-field literal that dropped injuries (a SAFETY invariant),
       // weeks, equipment, emphasis, duration, startDate and more. One home now.
-      LS.set('tandem_cfg', cfgFromUserRow(configData));
+      LS.set('tandem_cfg', cfgFromUserRow(configData, cfg));
       LS.set('tandem_week', configData.current_week);
     }
     setSyncStatus('synced');
@@ -9160,7 +9188,7 @@ async function syncFromCloud() {
     const { data: userData } = await sb.from('users').select('*').eq('id', uid).maybeSingle();
     mergeAvatarFieldsFromCloud(userData); // BUG-8: hydrate avatar_* even if this account has no program yet
     if (!userData?.program_goal) return false;
-    cfg = cfgFromUserRow(userData);   // BUG-193: one home, shared with restoreFromCloud()
+    cfg = cfgFromUserRow(userData, cfg);   // BUG-193: one home. 2nd arg carries local-only fields (maxDb/startEpoch/revertedAt) across the wholesale replace.
     selectedGoal = cfg.goal;
     selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null;
