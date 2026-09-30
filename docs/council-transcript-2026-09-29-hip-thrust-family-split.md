@@ -510,9 +510,12 @@ above: no re-tag, no category split needed to fix this.
 - **BUG-188** (Notion Bug & QA Log, P2 Visual UX): "Progression chip renders \"null lbs\" for
   bodyweight exercises after first logged session". Status: Resolved.
 - **Fix `cdbcf19`**: weight<=0 guard in `getRecommendation`'s flat-increment tail —
-  rep-progression messaging instead ("Add reps" / "Hold steady" / "Build reps", `weight:null`),
-  double-progression basis (5-30 rep equivalence when volume equated, research-report (8).pdf
-  p.6 §3). Mechanism-level: covers every bodyweight/band movement (Push-Up, Pull-Up, Band Curl,
+  rep-progression messaging instead ("Add reps" / "Hold steady" / "Build reps", `weight:null`).
+  Basis (citation corrected in `2b8e879`): Plotkin et al., "Progressive overload without
+  progressing load?", PeerJ 2022 (PMID 36199287, doi 10.7717/peerj.14142) — rep and load
+  progression both viable over an 8-wk cycle. NOT research-report §3's "5-30 rep equivalence"
+  (that answers rep-RANGE interchangeability, a different question); PDF p.7 item 4 is
+  corroboration only. Mechanism-level: covers every bodyweight/band movement (Push-Up, Pull-Up, Band Curl,
   the three glute-bridge variants), every goal/week; weight>0 path byte-identical. Verified by
   vm probe re-run + live preview-page eval; `verify` 26/26 and `validate:personas` green.
 
