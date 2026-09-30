@@ -1221,3 +1221,42 @@ right."
 sentence "this is PN because the enum's PN row is *<exact label>* and the wrongness is of that kind",
 I have not graded it, I have just reacted to it. The four legal rows are P0 Blocks Workout /
 P1 Wrong Data / P2 Visual UX / P3 Low.
+
+---
+
+## SC-33 — My call-site gate located sites by regex and never asserted how many it found, so it silently guarded a subset
+
+**What happened (2026-09-30, BUG-190).** Writing the regression gate for the stale-history bug, I
+wrote a check that grabbed "the returning-user init path" with a single `html.match(...)` and
+asserted it contained the new hydrate call. It passed. It was also wrong: `match()` returns the
+FIRST hit, and there are **two** `if (savedCfg?.goal) {` entry points in `tandem.html` — the init
+IIFE and the `onAuthStateChange` handler (magic link / session restore / home-screen icon). Both
+render the tracker straight off the local cache; both had the identical defect. My gate looked at
+one of them. Had I not gone looking for the second call site by hand, I would have shipped a fix
+for one entry point, a green gate asserting that entry point, and left the *same* bug live on the
+path a returning user hits most often.
+
+**The mechanism, not the trait.** A locator regex answers "show me a site that looks like this",
+which I read as "show me the sites that look like this". Those differ by exactly the failure mode
+this repo keeps paying for (BUG-73 → BUG-114: one function, one fix, one vocabulary, the other
+vocabulary still broken). The defect is not that I chose a bad regex — it is that the assertion had
+**no cardinality**, so a regex that found 1 of 2, or 0 of 2 after a later refactor renamed the
+anchor, reads exactly the same as one that found all of them. `grab()`-style helpers make this
+worse, not better: they throw on zero matches, which *feels* like a safety net and actually just
+guarantees the "found 1 of 2" case fails silently.
+
+> **THE RULE — SC-33.** A gate that finds call sites by pattern must assert the COUNT it found
+> before asserting anything about them, and that count must be a literal number written in the
+> check's own label (`expected 2`). Use `matchAll`/`indexOf`-loop, never `match()`, whenever "every
+> site that does X" is the thing being guarded. If the expected count changes, that is a
+> deliberate edit to the gate, which is the point — a new call site should break the gate and make
+> someone look, not be quietly excluded from it. The same applies to the fix itself: before
+> shipping, enumerate the other sites the defect's shared code path can reach (CLAUDE.md's
+> fix-the-mechanism rule) and confirm the gate's count matches that enumeration.
+
+**Enforced by:** partially mechanical. `scripts/history-merge-smoke.mjs` now asserts
+`savedCfgBranches.length === 2` and that ZERO of them lack the hydrate call, and both halves are
+mutation-tested (removing the hydrate from *either* branch fails the gate — verified, not assumed).
+The general habit across other gates is judgment — not mechanically checkable. Operational tell: if
+a check's label says "the X path" rather than "every X path, N of them", I have not written a
+mechanism gate, I have written a spot check.
