@@ -156,8 +156,25 @@ apply.
 | **D12** | duration `:1459-1471`; equipment `:2003-2009` | Session length is only distinguishable as `<45` (`SHORT_SESSION_MAX_MINUTES` `programs.js:2626`, used once at `:3075`) — **45 / 60 / 90 produce byte-identical programs**. `EQ_TIER_TO_BANK` (`:3456-3460`) collapses 6 tiers into 3: `standard_gym` ≡ `full_gym`, and `hotel_full` ≡ `hotel_small` ≡ `dumbbells`. Both are documented as intentional; the UI implies otherwise by offering the choices. | Defer — label honestly |
 | **D13** | a11y | `.dash-competition` (`:1849`) carries `role="button"` + `tabindex="0"` with only an `onclick`; the file has **zero** `addEventListener`, so no keydown exists anywhere and Enter/Space are dead. One-off cards (`:8136-8137`) emit `aria-pressed="false"` and `data-oneoff`/`data-oneoff-goal`, none of which is ever read or updated, so selection is never announced. | **WIRE** |
 | **D14** | dead engine outputs | Computed and discarded: `ex.intensity = 'drop-set'` (`programs.js:1963`, applied `:5599`; zero `.intensity` reads — and `TECHNIQUE_TIPS` keys the same concept as `drop_set` off `ex.technique`: two vocabularies, neither reaching the other) · `rotation.phase` (`tandem.html:3529` — `buildDynamicProgram` destructures only `rot.week` and says so at `programs.js:2718`) · `ex.supersetGroup` (`:3605`) · `ex.constant` (`:3795`) · `ex.role` on the materialized output (`:3789`) · `day.authored`/`day.templateSlug` (`:3803`) · `EXERCISE_BANK[*].videoId` (29 non-null; render reads `VIDEO_IDS` instead — two homes, and the bank's copy is documented as authoritative at `:387`) · `MOVEMENT_FAMILIES[*].canonicalLift` and `.label` · `RECOVERY_PARAMS[*].maxConsecutive` (all 5 goals; only `sameGroupHours` is read) · `HERO_MOMENTS.pr` · `emphMap.pull_heavy`/`core_focused` (reachable, but the UI offers only 6 of 8) · `cfg.program_goal` (stale duplicate of `cfg.goal`) · `profile.avatarStyle` (read at `:9978` then hard-overwritten to `'illustrated'` at `:10286`). | Defer / delete |
-| **D15** | orphans + write-only columns | Unreferenced declarations: `recentSetsFor()` (`:7950`, "Projection B (EPIC-027)", zero callers), `const todayDate` (`:6979`), `const perWeek` in `skipAhead()` (`:6717`). Write-only Supabase columns: `personal_records.calibration_session_id`, `users.calibration_session_id`, `users.color_theme`, `users.age`, `users.preferred_workout_time`, `users.secondary_goal`, `workout_sessions.phase_name`/`week_number`/`total_volume_lbs`/`duration_minutes`/`notes`, `sets.rpe`, `sets.estimated_1rm_lbs` (never selected — `renderStrengthTrend` `:6557` recomputes via `calcRM()`, despite its own comment at `:6562` claiming it uses the column). `tandem_skips` is incremented and read only to increment itself (`:6719`). | Defer / delete |
+| **D15** | orphans + write-only columns | Unreferenced declarations: `recentSetsFor()` (`:7950`, "Projection B (EPIC-027)", zero callers), `const todayDate` (`:6979`), `const perWeek` in `skipAhead()` (`:6717`). Write-only Supabase columns — **list corrected 2026-09-30, see the note below**: `personal_records.calibration_session_id`, `users.calibration_session_id`, `users.color_theme`, `users.age`, `users.preferred_workout_time`, `users.secondary_goal`, `users.start_weight_lbs`, `workout_sessions.phase_name`/`week_number`/`duration_minutes`/`notes`, `sets.rpe`, `sets.exercise_category`, `personal_records.week_targets`, `personal_records.updated_at`, `agent_log.resolved_at`. `tandem_skips` is incremented and read only to increment itself (`:6719`). Separately, `renderStrengthTrend` (`:6557`) recomputes 1RM via `calcRM()` while its own comment at `:6562` claims it reads `estimated_1rm_lbs` — the comment is false and should be fixed regardless. | Defer / delete |
 | **D16** | authored/library path | `materializeTemplate` is **never passed `experience`** — `getActiveProgram` (`:3566-3572`) hands over only `tier`, `injuries`, `sex`, `maxDb` — so the advanced RPE cue and `flagDropSet` never fire for an adopted program. `onboardingEstimates` is hard-coded `{}` (`:3851`), so adopters never get week-1 prefill. Settings' Days/week and Weeks pills are inert for authored programs (overridden by `tpl.days_per_week`/`duration_weeks`, `:3836-3838`). | **WIRE** (program-generation change → research first) |
+
+> ### CORRECTION, 2026-09-30 (same day) — two D15 claims were wrong
+>
+> Building the reads-side gate (`scripts/column-reachability-smoke.mjs`) immediately disproved two
+> entries in D15's original write-only list. **`sets.estimated_1rm_lbs` and
+> `workout_sessions.total_volume_lbs` ARE read** — server-side, by the `sets_apply_1rm_and_pr` and
+> `streak_recompute` triggers respectively (verified against `pg_proc`). `workout_sessions.backdated`,
+> `personal_records.achieved_reps`/`achieved_weight_lbs` and `workout_templates.author_id` are read
+> the same way (the last by eight RLS policies). None of those are defects, and the original list was
+> client-only reasoning presented as a complete answer — the same shape as the write-side error this
+> whole audit exists to correct, just one layer down.
+>
+> The gate also surfaced **two columns this audit had missed**: `sets.exercise_category` and
+> `users.start_weight_lbs`. Both added to D15 above and to BUG-205.
+>
+> Net: a hand sweep produced 2 false positives and 2 false negatives on this dimension. That is the
+> argument for the executable check rather than the document.
 
 **Also noted, no action:** `restoreFromCloud` vs `syncFromCloud` are two cfg builders for one rule
 (the mechanism behind D3). Settings' "Current Week" input caps at `max="16"` while onboarding allows
@@ -195,9 +212,13 @@ stale and has been replaced with D1/D5/D6.
 | **Defer — label honestly or delete, low value** | D7, D12, D14, D15 |
 | **Dead last — behind roadmap Waves 6/7/8** | the 223-`onclick` → delegation/CSP refactor |
 
-**Already fixed in this session:** the QA-feed badge counted already-filed reports and could never
-drain (badge 21 → 3, verified against production). Commit `6f339fd`, gated by
-`scripts/qa-feed-status-smoke.mjs` (`verify` 28 → 29 checks).
+**Already fixed in this session:** (1) the QA-feed badge counted already-filed reports and could
+never drain (badge 21 → 3, verified against production) — commit `6f339fd`, gated by
+`scripts/qa-feed-status-smoke.mjs`. (2) The reads-side gate this audit's mechanism (SC-33) demanded
+now exists: `scripts/column-reachability-smoke.mjs`, in `npm run verify` (now 30 checks), with a
+one-way ratchet so a NEW write-only column fails the build and a fixed one must have its allowlist
+entry removed. It is scoped to Supabase columns — DOM values like `.ex-notes` and localStorage keys
+like `tandem_day_order` are not covered and remain judgment.
 
 ## 5. Honest limits of this audit
 

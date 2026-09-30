@@ -1259,8 +1259,21 @@ to violate it.
 > them close the question. When a detector reports suspiciously few findings, test the detector
 > against a known-bad fixture before believing the number.
 
-**Enforced by:** `scripts/audit-dead-handlers.mjs`'s reads-side check, wired into
-`scripts/verify.mjs`'s `CHECKS` — for each handler-written value it requires ≥1 read site that is not
-itself a write, a cloud round-trip, or a comment. Validated the way SC-10 requires: it must FAIL on
-the pre-fix tree (fixtures: `tandem_day_order`, `week_targets`, `.ex-notes`, `color_theme`,
-`preferred_workout_time`) before any green run is trusted.
+**Enforced by:** `scripts/column-reachability-smoke.mjs`, wired into `scripts/verify.mjs`'s
+`CHECKS` (check 30). Every column the app writes (keys of `.insert`/`.upsert`/`.update` payloads)
+must have ≥1 read — a property access, a bracket access, a `.select()` list entry, or a PostgREST
+filter column. It carries a one-way ratchet: a NEW write-only column fails [A], and an allowlist
+entry that no longer reproduces also fails [B], so a fix must remove its own entry. Teeth proved
+before trusting it green, per SC-10: an injected write-only column failed [A], and making an
+allowlisted column readable failed [B], each naming the offender.
+
+**Scoped honestly, because the first draft of this entry overclaimed.** The gate covers *Supabase
+columns*, not every handler-written value — `.ex-notes` (a DOM value) and `tandem_day_order` (a
+localStorage key read only by its own writer) are NOT caught by it and remain judgment. It is also
+static and client-only, so it cannot see a column read by a trigger, view or RLS policy; those live
+in a `SERVER_SIDE` allowlist, each verified against `pg_proc`/`pg_policy` rather than assumed.
+Building it immediately disproved two claims in the audit that prompted it —
+`sets.estimated_1rm_lbs` and `workout_sessions.total_volume_lbs` are read by the
+`sets_apply_1rm_and_pr` and `streak_recompute` triggers — and surfaced two columns the audit had
+missed (`sets.exercise_category`, `users.start_weight_lbs`), which is the clearest possible argument
+for writing the check instead of trusting the sweep.
