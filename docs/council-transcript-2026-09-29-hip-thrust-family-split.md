@@ -485,6 +485,43 @@ screen.
 
 ---
 
+## Resolution (2026-09-29, same day — measurement ran, verdict rendered, fix shipped)
+
+The One Thing to Do First was run: a vm probe extracted the live PO engine + 1RM chain from
+`tandem.html` and printed what the card renders for `glute-bridge`, `single-leg-glute-bridge`
+and `frog-pump`, week 1 vs week 8, fresh user and after a logged set.
+
+**What the measurement showed:**
+- **Fresh user: clean.** "★ First session", no number. Every load-fabrication path is
+  structurally dead for these three: no `ACCESSORY_FACTORS` entries (derived %1RM can't fire),
+  `seedWeight` 0 falls through `getWeekTarget`'s `if (def)` → `{weight:null, source:'none'}`,
+  and the bw weight input renders blank with a 'BW' placeholder regardless of startW.
+- **After any logged bodyweight set (logSet stores weight 0 for a blank BW cell): the chip
+  literally rendered the string `"↑ null lbs"`** with reason `"15 reps — 2 over target, add 4%
+  (0 lbs)"` — `getRecommendation`'s flat-increment up/down branches interpolated
+  `progressLoad()`'s w<=0 null guard straight into the label.
+
+**Verdict per the decision rule: P2 Visual UX** — neither P1 (no load is ever fabricated; no
+made-up pounds reach the input or the chip) nor P3 (a user-visible broken "null lbs" chip on
+every bodyweight card from the second session onward is not a tidy). Taxonomy stands as ruled
+above: no re-tag, no category split needed to fix this.
+
+**Filed and fixed:**
+- **BUG-188** (Notion Bug & QA Log, P2 Visual UX): "Progression chip renders \"null lbs\" for
+  bodyweight exercises after first logged session". Status: Resolved.
+- **Fix `cdbcf19`**: weight<=0 guard in `getRecommendation`'s flat-increment tail —
+  rep-progression messaging instead ("Add reps" / "Hold steady" / "Build reps", `weight:null`),
+  double-progression basis (5-30 rep equivalence when volume equated, research-report (8).pdf
+  p.6 §3). Mechanism-level: covers every bodyweight/band movement (Push-Up, Pull-Up, Band Curl,
+  the three glute-bridge variants), every goal/week; weight>0 path byte-identical. Verified by
+  vm probe re-run + live preview-page eval; `verify` 26/26 and `validate:personas` green.
+
+The Expansionist's `progression_mode` vocabulary remains on file for the future field split;
+nothing in this fix forecloses it.
+
+---
+
 *Council convened 2026-09-29 · 5 advisors + 5 peer reviews + chairman synthesis · question: should
 the three bodyweight hip-thrust variants be re-tagged `category:'compound'`? · verdict: no — the
-field is overloaded; measure the bodyweight progression render first.*
+field is overloaded; measure the bodyweight progression render first. Measured same day: render
+defect confirmed → BUG-188 (P2) → fixed in `cdbcf19`.*
