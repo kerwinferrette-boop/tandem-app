@@ -7825,23 +7825,75 @@ function _historySortKey(row) {
 // (a Finish()-written row holds the per-set data the History modal renders; its cloud
 // twin does not), and the dropped twin's fields are unioned in underneath it so the
 // session_date/completed/total_volume the cloud copy carries are kept rather than lost.
+// ── _historyIsMidnightTwin() — BUG-207/178 residual ──
+//
+// PORTED from claude/fervent-mendel-sveri6 (a parallel session that fixed BUG-178
+// independently and caught this case, which the version shipped in 1acb874 missed).
+// Verified before porting, by reading the writers rather than trusting the claim: the
+// CLOUD row's session_date is stamped by startOrResumeSession() at the FIRST logged set
+// (tandem.html's `session_date: today` on that insert), while finishSession() stamps the
+// local row at FINISH. A workout begun before local midnight and finished after it
+// therefore has twins on DIFFERENT dates, their exact keys never match, and it
+// double-counts — the same class of defect part 1 closed for the no-session_date case.
+//
+// A local program row (numeric Date.now() id = the finish instant) is the twin of a cloud
+// program row when: same day key, local date is exactly cloud date + 1, and the cloud row
+// was created 0-12h before the local finish instant.
+//
+// ⚠ The 12h bound is an ENGINEERING bound on workout length, NOT a sourced number — the
+// original author flagged it as such and that flag is carried over rather than quietly
+// dropped. It exists to stop a 1-day program's genuine next-day repeat (same day key,
+// consecutive dates, but ~24h apart) from being eaten as a twin. No repo or research
+// source prescribes a maximum session duration; if one is ever added, this constant
+// should read from it.
+const HISTORY_TWIN_MAX_MS = 12 * 3600 * 1000;
+function _historyIsMidnightTwin(local, cloud) {
+  if (!local || !cloud || typeof local.id !== 'number' || typeof cloud.id === 'number') return false;
+  if (!isProgramHistoryRow(local) || !isProgramHistoryRow(cloud)) return false;
+  if ((local.day_type ?? local.day ?? '') !== (cloud.day_type ?? cloud.day ?? '')) return false;
+  const ld = _historyDateKey(local), cd = _historyDateKey(cloud);
+  if (!ld || !cd) return false;
+  const gapDays = Math.round((new Date(ld + 'T12:00:00Z') - new Date(cd + 'T12:00:00Z')) / 86400000);
+  if (gapDays !== 1) return false;
+  const created = Date.parse(cloud.created_at);
+  if (isNaN(created)) return false;
+  const dt = local.id - created;
+  return dt >= 0 && dt <= HISTORY_TWIN_MAX_MS;
+}
+
 function dedupeLocalHistory(hist) {
   const rows = Array.isArray(hist) ? hist : [];
   const seen = new Map(); // key -> index into out
   const out = [];
+  const paired = new Set(); // out-indices that already absorbed an exact-key partner
   for (const row of rows) {
-    const key = _historyRowKey(row);
-    if (!key) { out.push(row); continue; } // unidentifiable → always kept
+    // PROGRAM rows only. Ported reasoning from the parallel session, and it corrects a
+    // real defect in the 1acb874 version: the queue counts only program rows, and the
+    // cloud enforces one program row per user per day (migrations/0015's partial unique
+    // index), so two program rows under one key ARE one session. A user can legitimately
+    // log two one-offs on the same day under the same focus label, and those never move
+    // the queue — keying them risked collapsing two genuine sessions into one.
+    const key = (row && isProgramHistoryRow(row)) ? _historyRowKey(row) : null;
+    if (!key) { out.push(row); continue; } // one-off, or unidentifiable → always kept
     if (!seen.has(key)) { seen.set(key, out.length); out.push(row); continue; }
     const at = seen.get(key);
+    paired.add(at);
     const prev = out[at];
     // Keeper = whichever copy has the per-set data; ties go to the one already placed,
-    // which preserves the newest-first ordering the rest of the file relies on.
+    // which preserves the newest-first ordering the rest of the file relies on. The
+    // field UNION is deliberate and is what this version keeps over the ported one: a
+    // wholesale replace would discard the cloud twin's session_date/completed/
+    // total_volume_lbs, which the History modal and the Log tab read.
     const keep = (prev && prev.exercises) ? prev : (row && row.exercises) ? row : prev;
     const drop = keep === prev ? row : prev;
     out[at] = { ...drop, ...keep }; // keeper wins; the twin only fills fields it lacks
   }
-  return out;
+  // Midnight-crossing twins: drop the CLOUD row and keep the local one — but ONLY for a
+  // local row that has no exact-key partner. A local row that already absorbed its own
+  // partner is a complete session, so a nearby cloud row is a DIFFERENT session and must
+  // survive (the 1-day-program repeat case the 12h bound above exists for).
+  return out.filter((r, i) => !(r && typeof r.id !== 'number'
+    && out.some((o, j) => j !== i && !paired.has(j) && _historyIsMidnightTwin(o, r))));
 }
 
 function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {

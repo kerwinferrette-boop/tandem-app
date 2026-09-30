@@ -107,6 +107,7 @@ const iphrSrc = grab('isProgramHistoryRow', /function isProgramHistoryRow\([\s\S
 const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/);
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
+const twinSrc = grab('_historyIsMidnightTwin', /const HISTORY_TWIN_MAX_MS[\s\S]*?function _historyIsMidnightTwin\([\s\S]*?\n\}/);
 const hdkSrc = grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/);
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
@@ -116,7 +117,7 @@ const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessi
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc, dedupSrc, mergeSrc].join('\n'), ctx);
+  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc, twinSrc, dedupSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -403,6 +404,78 @@ const kerwinCfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-0
     check('(m) hydrateHistoryFromCloud() WRITES the repair back to localStorage', wroteAt !== -1);
     check('(m) that write happens BEFORE the uid guard, so an offline/signed-out boot still repairs',
       wroteAt !== -1 && guardAt !== -1 && wroteAt < guardAt);
+  }
+}
+
+// ── 2(n)-(q). BUG-207 residual: the MIDNIGHT-CROSSING twin ──
+//
+// Ported from claude/fervent-mendel-sveri6, which fixed BUG-178 in parallel and caught
+// what 1acb874 missed. Verified against the writers, not the claim: startOrResumeSession()
+// stamps the CLOUD row's session_date at the first logged set (start day); finishSession()
+// stamps the local row at finish. A session begun 23:30 and finished 00:15 has twins one
+// day apart, so the exact keys never match and it double-counts.
+{
+  const startedLateFinishedAfterMidnight = () => ({
+    // cloud row: created 23:30 on the 22nd, session_date = the 22nd (start day)
+    cloud: { id: 'cX', session_date: '2026-09-22', day_type: 'day3', session_type: 'strength',
+             completed: true, created_at: '2026-09-23T06:30:00Z' },
+    // local row finishSession() wrote at 00:15 on the 23rd — 45 min later
+    local: { id: Date.parse('2026-09-23T07:15:00Z'), date: 'Wed, Sep 23, 2026', week: 1,
+             goal: 'build_muscle', day: 'day3', exercises: { squat: [{ w: 100, r: 5 }] } },
+  });
+
+  // (n) the defect itself
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    const { cloud, local } = startedLateFinishedAfterMidnight();
+    const out = ctx.dedupeLocalHistory([local, cloud]);
+    check(`(n) a midnight-crossing session and its cloud twin collapse to ONE row (got ${out.length})`,
+      out.length === 1);
+    ctx.LS.set('tandem_history', out);
+    check('(n) it counts as one completed session, not two', ctx.completedSessionCount() === 1);
+    check('(n) the LOCAL row survives (numeric Date.now() id — isBeforeProgramStart needs a real instant)',
+      typeof out[0].id === 'number');
+  }
+
+  // (o) the guard against over-collapsing: a genuine next-day repeat must NOT be eaten
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg, days: 1 };
+    // A 1-day program legitimately repeats day1 on consecutive dates, ~24h apart.
+    const cloudDay1 = { id: 'c1', session_date: '2026-09-22', day_type: 'day1', session_type: 'strength',
+                        completed: true, created_at: '2026-09-22T18:00:00Z' };
+    const localDay1Next = { id: Date.parse('2026-09-23T18:00:00Z'), date: 'Wed, Sep 23, 2026', week: 1,
+                            goal: 'build_muscle', day: 'day1', exercises: { squat: [{ w: 100, r: 5 }] } };
+    const out = ctx.dedupeLocalHistory([localDay1Next, cloudDay1]);
+    check(`(o) a genuine next-day repeat 24h apart is NOT eaten as a twin (expected 2, got ${out.length})`,
+      out.length === 2);
+  }
+
+  // (p) a local row that already has its own exact-key partner is complete — a nearby
+  // cloud row is then a DIFFERENT session and must survive.
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    const { cloud, local } = startedLateFinishedAfterMidnight();
+    const ownPartner = { id: 'cY', session_date: '2026-09-23', day_type: 'day3', session_type: 'strength',
+                         completed: true, created_at: '2026-09-23T07:20:00Z' };
+    const out = ctx.dedupeLocalHistory([local, ownPartner, cloud]);
+    check(`(p) a local row with its own exact-key partner keeps the nearby cloud row as a separate session (expected 2, got ${out.length})`,
+      out.length === 2);
+  }
+
+  // (q) one-off rows are never collapsed — two legitimate same-day one-offs under one
+  // focus label are two sessions, and they never move the queue.
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    const oneOff = n => ({ id: n, session_date: '2026-09-29', day: 'chest', session_type: 'oneoff',
+                           completed: true, exercises: { bench: [{ w: 135, r: 5 }] } });
+    const out = ctx.dedupeLocalHistory([oneOff(1), oneOff(2)]);
+    check(`(q) two same-day one-offs under one label stay TWO rows (got ${out.length})`, out.length === 2);
+    ctx.LS.set('tandem_history', out);
+    check('(q) and neither moves the program queue', ctx.completedSessionCount() === 0);
   }
 }
 
