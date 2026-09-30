@@ -2772,7 +2772,7 @@ const LS_LEGACY_CLAIMED = 'tandem_legacy_claimed'; // unscoped by design — a o
 const LS_SCOPED_KEYS = [
   'tandem_cfg','tandem_history','tandem_prs','tandem_profile','tandem_week',
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
-  'tandem_skipped_cardio','tandem_skips','tandem_day_order',
+  'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
   'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id'
 ];
 let _lsScope = ANON_SCOPE;
@@ -5563,7 +5563,9 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
                 <div class="ex-video-frame" id="vid-${ex.id}"></div>` : ''}</div>
           </div>
           <div class="ex-notes-wrap">
-            <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."></textarea>
+            <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."
+              oninput="saveExNote('${(ex.name||'').replace(/'/g,"\\'")}', this.value)"
+            >${escNoteHtml(exNoteFor(ex.name))}</textarea>
           </div>
         </div>
       `;
@@ -6526,6 +6528,44 @@ function buildHistoryModal() {
       ${exEntries}
     </div>`;
   }).join('') + `<button class="clear-btn" onclick="clearHistory()">Clear All History</button>`;
+}
+
+// ── Per-exercise notes (BUG-195) ─────────────────────────────────────────────
+// The .ex-notes textarea shipped on every exercise of every session and its
+// .value was read NOWHERE — every reference was CSS, the tag, or a click guard.
+// Anything typed into it was discarded on the next render. It also starved its
+// own schema: `exercise_notes` (user_id, exercise_name) accumulated 0 rows
+// because nothing wrote to it, an audit saw an empty table with "no reader, no
+// writer", and BUG-72 dropped it (0008_bug72_dead_object_cleanup.sql:148).
+//
+// Keyed by exercise NAME, not slot id — two reasons. (a) It matches the dropped
+// table's own unique(user_id, exercise_name), so the cloud half can restore onto
+// the same shape. (b) Slot ids churn as the generator reshuffles a program;
+// scripts/lastsets-churn-smoke.mjs exists because keying durable per-lift memory
+// by slot id silently attributed one lift's history to another.
+//
+// LOCAL ONLY, deliberately: the cloud round-trip needs `exercise_notes`
+// recreated, which is a migration and human-only here. Local persistence ships
+// now rather than leaving the data loss live for however long that takes.
+// Escapes note text for injection into the textarea's inner HTML. & FIRST, then
+// < > — reversing that order double-escapes. This matters more than usual here:
+// the content is free-form user text going inside an element whose closing tag a
+// literal "</textarea>" would otherwise terminate.
+// (Two inline copies of a weaker version of this already exist at :8193 and
+// :10601. Consolidating them is a real "one rule, one home" cleanup but it is
+// not this row's scope, so they are left alone rather than edited in passing.)
+function escNoteHtml(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function exNotesAll() { return LS.get('tandem_ex_notes') || {}; }
+function exNoteFor(name) { return exNotesAll()[name] || ''; }
+function saveExNote(name, val) {
+  if (!name) return;
+  const all = exNotesAll();
+  const t = (val || '').trim();
+  if (t) all[name] = t; else delete all[name];   // empty clears rather than storing ''
+  LS.set('tandem_ex_notes', all);
 }
 
 function clearHistory() {
