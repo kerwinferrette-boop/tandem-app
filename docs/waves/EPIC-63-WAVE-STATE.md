@@ -42,6 +42,13 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
 ## Step status
 
 - [ ] **1. Zero-collision wires — BUG-192, BUG-193, BUG-194, BUG-196, BUG-200.**
+      **CODE SHIPPED + GATED 2026-09-30 — deliberately left UNCHECKED.** All five are pushed on
+      `claude/control-reachability-audit` with a gate each (`verify` 28 → 35). What is missing is
+      the only thing this Epic is about: **verification at the surface the user sees.** None has
+      been driven in a browser; the gates are static/vm-level. Checking this box on green gates
+      would be the exact 'wired is not working' error the Epic exists to correct, so the resume
+      pointer stays here. To close it, run the five live repros in Verification below against the
+      test accounts, then check off.
       **Depends on:** nothing. No region roadmap Wave 7/8 rewrites.
       **File/region:** `applySetupSelection` (:4434-4463) + setup render (:5243-5255);
       `restoreFromCloud` (:7683ff) vs `syncFromCloud` (:9055-9080); `saveProfileStats` (:10099) +
@@ -56,6 +63,12 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       **Suggested order:** BUG-193 first (safety), then 194, 192, 196, 200.
 
 - [ ] **2. BUG-195 — `.ex-notes` local persistence.**
+      **LOCAL HALF SHIPPED + GATED 2026-09-30 — two things still open, both named:**
+      (a) the browser repro (type a note, force a re-render, reopen the app);
+      (b) the CLOUD half — `migrations/0022_bug195_restore_exercise_notes.sql` is written and
+      staged but **Kerwin must apply it**; `apply_migration` is denied in
+      `.claude/settings.json:44`. Per-exercise notes are LOCAL ONLY until a real round-trip
+      against Postgres is verified. Do not describe cloud sync as working before then.
       **Depends on:** nothing for the local half.
       **File/region:** `tandem.html:5545`, inside `buildDayHTML`.
       **Kerwin's ruling (2026-09-30):** persist locally NOW; stage the `exercise_notes` migration for
@@ -131,3 +144,37 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
   - **Still owed to Kerwin, filed against EPIC-7 not here:** the QA panel's "take me there"
     deep-link into the affected area, and a Notion → Postgres sync so resolving in Notion clears
     the app-side row. Both need an Edge Function or a TPM step; the browser holds no Notion token.
+
+- **2026-09-30 (cont.) — five wires shipped, all gated, none browser-verified.**
+  - `b961641` **BUG-193** one `cfgFromUserRow` builder shared by `restoreFromCloud` and
+    `syncFromCloud`. **The audit undercounted:** §D3 said 4 fields were dropped on restore; diffing
+    the two literals showed **12** (syncFromCloud built 22, restoreFromCloud 9) — including
+    `injuries`, a SAFETY invariant, plus `weeks`, `equipment`, `emphasis`, `duration`, `startDate`
+    and EPIC-9's `onboardingEstimates`. Gate: `cfg-builder-smoke.mjs`.
+  - `b961641` **BUG-196** `resetWeek()` moves and persists the pointer. The obvious helper
+    (`currentWeekFromStorage()`) is WRONG here — `changeWeek()` persists the *browsed* week, so its
+    `Math.max(stored, derived)` returns the week you are trying to leave. That trap is encoded as
+    its own check so a future "simplification" cannot silently restore the no-op.
+    Gate: `week-pointer-smoke.mjs`.
+  - `ebd1917` **BUG-192** DB cap persists on the tier's durable path. Cloud half still owed —
+    there is no `users.max_db` column and adding one is a migration.
+    **BUG-194** all three `saveProfileStats` breaks. Gate: `settings-persistence-smoke.mjs`.
+  - `2a89cb5` **BUG-200** keydown on the competition card. **Half of D13 RETRACTED:** the one-off
+    cards' `aria-pressed`/`data-oneoff` ARE wired (`:8115`, `:8258`, `:8308`) — the sweep missed it
+    because the reads go through `dataset.oneoffGoal`, the camelCase form of `data-oneoff-goal`,
+    which no search for the literal attribute name finds. Row narrowed; its prompt now says
+    explicitly not to touch them. Gate: `a11y-keyboard-smoke.mjs`.
+  - `37ef1c5` **BUG-195** local notes persistence + staged migration `0022`.
+    Gate: `ex-notes-smoke.mjs`.
+  - **Two self-corrections earned:** SC-34 (four static checks written today each matched the
+    comments explaining what they check for — one failed *silently*, in the safe direction) and
+    SC-35 (I published a delegated sweep's "X is never read" negatives without verifying them; two
+    were wrong — this wave's D13 retraction, and `estimated_1rm_lbs`/`total_volume_lbs`, which
+    triggers read).
+  - **Wave 0 unblocked, for real:** EPIC-39's gate cited a deleted branch. Verified against git +
+    both live Supabase projects: Step 5 merged (`bf438b3`), Step 6's RLS pass DONE (24/24 tables),
+    Group C drops DONE. Group A (the wedding tables) needs no decision — Kerwin already ruled
+    2026-09-07 and `migrations/0013` is written with uncommented drops; it was simply never applied.
+    Re-verified: all three tables 0 rows, deny-all RLS, zero refs in the codebase, **zero refs in
+    any of the six wedding skills** (they use Drive/Gmail/Calendar, not Postgres), and the real 130
+    guest rows live in a separate project (`xrgzaovididcizstwswy`). Kerwin applies `0013`.
