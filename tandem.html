@@ -3392,10 +3392,26 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // BUG-188 (P2): a 0-lb logged set (bodyweight/band weight cell left blank — logSet stores 0)
   // has no external load to ladder. progressLoad() guards w<=0 by returning null, and these
   // branches used to interpolate that null straight into the chip ("null lbs", "(0 lbs)").
-  // No load exists to prescribe, so progress by REPS (double progression — 5-30 rep
-  // equivalence when volume equated, research-report (8).pdf §3), matching the
+  // No load exists to prescribe, so progress by REPS (double progression), matching the
   // timed/bodyweight core copy in buildDayHTML. weight:null keeps startW on ex.w and
   // the BW placeholder untouched.
+  //
+  // CITATION (corrected). The cite originally here was research-report (8).pdf §3's "5-30 rep
+  // equivalence when volume equated" — that claim IS genuinely in the PDF (with marker [13]),
+  // but it answers a DIFFERENT question: whether rep RANGES are interchangeable for hypertrophy,
+  // not whether progressing reps substitutes for progressing load. The primary source for THIS
+  // rule is Plotkin et al., "Progressive overload without progressing load? The effects of load
+  // or repetition progression on muscular adaptations", PeerJ 2022 (PMID 36199287,
+  // doi 10.7717/peerj.14142): 8 weeks, resistance-trained subjects, LOAD arm (add weight within
+  // 8-12) vs REPS arm (add reps at constant load) — "Both progressions of repetitions and load
+  // appear to be viable strategies for enhancing muscular adaptations over an 8-week training
+  // cycle." THAT is what licenses telling a user with no external load to add reps instead.
+  // Corroboration only (NOT the basis): research-report (8).pdf p.7 item 4 — bodyweight work
+  // should reference established progressions rather than load equivalencies — flagged because
+  // that item carries no citation marker in the PDF while its siblings carry [22]/[23].
+  // Scope note: D24 governs load progression and is silent on loadless movements; this branch is
+  // the loadless complement, and it reuses D24's existing PROGRESSION_REP_SURPLUS trigger rather
+  // than inventing a threshold. Rep-TARGET scaling for bodyweight is OUT of scope (BUG-44/EPIC-34).
   if (!(Number(weight) > 0)) {
     if (minReps >= topRange + PROGRESSION_REP_SURPLUS)
       return { weight: null, arrow: 'up', label: 'Add reps', reason: `${minReps} reps with no added load — progress by adding reps next session` };
