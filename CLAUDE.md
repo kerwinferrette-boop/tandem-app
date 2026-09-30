@@ -107,6 +107,20 @@ for — run it *before* shipping, not after he catches it.
   checked against BOTH live `workout_templates` rows before shipping, not assumed from one example.
 - **No shortcuts.** If you're about to say "this is standard" or "typically," stop and cite the
   source instead. If you can't cite it, flag it as unverified.
+- **No pictograph emoji in the UI, ever (Kerwin, 2026-09-30).** Scope, confirmed explicitly rather
+  than assumed: colorful/pictograph emoji (🛠️📚⚡✨🔁☁⬇, etc.) are banned from every user-facing
+  string. Monochrome typographic glyphs used as core UI chrome are explicitly NOT in scope and stay
+  as-is: arrows (→ ← ↑ ↓ ↻), checkmark/X (✓ ✕), the 1RM-trend star (★), and the sex-selector gender
+  symbols (♂ ♀). This is a repeat offender: commit `ea3ccb9` (2026-06-02) already did an app-wide
+  emoji-to-SVG-icon pass once, and new feature work quietly reintroduced 10 fresh instances onto
+  onboarding-path and quick-action buttons before 2026-09-23 (fixed in `ae87813`) — the exact
+  fix-the-instance-not-the-mechanism failure this file already warns about elsewhere.
+  **Enforced by:** `scripts/no-emoji-smoke.mjs`, wired into `npm run verify`. Mutation-tested before
+  being wired in (an emoji injected into `tandem.html` must fail the check, not just "look right" —
+  two earlier drafts of that script's comment-exclusion logic both silently swallowed real UI text
+  and passed anyway; see the script's own header for what broke and why). A new pictograph emoji
+  anywhere in `tandem.html` or `programs.js` outside a `//`-commented line fails the gate. Adding a
+  glyph to the allowlist requires a one-line reason in the script itself, never a silent edit.
 
 ## The self-correction protocol (added 2026-09-03, Kerwin)
 
