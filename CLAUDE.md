@@ -166,6 +166,12 @@ fail quietly. Run `git status --short` first and never move branches over uncomm
 Local paths are deliberately not recorded here: **this repository is public.**
 
 ## Standing test gate (run before every commit that touches the engine)
-`npm run verify` (20 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
+`npm run verify` (26 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law
 directive.
+
+**`verify` green does NOT mean prod is consistent.** It cannot see Postgres. The bank↔seed
+freshness check proves the committed `migrations/epic031_exercises_seed.sql` matches
+`EXERCISE_BANK`; it proves nothing about whether that SQL was ever APPLIED. Only
+`npm run integration` (CI-only, needs `SUPABASE_SERVICE_ROLE_KEY`) sees the database. Freshness
+green + A2 red = "regenerated, not applied" — go apply it by hand.
