@@ -7144,7 +7144,20 @@ function changeWeek(delta) {
 }
 
 function resetWeek() {
-  // just re-render current
+  // BUG-196: this used to be a bare renderTracker() with the comment "just
+  // re-render current", so the "Today" button repainted whichever week you had
+  // browsed to and never moved the pointer. It LOOKED functional because the
+  // view visibly repaints, which is why it survived a write-side audit.
+  //
+  // Uses deriveProgramWeek() (the real position, from completed sessions) and
+  // NOT currentWeekFromStorage(): changeWeek() persists the BROWSED week into
+  // tandem_week, so that helper's Math.max(stored, derived) would hand back the
+  // week you are trying to leave and "Today" would still do nothing. Falls back
+  // to the stored week only when the program shape is unknown (cfg.days unset),
+  // where there is no better answer than leaving the pointer alone.
+  const derived = deriveProgramWeek();
+  currentWeek = derived == null ? (LS.get('tandem_week') || 1) : derived;
+  LS.set('tandem_week', currentWeek);   // persist, exactly as changeWeek() does
   renderTracker();
 }
 
@@ -7680,6 +7693,48 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
   return merged.slice(0, 100);
 }
 
+// ── cfgFromUserRow — ONE home for "build cfg from a users row" (BUG-193) ──────
+// restoreFromCloud() and syncFromCloud() both reconstruct cfg from the same
+// `users` row and used to do it with two separate object literals. They had
+// drifted badly: syncFromCloud built 22 fields, restoreFromCloud built 9, so a
+// cloud RESTORE silently dropped twelve — including `injuries`, which this file
+// twice calls a SAFETY invariant (:3565, :8254) because it is what
+// makeInjuryBlocked()/pruneInjuries() filter on. Restoring on a new device
+// therefore re-enabled contraindicated exercises for an injured user, and
+// defaulted phase maths to 12 weeks regardless of the real program length.
+// Fixed at the mechanism, not the instance (CLAUDE.md's BUG-73/114 rule): a
+// field added here now reaches BOTH paths, and neither can drift again.
+// Callers keep their own guards and side effects; this only builds the object.
+function cfgFromUserRow(u) {
+  if (!u) return null;
+  return {
+    goal: canonicalGoal(u.program_goal), // old accounts may still carry legacy 'burn_fat'
+    days: u.program_days_per_week,
+    weeks: u.program_weeks || 12,
+    sex: u.sex,
+    experience: u.fitness_level,
+    equipment: u.equipment || null,
+    emphasis: u.muscle_emphasis || 'balanced',
+    workout_duration_minutes: u.workout_duration_minutes || null,
+    preferred_workout_time: u.preferred_workout_time || null,
+    injuries: u.injuries || null,
+    secondary_goal: u.secondary_goal || null,
+    weight: u.current_weight_lbs,
+    targetWeight: u.goal_weight_lbs,
+    goalWeight: u.goal_weight_lbs,
+    heightIn: u.height_inches,
+    height: u.height_inches,
+    age: u.age,
+    startDate: u.program_start_date || null,
+    themeColor: u.theme_color || '#1B5E38',
+    // EPIC-9 Step A: restore onboarding estimates on device re-login
+    onboardingEstimates: u.onboarding_estimates || {},
+    // EPIC-031: adopted-library flag (materializer needs the LS bundle too —
+    // getActiveProgram falls back to generated if the cache is absent)
+    programSource: u.program_source || 'generated'
+  };
+}
+
 async function restoreFromCloud() {
   if (!currentUser) { closeModal('history'); showView('auth'); return; }
   setSyncStatus('syncing');
@@ -7735,17 +7790,9 @@ async function restoreFromCloud() {
       .select('*').eq('id', uid).single();
     mergeAvatarFieldsFromCloud(configData); // BUG-8: hydrate avatar_* independent of tandem_cfg gate below
     if (configData && !LS.get('tandem_cfg')) {
-      LS.set('tandem_cfg', {
-        goal: canonicalGoal(configData.program_goal), // old accounts may still carry legacy 'burn_fat'
-        days: configData.program_days_per_week,
-        sex: configData.sex,
-        experience: configData.fitness_level,
-        weight: configData.current_weight_lbs,
-        goalWeight: configData.goal_weight_lbs,
-        height: configData.height_inches,
-        age: configData.age,
-        programSource: configData.program_source || 'generated'
-      });
+      // BUG-193: was a 9-field literal that dropped injuries (a SAFETY invariant),
+      // weeks, equipment, emphasis, duration, startDate and more. One home now.
+      LS.set('tandem_cfg', cfgFromUserRow(configData));
       LS.set('tandem_week', configData.current_week);
     }
     setSyncStatus('synced');
@@ -9052,32 +9099,7 @@ async function syncFromCloud() {
     const { data: userData } = await sb.from('users').select('*').eq('id', uid).maybeSingle();
     mergeAvatarFieldsFromCloud(userData); // BUG-8: hydrate avatar_* even if this account has no program yet
     if (!userData?.program_goal) return false;
-    cfg = {
-      goal: canonicalGoal(userData.program_goal), // old accounts may still carry legacy 'burn_fat'
-      days: userData.program_days_per_week,
-      weeks: userData.program_weeks || 12,
-      sex: userData.sex,
-      experience: userData.fitness_level,
-      equipment: userData.equipment || null,
-      emphasis: userData.muscle_emphasis || 'balanced',
-      workout_duration_minutes: userData.workout_duration_minutes || null,
-      preferred_workout_time: userData.preferred_workout_time || null,
-      injuries: userData.injuries || null,
-      secondary_goal: userData.secondary_goal || null,
-      weight: userData.current_weight_lbs,
-      targetWeight: userData.goal_weight_lbs,
-      goalWeight: userData.goal_weight_lbs,
-      heightIn: userData.height_inches,
-      height: userData.height_inches,
-      age: userData.age,
-      startDate: userData.program_start_date || null,
-      themeColor: userData.theme_color || '#1B5E38',
-      // EPIC-9 Step A: restore onboarding estimates on device re-login
-      onboardingEstimates: userData.onboarding_estimates || {},
-      // EPIC-031: adopted-library flag (materializer needs the LS bundle too —
-      // getActiveProgram falls back to generated if the cache is absent)
-      programSource: userData.program_source || 'generated'
-    };
+    cfg = cfgFromUserRow(userData);   // BUG-193: one home, shared with restoreFromCloud()
     selectedGoal = cfg.goal;
     selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null;
