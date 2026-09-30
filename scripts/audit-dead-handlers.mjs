@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 // EPIC-40 CATALOG half — mechanical, exhaustive sweep of every onclick/onchange/oninput
-// handler in tandem.html. Classifies each per the Epic's own methodology:
+// handler in tandem.html.
+//
+// !! KNOWN BLIND SPOT (SC-34, 2026-09-30) — READ BEFORE TRUSTING THIS SCRIPT'S NUMBER !!
+// Every classification below is WRITE-SIDE ONLY. `globalAssign` scores any assignment to a
+// known global, `feedsCalc` scores any call to a calc/render/save-named function, and
+// `writesDB` scores any sb.from(. None of them asks whether anything READS the value. On
+// that basis this script reported 1 dead handler out of 159 and the colour-theme path was
+// declared "fully wired" because it upserts users.color_theme — a column read by nothing.
+// A "Generative" verdict here means "this handler writes something", NOT "this control works".
+// The reads-side gate is scripts/column-reachability-smoke.mjs (in `npm run verify`); the
+// findings are docs/control-reachability-audit-2026-09-30.md; the mechanism is SC-34.
+//
+// Classifies each per the Epic's own methodology:
 //   Generative   — writes to Supabase, mutates program/app state, or feeds a downstream calc
 //   Navigational — legitimately just opens/closes a view or modal
 //   Cosmetic-only — toggles a class/highlight with no persistence and no downstream read

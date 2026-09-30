@@ -1261,9 +1261,189 @@ The general habit across other gates is judgment — not mechanically checkable.
 a check's label says "the X path" rather than "every X path, N of them", I have not written a
 mechanism gate, I have written a spot check.
 
+## SC-34 — I built an audit that asked whether a value is written, never whether it is read, and reported the app healthy
+
+**What I believed.** That `scripts/audit-dead-handlers.mjs` answered "is this control dead?" Its
+EPIC-40 run reported **1 cosmetic-only handler out of 159**, and `docs/epic-40-dead-handler-audit.md`
+presented that as the catalog half being complete — including calling the color-theme path "fully
+wired… upserts `users.color_theme`".
+
+**What was true.** The classifier only ever tested the *write* side. `audit-dead-handlers.mjs:82`
+scores a handler `Generative (state mutation)` for any assignment to a known global, and `:84` scores
+it `Generative (feeds downstream calc)` for any call to a function whose name merely *begins*
+calc/render/update/apply/save/submit/sync/finish/build/generate. `:81` scores `Generative (DB write)`
+for any `sb.from(`. None of those asks whether a single line of code reads the value back. A
+reads-side sweep of the same file found ~40 chain breaks the script had scored as healthy, including:
+`users.color_theme` is read by **nothing** (every reader uses a different column, `theme_color`) —
+the exact path the write-up called "fully wired"; `preferred_workout_time` and `secondary_goal` both
+score `Generative (DB write)`, the script's *strongest* verdict, and are consumed by nothing, with
+the former gating onboarding (`tandem.html:4666`) on a value nothing reads; and `reorderWeek()`
+(`:6790`) writes `tandem_day_order` and toasts "nothing lost" while `nextProgramDayKey()` (`:8931`)
+never consults it.
+
+**The gap.** I encoded "does something happen?" as a proxy for "does it reach the engine or a pixel?"
+and then reported the proxy's answer as the real one. A write is trivially observable from one
+function body; a read requires searching the whole program, so the cheap test became the test. The
+number it produced (1 of 159) was reassuring, which is precisely why it went unchallenged — a
+low finding count from a weak detector reads identically to a healthy codebase. CLAUDE.md already
+named this failure ("'Wired' is not 'working'"), and the audit written to enforce that rule was built
+to violate it.
+
+> **THE RULE — SC-34.** An audit or gate that asserts a value is WRITTEN has proven nothing about
+> whether it is USED. For every value a control produces, name the read site — a line that consumes
+> it for a calculation or renders it — or record it as a chain break. A Supabase write, a `cfg.x =`,
+> a localStorage `set`, and a call to a calc-named function are all write-side evidence and none of
+> them close the question. When a detector reports suspiciously few findings, test the detector
+> against a known-bad fixture before believing the number.
+
+**Enforced by:** `scripts/column-reachability-smoke.mjs`, wired into `scripts/verify.mjs`'s
+`CHECKS` (check 30). Every column the app writes (keys of `.insert`/`.upsert`/`.update` payloads)
+must have ≥1 read — a property access, a bracket access, a `.select()` list entry, or a PostgREST
+filter column. It carries a one-way ratchet: a NEW write-only column fails [A], and an allowlist
+entry that no longer reproduces also fails [B], so a fix must remove its own entry. Teeth proved
+before trusting it green, per SC-10: an injected write-only column failed [A], and making an
+allowlisted column readable failed [B], each naming the offender.
+
+**Scoped honestly, because the first draft of this entry overclaimed.** The gate covers *Supabase
+columns*, not every handler-written value — `.ex-notes` (a DOM value) and `tandem_day_order` (a
+localStorage key read only by its own writer) are NOT caught by it and remain judgment. It is also
+static and client-only, so it cannot see a column read by a trigger, view or RLS policy; those live
+in a `SERVER_SIDE` allowlist, each verified against `pg_proc`/`pg_policy` rather than assumed.
+Building it immediately disproved two claims in the audit that prompted it —
+`sets.estimated_1rm_lbs` and `workout_sessions.total_volume_lbs` are read by the
+`sets_apply_1rm_and_pr` and `streak_recompute` triggers — and surfaced two columns the audit had
+missed (`sets.exercise_category`, `users.start_weight_lbs`), which is the clearest possible argument
+for writing the check instead of trusting the sweep.
+
 ---
 
-## SC-34 — Three of my new gate assertions were vacuous: the fixture could not reach the branch, so they passed with the defect live
+## SC-35 — I wrote four static checks that matched the comments explaining the thing they were checking for
+
+**What I believed.** That a check which greps `tandem.html` for a code pattern is testing the code.
+
+**What was true.** Four separate gates written in one session each failed on their first run by
+matching their own prose, and in one case by matching someone else's:
+- `qa-feed-status-smoke.mjs` check [C] ("no `.neq('status','resolved')` remains") flagged the
+  comment that documents the old, wrong filter.
+- `column-reachability-smoke.mjs` counted the name inside ANY string as a read, so
+  `console.warn('week_targets persist skipped')` masked `week_targets` — a genuinely dead column —
+  and the detector reported a reassuringly short list.
+- `week-pointer-smoke.mjs` check [C] ("does not call `currentWeekFromStorage`") flagged the comment
+  that warns against calling it.
+- `a11y-keyboard-smoke.mjs` check [A] ("every `role="button"` has a key handler") flagged the HTML
+  comment that explains the fix, reporting 2 elements where the file has 1.
+
+Three of the four were caught only because the check failed loudly on a tree I knew was correct.
+The `column-reachability` one was different and worse: it failed *silently*, in the safe-looking
+direction, producing 14 findings instead of 17.
+
+**The gap.** I treated the source file as the program. It is the program plus the prose about the
+program, and prose about a defect necessarily contains the defect's own signature — a comment
+explaining a fix is the single most likely place for the anti-pattern's exact text to appear. So the
+false-positive rate is not random; it is concentrated precisely where I had just been writing.
+
+> **THE RULE — SC-35.** Strip comments before matching source for a code pattern. `//`-lines for JS,
+> `<!-- -->` blocks for HTML, and for string-context matches restrict to the real read surfaces
+> (a `.select()` list, a filter argument) rather than "the name appears inside any string." Do this
+> in the first draft, not after a failure. And when a detector returns a *reassuringly small*
+> number, assume the detector before assuming the codebase: run it against a synthetic fixture with
+> a known answer.
+
+**Enforced by:** partially. Every gate written this session now strips comments and says so at the
+strip site, and `column-reachability-smoke.mjs` carries a synthetic self-test ([C]) whose expected
+answer never changes, so weakening the matcher fails the build. What is NOT mechanically enforced is
+a *new* check written later making the same mistake — nothing scans the scanners. Judgment, with one
+concrete tell: if a check's own source contains the string it greps for, it will match itself.
+
+---
+
+## SC-36 — I published a subagent's "X is never read" conclusions without verifying the read sites myself
+
+**What I believed.** That a thorough delegated sweep's negative findings could be written into a
+committed audit and filed as tracker rows on the strength of the sweep.
+
+**What was true.** Two of them were false, and I found both only by accident while doing other work:
+- The audit listed `sets.estimated_1rm_lbs` and `workout_sessions.total_volume_lbs` as write-only.
+  Both are read — server-side, by the `sets_apply_1rm_and_pr` and `streak_recompute` triggers. Found
+  because building the reads-side gate forced me to query `pg_proc`. The same query cleared
+  `workout_sessions.backdated`, `personal_records.achieved_reps`/`achieved_weight_lbs` and
+  `workout_templates.author_id` (eight RLS policies).
+- The audit's D13 said the one-off cards' `aria-pressed` and `data-oneoff` are "never read or
+  updated." All three are wired: `pickOneOffGoal` reads `b.dataset.oneoffGoal` (`:8258`),
+  `renderOneOff` reads `b.dataset.oneoff` (`:8308`), both call
+  `setAttribute('aria-pressed', String(on))`, and `openOneOff` resets them (`:8115`). Found because
+  a mechanism sweep for other `aria-pressed` instances showed three update sites.
+
+The audit that found them was otherwise strong, and its true findings are serious. That is the trap:
+accuracy on the positives bought unearned credibility for the negatives.
+
+**The gap.** A positive claim ("this line writes X") is self-verifying — the line is right there. A
+negative claim ("nothing reads X") is a claim about the whole program, including the parts a
+grep cannot see: database triggers, RLS policies, views, and `dataset.camelCase` reads of a
+`data-kebab-case` attribute, which no search for the literal attribute name will find. I forwarded
+whole-program negatives at the confidence appropriate to line-local positives.
+
+> **THE RULE — SC-36.** Never publish "nothing reads X" from a search alone. Before it goes in a
+> document or a tracker row, (a) name the read surfaces actually checked, (b) check the ones a grep
+> structurally cannot reach — `pg_proc`, `pg_policy`, views, and the `dataset.camelCase` ↔
+> `data-kebab-case` transform — and (c) state the negative as scoped ("no client read site; triggers
+> not checked") rather than absolute. A delegated sweep's positives may be taken at face value; its
+> negatives are hypotheses until independently confirmed.
+
+**Enforced by:** `scripts/column-reachability-smoke.mjs` for the Supabase-column half — its
+`SERVER_SIDE` allowlist requires the reading database object to be named, so "nothing reads it"
+cannot be asserted there without having checked `pg_proc`/`pg_policy`. The DOM/attribute half
+(D13's shape) is judgment — not mechanically checkable.
+
+---
+
+## SC-37 — I wrote one gate per bug, so nothing watched the seam between two fixes, and one silently reverted the other
+
+**What I believed.** That a branch where every fix carries its own mutation-tested gate, with
+`npm run verify` 35/35 green and `validate:personas` passing, was safe to merge. I had proved each
+gate's teeth individually by reverting its fix and confirming it failed.
+
+**What was true.** Two commits on that branch cancelled out, and the full green suite could not see
+it. BUG-192 made `cfg.maxDb` the durable home for the max-dumbbell cap. BUG-193 gave
+`restoreFromCloud` and `syncFromCloud` one shared `cfgFromUserRow` builder — which returns a
+**complete replacement** cfg and does not build `maxDb`. `syncFromCloud()` runs on app boot for any
+signed-in user (`tandem.html:10461`) and on scope change (`:2739`), so the cap was erased from
+`tandem_cfg` on essentially every load; `sessionStorage` is empty in a fresh tab, so
+`resolveMaxDb()` fell to 0 and dumbbell prescriptions went **uncapped** — the exact defect BUG-192
+was filed to fix, reintroduced, with two green gates over it. Widening the check found two more
+members of the class that **pre-date** the branch: `cfg.startEpoch` (read at `:8985`) and
+`cfg.revertedAt` (read at `:9142`) were also being erased on every cloud rebuild.
+
+It was caught by `llm-council` on the pre-ship gate. No check found it, and I would have merged.
+
+**The gap.** I scoped each gate to the bug that motivated it, which makes every gate a statement
+about one function in isolation. A green suite of N single-bug gates says "each fix still does its
+own job" — it says nothing about whether fix A destroys the precondition fix B depends on. Worse, my
+confidence scaled with the count: 35/36 green read as 35 units of safety when the interaction
+surface between them was entirely unguarded. The mutation test I was proud of made this *more*
+likely, not less: reverting fix A and watching gate A fail confirms gate A is wired to fix A, which
+is precisely the scoping that blinds it to fix B.
+
+> **THE RULE — SC-37.** When a change makes two code paths share a value, ask what ELSE writes that
+> value and whether the shared path preserves it. Concretely: a function that returns a **whole
+> replacement object** for shared state must be checked against *every* writer of that state, not
+> just the fields the current bug is about — enumerate the writers and diff them against the
+> builder's output. And never read a green suite of per-bug gates as evidence about interactions
+> between fixes in the same branch; that is the one thing it structurally cannot tell you.
+
+**Enforced by:** `scripts/cfg-field-parity-smoke.mjs`, wired into `scripts/verify.mjs`. It watches
+the **contract** rather than any field: it enumerates every `cfg.X =` writer in `tandem.html`,
+diffs them against the keys `cfgFromUserRow` produces, and fails on any orphan unless it is listed
+in that script's `TRANSIENT` map with a written reason — so "losing this on every signed-in load is
+correct" becomes a claim someone has to make out loud. It also asserts the builder accepts an
+incumbent AND that every call site passes it, since a builder that *can* carry but is called
+without the incumbent carries nothing. Teeth proved in both directions: removing the `maxDb` carry
+fails [A]/[D1] naming the uncapped prescription, and dropping the second argument at one call site
+fails [C] naming that site.
+
+---
+
+## SC-38 — Three of my new gate assertions were vacuous: the fixture could not reach the branch, so they passed with the defect live
 
 **What happened (2026-09-30, BUG-178 part 3).** I added four assertions guarding the
 localStorage de-dup repair, ran the gate, saw green, and would have shipped. Mutation-testing
@@ -1288,7 +1468,7 @@ and reading it cannot tell them apart. This is SC-03 (run, don't simulate) point
 fixtures, and it is the same family as the gate bugs CLAUDE.md's no-emoji entry already records:
 two drafts of that script passed a file with a live injected emoji.
 
-> **THE RULE — SC-34.** Mutation-test every NEW assertion individually, not the gate as a whole.
+> **THE RULE — SC-38.** Mutation-test every NEW assertion individually, not the gate as a whole.
 > For each one, name the specific mutation that should break it, apply that mutation, and confirm
 > **that assertion by name** appears in the failure list. An assertion that stays green under its
 > own mutation is not evidence, it is decoration — delete it or fix the fixture. Be especially

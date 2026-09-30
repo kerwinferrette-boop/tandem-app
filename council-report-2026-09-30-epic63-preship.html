@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Council Verdict — EPIC-63 Pre-Ship</title>
+<style>
+:root{--ink:#16181d;--mut:#5b6472;--line:#e3e6ea;--bg:#fff;--soft:#f7f8fa;
+--red:#b4232a;--amber:#8a5a00;--green:#1c6b3f;--blue:#1f4f8f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:40px 20px 80px}
+.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);font-weight:600}
+h1{font-size:30px;line-height:1.25;margin:.3em 0 .2em;letter-spacing:-.01em}
+h2{font-size:19px;margin:2.2em 0 .6em;padding-bottom:.35em;border-bottom:1px solid var(--line)}
+h3{font-size:15px;margin:1.6em 0 .4em}
+p,li{color:#2a2f38}
+.sub{color:var(--mut);font-size:14px;margin:0 0 2em}
+.verdict{border:1px solid var(--line);border-left:4px solid var(--red);
+background:var(--soft);border-radius:8px;padding:20px 22px;margin:1.6em 0}
+.verdict .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);font-weight:700}
+.verdict p{margin:.5em 0 0}
+.done{border-left-color:var(--green)}
+.done .lbl{color:var(--green)}
+table{width:100%;border-collapse:collapse;margin:1em 0;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);font-weight:600}
+code{background:var(--soft);border:1px solid var(--line);border-radius:4px;
+padding:1px 5px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:1.2em 0}
+.card{border:1px solid var(--line);border-radius:8px;padding:12px 13px}
+.card .who{font-size:13px;font-weight:700;margin-bottom:3px}
+.card .pos{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.no{color:var(--red)}.yes{color:var(--green)}
+.card .gist{font-size:12.5px;color:var(--mut);margin-top:5px;line-height:1.45}
+details{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:9px 0;background:var(--soft)}
+summary{cursor:pointer;font-weight:600;font-size:14.5px}
+details p{font-size:14px}
+blockquote{margin:1em 0;padding:2px 0 2px 16px;border-left:3px solid var(--line);color:#39404c;font-size:15px}
+.foot{margin-top:3.5em;padding-top:1.2em;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+@media(prefers-color-scheme:dark){
+:root{--ink:#e8eaee;--mut:#98a1b0;--line:#2a2f38;--bg:#14161a;--soft:#1b1f25;
+--red:#ff8a8a;--green:#6ede9f;--blue:#8fb8ff}
+p,li{color:#d2d7de} blockquote{color:#c3c9d2} }
+</style></head><body><div class="wrap">
+
+<div class="eyebrow">LLM Council &middot; Pre-Ship Gate &middot; 2026-09-30</div>
+<h1>EPIC-63 &mdash; should <code>claude/control-reachability-audit</code> merge to main?</h1>
+<p class="sub">Convened under <code>loop-config.md</code> <code>escalation.pre_ship_council_gate</code>.
+Five advisors. Full transcript: <code>council-transcript-2026-09-30-epic63-preship.md</code></p>
+
+<div class="verdict">
+  <div class="lbl">Verdict at the time of asking &mdash; do not merge</div>
+  <p><strong>The branch contained a regression it had created itself.</strong> Two of its own fixes
+  cancelled out, and all 36 green checks were structurally incapable of seeing it.
+  <code>cfgFromUserRow()</code> returns a complete replacement config and did not build
+  <code>maxDb</code> &mdash; which BUG-192 had just made the durable home for the dumbbell cap.
+  <code>syncFromCloud()</code> runs on app boot for any signed-in user, so the cap was erased on
+  essentially every load and dumbbell prescriptions went <strong>uncapped</strong>: the exact defect
+  BUG-192 was filed to fix.</p>
+</div>
+
+<div class="verdict done">
+  <div class="lbl">Verdict now &mdash; merge</div>
+  <p>Seam fixed and gated at the contract level (<code>89ae5a2</code>, SC-37). The five controls are
+  now driven in a real browser and asserted on the DOM (<code>38d41b3</code>), which the council was
+  four-to-one in calling the actual merge gate. <code>verify</code> 37/37,
+  <code>validate:personas</code> green. Two DOM assertions were <em>deleted</em> along the way for
+  failing to discriminate, and the investigation that exposed them produced a new filed finding.</p>
+</div>
+
+<h2>Where the advisors stood</h2>
+<div class="grid">
+  <div class="card"><div class="who">Contrarian</div><div class="pos no">Do not merge</div>
+    <div class="gist">Found the seam regression, in code, with line numbers. Verified true.</div></div>
+  <div class="card"><div class="who">First Principles</div><div class="pos no">Split the branch</div>
+    <div class="gist">Docs and gates carry no behaviour risk; five behavioural fixes are another risk class.</div></div>
+  <div class="card"><div class="who">Expansionist</div><div class="pos yes">Merge now</div>
+    <div class="gist">The reads-side gate is the asset; the fixes are the least valuable thing here.</div></div>
+  <div class="card"><div class="who">Outsider</div><div class="pos no">Open the browser first</div>
+    <div class="gist">"You verified 'does this look connected' by reading, again."</div></div>
+  <div class="card"><div class="who">Executor</div><div class="pos no">Three hours, not a project</div>
+    <div class="gist">Named the existing template and the one-Playwright-check gap.</div></div>
+</div>
+
+<h2>Agreement</h2>
+<ul>
+<li><strong>Browser verification was the gate</strong>, not the fix count &mdash; four of five, independently.</li>
+<li><strong>Per-bug gates were the structural weakness.</strong> N single-bug gates say "each fix still does
+its own job" and nothing about the seams between them.</li>
+<li><strong>The reads-side gate, not any fix, is the branch's most valuable artifact</strong> &mdash; Expansionist
+and First Principles, independently, for the same reason: it attacks the generator of the bug class.</li>
+<li><strong>BUG-191 (the button that displays a false confirmation) and BUG-199 (the injury promise the
+engine cannot keep) outrank the rest of the backlog</strong> &mdash; Contrarian and Outsider, independently.</li>
+</ul>
+
+<h2>The clash, and how it resolved</h2>
+<p>The Expansionist wanted an immediate merge on the premise that <em>nothing here is worse than what is
+live</em>. That premise was false when written &mdash; the seam regression made one fix actively worse than
+live. Once fixed, the disagreement reduced to cost, and the Executor priced the browser pass at one
+afternoon against a template that already existed. When the cheap option is also the one four advisors
+want, take it.</p>
+
+<h2>Blind spots no automated check caught</h2>
+<table>
+<tr><th>Found by</th><th>What</th></tr>
+<tr><td>Contrarian</td><td>The seam regression &mdash; invisible to 36 green checks, would have shipped.</td></tr>
+<tr><td>Executor</td><td><code>verify</code> wired exactly <strong>one</strong> Playwright check. Two walkthroughs
+exist and are not in <code>verify</code> &mdash; so 36/36 had never opened a browser on any path this branch touches.</td></tr>
+<tr><td>Executor</td><td>The harness did not need building. <code>program-render-fidelity-walkthrough.mjs</code>
+already had the localhost + Supabase-stub pattern.</td></tr>
+<tr><td>Outsider</td><td>"All 36 checks pass" was offered as reassurance inside a document arguing that
+green checks meant nothing.</td></tr>
+</table>
+
+<h2>What the browser pass then found</h2>
+<p>The first DOM assertion written &mdash; "no rendered dumbbell load exceeds the cap" &mdash; passed, and passed
+again with the fix removed. It was vacuous: the fixture seeded a <em>button tier name</em>
+(<code>hotel_small</code>) where config takes the <em>config vocabulary</em>
+(<code>home_dumbbells</code>), so zero dumbbell exercises rendered and the filter matched an empty set.
+With the fixture corrected it <em>still</em> passed under mutation, because natural week-one seeds already
+sit under the cap. Forcing it to bind required a 200&nbsp;lb working 1RM, which moves the render onto the
+calibrated branch &mdash; and <code>dbCap</code> is consumed only in <code>seedWeight()</code>, so it governs
+starting load alone. The assertion then failed on correct code.</p>
+<p>Both assertions were deleted as non-evidence rather than left green. The investigation produced a
+genuine new finding, filed not fixed: <strong>an earned dumbbell 1RM is not clamped by the gym cap</strong>,
+so a traveller is prescribed weight the gym does not have. That needs an exercise-science ruling, not a
+blind clamp.</p>
+
+<h2>Advisor responses</h2>
+<details><summary>Contrarian &mdash; the finding that decided it</summary>
+<blockquote><code>cfgFromUserRow()</code> returns a complete replacement cfg. It builds 21 fields.
+<code>maxDb</code> is not one of them &hellip; So on the exact paths BUG-193 exists to serve, the cap is
+erased, <code>sessionStorage.eq_max_db</code> is empty in a fresh tab, and <code>resolveMaxDb()</code>
+returns 0. Uncapped dumbbell prescriptions. The identical failure BUG-192 was filed for, now with a green
+smoke gate over it.</blockquote>
+<p>Also flagged: notes keyed by exercise name survive <code>clearHistory()</code> &mdash; true, and fixed in
+the same commit under BUG-91's precedent.</p></details>
+
+<details><summary>First Principles &mdash; wrong unit of decision</summary>
+<blockquote>The branch is two payloads wearing one hat &hellip; "Merge as-is or not?" is a dilemma manufactured
+by bundling &mdash; it dissolves the moment you split. You fixed 5 of ~40 instances of a defect the
+architecture mass-produces &hellip; Judge the branch by whether that gate now blocks new chain breaks, not
+by the five it cleaned up.</blockquote></details>
+
+<details><summary>Expansionist &mdash; the dissent</summary>
+<blockquote>Merge it. The fixes are the least valuable thing on this branch. The asset is the reads-side
+gate that immediately falsified two of its own author's findings. That is a self-correcting verification
+primitive, and you have exactly one of them.</blockquote></details>
+
+<details><summary>Outsider &mdash; the sharpest observation</summary>
+<blockquote>Two people use this app. One of them is your partner. You can open it on your phone in ten
+minutes and press the five buttons you just fixed. That you haven't is not a process gap &mdash; it is the
+same bug as the audit itself, committed one level up &hellip; That's the blind spot: you trust the number
+because you built it.</blockquote></details>
+
+<details><summary>Executor &mdash; the concrete path</summary>
+<blockquote>No, don't merge as-is. But the fix is three hours, not a project &hellip; You don't build a
+harness Monday. You already have one &hellip; Wire the file into <code>verify.mjs</code> in the same commit
+&mdash; otherwise it rots exactly like the two walkthroughs already did.</blockquote></details>
+
+<h2>Next</h2>
+<p>Merge. Then the one thing no stub can cover: run BUG-193's restore against real Supabase with the
+dedicated test accounts, because only a live row proves the real column shape. Then BUG-191.</p>
+
+<div class="foot">
+Process note, stated rather than implied: five advisors ran; the formal anonymised peer-review round did
+<strong>not</strong>. The Contrarian's finding was specific and falsifiable, was verified against the source
+immediately, and was true &mdash; which settled the question before cross-examination could add to it. The
+Outsider and Executor were briefed on that finding, so their responses are post-disclosure.
+</div>
+</div></body></html>

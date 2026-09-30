@@ -1846,7 +1846,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     </div>
 
     <!-- 2. THE DUEL — tapping opens the Duel tab (breakdown ships in Wave 3) -->
-    <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0">
+    <!-- BUG-200: role="button" + tabindex="0" promised keyboard operability the
+         element could not deliver. tandem.html has ZERO addEventListener calls, so
+         no keydown handler existed anywhere in the file and Enter/Space did nothing
+         on the one element that announces itself as a button. Wired inline to match
+         this file's idiom (every other handler here is an on* attribute) and calling
+         the SAME goTab('duel') the click uses, rather than duplicating navigation.
+         preventDefault stops Space from also scrolling the page. -->
+    <div class="dash-panel dash-competition" onclick="goTab('duel')" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goTab('duel');}">
       <div class="dash-label"><span>This week</span><span>tap for details ›</span></div>
       <div class="dash-duel">
         <div><div class="dash-who" id="dashCompMyName">You</div><div class="dash-comp-pts" id="dashCompMyPts">—</div></div>
@@ -2779,7 +2787,7 @@ const LS_LEGACY_CLAIMED = 'tandem_legacy_claimed'; // unscoped by design — a o
 const LS_SCOPED_KEYS = [
   'tandem_cfg','tandem_history','tandem_prs','tandem_profile','tandem_week',
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
-  'tandem_skipped_cardio','tandem_skips','tandem_day_order',
+  'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
   'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id'
 ];
 let _lsScope = ANON_SCOPE;
@@ -3528,8 +3536,12 @@ function selectorTierFromCfg() {
 }
 // Dumbbell weight cap for hotel/small-DB tiers (0/NaN = uncapped).
 function resolveMaxDb() {
+  // BUG-192: the session override wins (it is this tab's explicit choice), but
+  // fall back to the durable cfg.maxDb so a reload does not silently uncap.
   const v = parseInt(sessionStorage.getItem('eq_max_db'), 10);
-  return Number.isFinite(v) && v > 0 ? v : 0;
+  if (Number.isFinite(v) && v > 0) return v;
+  const d = parseInt(cfg?.maxDb, 10);
+  return Number.isFinite(d) && d > 0 ? d : 0;
 }
 // Variety context for the engine: current week and phase index, so
 // accessories rotate weekly and primary compounds rotate only at phase
@@ -4468,6 +4480,15 @@ function applySetupSelection() {
     // this only ever reads its OUTPUT (the live cfg.equipment), same as
     // resolveEquipmentTier() already did before this fix.
     sessionStorage.setItem('eq_tier_baseline', cfg.equipment || '');
+    // BUG-192: the CAP now persists on the same durable path as the TIER above.
+    // It used to live in sessionStorage only, so on a fresh tab the tier still
+    // read "Hotel · Small DB" while resolveMaxDb() returned 0 and dumbbell
+    // prescriptions went UNCAPPED — the UI claiming a constraint the engine had
+    // forgotten. Safety-adjacent: it prescribes load the user's gym lacks.
+    // Local-only for now: there is no users.max_db column, and adding one is a
+    // migration (human-only). So this survives a reload but not a new device;
+    // the cloud half is still owed on BUG-192.
+    cfg.maxDb = maxDb || null;
     // Write local FIRST so the choice survives a reload even if the cloud
     // round-trip is slow, offline, or the tab closes before it resolves —
     // every other cfg-mutation call site in this file does the same
@@ -5255,7 +5276,7 @@ function renderTracker() {
   // though the engine was already correctly building the durable tier's
   // workout from cfg.equipment.
   const _eTier = sessionStorage.getItem('eq_tier') || selectorTierFromCfg();
-  const _eDb   = parseInt(sessionStorage.getItem('eq_max_db')) || 0;
+  const _eDb   = resolveMaxDb();   // BUG-192: was raw sessionStorage, so a reload showed a blank cap
   if (_eTier && _eTier !== 'full_gym') {
     document.querySelectorAll('.eq-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.tier === _eTier);
@@ -5557,7 +5578,9 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
                 <div class="ex-video-frame" id="vid-${ex.id}"></div>` : ''}</div>
           </div>
           <div class="ex-notes-wrap">
-            <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."></textarea>
+            <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."
+              oninput="saveExNote('${(ex.name||'').replace(/'/g,"\\'")}', this.value)"
+            >${escNoteHtml(exNoteFor(ex.name))}</textarea>
           </div>
         </div>
       `;
@@ -6522,12 +6545,53 @@ function buildHistoryModal() {
   }).join('') + `<button class="clear-btn" onclick="clearHistory()">Clear All History</button>`;
 }
 
+// ── Per-exercise notes (BUG-195) ─────────────────────────────────────────────
+// The .ex-notes textarea shipped on every exercise of every session and its
+// .value was read NOWHERE — every reference was CSS, the tag, or a click guard.
+// Anything typed into it was discarded on the next render. It also starved its
+// own schema: `exercise_notes` (user_id, exercise_name) accumulated 0 rows
+// because nothing wrote to it, an audit saw an empty table with "no reader, no
+// writer", and BUG-72 dropped it (0008_bug72_dead_object_cleanup.sql:148).
+//
+// Keyed by exercise NAME, not slot id — two reasons. (a) It matches the dropped
+// table's own unique(user_id, exercise_name), so the cloud half can restore onto
+// the same shape. (b) Slot ids churn as the generator reshuffles a program;
+// scripts/lastsets-churn-smoke.mjs exists because keying durable per-lift memory
+// by slot id silently attributed one lift's history to another.
+//
+// LOCAL ONLY, deliberately: the cloud round-trip needs `exercise_notes`
+// recreated, which is a migration and human-only here. Local persistence ships
+// now rather than leaving the data loss live for however long that takes.
+// Escapes note text for injection into the textarea's inner HTML. & FIRST, then
+// < > — reversing that order double-escapes. This matters more than usual here:
+// the content is free-form user text going inside an element whose closing tag a
+// literal "</textarea>" would otherwise terminate.
+// (Two inline copies of a weaker version of this already exist at :8193 and
+// :10601. Consolidating them is a real "one rule, one home" cleanup but it is
+// not this row's scope, so they are left alone rather than edited in passing.)
+function escNoteHtml(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function exNotesAll() { return LS.get('tandem_ex_notes') || {}; }
+function exNoteFor(name) { return exNotesAll()[name] || ''; }
+function saveExNote(name, val) {
+  if (!name) return;
+  const all = exNotesAll();
+  const t = (val || '').trim();
+  if (t) all[name] = t; else delete all[name];   // empty clears rather than storing ''
+  LS.set('tandem_ex_notes', all);
+}
+
 function clearHistory() {
   if (confirm('Clear all session history, PRs, and progressive overload data?')) {
     // BUG-91: tandem_working1rm belongs in this list. Omitting it left an orphaned
     // working 1RM that survived the clear, outranked the (now-empty) PR store via
     // earnedOneRM, and could not be cleared by any UI path.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm'].forEach(k=>LS.del(k));
+    // tandem_ex_notes belongs here for the SAME reason BUG-91 put tandem_working1rm
+    // here: a key omitted from this list survives the clear and cannot be removed by
+    // any UI path. Flagged by llm-council, 2026-09-30.
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes'].forEach(k=>LS.del(k));
     buildHistoryModal();
   }
 }
@@ -7162,7 +7226,20 @@ function changeWeek(delta) {
 }
 
 function resetWeek() {
-  // just re-render current
+  // BUG-196: this used to be a bare renderTracker() with the comment "just
+  // re-render current", so the "Today" button repainted whichever week you had
+  // browsed to and never moved the pointer. It LOOKED functional because the
+  // view visibly repaints, which is why it survived a write-side audit.
+  //
+  // Uses deriveProgramWeek() (the real position, from completed sessions) and
+  // NOT currentWeekFromStorage(): changeWeek() persists the BROWSED week into
+  // tandem_week, so that helper's Math.max(stored, derived) would hand back the
+  // week you are trying to leave and "Today" would still do nothing. Falls back
+  // to the stored week only when the program shape is unknown (cfg.days unset),
+  // where there is no better answer than leaving the pointer alone.
+  const derived = deriveProgramWeek();
+  currentWeek = derived == null ? (LS.get('tandem_week') || 1) : derived;
+  LS.set('tandem_week', currentWeek);   // persist, exactly as changeWeek() does
   renderTracker();
 }
 
@@ -7763,6 +7840,73 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
   return merged.slice(0, 100);
 }
 
+// ── cfgFromUserRow — ONE home for "build cfg from a users row" (BUG-193) ──────
+// restoreFromCloud() and syncFromCloud() both reconstruct cfg from the same
+// `users` row and used to do it with two separate object literals. They had
+// drifted badly: syncFromCloud built 22 fields, restoreFromCloud built 9, so a
+// cloud RESTORE silently dropped twelve — including `injuries`, which this file
+// twice calls a SAFETY invariant (:3565, :8254) because it is what
+// makeInjuryBlocked()/pruneInjuries() filter on. Restoring on a new device
+// therefore re-enabled contraindicated exercises for an injured user, and
+// defaulted phase maths to 12 weeks regardless of the real program length.
+// Fixed at the mechanism, not the instance (CLAUDE.md's BUG-73/114 rule): a
+// field added here now reaches BOTH paths, and neither can drift again.
+// Callers keep their own guards and side effects; this only builds the object.
+// `prev` is the INCUMBENT cfg. It exists because this builder returns a COMPLETE
+// REPLACEMENT object and its callers assign it wholesale (`cfg = cfgFromUserRow(...)`,
+// then `LS.set('tandem_cfg', cfg)`). Any cfg field that no `users` column backs is
+// therefore ERASED by a cloud rebuild unless it is carried forward here.
+//
+// Found by llm-council on the pre-ship gate for this branch, 2026-09-30, and it was
+// a live regression this branch had itself created: BUG-192 made `cfg.maxDb` the
+// durable home for the dumbbell cap, and syncFromCloud() — which runs on app boot
+// for any signed-in user (:10461) and on scope change (:2739), not just on a new
+// device — dropped it on every load. sessionStorage is empty in a fresh tab, so
+// resolveMaxDb() fell to 0 and dumbbell prescriptions went UNCAPPED again: exactly
+// the bug BUG-192 was filed to fix, restored by BUG-193, with a green gate over
+// both because each smoke was scoped to its own bug and neither could see the seam.
+//
+// `startEpoch` and `revertedAt` are the same shape and PRE-DATE this branch (the old
+// inline literal erased them too). Both are read — startEpoch filters pre-program
+// history rows (:8985), revertedAt gates the revert notice (:9142) — so they were
+// silently lost on every cloud rebuild before anyone named the class.
+// Enforced by scripts/cfg-field-parity-smoke.mjs: a new `cfg.X =` writer must either
+// be produced from the row here or be listed there with a reason.
+function cfgFromUserRow(u, prev) {
+  if (!u) return null;
+  const keep = prev || {};
+  return {
+    // ── LOCAL-ONLY: no users column backs these, so carry the incumbent or they die
+    maxDb: keep.maxDb ?? null,
+    startEpoch: keep.startEpoch ?? null,
+    revertedAt: keep.revertedAt ?? null,
+    goal: canonicalGoal(u.program_goal), // old accounts may still carry legacy 'burn_fat'
+    days: u.program_days_per_week,
+    weeks: u.program_weeks || 12,
+    sex: u.sex,
+    experience: u.fitness_level,
+    equipment: u.equipment || null,
+    emphasis: u.muscle_emphasis || 'balanced',
+    workout_duration_minutes: u.workout_duration_minutes || null,
+    preferred_workout_time: u.preferred_workout_time || null,
+    injuries: u.injuries || null,
+    secondary_goal: u.secondary_goal || null,
+    weight: u.current_weight_lbs,
+    targetWeight: u.goal_weight_lbs,
+    goalWeight: u.goal_weight_lbs,
+    heightIn: u.height_inches,
+    height: u.height_inches,
+    age: u.age,
+    startDate: u.program_start_date || null,
+    themeColor: u.theme_color || '#1B5E38',
+    // EPIC-9 Step A: restore onboarding estimates on device re-login
+    onboardingEstimates: u.onboarding_estimates || {},
+    // EPIC-031: adopted-library flag (materializer needs the LS bundle too —
+    // getActiveProgram falls back to generated if the cache is absent)
+    programSource: u.program_source || 'generated'
+  };
+}
+
 // ── hydrateHistoryFromCloud() — BUG-207, the self-heal half ──
 //
 // The program QUEUE (completedSessionCount() -> nextProgramDayKey()) reads ONE input:
@@ -7848,17 +7992,9 @@ async function restoreFromCloud() {
       .select('*').eq('id', uid).single();
     mergeAvatarFieldsFromCloud(configData); // BUG-8: hydrate avatar_* independent of tandem_cfg gate below
     if (configData && !LS.get('tandem_cfg')) {
-      LS.set('tandem_cfg', {
-        goal: canonicalGoal(configData.program_goal), // old accounts may still carry legacy 'burn_fat'
-        days: configData.program_days_per_week,
-        sex: configData.sex,
-        experience: configData.fitness_level,
-        weight: configData.current_weight_lbs,
-        goalWeight: configData.goal_weight_lbs,
-        height: configData.height_inches,
-        age: configData.age,
-        programSource: configData.program_source || 'generated'
-      });
+      // BUG-193: was a 9-field literal that dropped injuries (a SAFETY invariant),
+      // weeks, equipment, emphasis, duration, startDate and more. One home now.
+      LS.set('tandem_cfg', cfgFromUserRow(configData, cfg));
       LS.set('tandem_week', configData.current_week);
     }
     setSyncStatus('synced');
@@ -9165,32 +9301,7 @@ async function syncFromCloud() {
     const { data: userData } = await sb.from('users').select('*').eq('id', uid).maybeSingle();
     mergeAvatarFieldsFromCloud(userData); // BUG-8: hydrate avatar_* even if this account has no program yet
     if (!userData?.program_goal) return false;
-    cfg = {
-      goal: canonicalGoal(userData.program_goal), // old accounts may still carry legacy 'burn_fat'
-      days: userData.program_days_per_week,
-      weeks: userData.program_weeks || 12,
-      sex: userData.sex,
-      experience: userData.fitness_level,
-      equipment: userData.equipment || null,
-      emphasis: userData.muscle_emphasis || 'balanced',
-      workout_duration_minutes: userData.workout_duration_minutes || null,
-      preferred_workout_time: userData.preferred_workout_time || null,
-      injuries: userData.injuries || null,
-      secondary_goal: userData.secondary_goal || null,
-      weight: userData.current_weight_lbs,
-      targetWeight: userData.goal_weight_lbs,
-      goalWeight: userData.goal_weight_lbs,
-      heightIn: userData.height_inches,
-      height: userData.height_inches,
-      age: userData.age,
-      startDate: userData.program_start_date || null,
-      themeColor: userData.theme_color || '#1B5E38',
-      // EPIC-9 Step A: restore onboarding estimates on device re-login
-      onboardingEstimates: userData.onboarding_estimates || {},
-      // EPIC-031: adopted-library flag (materializer needs the LS bundle too —
-      // getActiveProgram falls back to generated if the cache is absent)
-      programSource: userData.program_source || 'generated'
-    };
+    cfg = cfgFromUserRow(userData, cfg);   // BUG-193: one home. 2nd arg carries local-only fields (maxDb/startEpoch/revertedAt) across the wholesale replace.
     selectedGoal = cfg.goal;
     selectedDays = cfg.days || 4;
     selectedSex = cfg.sex || null;
@@ -10109,8 +10220,13 @@ function openProfileModal() {
   const w = document.getElementById('profileWeightInput');
   if (w) w.value = cfg.weight || '';
   const gw = document.getElementById('profileGoalWeightInput');
-  if (gw) gw.value = profile.goalWeight || '';
-  const heightIn = profile.heightInches || cfg.height_inches || 0;
+  // BUG-194: fall back to cfg so a cloud-restored goal weight (which lands on
+  // cfg.targetWeight/goalWeight, not tandem_profile) still shows here.
+  if (gw) gw.value = profile.goalWeight || cfg.targetWeight || cfg.goalWeight || '';
+  // BUG-194 (c): cfg.height_inches is a key NOTHING ever sets — cfg uses
+  // heightIn/height — so on a fresh login these inputs rendered blank even
+  // though users.height_inches held the value.
+  const heightIn = profile.heightInches || cfg.heightIn || cfg.height || 0;
   const hft = document.getElementById('profileHeightFt');
   const hin = document.getElementById('profileHeightIn');
   if (hft) hft.value = heightIn ? Math.floor(heightIn / 12) : '';
@@ -10212,13 +10328,27 @@ function saveProfileStats() {
   const inches = parseInt(document.getElementById('profileHeightIn')?.value) || 0;
   const totalInches = ft * 12 + inches;
   if (weight) cfg.weight = weight;
+  // BUG-194 (b): goal weight must land on the keys the GENERATOR reads.
+  // getActiveProgram() reads (cfg.targetWeight ?? cfg.goalWeight) at :3596, and
+  // this handler only ever wrote profile.goalWeight — so the D29 weight-delta
+  // cardio gate could not see a Settings edit until a full cloud restore. The
+  // comment at :3592 already noted the two flows disagree on this field name;
+  // write both, matching what syncToCloud() reads at :7572.
+  if (goalWeight) { cfg.targetWeight = goalWeight; cfg.goalWeight = goalWeight; }
+  // BUG-194 (c): keep cfg's height on its REAL keys (heightIn/height — the ones
+  // cfgFromUserRow and syncToCloud use). The modal used to hydrate from
+  // cfg.height_inches, a snake_case key nothing ever set.
+  if (totalInches) { cfg.heightIn = totalInches; cfg.height = totalInches; }
   LS.set('tandem_cfg', cfg);
   const profile = LS.get('tandem_profile') || {};
   profile.goalWeight = goalWeight;
   profile.heightInches = totalInches;
   LS.set('tandem_profile', profile);
   if (currentUser) {
-    sb.from('users').upsert({ id: currentUser.id, goal_weight_lbs: goalWeight || null, height_inches: totalInches || null }, { onConflict: 'id' });
+    // BUG-194 (a): current_weight_lbs was MISSING from this payload, so an edited
+    // current weight never reached the cloud — lost on a new device, and the
+    // 7-day trend and weightDeltaLbs desynced from what Settings displayed.
+    sb.from('users').upsert({ id: currentUser.id, current_weight_lbs: weight || null, goal_weight_lbs: goalWeight || null, height_inches: totalInches || null }, { onConflict: 'id' });
   }
   showToast('Stats saved');
 }
@@ -10548,11 +10678,31 @@ async function submitBugReport() {
 // ═══════════════════════════════════════════════════════
 const QA_UID = 'e636007d-194f-4440-a2cc-9bc514957c64';
 
+// ── QA feed: one home for "what still needs Kerwin" ────────────────────────
+// user_bug_reports lifecycle (the column default is 'submitted'):
+//   'submitted'        a user filed it; nothing tracks it yet  -> NEEDS KERWIN
+//   'logged_to_notion' an Epic/Bug row now tracks it in Notion -> tracked THERE
+//   'resolved'         done
+// The old filter was .neq('status','resolved'), which made the badge
+// UN-DRAINABLE: resolution happens in NOTION and nothing ever syncs it back to
+// Postgres, so every already-filed row nagged forever. Measured 2026-09-30:
+// 18 rows at 'logged_to_notion' + 3 open agent_log = a badge of 21, of which 0
+// bug reports were actually actionable. The badge now means "unfiled".
+// Both the count and the feed read THIS list, so they cannot drift.
+// LIMITATION, stated rather than papered over: this is an allow-list, so a NEW
+// status added later is invisible here until it is added below. An allow-list
+// was chosen over .not('status','in',...) deliberately — .in(col, array) is
+// used 9 other places in this file and is proven against this API, whereas the
+// not-in form has no precedent here and this container's egress policy blocks
+// supabase.co, so it could not be verified by running. Do not "improve" this to
+// not-in without testing it against the live endpoint first.
+const QA_BUG_OPEN = ['submitted'];
+
 async function refreshQACount() {
   if (!currentUser || currentUser.id !== QA_UID) return;
   const [{ count: c1 }, { count: c2 }] = await Promise.all([
     sb.from('agent_log').select('id', { count: 'exact', head: true }).eq('resolved', false),
-    sb.from('user_bug_reports').select('id', { count: 'exact', head: true }).neq('status', 'resolved')
+    sb.from('user_bug_reports').select('id', { count: 'exact', head: true }).in('status', QA_BUG_OPEN)
   ]);
   const total = (c1 || 0) + (c2 || 0);
   const el = document.getElementById('qaUnread');
@@ -10576,7 +10726,7 @@ async function loadQAFeed() {
   const [{ data: logs }, { data: bugs }, { data: users }] = await Promise.all([
     sb.from('agent_log').select('*').eq('resolved', false)
       .order('created_at', { ascending: false }).limit(50),
-    sb.from('user_bug_reports').select('*').neq('status', 'resolved')
+    sb.from('user_bug_reports').select('*').in('status', QA_BUG_OPEN)
       .order('created_at', { ascending: false }).limit(50),
     sb.from('users').select('id,name,email')
   ]);
@@ -10599,7 +10749,7 @@ async function loadQAFeed() {
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
 
   if (!items.length) {
-    feed.innerHTML = '<div class="qa-empty-msg">No unresolved items — all clear.</div>';
+    feed.innerHTML = '<div class="qa-empty-msg">Nothing unfiled — everything else is tracked in Notion.</div>';
     return;
   }
   feed.innerHTML = items.map(item => {

@@ -65,7 +65,13 @@ Legend for "distance from `.tc-*`": **0** = already in the language, **5** = not
 **Global chrome (affects every screen):**
 - `body::before` still draws the **40px scanline grid** (L41-44). The 2026-06-20 Design Direction called for removing it. It is still there.
 - `--font-mono:var(--font-mono)` is **self-referential** (L30), so the mono stack resolves to nothing. JetBrains Mono is loaded but never applied. The CTO session flagged this on 2026-07-02 and it is still unfixed. 109 `font-family:var(--font-mono)` declarations and 41 `text-transform:uppercase` blocks depend on it.
-- Top nav (L921-941): a gradient "TANDEM" wordmark, a profile icon, a **QA badge button visible to all users**, and a sync dot.
+- Top nav (L921-941): a gradient "TANDEM" wordmark, a profile icon, a QA badge button, and a sync dot.
+  **CORRECTION (2026-09-30):** this line originally read "a QA badge button visible to all users."
+  That is wrong. `.qa-badge-btn` is `display:none` by default (L1112) and only gains `.visible`
+  when `session.user.id === QA_UID` (L10524); `openQAPanel()` hard-returns otherwise (L10446); and
+  RLS enforces it server-side — `agent_log` and `user_bug_reports` each carry a "Kerwin reads all"
+  SELECT policy scoped to that one uuid, plus "Users read own". It is owner-only, in the client and
+  in Postgres. Nothing to hide.
 - Two separate duotone recipes already exist and match `.tc-*`: `.hero-band`/`.hero-fill` (L515-538) and `.oneoff-card` (L546-568). The recipe is solid. It just isn't reused beyond the places listed below.
 
 | # | Screen | What it looks like | Static vs interactive | Distance |
@@ -85,7 +91,7 @@ Legend for "distance from `.tc-*`": **0** = already in the language, **5** = not
 | 13 | **Exercise history** `#modal-exhistory` (L1971) | Sheet: `renderStrengthTrend()` (L6014) and per-session list. The subtitle is an engineering disclaimer ("Matched by exercise name… slot assignments can rotate") | Has a trend, but not presented as a result | 3 |
 | 14 | **Session complete** `#modal-summary` (L1898) + `#finishBanner` | `showSessionSummary()` (L6614) opens a **standard bottom sheet**: "Session Complete 🔥", a 2×2 stat grid (Volume, Duration, PRs, Day Streak) in accent display numbers, and a dashed-border "Nice! →" button | Exists (EPIC-13), but **no confetti, no haptic** (`grep confetti\|vibrate` = 0 hits), no photo, no partner comparison, and no gold treatment despite `--gold` being reserved "CELEBRATION ONLY" | 4 |
 | 15 | **In-workout bottom bar** `#bottomNav` (L2345) | Fixed bar shown only on the tracker: Plates / 1RM / Log / Skip / **Finish ✓**. Mono uppercase 10px chips on `--s1` | Tappable, but "Log" opens History (a mismatch with EPIC-58's incoming "Log" tab). BUG-123 ("these make no sense as the bottom nav bar") is still open and unreviewed | 4 |
-| 16 | **Bug-report FAB** `.bug-fab` (L874, L949) | 40px grey circle fixed `bottom:80px;right:16px`, on every screen, z-index 900 | Floats over content, including the `.tc-*` hero. Together with the QA badge in the top nav, this is debug chrome that ships to users | n/a (chrome) |
+| 16 | **Bug-report FAB** `.bug-fab` (L874, L949) | 40px grey circle fixed `bottom:80px;right:16px`, on every screen, z-index 900 | Floats over content, including the `.tc-*` hero. Ungated by design — this is how Dani files bug reports, so it is a user-facing feature, not debug chrome. (The QA badge beside it is owner-only; see the correction in Global chrome above.) | n/a (chrome) |
 | 17 | **Utility modals** (1RM calc, plates, skip) | Standard sheets. The skip sheet is well written ("No judgment…") | Fine as tools. Low priority | 3 |
 
 **Incoming (EPIC-58, being built in parallel):** a persistent 4-tab bar Home / Plan / Log / Settings. Home = dashboard + heat map widget. Plan = `modal-todaychoice`. Log = new card grid "visually styled like the todaychoice hero cards" + bar chart with gold PR bars. Settings = `modal-profile`. EPIC-58 says explicitly that `#bottomNav` is unrelated and must not be repurposed. This audit treats the tab bar as the new frame every screen will sit in.
@@ -110,7 +116,7 @@ Severity reflects both the distance from `.tc-*` and how often the user sees the
 | **Profile / Settings** | Pump Club light mode (3b3ca37f). Otherwise — | 5 save buttons, 2 color palettes | **Med** | An **identity hero** (avatar over an accent-tinted photo, name, goal), then grouped tappable rows. **One palette constant** shared by onboarding and profile. Auto-save or a single save. Sign out at the bottom |
 | **History** | Sweatmates Weekly Recaps (3b3ca37f) | Sync plumbing mixed into history | **Low** | Weekly recap cards (photo, week volume, sessions, partner comparison). Move Sync/Restore/Account to Settings |
 | **Journal, Library, Builder, utility modals** | — | Plain sheets | **Low** | Adopt the shared sheet header (display title, sentence-case labels, accent pill primary). No photos needed; these are tools |
-| **Global chrome** | Design Direction #1: remove the grid, warm the base, mono only for numbers (379ca37f). CTO telltales list (391ca37f) | Grid still on. `--font-mono` broken. QA badge + bug FAB on every screen | **High** (cheap) | Delete the `body::before` grid. Fix `--font-mono`. Hide the QA badge and bug FAB for non-admin users, or move the report entry into Settings. Replace `.dash-section-label` mono-caps with sentence-case display labels |
+| **Global chrome** | Design Direction #1: remove the grid, warm the base, mono only for numbers (379ca37f). CTO telltales list (391ca37f) | Grid still on. `--font-mono` broken. Bug FAB on every screen (QA badge is owner-only — corrected 2026-09-30) | **High** (cheap) | Delete the `body::before` grid. Fix `--font-mono`. Leave the QA badge alone (already owner-only, RLS-enforced). The bug FAB is intentionally user-facing; move its entry point into Settings only if the floating placement is the objection. Replace `.dash-section-label` mono-caps with sentence-case display labels |
 
 ---
 
