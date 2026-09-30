@@ -1182,3 +1182,42 @@ look green nearly got violated on my own unverified say-so.
 **Enforced by:** judgment — not mechanically checkable. The cheap operational tell: if I am about to
 recommend a config change to stop an alert, I must first be able to name the last run that actually
 fired it and show its conclusion. If I cannot, I have not established the alert exists.
+
+---
+
+## SC-32 — I graded a bug P1 from its blast radius instead of from the project's own severity enum
+
+**What happened.** The 2026-09-29 hip-thrust council mandated a render measurement, and that
+measurement found a real defect: after any logged bodyweight set, the recommendation chip rendered
+`↑ null lbs` with the reason `15 reps — 2 over target, add 4% (0 lbs)`. I reported it to Kerwin as
+**P1**. It is **P2**, which is what the tracker row for BUG-188 already said.
+
+I reasoned from scale: 33 exposed bank entries, every goal, every week, reachable on a user's second
+session by following the prescription exactly. All of that is true, and none of it is what the
+severity scale measures. Tandem's enum is explicit about the axis — **P1 is "Wrong Data", P2 is
+"Visual UX"** — and BUG-42 had already established that the PR and 1RM write gates are `w > 0`, so a
+0-lb set stores nothing and corrupts nothing. Nothing downstream is wrong. A broken string on a chip
+is the definition of the P2 row. I substituted "how many users see it, how often" for "what kind of
+wrongness is it", which silently redefines the scale.
+
+**Why this matters.** Severity is how Kerwin sequences work; it is one of the few things in this
+project that is *his* call to make and mine only to report accurately. Inflating P2→P1 is not a
+harmless conservatism — it competes for the P1 slot against defects that actually corrupt stored
+data, and it trains him to discount my grades in both directions. It is also the same shape as the
+prime directive's core failure: I had a canonical source (the enum, four options, printed in the
+tracker) and answered from my own sense of what felt serious instead of reading it. "This is
+everywhere, so it must be P1" is the severity-grading version of "this is standard, so it must be
+right."
+
+> **THE RULE — SC-32.** Never state a severity without naming the enum row it matches and why. Grade
+> on the KIND of wrongness, not the blast radius: corrupted/incorrect stored or displayed *data* is
+> P1, a broken or ugly *presentation* of otherwise-correct data is P2 — no matter how many users,
+> goals, or entries it touches. Scale belongs in the report as its own sentence ("P2, but it fires on
+> every bodyweight card"), never folded into the grade. If a tracker row already carries a severity,
+> read it before proposing a different one, and if I still disagree, say so explicitly as a
+> disagreement with a reason rather than quietly asserting my own number.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: if I cannot finish the
+sentence "this is PN because the enum's PN row is *<exact label>* and the wrongness is of that kind",
+I have not graded it, I have just reacted to it. The four legal rows are P0 Blocks Workout /
+P1 Wrong Data / P2 Visual UX / P3 Low.
