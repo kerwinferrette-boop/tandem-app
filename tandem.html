@@ -5580,7 +5580,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
           </div>
           <div class="ex-notes-wrap">
             <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."
-              oninput="saveExNote('${(ex.name||'').replace(/'/g,"\\'")}', this.value)"
+              oninput="saveExNote('${escNoteKey(ex.name)}', this.value)"
             >${escNoteHtml(exNoteFor(ex.name))}</textarea>
           </div>
         </div>
@@ -6560,9 +6560,24 @@ function buildHistoryModal() {
 // scripts/lastsets-churn-smoke.mjs exists because keying durable per-lift memory
 // by slot id silently attributed one lift's history to another.
 //
-// LOCAL ONLY, deliberately: the cloud round-trip needs `exercise_notes`
-// recreated, which is a migration and human-only here. Local persistence ships
-// now rather than leaving the data loss live for however long that takes.
+// The cloud half shipped 2026-09-30 once migration 0022 recreated the table
+// (verified live: the unique index on (user_id, exercise_name) that `onConflict`
+// targets exists, an upsert-on-conflict updates in place under the `authenticated`
+// role with RLS on, and a foreign user_id is rejected 42501). The note above about
+// matching the dropped table's unique key is why that restore needed no reshape.
+// KNOWN LIMITS, stated rather than implied — see docs/waves/EPIC-63-WAVE-STATE.md:
+//   · No tombstones. Deleting a note removes the row, but a device still holding it
+//     locally will push it back up on its next hydrate. Deliberate: the alternative
+//     reading (cloud-absent means deleted-elsewhere) would silently discard every
+//     note written offline on a device that has never synced, which is the exact
+//     data-loss class BUG-195 exists to end. A resurrected note is noise; a lost one
+//     is gone. Tombstones are a follow-up row, cheapest while the table is small.
+//   · Both timestamps are CLIENT clocks (`at` here, `updated_at` in the payload), so
+//     a badly skewed device can win a conflict. Not worth machinery for two
+//     NTP-synced phones in one household.
+//   · clearHistory() clears the LOCAL key only, so the next hydrate pulls the notes
+//     back. That is pre-existing behaviour shared with tandem_history and
+//     tandem_lastsets, not new here — filed against all three together.
 // Escapes note text for injection into the textarea's inner HTML. & FIRST, then
 // < > — reversing that order double-escapes. This matters more than usual here:
 // the content is free-form user text going inside an element whose closing tag a
@@ -6570,18 +6585,145 @@ function buildHistoryModal() {
 // (Two inline copies of a weaker version of this already exist at :8193 and
 // :10601. Consolidating them is a real "one rule, one home" cleanup but it is
 // not this row's scope, so they are left alone rather than edited in passing.)
+// The note KEY goes somewhere escNoteHtml() does not reach: interpolated into the
+// oninput ATTRIBUTE, inside a single-quoted JS string inside a double-quoted HTML
+// attribute. The original escaped only `'`, so one exercise name containing `"` would
+// terminate the attribute early and the box would silently discard typing again — BUG-195
+// by a second route, with nothing watching it. Latent when found (no name in programs.js
+// or in public.exercises carries a risky char) but the ingestion agent adds exercise names
+// routinely, so a DATA change would have re-opened a closed bug.
+// Found by llm-council (Contrarian) on the pre-ship gate, 2026-09-30.
+// Order matters: JS escaping FIRST, then HTML entities. The parser decodes the entities
+// before JS ever sees the source, so `&amp;` arrives at the JS literal as a bare `&`.
+function escNoteKey(v) {
+  return String(v == null ? '' : v)
+    .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function escNoteHtml(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-function exNotesAll() { return LS.get('tandem_ex_notes') || {}; }
-function exNoteFor(name) { return exNotesAll()[name] || ''; }
+// LOCAL SHAPE: { "<exercise name>": { note: "<text>", at: "<ISO>" } }
+// The `at` stamp exists so a cloud hydrate can decide newest-wins instead of one
+// side blindly clobbering the other. Notes written BEFORE the cloud half shipped
+// are bare strings, so every read normalizes — a legacy entry gets at:null, which
+// makes the cloud copy win, which is correct: the cloud copy has a real timestamp
+// and the local one is of unknown age.
+function exNotesAll() {
+  const raw = LS.get('tandem_ex_notes') || {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v == null) continue;
+    out[k] = (typeof v === 'string') ? { note: v, at: null } : { note: v.note || '', at: v.at || null };
+  }
+  return out;
+}
+function exNoteFor(name) { return (exNotesAll()[name] || {}).note || ''; }
+
+// Per-name debounce. oninput fires per KEYSTROKE; upserting each one would hammer
+// Supabase and race its own writes. Local storage is still written synchronously
+// on every keystroke, so nothing is lost if the tab dies before a push lands.
+const _exNoteTimers = {};
+const EX_NOTE_PUSH_MS = 900;
+
 function saveExNote(name, val) {
   if (!name) return;
   const all = exNotesAll();
   const t = (val || '').trim();
-  if (t) all[name] = t; else delete all[name];   // empty clears rather than storing ''
+  const at = new Date().toISOString();
+  if (t) all[name] = { note: t, at };
+  else delete all[name];                     // empty CLEARS rather than storing ''
   LS.set('tandem_ex_notes', all);
+  if (_exNoteTimers[name]) clearTimeout(_exNoteTimers[name]);
+  // The stamp travels with the text — see pushExNote()'s header for the loss path that
+  // re-deriving it opens.
+  _exNoteTimers[name] = setTimeout(() => { delete _exNoteTimers[name]; pushExNote(name, t, at); }, EX_NOTE_PUSH_MS);
+}
+
+// One note, one row. A CLEARED note DELETEs its row rather than storing '' — leave
+// the row behind and the next hydrate resurrects the note the user just deleted.
+// `at` is the stamp the note was WRITTEN at and must be threaded through, never
+// re-derived here. Stamping `now()` on push looks harmless and is a silent-loss path
+// with no clock skew involved, on one clock: laptop writes A offline on the 1st, phone
+// writes B offline on the 5th, laptop syncs first — no cloud row, so it pushes A, which
+// lands stamped the 10th — then the phone syncs, sees cloud(10th) > local(5th), pulls A
+// and DESTROYS B, the newer note. Found by llm-council (Contrarian) on the pre-ship gate,
+// 2026-09-30. A legacy bare string has no stamp at all, so it falls back to now(): there
+// is no better information, and it only ever loses to a stamped copy anyway.
+async function pushExNote(name, text, at) {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;   // anonymous saves nothing, by design
+  try {
+    if (!text) {
+      await sb.from('exercise_notes').delete().eq('user_id', currentUser.id).eq('exercise_name', name);
+      return;
+    }
+    const { error } = await sb.from('exercise_notes').upsert(
+      { user_id: currentUser.id, exercise_name: name, note: text, updated_at: at || new Date().toISOString() },
+      { onConflict: 'user_id,exercise_name' });
+    if (error) throw error;
+  } catch (e) { console.warn('note push skipped (offline or denied):', e); }
+}
+
+// clearHistory() clears the LOCAL notes key. Without this the next hydrate reads
+// cloud-present + local-absent as "new from another device" and pulls every note back —
+// so the cloud half would have quietly made "Clear all history" a lie for notes, which is
+// the exact condition BUG-91 added tandem_working1rm to that list to prevent. The same
+// resurrection still applies to tandem_history / tandem_lastsets / tandem_prs, which
+// pre-date this change and are filed together rather than fixed in passing.
+// Residual, stated honestly: if this delete fails (offline), local is cleared and the
+// cloud rows survive, so a later hydrate restores them.
+async function wipeCloudNotes() {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;
+  try {
+    const { error } = await sb.from('exercise_notes').delete().eq('user_id', currentUser.id);
+    if (error) throw error;
+  } catch (e) { console.warn('cloud note wipe skipped (offline or denied):', e); }
+}
+
+// ── hydrateNotesFromCloud() — the ONE owner of note reconciliation ────────────
+// Called by BOTH restoreFromCloud() and syncFromCloud(). Deliberately one
+// function: `lastsets` is hydrated by two near-identical inline blocks (:7992,
+// :9348) and history had the same duplication until BUG-190 collapsed it into
+// hydrateHistoryFromCloud(). Repeating that shape for a third store would be
+// building the next drift by hand.
+//
+// TWO-WAY, newest-wins by `updated_at`:
+//   cloud newer (or no local)  -> take cloud
+//   local newer (or no cloud)  -> push local up
+// A note present in the cloud but absent locally is taken, NOT treated as a local
+// delete, because a real delete already removed its row in pushExNote() — so
+// cloud-present + local-absent genuinely means "new from another device".
+// Never throws: an offline load must still render whatever the cache holds.
+async function hydrateNotesFromCloud(uid) {
+  if (!uid || typeof sb === 'undefined' || !sb) return { pulled: 0, pushed: 0 };
+  try {
+    const { data: rows, error } = await sb.from('exercise_notes')
+      .select('exercise_name, note, updated_at').eq('user_id', uid);
+    if (error) throw error;
+    const local = exNotesAll();
+    const cloud = {};
+    (rows || []).forEach(r => { if (r.exercise_name) cloud[r.exercise_name] = r; });
+    let pulled = 0, pushed = 0;
+    for (const name of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+      // A pending debounce timer means the user is typing in THIS box right now, so
+      // localStorage already holds the newest text and the cloud cannot be newer.
+      // Without this, hydrate writes the cloud copy into LS and the stale timer then
+      // pushes the typed text over it anyway — the same end state via an inconsistent
+      // intermediate one, with a visible clobber if anything re-renders in between.
+      if (_exNoteTimers[name]) continue;
+      const c = cloud[name], l = local[name];
+      const cAt = c && c.updated_at ? Date.parse(c.updated_at) : -Infinity;
+      const lAt = l && l.at ? Date.parse(l.at) : -Infinity;   // legacy bare string => -Infinity, cloud wins
+      if (c && (!l || cAt > lAt)) { local[name] = { note: c.note || '', at: c.updated_at || null }; pulled++; }
+      else if (l && (!c || lAt > cAt)) { pushExNote(name, l.note, l.at); pushed++; }
+    }
+    LS.set('tandem_ex_notes', local);
+    return { pulled, pushed };
+  } catch (e) {
+    console.warn('note hydrate skipped (offline or query failed):', e);
+    return { pulled: 0, pushed: 0 };
+  }
 }
 
 function clearHistory() {
@@ -6593,6 +6735,11 @@ function clearHistory() {
     // here: a key omitted from this list survives the clear and cannot be removed by
     // any UI path. Flagged by llm-council, 2026-09-30.
     ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes'].forEach(k=>LS.del(k));
+    // Clearing the local key alone is not a clear once notes live in the cloud: the next
+    // hydrate reads cloud-present + local-absent as "new from another device" and pulls
+    // them all back. See wipeCloudNotes(). Not awaited — the confirm() dialog this sits
+    // behind is synchronous and the UI must not block on the network.
+    wipeCloudNotes();
     buildHistoryModal();
   }
 }
@@ -8001,6 +8148,9 @@ async function restoreFromCloud() {
       });
       LS.set('tandem_lastsets', ls);
     }
+    // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
+    // Restore button and the automatic on-load sync can never do it two ways.
+    await hydrateNotesFromCloud(uid);
     // Config
     const { data: configData } = await sb.from('users')
       .select('*').eq('id', uid).single();
@@ -8013,6 +8163,17 @@ async function restoreFromCloud() {
     }
     setSyncStatus('synced');
     buildHistoryModal();
+    // This function hydrates history, PRs, lastsets, notes and cfg and then re-rendered
+    // NOTHING — buildHistoryModal() only rebuilds the history modal. Press Restore with a
+    // workout on screen and every pulled value sat in localStorage behind stale pixels.
+    // For notes that was actively harmful, not merely stale: typing one character into the
+    // stale textarea stamps the OLD visible string with a fresh `at` and pushes it up,
+    // clobbering the newer note hydrate had just retrieved — BUG-195's own defect,
+    // reintroduced by a missing render. Fixed at this level, not in the notes path, because
+    // the gap is identical for the lastsets chips and the PR/1RM figures (one rule, one
+    // home). syncFromCloud() already renders at its tail; this is the caller that did not.
+    // Found by llm-council (First Principles), 2026-09-30, on the pre-ship gate.
+    renderTracker();
   } catch(e) {
     console.warn('Restore error:', e);
     setSyncStatus('error');
@@ -9357,6 +9518,9 @@ async function syncFromCloud() {
       });
       LS.set('tandem_lastsets', ls);
     }
+    // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
+    // Restore button and the automatic on-load sync can never do it two ways.
+    await hydrateNotesFromCloud(uid);
     // Advance the day pointer past the last completed session
     // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13: a
     // one-off "should not count as an extra day"). The filter is not cosmetic: `sessions`

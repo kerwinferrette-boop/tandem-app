@@ -45,7 +45,48 @@ const SUPABASE_STUB = `
       apply: () => Promise.resolve({ data: { session: null, subscription: { unsubscribe(){} } }, error: null }),
     });
   }
-  window.supabase = { createClient: () => autoMock() };
+  // exercise_notes gets a REAL table stub, not the auto-mock: BUG-195's cloud half
+  // is a two-way reconcile, so the gate has to be able to hand the page a cloud row
+  // and then watch what it pushes back. Every other table keeps the auto-mock.
+  window.__notesCloud = [];
+  window.__notesCalls = [];
+  function notesTable() {
+    return {
+      select: () => ({ eq: () => Promise.resolve({ data: window.__notesCloud || [], error: null }) }),
+      upsert: (row) => { window.__notesCalls.push({ op: 'upsert', row }); return Promise.resolve({ error: null }); },
+      delete: () => { const f = { _eq: {}, eq(k, v) { this._eq[k] = v; return this; },
+        then: (r) => { window.__notesCalls.push({ op: 'delete', eq: f._eq }); return Promise.resolve(r({ error: null })); } };
+        return f; },
+    };
+  }
+  // Every other table restoreFromCloud() touches needs to resolve, or the function
+  // throws before it reaches the notes hydrate and the assertion proves nothing.
+  function genericTable() {
+    const res = { data: [], error: null };
+    const chain = {
+      select: () => chain, eq: () => chain, neq: () => chain, in: () => chain,
+      order: () => chain, limit: () => chain, gte: () => chain, lte: () => chain,
+      single: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      insert: () => Promise.resolve({ error: null }),
+      upsert: () => Promise.resolve({ error: null }),
+      update: () => chain, delete: () => chain,
+      then: (r) => Promise.resolve(r(res)),
+    };
+    return chain;
+  }
+  function stubClient() {
+    const base = autoMock();
+    return new Proxy(function(){}, {
+      get: (t, prop) => {
+        if (prop === 'then') return undefined;
+        if (prop === 'from') return (tbl) => (tbl === 'exercise_notes' ? notesTable() : genericTable());
+        return base[prop];
+      },
+      apply: () => Promise.resolve({ data: { session: null, subscription: { unsubscribe(){} } }, error: null }),
+    });
+  }
+  window.supabase = { createClient: () => stubClient() };
 `;
 
 function startServer() {
@@ -184,6 +225,65 @@ async function boot(page) {
     check('[3] a typed note is still there after a re-render',
       noteRT.back === 'left knee twinged at 185',
       `got ${JSON.stringify(noteRT.back)} for "${noteRT.name}" ${noteRT.err || ''} — the pre-fix behaviour was silent discard`);
+
+    // ── [3b] BUG-195 CLOUD HALF, at the pixel ──
+    // [3] only proves the LOCAL store survives a re-render. The cloud half is what
+    // 0022 was applied for, and "a value written to Supabase is not evidence it is
+    // read" (CLAUDE.md, SC-33) cuts the other way too: a reconciler that resolves
+    // correctly in a node-vm is not evidence the tracker ever shows the other device's
+    // note. So: hand the page a NEWER cloud row for the lift whose note [3] just typed
+    // locally, run the real hydrate through the real client, re-render, and read the
+    // textarea the user looks at. Then check the reverse direction pushed.
+    const seeded = await page.evaluate(async () => {
+      // Take the note key from the textarea's own oninput attribute, NOT from
+      // .ex-name's textContent: that element also contains a "compound" badge, so its
+      // textContent is "Decline Barbell Presscompound" while the store is keyed on
+      // ex.name. The first draft of this assertion seeded the cloud under the polluted
+      // string, hydrate wrote a row nothing rendered, and the check failed on correct
+      // code. The attribute IS the key the app uses.
+      window.__keyOf = (ta) => ((ta.getAttribute('oninput') || '').match(/saveExNote\('([^']*)'/) || [])[1];
+      const notes = [...document.querySelectorAll('textarea.ex-notes')];
+      const name = window.__keyOf(notes[0]);
+      // a second lift whose LOCAL note is newer than anything in the cloud
+      const other = notes.map(window.__keyOf).filter(n => n && n !== name)[0];
+      saveExNote(other, 'logged on this phone just now');
+      currentUser = { id: 'walkthrough-uid' };
+      window.__wt = { name, other };
+      return { name, other };
+    });
+    // Let both debounce timers drain. hydrateNotesFromCloud() deliberately SKIPS a name
+    // with a pending push (the user is typing in that box right now), so hydrating inside
+    // the 900 ms window would measure the guard, not the reconcile.
+    await page.waitForTimeout(1200);
+
+    const cloudRT = await page.evaluate(async () => {
+      const { name, other } = window.__wt;
+      window.__notesCalls = [];
+      window.__notesCloud = [
+        { exercise_name: name,  note: 'typed on the other phone', updated_at: '2099-01-01T00:00:00Z' },
+        { exercise_name: other, note: 'stale cloud copy',          updated_at: '2020-01-01T00:00:00Z' },
+      ];
+      // Drive the REAL production path, not hydrateNotesFromCloud() directly. An earlier
+      // draft called the hydrate and then renderTracker() ITSELF — and restoreFromCloud()
+      // did not re-render at all, so the harness was supplying the step production omitted
+      // and the green tick asserted a path no user has. That is exactly the "green gate on
+      // a value the render layer discards" case CLAUDE.md names. Found by llm-council
+      // (First Principles + Contrarian), 2026-09-30. Nothing below renders on the app's
+      // behalf: if restoreFromCloud() stops re-rendering, these two checks fail.
+      await restoreFromCloud();
+      const valueOf = (n) => [...document.querySelectorAll('textarea.ex-notes')]
+        .find(ta => window.__keyOf(ta) === n)?.value;
+      return { shown: valueOf(name), mine: valueOf(other),
+               pushed: window.__notesCalls.filter(c => c.op === 'upsert')
+                 .map(c => ({ n: c.row.exercise_name, at: c.row.updated_at })) };
+    });
+    check('[3b] a note from another device is RENDERED in the textarea after a real Restore',
+      cloudRT.shown === 'typed on the other phone',
+      `textarea for "${seeded.name}" shows ${JSON.stringify(cloudRT.shown)} — either the cloud half reaches no pixel, or restoreFromCloud() hydrates without re-rendering`);
+    check('[3c] a newer LOCAL note is not clobbered by a stale cloud row, and is pushed up',
+      cloudRT.mine === 'logged on this phone just now' &&
+      cloudRT.pushed.some(x => x.n === seeded.other),
+      `"${seeded.other}" shows ${JSON.stringify(cloudRT.mine)}; upserts: ${JSON.stringify(cloudRT.pushed)} — one-way hydrate silently eats the newer side`);
 
     // ── [4] BUG-200: Enter on the role=button element does what a click does ──
     const kb = await page.evaluate(async () => {

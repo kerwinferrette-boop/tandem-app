@@ -65,17 +65,56 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       not reading.
       **Suggested order:** BUG-193 first (safety), then 194, 192, 196, 200.
 
-- [x] **2. BUG-195 — `.ex-notes` local persistence.**
+- [x] **2. BUG-195 — `.ex-notes` persistence, local AND cloud.**
       **LOCAL HALF DONE + BROWSER-VERIFIED 2026-09-30** (type a note, re-render, it survives —
       `control-reachability-walkthrough.mjs` [3], mutation-tested). Migration `0022` APPLIED, so
       `exercise_notes` now exists with RLS + the unique(user_id, exercise_name) constraint.
-      **The CLIENT cloud round-trip is still unwired — notes remain LOCAL ONLY.** Do not describe
-      cloud notes as working. Original note:
-      (a) the browser repro (type a note, force a re-render, reopen the app);
-      (b) the CLOUD half — `migrations/0022_bug195_restore_exercise_notes.sql` is written and
-      staged but **Kerwin must apply it**; `apply_migration` is denied in
-      `.claude/settings.json:44`. Per-exercise notes are LOCAL ONLY until a real round-trip
-      against Postgres is verified. Do not describe cloud sync as working before then.
+      **CLOUD HALF DONE 2026-09-30.** `hydrateNotesFromCloud()` is the single owner of
+      reconciliation, called by BOTH cloud paths (`restoreFromCloud`, `syncFromCloud`): two-way,
+      newest-wins by timestamp, legacy bare strings normalised, 900 ms per-name debounced push,
+      a cleared note DELETEs its row, anonymous pushes nothing. Gates: `ex-notes-smoke.mjs` is now
+      31 assertions (real functions in a node vm against a recording Supabase stub) and
+      `control-reachability-walkthrough.mjs` `[3b]`/`[3c]` drive the REAL `restoreFromCloud()` in a
+      browser and read the textarea. Every new assertion mutation-tested individually (SC-38).
+      **Live Postgres verified** (Supabase MCP, test account only, in a transaction that rolled
+      back — 0 rows persisted): the unique index `(user_id, exercise_name)` that `onConflict`
+      targets exists; upsert-on-conflict updates in place under the `authenticated` role with RLS
+      on; DELETE works; a foreign `user_id` is rejected `42501`; only own rows visible.
+
+      **STILL OWED, and not claimed as done — one real signed-in cross-device round-trip.**
+      Nobody has signed in on two devices, typed a note on one and seen it on the other. It cannot
+      be done from the cloud container: no test-account password, no service-role key. The council
+      split on whether that is a merge blocker (Outsider: yes) or an item to run against the
+      deployed build minutes after push (Executor: yes, and better evidence because it tests the
+      artifact users load). Kerwin ruled ship, 2026-09-30. **Run it against the deployed Netlify
+      build: type a note on device A, open device B, confirm it appears; delete on B, confirm it
+      goes on A.** Until that is run, say "reconciles correctly against a stub and against live SQL,
+      not yet exercised end to end through supabase-js."
+
+      **KNOWN LIMITS, deliberate, stated in the code too:**
+      · No tombstones — a device still holding a deleted note locally pushes it back on its next
+        hydrate. Chosen over the alternative reading, which would discard every note written offline
+        on a device that had never synced (BUG-195's own defect). Tombstones are a follow-up row and
+        are cheapest while the table is near-empty.
+      · Both timestamps are CLIENT clocks. DB-stamping `updated_at` adds a second clock rather than
+        removing one, so no action.
+      · `clearHistory()` now calls `wipeCloudNotes()`, but if that delete fails offline the local
+        key is cleared and the cloud rows survive. The same resurrection applies to
+        `tandem_history` / `tandem_lastsets` / `tandem_prs` and is filed against all three together.
+
+      **Two defects the pre-ship council found IN THIS BRANCH, both fixed** (see
+      `docs/council/council-bug195-cloud-2026-09-30-pre-ship-gate.md`):
+      · `pushExNote` forged `updated_at: now()`, so a hydrate-push relabelled an old note as fresh
+        and could destroy a genuinely newer note on another device — one clock, no skew. The stamp
+        is threaded through now; `[J5]`/`[H5]`.
+      · `restoreFromCloud` hydrated history, PRs, lastsets, notes and cfg and re-rendered NOTHING,
+        and the walkthrough was calling `renderTracker()` itself — the harness supplying the step
+        production omitted, which is the green-gate-on-a-discarded-value case CLAUDE.md names. Fixed
+        at the caller (the gap was identical for the lastsets chips and PR figures); the walkthrough
+        now renders nothing on the app's behalf.
+      · Round 2 also surfaced a latent third: the note key was interpolated into the `oninput`
+        ATTRIBUTE escaping only `'`, so one exercise name containing `"` would break the handler and
+        discard typing again. Fixed (`escNoteKey()`), asserted by `[P]` as a full round-trip.
       **Depends on:** nothing for the local half.
       **File/region:** `tandem.html:5545`, inside `buildDayHTML`.
       **Kerwin's ruling (2026-09-30):** persist locally NOW; stage the `exercise_notes` migration for
@@ -85,10 +124,29 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       **ACCEPTED CONFLICT, recorded deliberately:** `:5545` is inside `buildDayHTML`, which roadmap
       Wave 7 rewrites. Whoever does Wave 7 must re-add three hooks. That cost was accepted over
       discarding user notes for the months Waves 0-5 will take.
-      **should/could/did stub:** SHOULD — a text field the app presents must persist what is typed
-      into it. COULD — remove the textarea (rejected: Kerwin wants the feature); do the cloud half
-      first (rejected: blocked on a human-applied migration, and the data loss is live now).
-      DID / RECONCILE — fill on completion.
+      **should/could/did — CLOSED 2026-09-30.**
+      SHOULD — a text field the app presents must persist what is typed into it, and once it has a
+      backing table it must survive a device. No exercise-science source is involved: notes feed no
+      calculation, so the binding rules here are CLAUDE.md's "wired is not working" and "one rule,
+      one home", not DOCTRINE.
+      COULD — (i) remove the textarea: rejected, Kerwin wants the feature. (ii) local only: shipped
+      first, deliberately, then superseded. (iii) two hydrate blocks, one per cloud path, mirroring
+      how `lastsets` is hydrated at `:7992` and `:9348`: REJECTED — that duplication is the drift
+      BUG-190 collapsed for history, and repeating it for a third store is building the next bug by
+      hand. One `hydrateNotesFromCloud()`, two callers. (iv) tombstones now: rejected, priced at
+      half a day plus a human-applied migration to prevent one self-healing resurrection. (v)
+      DB-stamped `updated_at`: rejected, it adds a clock instead of removing one.
+      **Axis check (fix the mechanism, not the instance):** the axis here is the CLOUD PATH, and both
+      values of it are covered — `restoreFromCloud` AND `syncFromCloud` call the one owner, asserted
+      by `[M:restoreFromCloud]`/`[M:syncFromCloud]`, each mutation-tested by deleting its call site.
+      The second axis is the note KEY's character set; `[P]` enumerates `"`, `'`, `&`, `\`, `<b>`
+      and a plain name rather than trusting the one shape the reported case had.
+      DID — verified by running, not reading: 37/37 `verify`, personas green, 31 notes assertions,
+      the browser reading the real textarea after a real `restoreFromCloud()`, and live SQL against
+      the test account.
+      RECONCILE — did == should for the local half and for reconciliation logic. It does NOT yet
+      equal should for the end-to-end supabase-js path; that is the owed item above, stated rather
+      than implied.
 
 - [ ] **3. Council forks — BUG-191, BUG-197, BUG-202.** Run `llm-council`, record verdict +
       citation here and on the row, THEN implement. Do not pick.

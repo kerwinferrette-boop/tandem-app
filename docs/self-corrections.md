@@ -1479,3 +1479,82 @@ two drafts of that script passed a file with a live injected emoji.
 **Enforced by:** judgment — not mechanically checkable. The operational tell: if I cannot state
 "mutation M breaks assertion A, and I watched A fail," then A is unproven, no matter how green the
 run was. A gate's aggregate PASS is never that evidence.
+
+**Worked example added 2026-09-30, same session, BUG-195's cloud half.** Case (a) above has an
+inverted twin worth naming, because it cost a real assertion. `ex-notes-smoke.mjs` asserted
+*"anonymous pushes NOTHING to the cloud"* by counting Supabase calls and expecting zero. Under its
+own mutation — deleting the `!currentUser` guard in `pushExNote()` — it STAYED GREEN: without the
+guard, `currentUser.id` throws a TypeError that the function's own `try/catch` swallows, so the
+call count is zero either way. Zero for the wrong reason is indistinguishable from zero for the
+right one. The repair was to stop asserting the ABSENCE and start asserting the MECHANISM: a
+guarded return is silent, a caught exception warns, so the vm context now captures `console.warn`
+and `[L2]` fails if anything was warned. That mutation now fails by name. Generalised: **when an
+assertion's expected outcome is "nothing happened," find the second path that also produces
+nothing — an early return, a caught throw, a no-op fallback — and assert which one you took.**
+This is not academic: control flow by caught TypeError breaks the moment `currentUser` becomes
+`{}` rather than `null`, which would then upsert rows keyed `user_id: undefined` on every keystroke
+of look-around mode.
+
+## SC-39 — My reads-side gate matches column names globally, so fixing one table silenced a real finding on another
+
+**Date:** 2026-09-30 · **Found by:** `npm run verify` failing on my own new check, mid-BUG-195.
+
+`scripts/column-reachability-smoke.mjs` (SC-34's enforcement) reports every column the app writes
+and never reads. Its `[B]` ratchet asserts each allowlist entry *still reproduces*, so a fixed
+column must be removed and the ratchet only turns one way. Shipping BUG-195's cloud half broke
+`[B]`: `personal_records.updated_at` stopped being detected.
+
+Nothing about `personal_records` had changed. `hydrateNotesFromCloud()` added
+`.select('exercise_name, note, updated_at')` and `c.updated_at` — on **`exercise_notes`**. The
+detector's read test is by column NAME, not table-qualified, because a row read as `r.updated_at`
+carries no static evidence of which table `r` came from. So a property-access read of any common
+name (`updated_at`, `note`, `data`) counts as a read of that name on *every* table that writes it.
+
+**The mechanism, not the trait.** The tempting responses were both wrong. Deleting the entry to get
+green would have silently discarded a live finding — precisely the outcome the whole gate exists to
+prevent, and the "worse than no gate" shape CLAUDE.md names. Leaving it in `KNOWN_OPEN` would fail
+`[B]` forever and pressure the next person to weaken the ratchet. Both would have been *quiet*: the
+run would go green and nobody would learn that the detector had lost an eye.
+
+> **THE RULE — SC-39.** When a check stops reproducing a finding, establish WHY before touching the
+> allowlist. If the finding is still true in fact and only became invisible, it does not get
+> deleted and it does not stay where a freshness ratchet will fail on it — it moves to an explicit
+> MASKED list that records the finding, its tracker row, and the exact read that masks it. And
+> state the detector's matching limitation in its own header, since a false-negative source that
+> only lives in one person's head is a future silent regression.
+
+**Enforced by:** `scripts/column-reachability-smoke.mjs` check `[D]` — every `MASKED` entry must
+still be undetected. If a future change removes the masking read, `[D]` fails and the entry must
+move back to `KNOWN_OPEN` or be fixed; a finding cannot be parked in the one list nothing watches.
+Mutation-tested: a detectable column placed in `MASKED` fails `[D]` by name.
+
+## SC-40 — I used `git checkout --` to undo a mutation test and discarded hours of uncommitted work with it
+
+**Date:** 2026-09-30 · **Found by:** the file's own grep markers, immediately after running it.
+
+Mutation-testing a gate means editing the working tree to break the code on purpose, then putting
+it back. I had done that a dozen times in one session by restoring a `cp` backup. On the last one I
+typed `git checkout -- tandem.html` instead. Git did exactly what it was asked: it reverted the file
+to HEAD, which erased **every uncommitted change** — the whole BUG-195 cloud half, the
+`restoreFromCloud` re-render, both hydrate call sites, the threaded timestamp, `wipeCloudNotes`, the
+limits block — not just the two-line mutation I wanted gone. Recovery was only possible because a
+`cp` snapshot happened to exist in the scratchpad from twenty minutes earlier.
+
+**The mechanism, not the trait.** Mutation testing deliberately puts wrong code in the working tree,
+so during it the tree holds two indistinguishable kinds of edit: the fix I want to keep and the
+break I want to drop. `git checkout --` cannot tell them apart and neither can a habit. The failure
+was not carelessness about that one command; it was running a destructive-by-design workflow on a
+file whose only copy of hours of work was the working tree itself.
+
+> **THE RULE — SC-40.** Before the FIRST mutation of a session, get the work out of the working
+> tree's single copy: commit it (a WIP commit is fine and cheap), or take a named snapshot and write
+> the restore command down. Undo every mutation with that named snapshot. Never use
+> `git checkout --`, `git restore`, `git stash`, or any other HEAD-relative revert to undo a
+> mutation while uncommitted work is in the same file — HEAD is not the state you are returning to.
+> After restoring, confirm the fix is back by grepping for its markers, the way CLAUDE.md's
+> "confirm the code under test is the code you think it is" already requires.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: if the answer to
+"what restores this file?" is a git command rather than a path in the scratchpad, stop. The marker
+grep afterwards IS mechanical and is what caught this one; it cost nothing and should be routine.
+
