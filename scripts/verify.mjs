@@ -67,6 +67,7 @@ const CHECKS = [
   { name: 'auth scope smoke (per-account storage isolation, scoped session pointer, anonymous saves nothing)', run: () => execFileSync('node', [join(scriptsDir, 'auth-scope-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-173 muscle-tag vocabulary gate (bank ↔ DB vocabulary agreement; offline vs committed snapshot, live in CI)', run: () => execFileSync('node', [join(scriptsDir, 'muscle-tag-vocabulary-gate.mjs')], { stdio: 'inherit' }) },
   { name: 'bank↔seed freshness (committed seed SQL matches EXERCISE_BANK — does NOT prove it is applied)', run: () => execFileSync('node', [join(scriptsDir, 'bank-seed-freshness.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-188 loadless progression (0-lb logged set coaches reps — no "null lbs"/fabricated "0 lbs" chip; weighted lifts still ladder)', run: () => execFileSync('node', [join(scriptsDir, 'loadless-progression-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];
