@@ -10429,11 +10429,31 @@ async function submitBugReport() {
 // ═══════════════════════════════════════════════════════
 const QA_UID = 'e636007d-194f-4440-a2cc-9bc514957c64';
 
+// ── QA feed: one home for "what still needs Kerwin" ────────────────────────
+// user_bug_reports lifecycle (the column default is 'submitted'):
+//   'submitted'        a user filed it; nothing tracks it yet  -> NEEDS KERWIN
+//   'logged_to_notion' an Epic/Bug row now tracks it in Notion -> tracked THERE
+//   'resolved'         done
+// The old filter was .neq('status','resolved'), which made the badge
+// UN-DRAINABLE: resolution happens in NOTION and nothing ever syncs it back to
+// Postgres, so every already-filed row nagged forever. Measured 2026-09-30:
+// 18 rows at 'logged_to_notion' + 3 open agent_log = a badge of 21, of which 0
+// bug reports were actually actionable. The badge now means "unfiled".
+// Both the count and the feed read THIS list, so they cannot drift.
+// LIMITATION, stated rather than papered over: this is an allow-list, so a NEW
+// status added later is invisible here until it is added below. An allow-list
+// was chosen over .not('status','in',...) deliberately — .in(col, array) is
+// used 9 other places in this file and is proven against this API, whereas the
+// not-in form has no precedent here and this container's egress policy blocks
+// supabase.co, so it could not be verified by running. Do not "improve" this to
+// not-in without testing it against the live endpoint first.
+const QA_BUG_OPEN = ['submitted'];
+
 async function refreshQACount() {
   if (!currentUser || currentUser.id !== QA_UID) return;
   const [{ count: c1 }, { count: c2 }] = await Promise.all([
     sb.from('agent_log').select('id', { count: 'exact', head: true }).eq('resolved', false),
-    sb.from('user_bug_reports').select('id', { count: 'exact', head: true }).neq('status', 'resolved')
+    sb.from('user_bug_reports').select('id', { count: 'exact', head: true }).in('status', QA_BUG_OPEN)
   ]);
   const total = (c1 || 0) + (c2 || 0);
   const el = document.getElementById('qaUnread');
@@ -10457,7 +10477,7 @@ async function loadQAFeed() {
   const [{ data: logs }, { data: bugs }, { data: users }] = await Promise.all([
     sb.from('agent_log').select('*').eq('resolved', false)
       .order('created_at', { ascending: false }).limit(50),
-    sb.from('user_bug_reports').select('*').neq('status', 'resolved')
+    sb.from('user_bug_reports').select('*').in('status', QA_BUG_OPEN)
       .order('created_at', { ascending: false }).limit(50),
     sb.from('users').select('id,name,email')
   ]);
@@ -10480,7 +10500,7 @@ async function loadQAFeed() {
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
 
   if (!items.length) {
-    feed.innerHTML = '<div class="qa-empty-msg">No unresolved items — all clear.</div>';
+    feed.innerHTML = '<div class="qa-empty-msg">Nothing unfiled — everything else is tracked in Notion.</div>';
     return;
   }
   feed.innerHTML = items.map(item => {
