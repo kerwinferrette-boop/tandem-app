@@ -1003,8 +1003,8 @@ const EXERCISE_BANK = {
     name:'Band Concentration Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work. Needs only a band anchored underfoot and a seat.',
-    cues:['Sit; stand on the band, elbow braced against inner thigh above the knee','Full extension at bottom — keep light tension on the band','Supinate at the top','Squeeze and hold one count at peak; lower slowly']},
+    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work. Needs only a band under the foot and a seat.',
+    cues:['Sit on a chair with the band under the foot on your working side; brace that elbow against your inner thigh above the knee','Full extension at bottom — keep light tension on the band','Supinate at the top','Squeeze and hold one count at peak; lower slowly']},
   'band-hammer-curl':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero brachialis/
     // brachioradialis isolation exercises — closes FOCUS_SLOTS.arms[4]. Same neutral-grip pattern
