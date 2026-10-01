@@ -1558,3 +1558,21 @@ file whose only copy of hours of work was the working tree itself.
 "what restores this file?" is a git command rather than a path in the scratchpad, stop. The marker
 grep afterwards IS mechanical and is what caught this one; it cost nothing and should be routine.
 
+## SC-41 — I titled a story with a guessed Bug ID, one day after SC-28 told me not to
+
+**Date:** 2026-10-01 (Cycle 98) · **Found by:** reading the Bug ID back after create, same turn.
+
+Filing the discovery row for the generalized slot-coverage guard, I wrote the linked story's Story ID as
+`BUG-229-...` before the Bug Log row existed. `Bug ID` is an `auto_increment_id` (read-only); the real value
+was 218. I had the number from nowhere — the same invention SC-28 already records. Caught immediately because
+SC-28's habit (read it back) was run; the story was renamed `BUG-218-...` in the same cycle.
+
+**The mechanism, not the trait.** The create call returns the new page's URL but not its auto-increment id, so
+the title is written before the id is knowable. The tempting fix is to write a plausible next number.
+
+> **THE RULE — SC-41.** Create the Bug & QA Log row first, query its `Bug ID` back, and only then create or
+> name anything that cites it. If both must be created together, title the story with the Bug row's URL slug
+> or a descriptive name and rename after the read-back.
+
+**Enforced by:** judgment — not mechanically checkable (same limit as SC-28).
+
