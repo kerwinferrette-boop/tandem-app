@@ -990,6 +990,21 @@ const EXERCISE_BANK = {
     emphasis:['biceps','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The standard supinated curl pattern, needing only a band anchored underfoot — band tension rises through the range, peaking near the top where the bicep is already strongest, unlike a dumbbell which goes light at lockout.',
     cues:['Stand on the band, one handle in each hand, supinated grip','Elbows pinned to sides — do not let them drift forward','Full extension at bottom (stretch)','Squeeze at the top; do not swing — hinge at the elbow only']},
+  'band-concentration-curl':{
+    // BUG-119b bicep half (2026-10-01). Mirrors the in-bank 'concentration-curl' (DB, hotel_gym)
+    // movement and muscle tags exactly — no new anatomical claim; only the equipment/tier differ.
+    // Closes the home-tier gap where Band Curl was the ONLY bicep_brachii-primary isolation, so
+    // the second bicep slot fell to Band Hammer Curl (brachialis-primary) via D18's fallback.
+    // Band-modality equivalence: Silva Lopes JS, Machado AF, Micheletti JK, et al., "Effects of
+    // training with elastic resistance versus conventional resistance on muscular strength: A
+    // systematic review and meta-analysis," SAGE Open Medicine 2019, DOI 10.1177/2050312119831116,
+    // PubMed 30815258 (upper-limb strength SMD 0.09, 95% CI -0.18 to 0.35 — no difference).
+    // Needs a chair/edge of a sofa to sit on, same household-furniture convention as Bench Dip.
+    name:'Band Concentration Curl', videoId:null,
+    muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
+    emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work. Needs only a band anchored underfoot and a seat.',
+    cues:['Sit; stand on the band, elbow braced against inner thigh above the knee','Full extension at bottom — keep light tension on the band','Supinate at the top','Squeeze and hold one count at peak; lower slowly']},
   'band-hammer-curl':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero brachialis/
     // brachioradialis isolation exercises — closes FOCUS_SLOTS.arms[4]. Same neutral-grip pattern
@@ -1753,7 +1768,7 @@ const MOVEMENT_FAMILIES = {
   'biceps-curl':{ label:'Biceps Curl', pattern:'isolation', canonicalLift:null,
     variants:['barbell-curl','ez-bar-curl','db-curl','incline-db-curl','concentration-curl',
               'preacher-curl','spider-curl','cable-curl','bayesian-cable-curl','zottman-curl',
-              'band-curl']},
+              'band-curl','band-concentration-curl']},
   'hammer-curl':{ label:'Hammer / Reverse Curl', pattern:'isolation', canonicalLift:null,
     variants:['hammer-curl','cross-body-hammer-curl','cable-rope-hammer-curl','band-hammer-curl',
               'reverse-curl']},
