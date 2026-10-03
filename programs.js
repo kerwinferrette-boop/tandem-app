@@ -628,13 +628,12 @@ const EXERCISE_BANK = {
     // from the existing (mislabeled) in-bank comment: the real SAGE Open Medicine 2019 paper is
     // Silva Lopes, Machado, Micheletti et al., "Effects of training with elastic resistance versus
     // conventional resistance on muscular strength: A systematic review and meta-analysis," SAGE
-    // Open Medicine 2019, DOI 10.1177/2050312119831116 (7 included studies per PubMed abstract; elastic ~= conventional
-    // resistance for strength gains; a 2020 corrigendum exists, DOI 10.1177/2050312120961220) — formerly band-curl/band-shrug/band-straight-arm-pulldown/band-hammer-curl
+    // Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic ~= conventional resistance for strength gains; study count and
+    // upper/lower-limb attribution UNVERIFIED against the abstract — a 2020 corrigendum swapped limb labels, DOI 10.1177/2050312120961220) — formerly band-curl/band-shrug/band-straight-arm-pulldown/band-hammer-curl
     // comments cited "Aboodarda et al. 2019, SAGE Open Medicine," which conflates two different real
     // papers (Aboodarda, Page & Behm, Clinical Biomechanics 2016 vol 39 — a different journal/year)
     // into one wrong byline. Verified live via WebSearch this cycle; filed as a new discovery
-    // (mislabeled citation, not fixed here — out of this story's declared scope) rather than
-    // silently correcting the other three entries in the same pass.
+    // (mislabeled citation; the other band-* entries were corrected under BUG-175).
     name:'Band Front Raise', videoId:null,
     muscleGroups:{primary:['anterior_delt'],secondary:['pec_major_clavicular']},
     emphasis:['shoulders','push','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
@@ -717,7 +716,7 @@ const EXERCISE_BANK = {
     // isolation exercises. Mirrors barbell-shrug/db-shrug's own rationale (direct upper-trap
     // stimulus via straight-arm elevation) applied to a band anchored underfoot. Band-vs-free-weight
     // modality equivalence (comparable activation/hypertrophy when volume/intensity matched):
-    // Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in upper-limb strength gains).
+    // Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in strength gains; limb-specific claim unverified post-corrigendum).
     // Source supports STRENGTH-gain equivalence only, not EMG activation or hypertrophy (BUG-175).
     // FLAG: no band-shrug-specific EMG study was found (repo research-report(8)/Framework docx are
     // silent on band exercises entirely — 0 hits for 'band'/'elastic'/'shrug'); this entry rests on
@@ -790,7 +789,7 @@ const EXERCISE_BANK = {
     // exercises. Same movement pattern as straight-arm-pulldown above (only cable->band swap),
     // citing that entry's own rationale plus: (a) Washif et al. 2022, MDPI Applied Sciences —
     // straight-arm pulldown produces significantly higher concentric lat-dorsi activation than
-    // compound press movements; (b) Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in upper-limb strength gains) — strength-gain
+    // compound press movements; (b) Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in strength gains; limb-specific claim unverified post-corrigendum) — strength-gain
     // equivalence only (not activation/hypertrophy), the citation used for every other band-* entry (BUG-175).
     name:'Band Straight-Arm Pulldown', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['tricep_long_head','posterior_delt']},
@@ -981,7 +980,7 @@ const EXERCISE_BANK = {
     // (FOCUS_SLOTS.back[3], arms[0], arms[2], pull[2]/[4] all request bare ['bicep']; groupsMatch's
     // prefix rule already makes 'bicep_brachii' satisfy a ['bicep'] search, same as every other
     // bicep entry in this bank). Standard supinated-grip curl, same pattern as barbell-curl/db-curl
-    // above. Citation: Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in upper-limb strength gains) — strength-gain
+    // above. Citation: Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in strength gains; limb-specific claim unverified post-corrigendum) — strength-gain
     // equivalence only, not activation/hypertrophy (BUG-175; same citation as the other band-* entries).
     name:'Band Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
