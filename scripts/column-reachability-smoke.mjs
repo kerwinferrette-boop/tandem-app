@@ -52,7 +52,10 @@ import fs from 'fs';
 const SERVER_SIDE = {
   'personal_records.achieved_reps':        'trigger sets_apply_1rm_and_pr',
   'personal_records.achieved_weight_lbs':  'trigger sets_apply_1rm_and_pr',
-  'sets.estimated_1rm_lbs':                'trigger sets_apply_1rm_and_pr',
+  // `sets.estimated_1rm_lbs` sat here (trigger sets_apply_1rm_and_pr). Removed
+  // 2026-09-30: BUG-209's history restore reads it CLIENT-side now, so the gate can
+  // see the read itself and the exemption no longer reproduces. The trigger read was
+  // real and still is — the entry is simply no longer needed.
   'workout_sessions.backdated':            'trigger streak_recompute (streak exclusion)',
   'workout_sessions.total_volume_lbs':     'trigger streak_recompute',
   'workout_templates.author_id':           'RLS: templates_select/write, blocks_*, days_*, exs_*',
@@ -65,7 +68,10 @@ const KNOWN_OPEN = {
   'users.color_theme':                  'BUG-197 (D9) — readers use theme_color; three homes for one rule',
   'workout_sessions.notes':             'BUG-205 (D15) — holds real journal text with no read path; D6 shape on another surface',
   'workout_sessions.phase_name':        'BUG-205 (D15)',
-  'workout_sessions.week_number':       'BUG-205 (D15)',
+  // `workout_sessions.week_number` CLOSED 2026-09-30 by BUG-209: the history restore
+  // reads it into the row's `week`, which is what the History modal's "Wk3" badge
+  // renders. It was write-only for the same reason the lifts were missing — nothing
+  // ever read a cloud session row back.
   'workout_sessions.duration_minutes':  'BUG-205 (D15) — candidate denormalisation, not necessarily dead',
   'sets.exercise_category':             'BUG-205 (D15) — found by this gate, added to that row 2026-09-30',
   'users.start_weight_lbs':             'BUG-205 (D15) — found by this gate, added to that row 2026-09-30',

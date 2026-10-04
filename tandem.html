@@ -6528,6 +6528,23 @@ function buildPRModal() {
 // ═══════════════════════════════════════════════════════
 // HISTORY MODAL
 // ═══════════════════════════════════════════════════════
+// ── historyExLabel() — what to CALL a lift in the history list (BUG-209) ──────
+// The key of an `exercises` entry is a bank SLOT ID on a locally-written row
+// ('fb-curl') but an exercise NAME on a cloud-restored one ('Pull-Up') — the cloud
+// has no slot id to restore and `name` is what every other name-based reader already
+// matches on (C7 PRs, findExerciseHistorySessions, BUG-48's per-set stamp).
+//
+// The old derivation was `id.replace(/^\w+-/,'').replace(/-/g,' ')`, applied blind.
+// Run against real names it is destructive, not cosmetic — verified by running it:
+// "Pull-Up" -> "Up", "T-Bar Row" -> "Bar Row". So prefer the canonical `name` the
+// sets already carry (BUG-48 stamps it on every set precisely because slot ids get
+// recycled across rotations, BUG-45), and fall back to the slug de-mangling only for
+// a legacy row logged before that stamp existed.
+function historyExLabel(key, sets) {
+  const stamped = (sets || []).find(x => x && x.name)?.name;
+  if (stamped) return stamped;
+  return String(key || '').replace(/^\w+-/, '').replace(/-/g, ' ');
+}
 function buildHistoryModal() {
   const hist = LS.get('tandem_history') || [];
   const list = document.getElementById('historyList');
@@ -6536,10 +6553,15 @@ function buildHistoryModal() {
     const exEntries = Object.entries(s.exercises||{}).map(([id,sets]) => {
       if(!sets?.length) return '';
       const setsStr = sets.map(x=>`${x.w}×${x.r}${x.est1rm?' ('+x.est1rm+'e)':''}`).join('  ');
-      return `<div class="hist-ex">${id.replace(/^\w+-/,'').replace(/-/g,' ')}</div><div class="hist-sets">${setsStr}</div>`;
+      return `<div class="hist-ex">${escNoteHtml(historyExLabel(id, sets))}</div><div class="hist-sets">${setsStr}</div>`;
     }).join('');
+    // BUG-209: `week`/`goal` are absent on a cloud row whose week_number/program_goal were
+    // never set, and `Wk${undefined}` put the literal string "Wkundefined" on screen. Drop
+    // the segment instead of rendering a non-value — same rule as D34's chip labels.
+    const badge = [s.week != null ? 'Wk' + s.week : null, (s.goal || '').replace('_', ' ') || null]
+      .filter(Boolean).join(' · ');
     return `<div class="hist-session">
-      <div class="hist-date"><span>${s.date}</span><span class="hist-badge">Wk${s.week} · ${(s.goal||'').replace('_',' ')}</span></div>
+      <div class="hist-date"><span>${escNoteHtml(s.date || '')}</span>${badge ? `<span class="hist-badge">${escNoteHtml(badge)}</span>` : ''}</div>
       ${exEntries}
     </div>`;
   }).join('') + `<button class="clear-btn" onclick="clearHistory()">Clear All History</button>`;
@@ -6782,7 +6804,7 @@ function skipAhead() {
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
-    date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    date: historyDisplayDate(),
     session_date: localDateStr(), // BUG-190: see finishSession() — same omission, same fix
     week: currentWeek,
     goal: cfg.goal,
@@ -6934,7 +6956,7 @@ function finishSession() {
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
-    date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    date: historyDisplayDate(),
     session_date: localDateStr(), // BUG-190: the merge's business key — without it this
     // row can never match its own synced cloud twin and the session double-counts.
     week: currentWeek,
@@ -7773,23 +7795,97 @@ function _historySortKey(row) {
   if (row.date) { const d = new Date(row.date); if (!isNaN(d)) return d.toISOString(); }
   return '';
 }
-function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
+// ── BUG-209: the per-lift half of the restore ────────────────────────────────
+//
+// Every reader of a history row's LIFTS keys on `exercises`:
+// buildHistoryModal() (:6536), findExerciseHistorySessions() (:6619) and
+// buildLiftSeries() (:7316, which explicitly `return`s on a row without it).
+// A cloud `workout_sessions` row has no such key — the sets live one table over,
+// in `sets` — and nothing ever read them back. So the sync engine pushed 305 set
+// rows UP for this account and had no path to bring a single one DOWN: clear a
+// browser, sign in on a new device, and every logged lift was unreachable while
+// sitting safely in Postgres. The :7307 comment had documented the missing map as
+// something to SKIP since BUG-135; skipping is why it stayed invisible for months.
+//
+// Keyed by exercise NAME, not slot id, for the same reason C7 keys PRs and BUG-48
+// stamps `name` on every set: the cloud has no slot id to restore, and name is what
+// both name-based readers already match on. Slot ids also churn across rotations
+// (BUG-45), so a guessed id would attribute one lift's history to another.
+function exercisesFromCloudSets(setRows) {
+  const out = {};
+  for (const r of (setRows || [])) {
+    const name = r?.exercise_name;
+    if (!name) continue;
+    (out[name] = out[name] || []).push({
+      set: Number(r.set_number) || 0,
+      w: Number(r.weight_lbs) || 0,
+      r: Number(r.reps) || 0,
+      est1rm: r.estimated_1rm_lbs == null ? 0 : Number(r.estimated_1rm_lbs) || 0,
+      name,                                  // BUG-48: the field every reader matches on
+      rpe: r.rpe == null ? null : Number(r.rpe)
+    });
+  }
+  for (const k of Object.keys(out)) out[k].sort((a, b) => a.set - b.set);
+  return out;
+}
+
+// Cloud column names are not the names the readers use. `session_date`/`week_number`/
+// `program_goal`/`day_type` were carried through verbatim, so the History modal
+// rendered its header as the literal string "undefined / Wkundefined · " on any
+// restored row. Adds the local aliases WITHOUT dropping the cloud originals:
+// _historyRowKey() prefers `session_date` and `day_type`, so the dedupe key of a
+// restored row is byte-identical to what it was before this change.
+function historyRowFromCloudSession(row, exercises) {
+  const { user_id, ...s } = row || {}; // never let the DB's user_id leak into local storage
+  const day = _historyDateKey(s);
+  if (day && s.date == null) s.date = historyDisplayDate(new Date(day + 'T00:00:00'));
+  if (s.week == null) s.week = s.week_number ?? null;
+  if (s.goal == null) s.goal = s.program_goal ?? null;
+  if (s.day == null) s.day = s.day_type ?? null;
+  if (exercises && Object.keys(exercises).length) s.exercises = exercises;
+  return s;
+}
+
+// `cloudSetsBySession` is optional: { [session_id]: [ sets rows ] }. Absent, this
+// behaves exactly as before (session-level merge only), which is what keeps every
+// existing caller and history-merge-smoke.mjs honest.
+function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions, cloudSetsBySession) {
   const existing = Array.isArray(existingLocal) ? existingLocal : [];
   const cloud = Array.isArray(cloudSessions) ? cloudSessions : [];
   if (!cloud.length) return existing;
-  const seenKeys = new Set(existing.map(_historyRowKey).filter(Boolean));
+  const setsBy = cloudSetsBySession || {};
+  const byKey = new Map();
+  for (const r of existing) { const k = _historyRowKey(r); if (k && !byKey.has(k)) byKey.set(k, r); }
+  const seenKeys = new Set(byKey.keys());
   const seenIds = new Set(existing.filter(r => r && r.id != null).map(r => r.id));
   const toAdd = [];
   for (const row of cloud) {
-    const { user_id, ...s } = row || {}; // never let the DB's user_id leak into local storage
+    const exercises = exercisesFromCloudSets(setsBy[row?.id]);
+    const s = historyRowFromCloudSession(row, exercises);
     const key = _historyRowKey(s);
-    if (key && seenKeys.has(key)) continue;
+    // A row already present LOCALLY but exercise-less is the state every account that
+    // ever ran the old hydrate is stuck in — 24 empty rows that the add-only merge
+    // would skip forever as "already seen", so the repair would never reach the users
+    // who need it. Backfill it instead. Local is authoritative when it HAS sets: it
+    // may hold a set logged offline that has not synced up yet, so a non-empty local
+    // `exercises` is never overwritten.
+    if (key && seenKeys.has(key)) {
+      const local = byKey.get(key);
+      if (local) {
+        if (!local.exercises || !Object.keys(local.exercises).length) {
+          if (Object.keys(exercises).length) local.exercises = exercises;
+        }
+        if (local.date == null && s.date != null) local.date = s.date;
+        if (local.week == null && s.week != null) local.week = s.week;
+        if (local.goal == null && s.goal != null) local.goal = s.goal;
+      }
+      continue;
+    }
     if (s.id != null && seenIds.has(s.id)) continue;
-    if (key) seenKeys.add(key);
+    if (key) { seenKeys.add(key); byKey.set(key, s); }
     if (s.id != null) seenIds.add(s.id);
     toAdd.push(s);
   }
-  if (!toAdd.length) return existing;
   const merged = existing.concat(toAdd);
   merged.sort((a, b) => {
     const ka = _historySortKey(a), kb = _historySortKey(b);
@@ -7878,22 +7974,64 @@ function cfgFromUserRow(u, prev) {
 // "wired is not working" shape CLAUDE.md names.
 //
 // This is the one owner of "pull sessions down and reconcile them into local history."
-// Returns { sessions, added } so a caller can report what changed; never throws — an
-// offline load must still render from whatever the cache already holds.
+// Returns { sessions, added, enriched } so a caller can report what changed; never
+// throws — an offline load must still render from whatever the cache already holds.
+//
+// BUG-209: it also pulls the SETS, because a workout_sessions row alone cannot answer
+// the only question the History modal and the per-lift chart actually ask ("what did I
+// lift?"). Sessions came down, sets never did, so every restored row rendered as a
+// date with nothing under it. The two queries are deliberately separate rather than a
+// nested select: `sets` is the larger table by an order of magnitude and a failed join
+// would take the session hydrate — which the program QUEUE depends on — down with it.
+// Hence the inner try/catch: no sets is a DEGRADED restore (dates, queue position,
+// streaks all still correct), not a failed one.
 async function hydrateHistoryFromCloud(uid) {
-  if (!uid || typeof sb === 'undefined' || !sb) return { sessions: [], added: 0 };
+  const NOTHING = { sessions: [], added: 0, enriched: 0 };
+  if (!uid || typeof sb === 'undefined' || !sb) return NOTHING;
   try {
     const { data: sessions, error } = await sb.from('workout_sessions')
       .select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (error) throw error;
-    if (!sessions?.length) return { sessions: [], added: 0 };
+    if (!sessions?.length) return NOTHING;
+
+    // Bounded on purpose: mergeCloudSessionsIntoHistory() keeps 100 rows, so sets for
+    // sessions older than the 100th most recently created one could never be rendered.
+    // A `sets` row is always created at or after its session (logSet writes the session
+    // first), so a floor at that session's created_at cannot exclude a set belonging to
+    // a session we DO keep — the bound drops only unreachable rows. Keyed by
+    // session_id, which is what ties a set back to the row it belongs to.
+    let setsBySession = {};
+    try {
+      const floor = (sessions[Math.min(sessions.length, 100) - 1] || {}).created_at;
+      let q = sb.from('sets')
+        .select('session_id, exercise_name, set_number, weight_lbs, reps, rpe, estimated_1rm_lbs')
+        .eq('user_id', uid);
+      if (floor) q = q.gte('created_at', floor);
+      const { data: setRows, error: setsErr } = await q.order('set_number', { ascending: true });
+      if (setsErr) throw setsErr;
+      for (const r of (setRows || [])) {
+        if (!r?.session_id) continue;
+        (setsBySession[r.session_id] = setsBySession[r.session_id] || []).push(r);
+      }
+    } catch (setsErr) {
+      // Degraded, not failed — say so out loud rather than silently shipping empty rows.
+      console.warn('[history] set hydrate failed; restoring sessions without lifts:', setsErr);
+      setsBySession = {};
+    }
+
     const existing = LS.get('tandem_history') || [];
-    const merged = mergeCloudSessionsIntoHistory(existing, sessions);
+    // Which local rows were exercise-less BEFORE the merge. The merge BACKFILLS those in
+    // place (that is the whole repair for an account already holding empty hydrated
+    // rows), and such a repair changes no row COUNT — so `added` alone would report
+    // "already up to date" on the very run that fixed months of missing history.
+    const wasEmpty = existing.filter(r => r && (!r.exercises || !Object.keys(r.exercises).length));
+    const merged = mergeCloudSessionsIntoHistory(existing, sessions, setsBySession);
+    const enriched = wasEmpty.filter(r => r.exercises && Object.keys(r.exercises).length).length;
     LS.set('tandem_history', merged);
-    return { sessions, added: merged.length - existing.length };
+    return { sessions, added: merged.length - existing.length, enriched };
   } catch (e) {
     console.warn('history hydrate skipped (offline or query failed):', e);
-    return { sessions: [], added: 0 };
+    return NOTHING;
   }
 }
 
@@ -7904,10 +8042,16 @@ async function restoreFromCloud() {
     const uid = currentUser.id;
     // Sessions — BUG-190: through the shared hydrator, so the manual Restore button and
     // the automatic on-load self-heal can never reconcile history two different ways.
-    const { sessions, added } = await hydrateHistoryFromCloud(uid);
+    const { sessions, added, enriched } = await hydrateHistoryFromCloud(uid);
     if (sessions.length) {
-      showToast(added > 0
-        ? `History synced from cloud (${added} session${added === 1 ? '' : 's'} merged in)`
+      // BUG-209: `enriched` is reported because the repair it counts adds no ROW — it
+      // fills in the lifts on rows the old hydrate had already created empty. Without
+      // this the toast said "already up to date" on the run that restored the lifts.
+      const parts = [];
+      if (added > 0) parts.push(`${added} session${added === 1 ? '' : 's'} merged in`);
+      if (enriched > 0) parts.push(`lifts restored on ${enriched} session${enriched === 1 ? '' : 's'}`);
+      showToast(parts.length
+        ? `History synced from cloud (${parts.join(', ')})`
         : 'History already up to date with the cloud');
     } else {
       showToast('No cloud data found');
@@ -7967,6 +8111,17 @@ async function restoreFromCloud() {
 // dashboard day-dots — must agree on the user's local day.
 function localDateStr(d = new Date()) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+}
+
+// ── historyDisplayDate() — the ONE home for a history row's `date` string (BUG-209) ──
+// localDateStr() above owns the machine-readable calendar key; this owns the human one
+// the History modal renders and that _historyDateKey() parses back when a pre-BUG-190
+// row has no session_date. The exact format matters for that parse, which is why it
+// cannot be four inlined copies: it was literally inlined at skipAhead(),
+// finishSession(), the one-off writer and saveJournal(), and BUG-209's cloud restore
+// would have made a fifth. One format, one place, every writer agrees by construction.
+function historyDisplayDate(d = new Date()) {
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ── calendarDaysBetween() — BUG-27 DST fix ──
@@ -8594,7 +8749,7 @@ async function finishOneOff() {
     const hist = LS.get('tandem_history') || [];
     hist.unshift({
       id: Date.now(),
-      date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      date: historyDisplayDate(),
       session_date: localDateStr(),
       week: currentWeek,
       goal: oneOffGoalKey(),
@@ -8842,7 +8997,7 @@ async function saveJournal() {
     const hist = LS.get('tandem_history') || [];
     hist.unshift({
       id: Date.now(),
-      date: new Date(sessionDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      date: historyDisplayDate(new Date(sessionDate + 'T00:00:00')),
       session_date: sessionDate,
       week: currentWeek,
       goal: goalKeyFor(cfg.goal),

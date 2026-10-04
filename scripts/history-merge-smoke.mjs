@@ -29,6 +29,16 @@
  * merge helper (one rule, one home — no two behaviours), and neither guard site
  * regresses to the old empty-guard shape.
  *
+ * SECTION 4 — BUG-209, the PER-LIFT half. Everything above concerns the SESSION row,
+ * which is all the program queue needs. It is not what the user opens History to see.
+ * Per-lift detail lived ONLY in localStorage: the sync engine pushed `sets` rows up and
+ * had no path to bring one back down, so on a cleared browser or a new device every
+ * logged lift was unreachable while sitting safely in Postgres (verified on the live
+ * account: 24 sessions, 305 set rows, zero lifts rendered). Section 4 asserts the
+ * restore now rebuilds `exercises` from `sets`, BACKFILLS the exercise-less rows an
+ * already-broken account is stuck with, and never overwrites a local map that has
+ * sets in it (an offline-logged set that has not synced up yet).
+ *
  * Run: node scripts/history-merge-smoke.mjs
  */
 import { readFileSync } from 'node:fs';
@@ -111,11 +121,19 @@ const hdkSrc = grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/)
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
 const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
+// BUG-209: the merge now calls these unconditionally, so they belong in the BASE
+// context — every section below, including the BUG-178/190 ones, exercises the same
+// live function and none of them get a stubbed stand-in.
+const hddSrc = grab('historyDisplayDate', /function historyDisplayDate\([\s\S]*?\n\}/);
+const exFromSetsSrc = grab('exercisesFromCloudSets', /function exercisesFromCloudSets\([\s\S]*?\n\}/);
+const rowFromCloudSrc = grab('historyRowFromCloudSession', /function historyRowFromCloudSession\([\s\S]*?\n\}/);
+const exLabelSrc = grab('historyExLabel', /function historyExLabel\([\s\S]*?\n\}/);
 
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc, mergeSrc].join('\n'), ctx);
+  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc,
+    hddSrc, exFromSetsSrc, rowFromCloudSrc, exLabelSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -315,11 +333,149 @@ const kerwinCfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-0
   check(`3: every hist.unshift() site stamps session_date — ${missing.length} do not`, missing.length === 0);
 }
 
-console.log('HISTORY-MERGE SMOKE — BUG-178 (cloud history hydration merge, not empty-guard overwrite)\n');
+// ── 4. BUG-209: the PER-LIFT half of the restore ─────────────────────────────
+//
+// BUG-178/BUG-190 above make sure the SESSION rows come down and reconcile, which is
+// what the program queue needs. They say nothing about what the user actually opens
+// History to see: the lifts. Those live in `sets`, one table over, and nothing ever
+// read them back — so a restored row rendered as a bare date, findExerciseHistorySessions()
+// returned [] for every movement, and buildLiftSeries() `return`ed on the missing
+// `exercises` key. Verified against the live account before the fix: 24 sessions and
+// 305 set rows in Postgres, zero lifts reachable in the browser.
+//
+// Fixtures below are REAL rows read from Supabase zsvktcvqmppsshtpeljt on 2026-09-30,
+// not invented shapes — the column names are the thing under test, so a fixture that
+// spelled them the way the code expects would assert nothing.
+const CLOUD_0929 = { id: '9de35536-0a66-4d5f-ba61-14be2649ef2f', session_date: '2026-09-29', day_type: 'day4', session_type: 'strength', week_number: 1, program_goal: 'transform', completed: true, created_at: '2026-09-30T03:07:33.283663+00:00', user_id: 'THE-DB-UID' };
+const SETS_0929 = [
+  { session_id: '9de35536-0a66-4d5f-ba61-14be2649ef2f', exercise_name: 'Assisted Pull-Up', set_number: 2, weight_lbs: 90, reps: 12, rpe: null, estimated_1rm_lbs: 126 },
+  { session_id: '9de35536-0a66-4d5f-ba61-14be2649ef2f', exercise_name: 'Assisted Pull-Up', set_number: 1, weight_lbs: 90, reps: 12, rpe: null, estimated_1rm_lbs: 126 },
+  { session_id: '9de35536-0a66-4d5f-ba61-14be2649ef2f', exercise_name: 'Barbell Curl', set_number: 1, weight_lbs: 60, reps: 12, rpe: null, estimated_1rm_lbs: 84 },
+];
+
+// 4.0 Structural: the hydrator must actually FETCH the sets and hand them to the merge.
+// Without this the three behavioural cases below would all pass on a builder nobody calls
+// — the "wired is not working" shape CLAUDE.md names, inverted.
+{
+  const hydrateSrc = grab('hydrateHistoryFromCloud', /async function hydrateHistoryFromCloud\([\s\S]*?\n\}/);
+  check('4.0 hydrateHistoryFromCloud() reads the `sets` table (sessions alone cannot carry lifts)',
+    /from\('sets'\)/.test(hydrateSrc));
+  check('4.0 hydrateHistoryFromCloud() passes the grouped sets to the merge as its 3rd argument',
+    /mergeCloudSessionsIntoHistory\([^)]*,[^)]*,[^)]*\)/.test(hydrateSrc));
+  check('4.0 the sets query is keyed on session_id, the only column tying a set to its row',
+    /session_id/.test(hydrateSrc));
+  const mergeSrcNow = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
+  check('4.0 the merge builds the exercises map through the one shared builder',
+    /exercisesFromCloudSets\(/.test(mergeSrcNow));
+  // The label derivation must not be a second, private copy inside the modal.
+  const modalSrc = grab('buildHistoryModal', /function buildHistoryModal\(\) \{[\s\S]*?\n\}/);
+  check('4.0 buildHistoryModal() derives its lift label through historyExLabel(), not an inline regex',
+    /historyExLabel\(/.test(modalSrc) && !/replace\(\/\^\\w\+-\//.test(modalSrc));
+}
+
+const buildContext209 = buildContext; // same live layer; the alias just reads better below
+
+// 4(a) THE REPORTED SYMPTOM, on an EMPTY browser: sign in on a new device and the lifts
+// must come back. Pre-fix this produced a row with no `exercises` key at all.
+{
+  const ctx = buildContext209();
+  const merged = ctx.mergeCloudSessionsIntoHistory([], [CLOUD_0929], { [CLOUD_0929.id]: SETS_0929 });
+  // Read through `?.` on purpose: the whole point of this section is that `exercises`
+  // used to be ABSENT, so the un-fixed code must make the gate REPORT a named failure,
+  // not crash on the first dereference and hide every assertion after it (mutation-
+  // tested: dropping the rebuild yields 5 named 4(a) failures, not one TypeError).
+  const row = merged[0] || {};
+  check('4(a) a restored row carries an exercises map', !!row.exercises && Object.keys(row.exercises).length === 2);
+  check('4(a) it is keyed by canonical exercise NAME (the cloud has no slot id to restore)',
+    !!row.exercises?.['Assisted Pull-Up'] && !!row.exercises?.['Barbell Curl']);
+  const pull = row.exercises?.['Assisted Pull-Up'] || [];
+  check('4(a) every set of a lift is restored, ordered by set number regardless of fetch order',
+    pull.length === 2 && pull[0].set === 1 && pull[1].set === 2);
+  check('4(a) the set carries the local field names the readers use (w/r/est1rm), not the DB ones',
+    pull[0]?.w === 90 && pull[0]?.r === 12 && pull[0]?.est1rm === 126);
+  check('4(a) BUG-48: every restored set is stamped with its canonical name',
+    pull.length > 0 && pull.every(x => x.name === 'Assisted Pull-Up'));
+  // The header fields. Pre-fix these were all undefined and the modal rendered the
+  // literal string "undefined" / "Wkundefined · " to the user.
+  check('4(a) week/goal are aliased from week_number/program_goal', row.week === 1 && row.goal === 'transform');
+  check('4(a) day is aliased from day_type', row.day === 'day4');
+  check('4(a) a human `date` is derived so the modal header is not "undefined"',
+    typeof row.date === 'string' && /2026/.test(row.date) && !/undefined|null|NaN/.test(row.date));
+  check('4(a) the DB user_id never lands in localStorage', row.user_id === undefined);
+  // The dedupe key must be UNCHANGED by the aliasing, or BUG-178/190 silently regress.
+  check('4(a) aliasing does not move the dedupe key (session_date/day_type still preferred)',
+    ctx._historyRowKey(row) === ctx._historyRowKey(CLOUD_0929));
+}
+
+// 4(b) THE ACCOUNT ALREADY BROKEN. Anyone who ran the old hydrate holds rows that exist
+// but are exercise-less. The merge is ADD-ONLY, so those would be skipped forever as
+// "already seen" and the repair would never reach the users who need it.
+{
+  const ctx = buildContext209();
+  const stale = { id: 'pre-existing', session_date: '2026-09-29', day_type: 'day4', session_type: 'strength', completed: true, created_at: CLOUD_0929.created_at };
+  const merged = ctx.mergeCloudSessionsIntoHistory([stale], [CLOUD_0929], { [CLOUD_0929.id]: SETS_0929 });
+  check(`4(b) backfill adds no ROW (expected 1, got ${merged.length}) — it repairs in place`, merged.length === 1);
+  check('4(b) an already-present but exercise-less local row gets its lifts backfilled',
+    !!merged[0]?.exercises && Object.keys(merged[0].exercises).length === 2);
+}
+
+// 4(c) OVER-BREADTH CONTROL. A local row that HAS sets may hold a set logged offline
+// that has not synced up yet. The backfill must never overwrite it. Without this clause
+// the repair would be a data-loss bug wearing a restore's clothes.
+{
+  const ctx = buildContext209();
+  const offline = { id: 987, session_date: '2026-09-29', day_type: 'day4', session_type: 'strength', completed: true, exercises: { 'Barbell Curl': [{ set: 1, w: 999, r: 3, est1rm: 1, name: 'Barbell Curl' }] } };
+  const merged = ctx.mergeCloudSessionsIntoHistory([offline], [CLOUD_0929], { [CLOUD_0929.id]: SETS_0929 });
+  check(`4(c) no row added when the local twin already has sets (expected 1, got ${merged.length})`, merged.length === 1);
+  check('4(c) a NON-empty local exercises map is never overwritten by the cloud',
+    merged[0]?.exercises?.['Barbell Curl']?.[0]?.w === 999 && !merged[0]?.exercises?.['Assisted Pull-Up']);
+}
+
+// 4(d) IDEMPOTENCE, with sets. The hydrate runs on EVERY app open.
+{
+  const ctx = buildContext209();
+  const setsBy = { [CLOUD_0929.id]: SETS_0929 };
+  let hist = ctx.mergeCloudSessionsIntoHistory([], [CLOUD_0929], setsBy);
+  hist = ctx.mergeCloudSessionsIntoHistory(hist, [CLOUD_0929], setsBy);
+  hist = ctx.mergeCloudSessionsIntoHistory(hist, [CLOUD_0929], setsBy);
+  check(`4(d) three successive set-bearing merges stay at 1 row (got ${hist.length})`, hist.length === 1);
+  check('4(d) and the lifts are still there, not duplicated',
+    (hist[0]?.exercises?.['Assisted Pull-Up'] || []).length === 2);
+}
+
+// 4(e) DEGRADED, NOT FAILED. If the sets query fails the session merge must still work
+// — the program queue depends on it, and dates/streaks/position stay correct without lifts.
+{
+  const ctx = buildContext209();
+  const merged = ctx.mergeCloudSessionsIntoHistory([], [CLOUD_0929]); // 3rd arg absent
+  check('4(e) omitting the sets argument still merges the session (degraded, not broken)',
+    merged.length === 1 && merged[0]?.session_date === '2026-09-29');
+  check('4(e) and adds no empty exercises key that would look like a completed-but-empty log',
+    merged[0]?.exercises === undefined);
+}
+
+// 4(f) THE LABEL. The old derivation `id.replace(/^\w+-/,'').replace(/-/g,' ')` is
+// destructive on a real hyphenated NAME, which is what a restored row is keyed by:
+// verified by running it — 'Pull-Up' -> 'Up', 'T-Bar Row' -> 'Bar Row'. A restored
+// history entry titled "Up" is not a cosmetic defect, it is the wrong lift.
+{
+  const ctx = buildContext209();
+  const named = [{ set: 1, w: 90, r: 12, name: 'Pull-Up' }];
+  check("4(f) a name-stamped set labels itself 'Pull-Up', not the mangled 'Up'",
+    ctx.historyExLabel('Pull-Up', named) === 'Pull-Up');
+  check("4(f) a name-stamped set wins even when the KEY is a slot id (BUG-45: ids are recycled)",
+    ctx.historyExLabel('bw-pullup', named) === 'Pull-Up');
+  check("4(f) a legacy row with no stamped name still de-mangles its slug",
+    ctx.historyExLabel('fb-curl', [{ set: 1, w: 60, r: 12 }]) === 'curl');
+  check('4(f) the mangling this replaces is real, not hypothetical (fixture is honest)',
+    'Pull-Up'.replace(/^\w+-/, '').replace(/-/g, ' ') === 'Up');
+}
+
+console.log('HISTORY-MERGE SMOKE — BUG-178/190 (session merge reaches the queue) + BUG-209 (the LIFTS come down too)\n');
 if (failures) {
   console.log(`${failures} FAILURE(S):`);
   for (const f of fails) console.log(`  ✗ ${f}`);
   process.exit(1);
 }
-console.log('All BUG-178 history-merge guarantees hold. ✓');
+console.log('All BUG-178/190/209 history-restore guarantees hold. ✓');
 process.exit(0);
