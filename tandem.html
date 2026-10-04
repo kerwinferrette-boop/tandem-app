@@ -2078,7 +2078,11 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
   <div id="workoutViews"></div>
 
   <!-- Session Notes: ONE field for the whole live session, not per-exercise
-       (per-exercise .ex-notes is local-only by design — BUG-195). Lives
+       (per-exercise .ex-notes is a SEPARATE store with its own cloud sync —
+       exercise_notes via hydrateNotesFromCloud(); it was local-only for a few
+       hours on 2026-09-30 and this comment said so until 2026-10-04. The two
+       do not share a key, a table or a code path, so neither clobbers the
+       other, but do not describe .ex-notes as local-only). Lives
        outside buildDayHTML/workoutViews so switching day tabs never rebuilds
        or clears it. Drafts to localStorage on every keystroke (so a reload
        before Finish doesn't lose it) and is sent to workout_sessions.notes

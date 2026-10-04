@@ -81,6 +81,24 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       targets exists; upsert-on-conflict updates in place under the `authenticated` role with RLS
       on; DELETE works; a foreign `user_id` is rejected `42501`; only own rows visible.
 
+      **BLOCKED 2026-10-04, not forgotten — the round-trip cannot run yet because the code is
+      not deployed.** Kerwin asked for it to be run once Netlify was back. Checked via the
+      Netlify API rather than assumed: the site serves fine (`state: ready`, `current`) but the
+      LIVE BUILD IS COMMIT `1acb874`, cut 2026-09-30 05:37 UTC and published 05:43. BUG-195's
+      cloud half is `2ac354c`, 07:06 UTC — **89 minutes LATER**. Forty commits have landed on
+      main since that build. No Netlify build has run in four days, which is what an account out
+      of build minutes looks like: the last good deploy keeps serving, new ones never start.
+      So the deployed app does not contain hydrateNotesFromCloud at all, and a round-trip against
+      it would be testing the pre-fix build. **"Pushed" is not "deployed"** — the same shape as
+      this repo's standing "freshness-green does not mean applied" rule, one layer out.
+      Two things must both be true before this can run: (1) a Netlify build actually runs on a
+      commit at or after `2ac354c`; (2) whoever runs it can reach the site — this container
+      cannot, its egress policy denies all external HTTPS (verified: `example.com` is refused
+      too, not just the site and Supabase), and it holds no test-account password.
+      ALSO FOUND AND FIXED: README.md named the site `tandem-app.netlify.app`. The real host is
+      `tandem-fitness-tracker.netlify.app`. Anyone who ran live QA against the README URL was
+      testing nothing at all.
+
       **STILL OWED, and not claimed as done — one real signed-in cross-device round-trip.**
       Nobody has signed in on two devices, typed a note on one and seen it on the other. It cannot
       be done from the cloud container: no test-account password, no service-role key. The council

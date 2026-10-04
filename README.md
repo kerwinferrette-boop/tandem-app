@@ -320,7 +320,12 @@ Anon Key: sb_publishable_8gQMcE88UKwBqR9fIv0OuQ_8Xn3PGJ7
 Schema: See tandem_schema_fixed.sql
 Deployment
 bash# Netlify auto-deploys on git push to main
-# Site: https://tandem-app.netlify.app/
+# Site: https://tandem-fitness-tracker.netlify.app/
+# (NOT tandem-app.netlify.app — that was wrong in this file until 2026-10-04 and
+#  matches no project on the Netlify team. The repo is tandem-app; the SITE is
+#  tandem-fitness-tracker. Anyone running live QA against the README URL was
+#  testing nothing. Corroborated by the Netlify API and by
+#  council-report-2026-08-13-epic5.html, which names the real host.)
 Apple Shortcut Setup (Health Data Ingestion)
 See health-log.md for step-by-step Shortcut build instructions and user UUIDs.
 User UUIDs:
