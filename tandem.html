@@ -2077,6 +2077,19 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
   <!-- Workout Views injected here -->
   <div id="workoutViews"></div>
 
+  <!-- Session Notes: ONE field for the whole live session, not per-exercise
+       (per-exercise .ex-notes is local-only by design — BUG-195). Lives
+       outside buildDayHTML/workoutViews so switching day tabs never rebuilds
+       or clears it. Drafts to localStorage on every keystroke (so a reload
+       before Finish doesn't lose it) and is sent to workout_sessions.notes
+       at Finish — see finishSession() and saveExerciseToCloud(). -->
+  <div class="session-notes-wrap" style="margin:12px 16px 0;">
+    <label for="sessionNotesInput" style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Session notes</label>
+    <textarea id="sessionNotesInput" rows="2" oninput="onSessionNotesInput()"
+      placeholder="How'd it feel? Anything to remember for next time."
+      style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+  </div>
+
   <!-- Finish Banner -->
   <div class="finish-banner hero-host" id="finishBanner" style="margin:12px 16px 0;">
     <div class="hero-fill" data-hero="complete" aria-hidden="true"></div>
@@ -2788,7 +2801,8 @@ const LS_SCOPED_KEYS = [
   'tandem_cfg','tandem_history','tandem_prs','tandem_profile','tandem_week',
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
   'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
-  'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id'
+  'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id',
+  'tandem_session_notes_draft'
 ];
 let _lsScope = ANON_SCOPE;
 const lsKey = k => k + '::' + _lsScope;
@@ -5186,6 +5200,14 @@ async function startWorkoutTimer() {
 }
 
 function renderTracker() {
+  // Hydrate the session-notes draft once per page load — guarded by dataset
+  // so the many renderTracker() calls across a live session (switchDay,
+  // changeWeek, etc.) never stomp text the user is mid-typing.
+  const _notesEl = document.getElementById('sessionNotesInput');
+  if (_notesEl && !_notesEl.dataset.hydrated) {
+    _notesEl.value = LS.get('tandem_session_notes_draft') || '';
+    _notesEl.dataset.hydrated = '1';
+  }
   const _phases = scaledPhases(cfg.goal, cfg.weeks);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const _phaseNum = _phases.findIndex(p => p === phase || (p.name === phase.name)) + 1 || 1;
@@ -5722,12 +5744,23 @@ const sessionPrCache = {}; // exerciseName → best est1rm seen this session; pr
 const cloudSetRowIds = {};
 const pendingSetInserts = {};
 
+// Session notes: drafts on every keystroke so a reload/crash before Finish
+// doesn't lose it. currentSessionNotes() is the one read site — finishSession()
+// and saveExerciseToCloud() both call it instead of touching the DOM directly.
+function onSessionNotesInput() {
+  const val = document.getElementById('sessionNotesInput')?.value ?? '';
+  LS.set('tandem_session_notes_draft', val);
+}
+function currentSessionNotes() {
+  return (document.getElementById('sessionNotesInput')?.value || '').trim();
+}
+
 async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
   const storedId = LSraw.get('tandem_active_session_id');
   if (storedId) {
     const { data } = await sb.from('workout_sessions')
-      .select('id')
+      .select('id, notes')
       .eq('id', storedId)
       .eq('user_id', currentUser.id)
       .eq('completed', false)
@@ -5735,6 +5768,11 @@ async function startOrResumeSession() {
     if (data?.id) {
       if (!LSraw.get('tandem_session_start_time')) {
         LSraw.set('tandem_session_start_time', String(Date.now()));
+      }
+      // Resuming on a device whose local draft is empty (cleared storage, second
+      // device) falls back to whatever's already saved in the cloud row.
+      if (data.notes && !LS.get('tandem_session_notes_draft')) {
+        LS.set('tandem_session_notes_draft', data.notes);
       }
       // C11 diagnostic: remember the FIRST session id this workout ran under
       if (!LSraw.get('tandem_c11_first_session_id')) {
@@ -6065,7 +6103,7 @@ async function saveExerciseToCloud(id) {
       day_type: currentDay,
       program_goal: cfg.goal,
       completed: false,
-      notes: null
+      notes: currentSessionNotes() || null
     };
     if (currentCloudSessionId) sessionPayload.id = currentCloudSessionId;
     const { data: sessionData, error: sessionError } = await sb
@@ -6761,7 +6799,7 @@ function clearHistory() {
     // tandem_ex_notes belongs here for the SAME reason BUG-91 put tandem_working1rm
     // here: a key omitted from this list survives the clear and cannot be removed by
     // any UI path. Flagged by llm-council, 2026-09-30.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes'].forEach(k=>LS.del(k));
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes','tandem_session_notes_draft'].forEach(k=>LS.del(k));
     // Clearing the local key alone is not a clear once notes live in the cloud: the next
     // hydrate reads cloud-present + local-absent as "new from another device" and pulls
     // them all back. See wipeCloudNotes(). Not awaited — the confirm() dialog this sits
@@ -7106,6 +7144,9 @@ function finishSession() {
   // tandem_session_start_time is still read below (duration calc) and cleared
   // at the end of this function, which flips the row back to "Start Workout".
   if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
+  // Captured synchronously, before the async completion block below and before
+  // the field is cleared at the bottom of this function.
+  const finishedNotes = currentSessionNotes();
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
@@ -7286,7 +7327,8 @@ function finishSession() {
             completed: true,
             total_volume_lbs: totalVolume,
             duration_minutes: duration,
-            session_type: 'strength' // EPIC-006 step 8; EPIC-012 will set endurance/event types
+            session_type: 'strength', // EPIC-006 step 8; EPIC-012 will set endurance/event types
+            notes: finishedNotes || null
           })
           .eq('id', resolvedId)
           .eq('user_id', currentUser.id);
@@ -7345,6 +7387,11 @@ function finishSession() {
   // session's clock silently keeps counting into the next one.
   LSraw.del('tandem_session_start_time');
   renderSessionTimer();
+  // Same unconditional posture: the next session (signed in or not) starts
+  // with a blank notes field, not the last one's leftover text.
+  LS.del('tandem_session_notes_draft');
+  const _finishedNotesEl = document.getElementById('sessionNotesInput');
+  if (_finishedNotesEl) { _finishedNotesEl.value = ''; delete _finishedNotesEl.dataset.hydrated; }
 }
 
 // ═══════════════════════════════════════════════════════

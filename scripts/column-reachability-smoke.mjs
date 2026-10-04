@@ -75,7 +75,11 @@ const KNOWN_OPEN = {
   'personal_records.week_targets':      'BUG-202 (D5) — written, read by nothing, yet ASSERTED by calibration-upsert-smoke.mjs:119',
   'users.calibration_session_id':       'BUG-202 (D5)',
   'users.color_theme':                  'BUG-197 (D9) — readers use theme_color; three homes for one rule',
-  'workout_sessions.notes':             'BUG-205 (D15) — holds real journal text with no read path; D6 shape on another surface',
+  // workout_sessions.notes CLOSED (BUG-205/D15) — a real live-session notes field
+  // was added; startOrResumeSession() now selects+reads `notes` on resume
+  // (data.notes hydrates the local draft when it's the only copy left), closing
+  // the "no read path" half of BUG-205 for this one column. The other D15
+  // columns below are untouched and still open.
   'workout_sessions.phase_name':        'BUG-205 (D15)',
   'workout_sessions.week_number':       'BUG-205 (D15)',
   'workout_sessions.duration_minutes':  'BUG-205 (D15) — candidate denormalisation, not necessarily dead',
