@@ -6096,6 +6096,14 @@ function checkExComplete(id) {
 
 async function saveExerciseToCloud(id) {
   if (!currentUser) return;
+  // BUG-170: same guard as logSet(). A one-off exercise belongs to no program day —
+  // finishOneOff() batch-writes it under its own session_type='oneoff' row. Without this
+  // the Save button upserted into the PROGRAM day's workout_sessions row and filed the
+  // one-off's sets there (under a real exercise name since BUG-49, so hard to spot).
+  if (id.startsWith('oneoff-')) {
+    showToast('One-off sets are saved when you tap Finish');
+    return;
+  }
   const sets = sessionSetsMap[id];
   if (!sets?.length) return;
   if (!sessionStartTime) sessionStartTime = Date.now();
