@@ -312,6 +312,136 @@ async function boot(page) {
     check('[4] Enter on the competition card activates it (not just the handler existing)',
       kb.duelActive === true, `${kb.err || 'duel surface did not become active'} — keyboard users could not reach it`);
 
+    // ── [5] B1: the durable swap, at the pixel ──
+    // swap-persistence-smoke.mjs proves the STORE + render-seam in a node-vm;
+    // this section proves the CONTROLS: a real tap opens the picker, a real tap
+    // on an option changes the card, the substitute survives a re-render AND a
+    // full page reload (fresh JS scope — the exact surface the vm cannot see),
+    // and Undo walks it back. All reads are of the rendered DOM.
+    await page.evaluate(() => {
+      // [4] legitimately opened the duel modal; it overlays the tracker and
+      // intercepts every click until dismissed.
+      document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+      showView('tracker'); renderTracker();
+    });
+    const swapOpen = await page.evaluate(() => {
+      // First card whose picker yields at least one substitute under this tier.
+      for (const card of document.querySelectorAll('.ex-card[id^="ec-"]')) {
+        const id = card.id.slice(3);
+        // The picker lives in the card body, which is display:none until the card
+        // is expanded — exactly the path a real user takes (tap card, tap Swap).
+        // Without this the option exists in the DOM but is invisible, and
+        // page.click() correctly refuses to tap an element no user could see.
+        // card.click(), not toggleExCard(card): the handler reads the ambient
+        // `event` to ignore taps on inputs, so it must arrive via a real dispatch.
+        if (!card.classList.contains('open')) card.click();
+        openSwapPicker(id);
+        const opts = document.querySelectorAll(`#swap-${id}.open .swap-opt`);
+        if (opts.length) {
+          window.__swap = { id, orig: card.dataset.origName || null,
+            sub: opts[0].textContent.trim() };
+          return window.__swap;
+        }
+        openSwapPicker(id); // close the empty one again
+      }
+      return null;
+    });
+    check('[5a] the Swap control opens a picker with at least one substitute',
+      !!swapOpen && !!swapOpen.orig,
+      `got ${JSON.stringify(swapOpen)} — no card produced options, or data-orig-name is missing (resolveUserSwap would have no key)`);
+
+    if (swapOpen) {
+      await page.click(`#swap-${swapOpen.id} .swap-opt`);
+      await page.waitForTimeout(150);
+      const afterPick = await page.evaluate(() => {
+        const { id } = window.__swap;
+        renderTracker();   // the render seam — a DOM-only swap dies right here
+        return {
+          shown: document.getElementById('en-' + id)?.textContent?.trim(),
+          stored: (LS.get('tandem_swaps') || {})[window.__swap.orig]?.to || null,
+        };
+      });
+      check('[5b] the chosen substitute SURVIVES a full re-render (resolveUserSwap seam)',
+        afterPick.shown === swapOpen.sub && afterPick.stored === swapOpen.sub,
+        `card shows ${JSON.stringify(afterPick.shown)}, store has ${JSON.stringify(afterPick.stored)}, expected ${JSON.stringify(swapOpen.sub)} — the pre-B1 behaviour was a DOM-only mutation that evaporated`);
+
+      // Full reload: new JS scope, nothing survives but storage. This is the
+      // "follows the user to tomorrow's session" claim, observed rather than argued.
+      await page.reload();
+      await page.waitForFunction(() => typeof window.setLSScope === 'function', { timeout: 15000 });
+      const afterReload = await page.evaluate((wt) => {
+        setLSScope('walkthrough-uid');
+        cfg = LS.get('tandem_cfg');
+        currentWeek = LS.get('tandem_week') || 1;
+        showView('tracker');
+        renderTracker();
+        window.__swap = wt;
+        const card = [...document.querySelectorAll('.ex-card[id^="ec-"]')]
+          .find(c => (c.dataset.origName || '') === wt.orig);
+        return card ? document.getElementById('en-' + card.id.slice(3))?.textContent?.trim() : null;
+      }, swapOpen);
+      check('[5c] the swap survives a PAGE RELOAD (fresh scope, storage only)',
+        afterReload === swapOpen.sub,
+        `after reload the card for "${swapOpen.orig}" shows ${JSON.stringify(afterReload)}`);
+
+      const afterUndo = await page.evaluate(() => {
+        const { orig } = window.__swap;
+        const card = [...document.querySelectorAll('.ex-card[id^="ec-"]')]
+          .find(c => (c.dataset.origName || '') === orig);
+        if (!card) return { err: 'swapped card not found after reload' };
+        const id = card.id.slice(3);
+        if (!card.classList.contains('open')) card.click();   // the note lives in the card body
+        const undo = document.querySelector(`#swapnote-${id} span[onclick*="clearExSwap"]`);
+        if (!undo) return { err: 'no Undo control on the swapped card' };
+        // VISIBLE means visible: offsetParent is null for the element or any
+        // display:none ancestor. Mutation M4 (swap-note forced hidden) stayed
+        // green against a bare querySelector — a hidden Undo is a dead one.
+        if (undo.offsetParent === null) return { err: 'Undo exists but is not visible' };
+        undo.click();
+        renderTracker();
+        return {
+          shown: document.getElementById('en-' + id)?.textContent?.trim(),
+          stored: (LS.get('tandem_swaps') || {})[orig] ?? null,
+        };
+      });
+      check('[5d] Undo is VISIBLE on the swapped card and restores the original (store entry deleted)',
+        afterUndo.shown === swapOpen.orig && afterUndo.stored === null,
+        `${afterUndo.err || ''} card shows ${JSON.stringify(afterUndo.shown)}, store entry ${JSON.stringify(afterUndo.stored)} — a stored no-op would shadow future legality changes`);
+    } else {
+      for (const l of ['[5b]', '[5c]', '[5d]']) check(`${l} (skipped — no swappable card)`, false);
+    }
+
+    // ── [6] B2: the note's date reaches the card; the structured action reaches B1 ──
+    const noteStamp = await page.evaluate(() => {
+      const keyOf = (ta) => ((ta.getAttribute('oninput') || '').match(/saveExNote\('([^']*)'/) || [])[1];
+      const ta = document.querySelector('textarea.ex-notes');
+      if (!ta) return { err: 'no .ex-notes rendered' };
+      const name = keyOf(ta);
+      saveExNote(name, 'elbow felt it on the last set');
+      renderTracker();
+      const card = [...document.querySelectorAll('textarea.ex-notes')]
+        .find(t => keyOf(t) === name)?.closest('.ex-card');
+      const stamp = card?.querySelector('.ex-note-stamp');
+      const act = card?.querySelector('.ex-note-swap');
+      window.__b2 = { cardId: card?.id?.slice(3) };
+      return { name, stamp: stamp ? stamp.textContent.trim() : null, hasAction: !!act };
+    });
+    check('[6a] a saved note renders its DATE back on the card ("Your note · <date>")',
+      !!noteStamp.stamp && /Your note/.test(noteStamp.stamp) && noteStamp.stamp.length > 'Your note ·'.length + 1,
+      `${noteStamp.err || ''} stamp = ${JSON.stringify(noteStamp.stamp)} — the stored \`at\` never reached a pixel`);
+    check('[6b] the notes area carries the structured "Swap this for me" action',
+      noteStamp.hasAction === true, 'free text would be the only path, and the engine never parses prose');
+
+    const actionRoutes = await page.evaluate(() => {
+      const id = window.__b2?.cardId;
+      if (!id) return { err: 'no card id from [6a]' };
+      document.querySelector(`#ec-${id} .ex-note-swap`)?.click();
+      return { open: !!document.querySelector(`#swap-${id}.open`) };
+    });
+    check('[6c] tapping it opens the SAME swap picker B1 drives (routes into openSwapPicker)',
+      actionRoutes.open === true,
+      `${actionRoutes.err || ''} picker did not open — the action is decoration, not a route`);
+
   } finally {
     await browser.close();
     server.close();

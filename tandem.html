@@ -6386,7 +6386,11 @@ function openSwapPicker(id) {
   // Already swapped? Offer the way back at the top.
   if (orig !== nameEl.textContent) subs.unshift({ name: orig, _isOriginal: true });
   picker.innerHTML = subs.length
-    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}',${JSON.stringify(s.name)})">${s._isOriginal ? `↻ Back to ${s.name}` : s.name}</div>`).join('')
+    // escNoteKey, NOT JSON.stringify: this string sits inside a double-quoted HTML
+    // attribute, and JSON's double quotes TERMINATE the attribute mid-call — every
+    // option's onclick parsed as `applySwap('<id>',` and threw on tap. Caught by the
+    // browser walkthrough ([5b]), invisible to the vm smoke (it reads source, not DOM).
+    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}','${escNoteKey(s.name)}')">${s._isOriginal ? `↻ Back to ${s.name}` : s.name}</div>`).join('')
     : `<div class="swap-empty">No substitutes available for your equipment tier.</div>`;
   picker.classList.add('open');
 }
