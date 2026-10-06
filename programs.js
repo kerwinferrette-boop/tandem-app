@@ -1197,6 +1197,45 @@ const EXERCISE_BANK = {
     cues:['Hold the barbell end at the chest, feet shoulder-width','Sit straight down, letting the arc guide the bar','Keep the chest tall and the torso upright throughout','Drive through the heels to stand; the bar path is an arc, not vertical']},
 
   // ── HAMSTRINGS ────────────────────────────────────────
+  // tandem-exercise-science-ingestion pass (2026-10-05), Track A: new bank entry. The conventional
+  // barbell deadlift did not exist anywhere in the bank before this commit, despite
+  // MOVEMENT_FAMILIES['romanian-deadlift'] already naming "Barbell Deadlift" as the canonical lift
+  // for the entire RDL-pattern family (see canonicalLift field below). This entry fills that gap.
+  // Source: Martín-Fuentes, Oliva-Lozano & Muyor (2020), PLOS ONE, "Electromyographic activity in
+  // deadlift exercise and its variants. A systematic review," DOI 10.1371/journal.pone.0229507.
+  // Systematic review (explicitly NOT a meta-analysis per the authors — insufficient method
+  // homogeneity across studies to pool). 10/19 included studies examine the conventional barbell
+  // deadlift directly; participants across studies had >=6 months prior resistance-training
+  // experience, n=8-34 per study.
+  // General finding across deadlift + its variants as a class: "Erector spinae presented higher
+  // muscle activation than the gluteus maximus and the biceps femoris muscles"; "muscles from the
+  // quadriceps complex appeared to elicit the greatest muscle activation compared to gluteus
+  // maximus and hamstrings."
+  // FLAG: both comparisons are reported at the review level across the full deadlift-and-variants
+  // class studied (which includes trap-bar/sumo/stiff-leg studies), not isolated to the
+  // conventional barbell variant alone — no single quantified percentage specific to conventional
+  // deadlift alone was present in the fetched text. The review's narrower, variant-specific quad
+  // finding (greater anterior-thigh activity, reduced erector spinae activity) is for the HEX/TRAP
+  // BAR variant specifically — see trap-bar-deadlift below, evidence tier there is thinner
+  // (2/19 studies vs 10/19 here).
+  // SECONDARY TAG DECISION: a secondary quad_rectus_femoris/quad_vastus tag was drafted and then
+  // REMOVED during this commit's own verify pass. It cleared the source bar but failed doctrine
+  // conformance live: it is reachable in the hamstring/hinge slot, and the 0.5 secondary-credit it
+  // contributes to weekly quad volume pushed maintenance/2d and maintenance/3d (both sexes) over
+  // D8's MAV cap (15 sets) for quad — 20 and 28 sets respectively, confirmed by running
+  // scripts/doctrine.mjs with and without the tag. Given the tag was already flagged above as
+  // review-level-only (not conventional-deadlift-specific), the honest resolution is to drop it
+  // rather than force a stacking conflict the engine cannot absorb today — this is itself a Track C
+  // finding (logged separately) pointing at D6d (the MEV/MAV-floor-on-every-axis gap), not a reason
+  // to weaken D8's gate. Primary stays hamstring/glute_max/erector_spinae only.
+  // oneRmFactor: null — no sourced 1RM ratio found; not invented, matching every other hinge-family
+  // entry in this bank (romanian-deadlift, stiff-leg-deadlift, db-rdl, good-morning all carry null).
+  'barbell-deadlift':{
+    name:'Barbell Deadlift', videoId:null,
+    muscleGroups:{primary:['hamstring','glute_max','erector_spinae'],secondary:[]},
+    emphasis:['hamstrings','glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
+    why:'The heaviest full-body pull available in a gym — hip and knee extension together from a dead stop, driving maximum posterior-chain loading and total-body strength. EMG across the deadlift and its variants shows erector spinae activation exceeding glute max and biceps femoris during the pull (Martín-Fuentes, Oliva-Lozano & Muyor, 2020) — a whole-chain strength and spinal-erector builder, not an isolated hamstring or glute move. The same review-level data also flags meaningful quad-complex activation across the deadlift class, but not isolated to this variant specifically, so that is not tagged here as a secondary mover.',
+    cues:['Bar over mid-foot, shins close to the bar','Hip hinge to grip — chest up, back flat, brace before pulling','Drive the floor away through the heels; hips and shoulders rise together','Lock out by squeezing the glutes — do not hyperextend the lower back']},
   'romanian-deadlift':{
     name:'Romanian Deadlift', videoId:'JCXUYuzwNrM',
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae','adductor']},
@@ -1701,8 +1740,10 @@ const EXERCISE_BANK = {
 //     vertical pulls. Flagged.
 // G7  `close-grip-barbell-press` is in `bench-press` (it is a bench press)
 //     although the bank tags tricep as its primary mover.
-// G8  There is no conventional Barbell Deadlift slug in EXERCISE_BANK, so the
-//     `Barbell Deadlift` canonical lift has no self-referential member here.
+// G8  RESOLVED 2026-10-05 (tandem-exercise-science-ingestion, Track A): a conventional
+//     `barbell-deadlift` slug now exists in EXERCISE_BANK (Martín-Fuentes, Oliva-Lozano &
+//     Muyor, 2020) and is filed below as a self-referential member of the `romanian-deadlift`
+//     family — the `Barbell Deadlift` canonical lift no longer lacks a real bank entry.
 //
 // ── STATUS: WIRED (2026-09-24, BUG-151/D30) ─────────────────────────────
 // Was inert data from 2026-08-21 to 2026-09-24, deliberately, so it could not
@@ -1809,7 +1850,7 @@ const MOVEMENT_FAMILIES = {
 
   // ── HINGE ────────────────────────────────────────────
   'romanian-deadlift':{ label:'Romanian Deadlift', pattern:'hinge', canonicalLift:'Barbell Deadlift',
-    variants:['romanian-deadlift','stiff-leg-deadlift','db-rdl','single-leg-db-rdl',
+    variants:['barbell-deadlift','romanian-deadlift','stiff-leg-deadlift','db-rdl','single-leg-db-rdl',
               'bodyweight-single-leg-rdl','sumo-rdl']},
   'good-morning':{ label:'Good Morning', pattern:'hinge', canonicalLift:null,
     variants:['good-morning']},
