@@ -113,7 +113,19 @@ const check = (label, cond, detail) => {
 
 // Boot the app with a DURABLE storage scope and a generated program in place.
 async function boot(page) {
-  await page.addInitScript(SUPABASE_STUB);
+  // The stub must be SERVED AS the SDK, not injected ahead of it. addInitScript() runs
+  // before any page script — and then tandem.html:8 loads the real @supabase/supabase-js
+  // UMD bundle, whose last act is `global.supabase = factory()`. That assignment
+  // OVERWRITES the stub, so `const sb = supabase.createClient(...)` (tandem.html:2731)
+  // built a REAL client pointed at production and every table above was dead code.
+  // Observed, not reasoned: the page emitted `400` + `invalid input syntax for type uuid:
+  // "walkthrough-uid"` for each query, hydrateNotesFromCloud() returned {pulled:0,pushed:0}
+  // from its catch, and [3b]/[3c] failed against CORRECT app code. Serving the stub at the
+  // CDN URL is what the other six browser gates in this directory already do
+  // (bug128-bottomnav-pin-smoke:135, program-render-fidelity-walkthrough:390,
+  // onboarding-lifecycle-walkthrough:250, shots-wave4..8) — this file was the lone outlier.
+  await page.route('**/supabase.min.js', route =>
+    route.fulfill({ contentType: 'application/javascript', body: SUPABASE_STUB }));
   await page.goto(`http://localhost:${PORT}/tandem.html`);
   await page.waitForFunction(() => typeof window.setLSScope === 'function', { timeout: 15000 });
   return page.evaluate(() => {
@@ -148,6 +160,23 @@ async function boot(page) {
   try {
     const ok = await boot(page);
     check('[0] app boots with a generated program rendered', ok, 'fixture failed — later assertions would be vacuous');
+
+    // [0a] FIXTURE INTEGRITY: is the stub the client the app actually holds? Asserted by
+    // ROUND-TRIPPING the table the gate later depends on, not by inspecting `sb`'s shape —
+    // the first draft of this check used `typeof sb === 'object'` and failed on a working
+    // fixture, because stubClient() returns a Proxy whose target is a function and `typeof`
+    // reports 'function'. The probe discriminates for a reason that cannot drift: a real
+    // client answers user_id 'x' with a 400 (`invalid input syntax for type uuid`), and an
+    // offline one answers with an error too, so `data` is only an array when OUR body ran.
+    // Stated as its own check because the alternative is what happened: the stub was
+    // silently replaced by the real client and the symptom surfaced three assertions later
+    // as a notes-reconcile failure against correct app code.
+    const stubbed = await page.evaluate(async () => {
+      const probe = await sb.from('exercise_notes').select('exercise_name').eq('user_id', 'x');
+      return Array.isArray(window.__notesCalls) && Array.isArray(probe?.data) && !probe?.error;
+    });
+    check('[0a] the Supabase stub is the client the page holds (no live network)', stubbed,
+      'the real UMD bundle won — every table assertion below would measure production, not the app');
 
     // ── [1] THE MERGE GATE: the BUG-192/193 seam, observed in the DOM ──
     // Drive the REAL Today's Setup controls, then simulate exactly what
