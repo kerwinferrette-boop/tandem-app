@@ -5626,9 +5626,12 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
                 <div class="ex-video-frame" id="vid-${ex.id}"></div>` : ''}</div>
           </div>
           <div class="ex-notes-wrap">
+            ${exNoteStamp(ex.name) ? `<div class="ex-note-stamp" style="font-size:11px;color:var(--muted);margin-bottom:4px;">Your note · ${exNoteStamp(ex.name)}</div>` : ''}
             <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."
               oninput="saveExNote('${escNoteKey(ex.name)}', this.value)"
             >${escNoteHtml(exNoteFor(ex.name))}</textarea>
+            <div class="ex-note-swap" style="font-size:12px;color:var(--accent2);margin-top:4px;cursor:pointer;"
+              onclick="event.stopPropagation();openSwapPicker('${ex.id}')">Swap this for me →</div>
           </div>
         </div>
       `;
@@ -5780,9 +5783,16 @@ async function startOrResumeSession() {
         LSraw.set('tandem_session_start_time', String(Date.now()));
       }
       // Resuming on a device whose local draft is empty (cleared storage, second
-      // device) falls back to whatever's already saved in the cloud row.
+      // device) falls back to whatever's already saved in the cloud row — and
+      // must reach the PIXEL, not just localStorage: renderTracker()'s one-shot
+      // hydrate (dataset.hydrated) has already run by the time this resume
+      // lands, so writing LS alone left the visible box empty (B2, caught by
+      // notes-readback-smoke [C2]). Guarded on an empty box so a user mid-typing
+      // is never clobbered.
       if (data.notes && !LS.get('tandem_session_notes_draft')) {
         LS.set('tandem_session_notes_draft', data.notes);
+        const _snEl = document.getElementById('sessionNotesInput');
+        if (_snEl && !_snEl.value) _snEl.value = data.notes;
       }
       // C11 diagnostic: remember the FIRST session id this workout ran under
       if (!LSraw.get('tandem_c11_first_session_id')) {
@@ -6804,6 +6814,18 @@ function exNotesAll() {
   return out;
 }
 function exNoteFor(name) { return (exNotesAll()[name] || {}).note || ''; }
+// B2: the note's age, made visible. Formats the stored `at` stamp for the card's
+// "noted <date>" line. A legacy bare-string note has NO stamp (at:null) — return ''
+// and show nothing rather than fabricate a date for a note of unknown age.
+function exNoteStamp(name) {
+  const at = (exNotesAll()[name] || {}).at;
+  if (!at) return '';
+  const d = new Date(at);
+  if (isNaN(d.getTime())) return '';
+  const opts = { month: 'short', day: 'numeric' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString(undefined, opts);
+}
 
 // Per-name debounce. oninput fires per KEYSTROKE; upserting each one would hammer
 // Supabase and race its own writes. Local storage is still written synchronously
