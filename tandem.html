@@ -2806,7 +2806,7 @@ const LS_SCOPED_KEYS = [
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
   'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
   'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id',
-  'tandem_session_notes_draft'
+  'tandem_session_notes_draft','tandem_swaps'
 ];
 let _lsScope = ANON_SCOPE;
 const lsKey = k => k + '::' + _lsScope;
@@ -5480,7 +5480,12 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
     block.exs.forEach((_ex, ei) => {
       if (!_ex) return;
       // Phase substitution resolver — phases can declare exercise swaps via subs map
-      const ex = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
+      // B1: then the USER's durable swap (tandem_swaps) — resolveUserSwap is an
+      // identity pass-through when no swap is stored, so non-swapped cards render
+      // byte-identically. Downstream of this line, rec/PR/volume/log all key off
+      // ex.name and therefore see the substitute automatically.
+      const _phEx = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
+      const ex = resolveUserSwap(_phEx);
       // LOG 3-way input model: 'sec' = timed hold (seconds only, weight locked),
       // 'bw' = bodyweight/band reps (weight blank w/ BW placeholder — still typeable
       // for weighted pull-ups/dips), 'reps' = standard weight × reps.
@@ -5562,7 +5567,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
       const videoId = VIDEO_IDS[ex.name];
 
       html += `
-        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
+        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" data-orig-name="${escNoteKey(ex.userSwappedFrom || ex.name)}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
           <div class="ex-header">
             <div class="ex-check"></div>
             <div class="ex-info">
@@ -5576,6 +5581,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
               <div class="po-reason">${rec.reason}</div>
               ${ex.technique && TECHNIQUE_TIPS[ex.technique] ? `<div class="po-reason" style="color:var(--accent2);margin-top:3px;"><strong>${TECHNIQUE_TIPS[ex.technique].name}:</strong> ${TECHNIQUE_TIPS[ex.technique].tip}</div>` : ''}
               ${ex.substitutedFrom ? `<div class="po-reason" style="color:var(--amber);margin-top:3px;"><strong>Swapped:</strong> the program calls for ${ex.substitutedFrom}, which your equipment or injury profile rules out. This trains the same muscle.</div>` : ''}
+              <div class="po-reason swap-note" id="swapnote-${ex.id}" style="color:var(--amber);margin-top:3px;${ex.userSwappedFrom ? '' : 'display:none;'}">${ex.userSwappedFrom ? `<strong>Your swap:</strong> replaces ${ex.userSwappedFrom}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(ex.userSwappedFrom)}');applySwap('${ex.id}','${escNoteKey(ex.userSwappedFrom)}')">Undo</span>` : ''}</div>
             </div>
             <div class="ex-expand">▾</div>
           </div>
@@ -6297,6 +6303,62 @@ function loadVideo(exId, ytId, btn) {
 // ═══════════════════════════════════════════════════════
 // EXERCISE SUBSTITUTION — Swap button on each exercise card
 // ═══════════════════════════════════════════════════════
+// B1 (fable-prompt-1-wiring): the swap is DURABLE. applySwap used to mutate one
+// card's DOM and toast "Swapped to X" while persisting nothing — the exact
+// "wired is not working" shape CLAUDE.md warns about. The store below is keyed
+// by the engine-served exercise NAME (never the slot id — slot ids churn;
+// lastsets-churn-smoke.mjs / C7 / BUG-45/48 precedent) and re-applied at the
+// buildDayHTML seam via resolveUserSwap(), so every downstream name-keyed
+// system (getRecommendation, PRs, computeMuscleWeeklyVolume/D6b, lastsets)
+// sees the substitute automatically. Gate: scripts/swap-persistence-smoke.mjs.
+// Local-only for now: cross-device sync is PENDING a Supabase table
+// (migrations/0024 — apply_migration is human-only, awaiting Kerwin).
+function exSwapsAll() { return LS.get('tandem_swaps') || {}; }
+function exSwapFor(origName) {
+  const e = exSwapsAll()[origName];
+  return (e && e.to) ? e.to : null;
+}
+function saveExSwap(origName, toName) {
+  const all = exSwapsAll();
+  // Choosing the original (or clearing) DELETES the entry — a stored no-op
+  // would shadow future legality changes for no benefit.
+  if (!toName || toName === origName) delete all[origName];
+  else all[origName] = { to: toName, at: new Date().toISOString() };
+  LS.set('tandem_swaps', all);
+}
+function clearExSwap(origName) { saveExSwap(origName, null); }
+// Legality is evaluated NOW, on every render — never trusted from store time.
+// A swap stored before an injury was declared, or on a better-equipped device,
+// must not bypass the injury/tier filter (SAFETY: same two-layer discipline as
+// the bank injury filter + pruneInjuries).
+function swapTargetFor(origName) {
+  const to = exSwapFor(origName);
+  if (!to) return null;
+  const legal = getExerciseSubstitutes(origName, resolveEquipmentTier(), cfg.injuries, 50);
+  return legal.find(s => s.name === to) || null;
+}
+function resolveUserSwap(ex) {
+  if (!ex || !ex.name) return ex;
+  const target = swapTargetFor(ex.name);
+  if (!target) return ex;   // identity: zero-diff for every non-swapped card
+  return { ...ex,
+    name: target.name,
+    compound: target.category === 'compound',
+    badge: target.category === 'compound' ? 'compound' : 'isolation',
+    equipment: target.equipment,
+    unit: target.unit,
+    // NO oneRmFactor copy: generated slots never carry it, nothing downstream
+    // reads ex.oneRmFactor (all load scaling is bank-by-name), and D29 pins
+    // the read-site count — a copy here is a dead value AND a doctrine breach.
+    why: target.why,
+    cues: target.cues,
+    // The original's warning/technique text describes the ORIGINAL movement —
+    // carrying it over would caption the substitute with the wrong coaching.
+    warning: null,
+    technique: null,
+    userSwappedFrom: ex.name };
+}
+
 function openSwapPicker(id) {
   const picker = document.getElementById('swap-' + id);
   const nameEl = document.getElementById('en-' + id);
@@ -6304,9 +6366,17 @@ function openSwapPicker(id) {
   const wasOpen = picker.classList.contains('open');
   document.querySelectorAll('.swap-picker.open').forEach(p => p.classList.remove('open'));
   if (wasOpen) return;
-  const subs = getExerciseSubstitutes(nameEl.textContent, resolveEquipmentTier(), cfg.injuries, 5);
+  // B1: substitutes are computed from the ORIGINAL engine-served movement (the
+  // card's data-orig-name), not the currently displayed substitute — otherwise a
+  // second swap would key the store off the wrong name and chain drift.
+  const card = document.getElementById('ec-' + id);
+  const orig = card?.dataset?.origName || nameEl.textContent;
+  const subs = getExerciseSubstitutes(orig, resolveEquipmentTier(), cfg.injuries, 5)
+    .filter(s => s.name !== nameEl.textContent);
+  // Already swapped? Offer the way back at the top.
+  if (orig !== nameEl.textContent) subs.unshift({ name: orig, _isOriginal: true });
   picker.innerHTML = subs.length
-    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}',${JSON.stringify(s.name)})">${s.name}</div>`).join('')
+    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}',${JSON.stringify(s.name)})">${s._isOriginal ? `↻ Back to ${s.name}` : s.name}</div>`).join('')
     : `<div class="swap-empty">No substitutes available for your equipment tier.</div>`;
   picker.classList.add('open');
 }
@@ -6355,7 +6425,22 @@ function applySwap(id, newName) {
       : '';
   }
   if (picker) { picker.classList.remove('open'); picker.innerHTML = ''; }
-  showToast(`Swapped to ${entry.name}`);
+  // B1: PERSIST — keyed by the original engine-served name from the card, so the
+  // swap survives reloads and future weeks (resolveUserSwap re-applies it at
+  // render). Swapping back to the original deletes the entry (saveExSwap no-op
+  // rule), which is also the Undo path.
+  const card = document.getElementById('ec-' + id);
+  const orig = card?.dataset?.origName || null;
+  if (orig) saveExSwap(orig, entry.name);
+  const note = document.getElementById('swapnote-' + id);
+  if (note) {
+    if (!orig || entry.name === orig) { note.style.display = 'none'; note.innerHTML = ''; }
+    else {
+      note.innerHTML = `<strong>Your swap:</strong> replaces ${orig}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(orig)}');applySwap('${id}','${escNoteKey(orig)}')">Undo</span>`;
+      note.style.display = '';
+    }
+  }
+  showToast(orig && entry.name === orig ? `Back to ${entry.name}` : `Swapped to ${entry.name} — saved for future sessions`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -6833,7 +6918,7 @@ function clearHistory() {
     // tandem_ex_notes belongs here for the SAME reason BUG-91 put tandem_working1rm
     // here: a key omitted from this list survives the clear and cannot be removed by
     // any UI path. Flagged by llm-council, 2026-09-30.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes','tandem_session_notes_draft'].forEach(k=>LS.del(k));
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes','tandem_session_notes_draft','tandem_swaps'].forEach(k=>LS.del(k));
     // Clearing the local key alone is not a clear once notes live in the cloud: the next
     // hydrate reads cloud-present + local-absent as "new from another device" and pulls
     // them all back. See wipeCloudNotes(). Not awaited — the confirm() dialog this sits

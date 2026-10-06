@@ -158,7 +158,10 @@ check('[E2] clearExSwap removes the entry', api.exSwapFor('High Incline Barbell 
 // ── [R] the resolver ──
 const c2 = makeCtx();
 c2.__api.saveExSwap(ORIG, SUB);
-const slotEx = { id: 'd1b2e0', name: ORIG, s: 4, r: 8, compound: true, oneRmFactor: 1.0, why: 'orig why', cues: ['orig cue'] };
+// Fixture mirrors a REAL generated slot object (probed: id,name,badge,sets,w,r,
+// compound,isCore,cardioOnly,unit,equipment,why,cues — NO oneRmFactor; all
+// render-layer load scaling reads the bank by name, see D29).
+const slotEx = { id: 'd1b2e0', name: ORIG, s: 4, r: 8, compound: true, why: 'orig why', cues: ['orig cue'] };
 const resolved = c2.__api.resolveUserSwap(slotEx);
 const bankSub = Object.values(
   // read the sub's bank entry through the ctx so the expectation can never
@@ -166,8 +169,12 @@ const bankSub = Object.values(
   (() => { const o = {}; new vm.Script('this.__b = EXERCISE_BANK;').runInContext(c2); return c2.__b; })()
 ).find(e => e.name === SUB);
 check('[R1] identity fields come from the substitute', resolved.name === SUB &&
-  resolved.oneRmFactor === bankSub.oneRmFactor && resolved.why === bankSub.why,
-  `got name=${resolved.name} orf=${resolved.oneRmFactor}`);
+  resolved.why === bankSub.why && JSON.stringify(resolved.cues) === JSON.stringify(bankSub.cues),
+  `got name=${resolved.name}`);
+check('[R1b] the resolver does NOT add an oneRmFactor property (D29: oneRmFactor is read ' +
+  'only by load-derivation code, bank-by-name — a copy here would be a dead value and a new read site)',
+  resolved.oneRmFactor === undefined,
+  `resolved.oneRmFactor = ${resolved.oneRmFactor}`);
 check('[R2] slot structure is kept (id/sets/reps unchanged)',
   resolved.id === slotEx.id && resolved.s === 4 && resolved.r === 8,
   'the slot id keys the DOM; sets/reps come from the program, not the movement');
