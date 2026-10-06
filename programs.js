@@ -1671,7 +1671,7 @@ const EXERCISE_BANK = {
     muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep_brachii','hamstring','erector_spinae']},
     emphasis:['full_body','back','lower_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
     why:'Engages 86% of muscle mass — more than any other cardio machine. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
-    cues:['Drive order: legs → lean back → arms; reverse on recovery','Drive hard through the heels at the catch','Do not open the hips until the handle passes the knees','Damper setting 4–6 for aerobic work; higher is not better']},
+    cues:['Drive order: LEGS → LEAN BACK → ARMS; reverse on recovery','Drive hard through the heels at the catch','Do not open the hips until the handle passes the knees','Damper setting 4–6 for aerobic work; higher is not better']},
   'kb-swing':{
     name:'KB Swing', videoId:'sSNGZzfMqE8',
     muscleGroups:{primary:['glute_max','hamstring'],secondary:['lat_dorsi','erector_spinae','core']},

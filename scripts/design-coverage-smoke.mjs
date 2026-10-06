@@ -117,7 +117,9 @@ const EXPECTED_MONO_TOTAL = { 'tandem.html': 29, 'programs.js': 0 };
 // [D] legitimate all-caps runs, if any ever appear (acronym pairs etc.).
 // Single ALL-CAPS words (TANDEM, RPE, AMRAP, PR, OTP) are not matched by the
 // run pattern and need no entry.
-const ALLOWED_CAPS_RUNS = [];
+const ALLOWED_CAPS_RUNS = [
+  { marker: 'LEAN BACK', reason: 'rower cue "LEGS → LEAN BACK → ARMS" — EXERCISE_BANK content, mirrored in the committed seed SQL and the prod exercises table. Sentence-casing it is a DATA change (bank↔seed freshness goes red), out of design-only scope. Restyle via CSS if ever needed, never by editing the bank.' },
+];
 
 // ---------------------------------------------------------------------------
 

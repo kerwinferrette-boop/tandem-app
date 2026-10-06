@@ -80,6 +80,7 @@ const CHECKS = [
   { name: 'QA feed status rule (badge + feed share one open-status home; no un-drainable .neq)', run: () => execFileSync('node', [join(scriptsDir, 'qa-feed-status-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-119b home-tier isolation coverage (>=2 bicep-primary, shoulders anterior_delt; D18 fallback must not mask a bank gap)', run: () => execFileSync('node', [join(scriptsDir, 'home-tier-isolation-coverage-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'no-emoji gate (Kerwin, 2026-09-30 — no pictograph emoji in UI text; arrows/checks/star/gender-symbols allowlisted)', run: () => execFileSync('node', [join(scriptsDir, 'no-emoji-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'design coverage (2026-10-05 warm/modern pass — no uppercase transform, no wide tracking, mono only on allowlisted tabular surfaces, no ALL-CAPS copy)', run: () => execFileSync('node', [join(scriptsDir, 'design-coverage-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];
