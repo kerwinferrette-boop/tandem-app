@@ -693,11 +693,18 @@ const EXERCISE_BANK = {
     emphasis:['shoulders','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Upper trapezius training matters for shoulder aesthetics and neck posture. Heavy shrugs — not the light prehab variety — are the most direct stimulus for upper trap mass.',
     cues:['Straight arms throughout — do not bend the elbows','Shrug straight UP — not rolling the shoulders (which can damage AC joint)','Hold at peak for 1 second','Lower fully — a full stretch at the bottom matters']},
+  // tandem-exercise-science-ingestion pass (2026-10-05), STEP 1B equipment-substitution lens, shoulders pilot:
+  // Coratella et al. (2022), Frontiers in Physiology, "Front vs Back and Barbell vs Machine Overhead
+  // Press: An Electromyographic Analysis," PMC9354811 / PubMed 35936912 (EMG RMS, n=8 competitive
+  // bodybuilders). Back-barbell OHP produced greater activation than back-machine shoulder press
+  // across all three deltoid heads (anterior, medial, posterior) — the medial/lateral delt gap was
+  // largest, effect size 7.51. Not a like-for-like swap for a free-weight press; caveat added to why
+  // per skill STEP 1B rather than presenting machine and barbell OHP as equivalent.
   'machine-shoulder-press':{
     name:'Machine Shoulder Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep']},
     emphasis:['shoulders','push','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The guided vertical path lets a lifter overload the delts near failure without a spotter or the balance demand of free weights — ideal for driving overhead pressing volume when the stabilisers are already fatigued. Back support removes the core limitation of standing presses.',
+    why:'The guided vertical path lets a lifter overload the delts near failure without a spotter or the balance demand of free weights — ideal for driving overhead pressing volume when the stabilisers are already fatigued. Back support removes the core limitation of standing presses. Equipment-substitution note: EMG evidence (Coratella et al., 2022) shows barbell overhead press elicits greater activation across all three deltoid heads than a machine press of the same pattern — this is a complement to free-weight pressing, not an equivalent swap for it.',
     cues:['Set the seat so the handles start at shoulder height','Back flat against the pad, ribs down — do not arch to press','Press to full extension without locking harshly','Lower under control to a 90° elbow — do not crash the stack']},
   'reverse-pec-deck':{
     name:'Reverse Pec Deck', videoId:null,
@@ -740,11 +747,17 @@ const EXERCISE_BANK = {
     emphasis:['shoulders','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'The upright bench back-support removes leg drive and lower-back sway, isolating the delts and letting a lifter press heavier dumbbells with strict form. The stricter, higher-load seated counterpart to the standing DB press.',
     cues:['Sit tall against an upright bench, dumbbells at shoulder height','Press to full extension without shrugging or arching off the pad','Keep the wrists stacked over the elbows','Lower under control to a 90° elbow — do not bounce out of the bottom']},
+  // tandem-exercise-science-ingestion pass (2026-10-05), STEP 1B equipment-substitution lens, shoulders pilot:
+  // Coratella et al. (2022), Frontiers in Physiology, PMC9354811 / PubMed 35936912 (EMG RMS, n=8
+  // competitive bodybuilders) — see machine-shoulder-press above for the full citation. A Smith
+  // machine press is fixed-path like the plate-loaded machine press this study tested, so the same
+  // caveat applies: back-barbell OHP produced greater activation than a fixed-path press across all
+  // three deltoid heads (largest gap at the medial/lateral head, effect size 7.51).
   'smith-machine-shoulder-press':{
     name:'Smith Machine Shoulder Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep']},
     emphasis:['shoulders','push','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The fixed bar path lets a lifter overload overhead pressing safely without a spotter and without the balance demand of free weights — useful for driving delt volume near failure once the stabilisers are fatigued.',
+    why:'The fixed bar path lets a lifter overload overhead pressing safely without a spotter and without the balance demand of free weights — useful for driving delt volume near failure once the stabilisers are fatigued. Equipment-substitution note: EMG evidence (Coratella et al., 2022) shows barbell overhead press elicits greater activation across all three deltoid heads than a fixed-path machine press — this is a complement to free-weight pressing, not an equivalent swap for it.',
     cues:['Set the bench so the bar starts at chin/collarbone height','Back supported and braced; press straight up the fixed track','Lock out overhead without shrugging into the traps','Lower under control to the start; use the safety hooks between sets']},
   'cable-rear-delt-fly':{
     name:'Cable Rear Delt Fly', videoId:null,
