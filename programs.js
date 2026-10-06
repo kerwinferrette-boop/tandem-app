@@ -1249,6 +1249,34 @@ const EXERCISE_BANK = {
     emphasis:['hamstrings','glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The heaviest full-body pull available in a gym — hip and knee extension together from a dead stop, driving maximum posterior-chain loading and total-body strength. EMG across the deadlift and its variants shows erector spinae activation exceeding glute max and biceps femoris during the pull (Martín-Fuentes, Oliva-Lozano & Muyor, 2020) — a whole-chain strength and spinal-erector builder, not an isolated hamstring or glute move. The same review-level data also flags meaningful quad-complex activation across the deadlift class, but not isolated to this variant specifically, so that is not tagged here as a secondary mover.',
     cues:['Bar over mid-foot, shins close to the bar','Hip hinge to grip — chest up, back flat, brace before pulling','Drive the floor away through the heels; hips and shoulders rise together','Lock out by squeezing the glutes — do not hyperextend the lower back']},
+  // Exercise Intake row 3cbca37f-935b-81d2-9ea9-ff6962707b6d (2026-10-05 ingestion run).
+  // Source: Martín-Fuentes, Oliva-Lozano & Muyor (2020), PLOS ONE, systematic review synthesizing
+  // two peer-reviewed cross-over studies — Andersen et al. 2018 (J Strength Cond Res 32(3):587-93,
+  // PMID 28151780) and Camara et al. 2016 (J Strength Cond Res 30(5):1183-8, PMID 26840440).
+  // EQUIPMENT ENUM: the bank has no dedicated hex/trap-bar value (barbell/dumbbell/bodyweight/
+  // machine/cable/band only). Mapped to 'barbell' as the closest existing category — both are
+  // axial free-weight bars loaded with plates. This was flagged in Notion as an ingestion judgment
+  // call, not a source claim. Kerwin initially asked for a dedicated trap_bar value instead; three
+  // separate web searches for an NSCA-grade (or comparably rigorous) per-sex starting weight for
+  // that new value turned up only mutually-contradictory commercial "strength standards" content
+  // (~83-110 lbs, ~140-169 lbs, and ~185-225 lbs for "beginner" men across the three searches) —
+  // no credible source, so no number was fabricated to force the new value through. Once it was
+  // clarified that the `equipment` field is purely an internal seedWeight()-bucket/sort-tiebreak
+  // classification — not a user-facing "use this literal implement" instruction, and that name/
+  // cues/video below still correctly describe a trap bar — Kerwin's ruling (2026-10-05) was to
+  // accept the barbell alias on that basis. No dedicated trap_bar value added.
+  // SEMITENDINOSUS NUANCE: Camara et al.'s raw data shows semitendinosus activation was actually
+  // HIGHER in the hex bar than the conventional deadlift (119.9% vs 96.8% of 1RM-normalized
+  // activation) even though biceps femoris was lower — the popular "hex bar = less hamstring,
+  // period" shorthand oversimplifies this; not claimed here.
+  // oneRmFactor: null, consistent with every other hinge entry in this bank (romanian-deadlift,
+  // stiff-leg-deadlift, good-morning, db-rdl, sumo-rdl, single-leg-db-rdl, bodyweight-single-leg-rdl).
+  'trap-bar-deadlift':{
+    name:'Trap Bar Deadlift', videoId:null,
+    muscleGroups:{primary:['quad_vastus_lateralis','glute_max'],secondary:['hamstring','erector_spinae','lat_dorsi']},
+    emphasis:['quads','glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
+    why:'The deadlift pattern\'s own answer for lifters whose lower back limits a conventional pull. A systematic review synthesizing two cross-over EMG studies (Martín-Fuentes, Oliva-Lozano & Muyor, 2020) found the hex/trap bar produces comparable-to-greater quad activation than the straight-bar deadlift while measurably reducing erector spinae and biceps femoris activation — the reviewers\' own language frames it as an appropriate variant specifically for lifters with lower-back issues. Choose this over the conventional barbell-deadlift when back-sparing, quad-dominant mechanics are the priority; choose the straight bar when maximum posterior-chain (hamstring/erector) loading is the goal, since that is what the straight bar trades back for.',
+    cues:['Step inside the hex bar, feet hip-width, handles at your sides','Hinge to grip the handles — shins vertical, chest up, neutral spine','Push the floor away through mid-foot as you stand; bar path stays vertical','Lock out by extending the hips — do not lean back at the top']},
   'romanian-deadlift':{
     name:'Romanian Deadlift', videoId:'JCXUYuzwNrM',
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae','adductor']},
@@ -1863,8 +1891,8 @@ const MOVEMENT_FAMILIES = {
 
   // ── HINGE ────────────────────────────────────────────
   'romanian-deadlift':{ label:'Romanian Deadlift', pattern:'hinge', canonicalLift:'Barbell Deadlift',
-    variants:['barbell-deadlift','romanian-deadlift','stiff-leg-deadlift','db-rdl','single-leg-db-rdl',
-              'bodyweight-single-leg-rdl','sumo-rdl']},
+    variants:['barbell-deadlift','trap-bar-deadlift','romanian-deadlift','stiff-leg-deadlift','db-rdl',
+              'single-leg-db-rdl','bodyweight-single-leg-rdl','sumo-rdl']},
   'good-morning':{ label:'Good Morning', pattern:'hinge', canonicalLift:null,
     variants:['good-morning']},
   'hip-thrust':{ label:'Hip Thrust / Glute Bridge', pattern:'hinge', canonicalLift:null,   // G3
