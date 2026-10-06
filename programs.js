@@ -815,6 +815,19 @@ const EXERCISE_BANK = {
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The neutral (palms-facing) grip keeps the shoulder in its strongest, most impingement-free position and biases the lower lat fibres, allowing a longer pull to the sternum. A shoulder-friendly vertical pull for lifters who feel the wide-grip pulldown in the front of the shoulder.',
     cues:['Neutral parallel handle, slight backward lean','Drive the elbows down and in toward the hip pockets','Pull the handle to the upper chest; squeeze the lats at the bottom','Let the scapula rise under control at the top for a full stretch']},
+  'inclined-torso-lat-pulldown':{
+    // Exercise Intake row 3dbca37f-935b-8170-bc4f-e22ebf368856 (2026-10-05 ingestion run).
+    // Dup Check: PARTIAL OVERLAP with lat-pulldown (line 775 above), which already cues a
+    // "slight backward lean." This entry formalizes a specific, larger ~30° incline into its
+    // own selectable variant, backed by a stats citation that the plain-lean cue never had.
+    // Source: Fonseca et al., PMC12452428 (muscle activation across lat-pulldown torso angles).
+    // Kerwin's ruling (2026-10-05): approved as a new entry, on the condition that the science
+    // AND the choose-this-vs-standard reasoning are built into the entry itself (see `why`).
+    name:'Inclined-Torso Lat Pulldown', videoId:null,
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
+    emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
+    why:'Leaning the torso back to roughly 30° through the pull — more than the standard pulldown\'s slight lean — significantly increases posterior deltoid activation without changing lat activation at all. Fonseca et al. (PMC12452428) tested torso angle during lat pulldown and found posterior deltoid activation differed significantly across angles (F(1,6)=3.621, p=0.002), with the 30° incline producing significantly more posterior deltoid activation than an upright torso (p=0.011) and more than a wide-neutral grip (p=0.017). Lat dorsi and every other measured muscle showed no significant difference across torso angles (p=0.298–0.868). Choose this version over the standard lat pulldown when posterior delt and scapular-retraction work are the priority — the incline adds that recruitment for free. Choose the standard upright pulldown when lat isolation alone is the goal, since the upright version trains the lat just as well without the added posterior-delt demand.',
+    cues:['Set a wide or neutral grip, then lean the torso back to roughly 30° from vertical — noticeably more than a standard pulldown\'s slight lean','Hold that fixed incline throughout the pull; don\'t rock or use momentum to get there','Drive the elbows down and back, squeezing the shoulder blades together at the bottom','Return under control to a full stretch at the top, keeping the 30° lean fixed the whole set']},
   'assisted-pull-up':{
     name:'Assisted Pull-Up', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
@@ -1803,7 +1816,7 @@ const MOVEMENT_FAMILIES = {
 
   // ── VERTICAL PULL ────────────────────────────────────
   'pull-up':{ label:'Pull-Up / Pulldown', pattern:'vertical_pull', canonicalLift:'Weighted Pull-up',
-    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown']},
+    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown','inclined-torso-lat-pulldown']},
 
   // ── HORIZONTAL PULL ──────────────────────────────────
   'row':{ label:'Row', pattern:'horizontal_pull', canonicalLift:null,
