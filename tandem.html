@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Tandem — Your Training Partner</title>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{
-  /* base — quiet near-mono */
-  --bg:#07070b;--s1:#101017;--s2:#17171f;--s3:#1f1f29;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  /* base — warm near-mono (2026-10-05 warm/modern pass: the cool blue-blacks
+     #07070b..#1f1f29 became warm espresso neutrals; same lightness ramp) */
+  --bg:#0E0C0A;--s1:#171310;--s2:#1E1915;--s3:#272019;
+  --border:rgba(255,244,230,0.08);--border2:rgba(255,244,230,0.14);
   /* signature green (intensified) */
   --accent:#18C26A;--accent2:#3FE08C;--accent-deep:#0E7A45;
   --accent-dim:rgba(24,194,106,0.12);--accent-glow:rgba(24,194,106,0.25);
@@ -30,15 +31,21 @@
   --amber:#FFB020;--amber-dim:rgba(255,176,32,0.10);
   --teal:#3FE08C;--teal-dim:rgba(63,224,140,0.10);
   --orange:#fb923c;
-  --text:#F2F2F5;--muted:#6B6B7A;--muted2:#9A9AAC;
-  /* type */
-  --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;
+  --text:#F6F1EA;--muted:#80776C;--muted2:#A89E92;
+  /* type — Bricolage Grotesque display + Plus Jakarta Sans body; mono is for
+     genuinely tabular numbers ONLY (set inputs, timers, plate math, OTP, hex) */
+  --font-display:'Bricolage Grotesque',sans-serif;--font-body:'Plus Jakarta Sans',sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
   /* type scale + duotone tint (Wave 0 tokens — one home for the numbers every screen reuses) */
-  --t-hero:32px;--t-h1:28px;--t-h2:22px;--t-eyebrow:10px;--tint-opacity:.42;
-  /* unified radius + elevation */
-  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
-  --e1:0 1px 2px rgba(0,0,0,0.4);--e2:0 8px 24px rgba(0,0,0,0.5);
+  --t-hero:32px;--t-h1:28px;--t-h2:22px;--t-eyebrow:12px;--tint-opacity:.42;
+  /* negative display tracking for large headings (modern-type convention; the
+     old wide positive tracking is banned by scripts/design-coverage-smoke.mjs) */
+  --track-tight:-.015em;
+  /* unified radius + elevation — softened in the warm/modern pass */
+  --r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:24px;
+  --e1:0 1px 2px rgba(10,6,3,0.4);--e2:0 12px 32px rgba(10,6,3,0.45);
+  /* motion */
+  --ease:cubic-bezier(.32,.72,0,1);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
@@ -54,7 +61,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 ═══════════════════════════════ */
 .top-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;
   border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;
-  background:rgba(7,7,11,0.95);backdrop-filter:blur(24px);}
+  background:rgba(14,12,10,0.95);backdrop-filter:blur(24px);}
 
 /* TANDEM LOGO — Ti mark */
 .tandem-logo{display:flex;align-items:center;gap:10px;cursor:pointer;}
@@ -150,7 +157,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23585878' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center;}
 .ob-select:focus{border-color:var(--accent);}
-.ob-select option{background:#0d0d16;}
+.ob-select option{background:#171310;}
 
 /* Weight gap display */
 .weight-gap{margin-top:10px;padding:12px 14px;background:var(--s2);border-radius:10px;
@@ -537,7 +544,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(1) contrast(1.08) brightness(.9);transform:scale(1.02);}
 .hero-band::after{z-index:1;}
 .hero-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.45) 55%,rgba(7,7,11,.82) 100%);}
+  background:linear-gradient(180deg,rgba(14,12,10,.05) 0%,rgba(14,12,10,.45) 55%,rgba(14,12,10,.82) 100%);}
 .hero-band .hero-cap{position:absolute;left:18px;right:18px;bottom:15px;z-index:3;}
 .hero-cap-eyebrow{font-family:var(--font-body);font-size:10px;font-weight:600;letter-spacing:.18em;
   text-transform:uppercase;color:var(--accent2);margin-bottom:3px;}
@@ -575,7 +582,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(1) contrast(1.08) brightness(.72);transition:filter .16s ease;}
 .oneoff-card::after{z-index:1;}
 .oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
+  background:linear-gradient(180deg,rgba(14,12,10,.02) 30%,rgba(14,12,10,.68) 100%);}
 .oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
 .oneoff-recency-badge{position:absolute;top:6px;right:6px;z-index:3;display:flex;align-items:center;gap:3px;
   padding:2px 6px;border-radius:5px;background:rgba(232,163,61,.92);color:#1a1305;
@@ -661,7 +668,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(1) contrast(1.08) brightness(.75);}
 .tc-card .tc-tint{z-index:-2;}
 .tc-card .tc-scrim{position:absolute;inset:0;z-index:-1;
-  background:radial-gradient(120% 76% at 50% 50%,rgba(7,7,11,.32) 0%,rgba(7,7,11,.74) 56%,rgba(7,7,11,.93) 100%);}
+  background:radial-gradient(120% 76% at 50% 50%,rgba(14,12,10,.32) 0%,rgba(14,12,10,.74) 56%,rgba(14,12,10,.93) 100%);}
 .tc-card .tc-meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.85);
   display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:10px;opacity:.85;}
 .tc-card .tc-dot{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
@@ -688,7 +695,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tab-bar{position:fixed;left:0;right:0;bottom:0;z-index:120;display:none;
   grid-template-columns:1fr 1fr 96px 1fr 1fr;align-items:center;
   height:calc(74px + env(safe-area-inset-bottom,0px));padding:0 6px env(safe-area-inset-bottom,0px);
-  background:rgba(12,12,18,.92);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+  background:rgba(20,16,13,.92);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
   border-top:1px solid rgba(255,255,255,.08);}
 body.tabbed .tab-bar{display:grid;}
 .tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:none;background:transparent;
@@ -721,7 +728,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .log-card .tc-photo,.log-card .tc-tint{z-index:-3;}
 .log-card .tc-photo{position:absolute;inset:0;background-image:var(--hero-url);background-size:cover;background-position:center;opacity:.35;}
 .log-card .tc-tint{z-index:-2;}
-.log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.35) 0%,rgba(7,7,11,.92) 70%);}
+.log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,12,10,.35) 0%,rgba(14,12,10,.92) 70%);}
 .log-card .log-meta{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;}
 .log-card h3{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.01em;margin:6px 0 auto;line-height:1.15;}
 .log-card .log-val{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1;margin-top:10px;}
@@ -772,7 +779,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .sum-hero .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
   filter:grayscale(1) contrast(1.08) brightness(.75);}
 .sum-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
-.sum-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.12) 0%,rgba(7,7,11,.5) 55%,var(--s1) 100%);}
+.sum-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,12,10,.12) 0%,rgba(14,12,10,.5) 55%,var(--s1) 100%);}
 .sum-hero-body{padding:30px 20px 12px;}
 .sum-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:7px;margin-bottom:8px;}
 .sum-eyebrow i{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
@@ -872,7 +879,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
    don't support it — same value (0) as today when the inset is 0, so this
    does not change the bar's resting position on any device without a bottom
    safe-area inset. */
-.bottom-nav{position:fixed;bottom:0;bottom:env(safe-area-inset-bottom,0);left:0;right:0;background:rgba(7,7,11,.96);
+.bottom-nav{position:fixed;bottom:0;bottom:env(safe-area-inset-bottom,0);left:0;right:0;background:rgba(14,12,10,.96);
   backdrop-filter:blur(20px);border-top:1px solid var(--border);
   display:flex;padding:9px 14px 22px;gap:7px;z-index:300;max-width:580px;margin:0 auto;}
 /* Wave 6: bigger tap targets; Finish is the one solid-accent action down here */
@@ -971,7 +978,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
   background-size:cover;background-position:center 25%;filter:grayscale(1) contrast(1.08) brightness(.75);}
 .dash-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
 .dash-hero .dash-hero-scrim{position:absolute;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.55) 45%,rgba(7,7,11,.95) 100%);}
+  background:linear-gradient(180deg,rgba(14,12,10,.05) 0%,rgba(14,12,10,.55) 45%,rgba(14,12,10,.95) 100%);}
 .dash-hero .tc-meta{justify-content:flex-start;margin-bottom:0;}
 .dash-hero h2{font-family:var(--font-display);font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff;margin:8px 0 6px;}
 .dash-hero p{font-size:13px;color:rgba(255,255,255,.72);margin:0;}
@@ -1067,7 +1074,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .you-nutri-card{position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--border2);padding:16px;margin-bottom:12px;isolation:isolate;background:var(--s1);}
 .you-nutri-card .you-photo{position:absolute;inset:0;z-index:-3;background-image:url('public/meal-prep.jpg');background-size:cover;background-position:center;filter:grayscale(1) contrast(1.08) brightness(.7);}
 .you-nutri-card .tc-tint{position:absolute;inset:0;z-index:-2;}
-.you-nutri-card .you-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.45) 0%,rgba(7,7,11,.82) 40%,rgba(7,7,11,.94) 100%);}
+.you-nutri-card .you-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,12,10,.45) 0%,rgba(14,12,10,.82) 40%,rgba(14,12,10,.94) 100%);}
 .you-nutri-card .dash-label{color:rgba(255,255,255,.75);}
 .you-nutri{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
 .you-nutri .dash-mr-top{color:#fff;}
@@ -10973,7 +10980,7 @@ function buildIdentityAvatar(p, size){
       </linearGradient>
     </defs>
     <g clip-path="url(#${uid}c)">
-      <rect x="0" y="0" width="100" height="100" fill="#0c0d12"/>
+      <rect x="0" y="0" width="100" height="100" fill="#171310"/>
       ${isFemale
         ? `<ellipse cx="50" cy="92" rx="${hipRx}" ry="18" fill="url(#${uid}b)"/>
            <ellipse cx="50" cy="80" rx="${shoulderRx}" ry="16" fill="url(#${uid}b)"/>`
