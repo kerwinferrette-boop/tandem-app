@@ -62,7 +62,7 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
 {
   const restoreSrc = grab('restoreFromCloud', /async function restoreFromCloud\(\) \{[\s\S]*?\n\}\n/);
   const syncSrc = grab('syncFromCloud', /async function syncFromCloud\(\) \{[\s\S]*?\n  \}\n\}/);
-  // BUG-190: the fetch+merge now has ONE owner, hydrateHistoryFromCloud(). All three
+  // BUG-207: the fetch+merge now has ONE owner, hydrateHistoryFromCloud(). All three
   // callers must route through it — restore (manual button), sync (fresh sign-in) and
   // the on-load self-heal — so they cannot reconcile history three different ways.
   const hydrateSrc = grab('hydrateHistoryFromCloud', /async function hydrateHistoryFromCloud\([\s\S]*?\n\}/);
@@ -72,7 +72,7 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
     /hydrateHistoryFromCloud\(/.test(restoreSrc) && !/from\('workout_sessions'\)/.test(restoreSrc));
   check('syncFromCloud() routes through the shared hydrator, not a re-implementation',
     /hydrateHistoryFromCloud\(/.test(syncSrc));
-  // THE mechanism guard for BUG-190: the returning-user init path (saved cfg, the ONLY
+  // THE mechanism guard for BUG-207: the returning-user init path (saved cfg, the ONLY
   // path a daily user takes) must hydrate history BEFORE renderTracker() asks the queue
   // what today's workout is. This is what was missing — BUG-178 fixed the merge but left
   // it unreachable from here, so the queue ran on a cache nothing ever refreshed.
@@ -94,15 +94,15 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
     if (paint === -1) continue;
     savedCfgBranches.push(html.slice(at, paint + 2000));
   }
-  check(`BUG-190: found both saved-cfg entry points (got ${savedCfgBranches.length}, expected 2)`,
+  check(`BUG-207: found both saved-cfg entry points (got ${savedCfgBranches.length}, expected 2)`,
     savedCfgBranches.length === 2);
   const unhydrated = savedCfgBranches.filter(b => !/hydrateHistoryFromCloud\(/.test(b));
-  check(`BUG-190: EVERY returning-user saved-cfg path hydrates history before trusting the queue — ${unhydrated.length} do not`,
+  check(`BUG-207: EVERY returning-user saved-cfg path hydrates history before trusting the queue — ${unhydrated.length} do not`,
     unhydrated.length === 0);
   const initSrc = savedCfgBranches.find(b => /await hydrateHistoryFromCloud\(/.test(b)) || '';
   // Compare against the PAINT call specifically, not a bare 'renderTracker()' — the
   // surrounding comment mentions renderTracker() by name and would match first.
-  check('BUG-190: the init path AWAITS the hydrate before renderTracker() reads the queue',
+  check('BUG-207: the init path AWAITS the hydrate before renderTracker() reads the queue',
     !!initSrc && initSrc.indexOf('await hydrateHistoryFromCloud(') < initSrc.indexOf("renderTracker(); showView('dashboard');"));
   check('restoreFromCloud() no longer contains the old all-or-nothing empty-guard',
     !/if \(!existing\.length\)/.test(restoreSrc));
@@ -117,9 +117,11 @@ const iphrSrc = grab('isProgramHistoryRow', /function isProgramHistoryRow\([\s\S
 const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/);
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
+const twinSrc = grab('_historyIsMidnightTwin', /const HISTORY_TWIN_MAX_MS[\s\S]*?function _historyIsMidnightTwin\([\s\S]*?\n\}/);
 const hdkSrc = grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/);
 const hrkSrc = grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/);
 const hskSrc = grab('_historySortKey', /function _historySortKey\([\s\S]*?\n\}/);
+const dedupSrc = grab('dedupeLocalHistory', /function dedupeLocalHistory\([\s\S]*?\n\}/);
 const mergeSrc = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
 // BUG-209: the merge now calls these unconditionally, so they belong in the BASE
 // context — every section below, including the BUG-178/190 ones, exercises the same
@@ -133,7 +135,7 @@ function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
   vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc,
-    hddSrc, exFromSetsSrc, rowFromCloudSrc, exLabelSrc, mergeSrc].join('\n'), ctx);
+    twinSrc, dedupSrc, hddSrc, exFromSetsSrc, rowFromCloudSrc, exLabelSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {
     get: k => (k in store ? JSON.parse(JSON.stringify(store[k])) : null),
@@ -222,7 +224,7 @@ function buildContext() {
     merged[0].session_date === '2026-03-10' && merged[1].session_date === '2026-03-01');
 }
 
-// ── 2(f)/(g)/(h). BUG-190: the merge must dedupe a row finishSession() WROTE LOCALLY
+// ── 2(f)/(g)/(h). BUG-207: the merge must dedupe a row finishSession() WROTE LOCALLY
 // against that same session's synced cloud twin.
 //
 // Why this gate exists on top of (a)-(e): every "local" fixture above is CLOUD-SHAPED
@@ -335,7 +337,7 @@ const kerwinCfg = { goal: 'build_muscle', days: 5, weeks: 12, startDate: '2026-0
 
 // ── 4. BUG-209: the PER-LIFT half of the restore ─────────────────────────────
 //
-// BUG-178/BUG-190 above make sure the SESSION rows come down and reconcile, which is
+// BUG-178/BUG-207 above make sure the SESSION rows come down and reconcile, which is
 // what the program queue needs. They say nothing about what the user actually opens
 // History to see: the lifts. Those live in `sets`, one table over, and nothing ever
 // read them back — so a restored row rendered as a bare date, findExerciseHistorySessions()
@@ -471,11 +473,173 @@ const buildContext209 = buildContext; // same live layer; the alias just reads b
     'Pull-Up'.replace(/^\w+-/, '').replace(/-/g, ' ') === 'Up');
 }
 
-console.log('HISTORY-MERGE SMOKE — BUG-178/190 (session merge reaches the queue) + BUG-209 (the LIFTS come down too)\n');
+// ── 2(j)-(m). BUG-178 PART 3 — repair rows already written to localStorage ──
+//
+// Parts 1 and 2 stop NEW duplicates; they do nothing about the ones fdb5b31 already
+// persisted. Between 2026-09-27 and this change every Restore tap wrote a second copy
+// of every session present on both sides, and mergeCloudSessionsIntoHistory() only ever
+// compared CLOUD rows against existing ones — never existing against existing — so they
+// never self-healed. Proven before the fix: 4 real sessions held twice counted 8 and
+// served day4, and the self-heal merge left it at 8.
+{
+  const cloudish = (sd, day, id) => ({ id, session_date: sd, day_type: day, session_type: 'strength', completed: true, created_at: sd + 'T20:00:00Z' });
+  const poisoned = [
+    finished('Tue, Sep 29, 2026', 'day4'), cloudish('2026-09-29', 'day4', 'c4'),
+    finished('Tue, Sep 22, 2026', 'day3'), cloudish('2026-09-22', 'day3', 'c3'),
+    finished('Mon, Sep 21, 2026', 'day2'), cloudish('2026-09-21', 'day2', 'c2'),
+    finished('Thu, Sep 10, 2026', 'day1'), cloudish('2026-09-10', 'day1', 'c1'),
+  ];
+
+  // (j) the repair itself
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    ctx.LS.set('tandem_history', poisoned);
+    check("(j) a history poisoned by the pre-fix Restore serves 'day4' before repair (the fdb5b31 symptom)",
+      ctx.completedSessionCount() === 8 && ctx.nextProgramDayKey() === 'day4');
+    const repaired = ctx.dedupeLocalHistory(poisoned);
+    ctx.LS.set('tandem_history', repaired);
+    check(`(j) dedupeLocalHistory() collapses 8 rows to 4 (got ${repaired.length})`, repaired.length === 4);
+    check("(j) post-repair nextProgramDayKey() === 'day5'",
+      ctx.completedSessionCount() === 4 && ctx.nextProgramDayKey() === 'day5');
+  }
+
+  // (k) the repair reaches every caller through the merge, and stays idempotent across boots
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    let hist = ctx.mergeCloudSessionsIntoHistory(poisoned, KERWIN_CLOUD);
+    hist = ctx.mergeCloudSessionsIntoHistory(hist, KERWIN_CLOUD);
+    hist = ctx.mergeCloudSessionsIntoHistory(hist, KERWIN_CLOUD);
+    ctx.LS.set('tandem_history', hist);
+    check(`(k) the merge repairs pre-existing duplicates too, idempotently across 3 boots (got ${hist.length}, expected 4)`,
+      hist.length === 4);
+    check("(k) nextProgramDayKey() === 'day5' after three repaired merges", ctx.nextProgramDayKey() === 'day5');
+  }
+
+  // (l) what the repair must never do: drop per-set data, or drop a row it cannot identify
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    // Genuinely unkeyable: no session_date, no date AND no id. An earlier draft of this
+    // fixture carried `id: 999`, which _historyRowKey() happily keys as 'id:999' — so the
+    // row was never unkeyable and the assertion below was vacuous (it passed with the
+    // drop-unkeyable-rows mutation live). Caught by mutation-testing the gate, not by
+    // reading it; see docs/self-corrections.md SC-33.
+    const unkeyable = { week: 1, goal: 'build_muscle', day: 'day3', exercises: { bench: [{ w: 95, r: 5 }] } };
+    const localRow = finished('Tue, Sep 29, 2026', 'day4');
+    const out = ctx.dedupeLocalHistory([localRow, cloudish('2026-09-29', 'day4', 'c4'), unkeyable]);
+    check(`(l) a row with no date, no session_date and no id is never dropped (got ${out.length}, expected 2)`, out.length === 2);
+    const survivor = out.find(r => r.day === 'day4' || r.day_type === 'day4');
+    check('(l) the survivor keeps the per-set data the History modal renders',
+      !!(survivor && survivor.exercises && survivor.exercises.squat));
+    check('(l) the survivor also inherits session_date from the cloud twin it absorbed',
+      !!(survivor && survivor.session_date === '2026-09-29'));
+    // The keeper must be the LOCAL row, and the load-bearing proof of that is the id:
+    // isBeforeProgramStart()'s same-day refinement only fires for `typeof h.id === 'number'`
+    // (program-start-smoke.mjs's R5 floor), so letting the cloud twin's uuid win would
+    // silently disable that guard. `exercises` alone cannot prove it — only one side ever
+    // has that key, so it survives either choice of keeper.
+    check(`(l) the survivor keeps the LOCAL numeric Date.now() id, not the cloud uuid (got ${JSON.stringify(survivor && survivor.id)})`,
+      !!survivor && typeof survivor.id === 'number' && survivor.id === localRow.id);
+    check('(l) the unidentifiable row survived intact', out.some(r => r.exercises && r.exercises.bench));
+  }
+
+  // (m) one owner: the merge repairs through dedupeLocalHistory(), not its own copy
+  {
+    const mergeBody = grab('mergeCloudSessionsIntoHistory', /function mergeCloudSessionsIntoHistory\([\s\S]*?\n\}/);
+    check('(m) mergeCloudSessionsIntoHistory() repairs via the shared dedupeLocalHistory()',
+      /dedupeLocalHistory\(/.test(mergeBody));
+    const hydrateBody = grab('hydrateHistoryFromCloud', /async function hydrateHistoryFromCloud\([\s\S]*?\n\}/);
+    // Computing the repair is not performing it — an earlier draft only grepped for the
+    // dedupe CALL, and passed with the LS.set deleted. Require the write, and require it
+    // before the uid guard, which is what makes the offline/signed-out path repair too.
+    check('(m) hydrateHistoryFromCloud() computes the repair', /dedupeLocalHistory\(/.test(hydrateBody));
+    const wroteAt = hydrateBody.indexOf("LS.set('tandem_history'");
+    const guardAt = hydrateBody.indexOf('if (!uid');
+    check('(m) hydrateHistoryFromCloud() WRITES the repair back to localStorage', wroteAt !== -1);
+    check('(m) that write happens BEFORE the uid guard, so an offline/signed-out boot still repairs',
+      wroteAt !== -1 && guardAt !== -1 && wroteAt < guardAt);
+  }
+}
+
+// ── 2(n)-(q). BUG-207 residual: the MIDNIGHT-CROSSING twin ──
+//
+// Ported from claude/fervent-mendel-sveri6, which fixed BUG-178 in parallel and caught
+// what 1acb874 missed. Verified against the writers, not the claim: startOrResumeSession()
+// stamps the CLOUD row's session_date at the first logged set (start day); finishSession()
+// stamps the local row at finish. A session begun 23:30 and finished 00:15 has twins one
+// day apart, so the exact keys never match and it double-counts.
+{
+  const startedLateFinishedAfterMidnight = () => ({
+    // cloud row: created 23:30 on the 22nd, session_date = the 22nd (start day)
+    cloud: { id: 'cX', session_date: '2026-09-22', day_type: 'day3', session_type: 'strength',
+             completed: true, created_at: '2026-09-23T06:30:00Z' },
+    // local row finishSession() wrote at 00:15 on the 23rd — 45 min later
+    local: { id: Date.parse('2026-09-23T07:15:00Z'), date: 'Wed, Sep 23, 2026', week: 1,
+             goal: 'build_muscle', day: 'day3', exercises: { squat: [{ w: 100, r: 5 }] } },
+  });
+
+  // (n) the defect itself
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    const { cloud, local } = startedLateFinishedAfterMidnight();
+    const out = ctx.dedupeLocalHistory([local, cloud]);
+    check(`(n) a midnight-crossing session and its cloud twin collapse to ONE row (got ${out.length})`,
+      out.length === 1);
+    ctx.LS.set('tandem_history', out);
+    check('(n) it counts as one completed session, not two', ctx.completedSessionCount() === 1);
+    check('(n) the LOCAL row survives (numeric Date.now() id — isBeforeProgramStart needs a real instant)',
+      typeof out[0].id === 'number');
+  }
+
+  // (o) the guard against over-collapsing: a genuine next-day repeat must NOT be eaten
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg, days: 1 };
+    // A 1-day program legitimately repeats day1 on consecutive dates, ~24h apart.
+    const cloudDay1 = { id: 'c1', session_date: '2026-09-22', day_type: 'day1', session_type: 'strength',
+                        completed: true, created_at: '2026-09-22T18:00:00Z' };
+    const localDay1Next = { id: Date.parse('2026-09-23T18:00:00Z'), date: 'Wed, Sep 23, 2026', week: 1,
+                            goal: 'build_muscle', day: 'day1', exercises: { squat: [{ w: 100, r: 5 }] } };
+    const out = ctx.dedupeLocalHistory([localDay1Next, cloudDay1]);
+    check(`(o) a genuine next-day repeat 24h apart is NOT eaten as a twin (expected 2, got ${out.length})`,
+      out.length === 2);
+  }
+
+  // (p) a local row that already has its own exact-key partner is complete — a nearby
+  // cloud row is then a DIFFERENT session and must survive.
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    const { cloud, local } = startedLateFinishedAfterMidnight();
+    const ownPartner = { id: 'cY', session_date: '2026-09-23', day_type: 'day3', session_type: 'strength',
+                         completed: true, created_at: '2026-09-23T07:20:00Z' };
+    const out = ctx.dedupeLocalHistory([local, ownPartner, cloud]);
+    check(`(p) a local row with its own exact-key partner keeps the nearby cloud row as a separate session (expected 2, got ${out.length})`,
+      out.length === 2);
+  }
+
+  // (q) one-off rows are never collapsed — two legitimate same-day one-offs under one
+  // focus label are two sessions, and they never move the queue.
+  {
+    const ctx = buildContext();
+    ctx.cfg = { ...kerwinCfg };
+    const oneOff = n => ({ id: n, session_date: '2026-09-29', day: 'chest', session_type: 'oneoff',
+                           completed: true, exercises: { bench: [{ w: 135, r: 5 }] } });
+    const out = ctx.dedupeLocalHistory([oneOff(1), oneOff(2)]);
+    check(`(q) two same-day one-offs under one label stay TWO rows (got ${out.length})`, out.length === 2);
+    ctx.LS.set('tandem_history', out);
+    check('(q) and neither moves the program queue', ctx.completedSessionCount() === 0);
+  }
+}
+
+console.log('HISTORY-MERGE SMOKE — BUG-178/207 (session merge reaches the queue) + BUG-209 (the LIFTS come down too)\n');
 if (failures) {
   console.log(`${failures} FAILURE(S):`);
   for (const f of fails) console.log(`  ✗ ${f}`);
   process.exit(1);
 }
-console.log('All BUG-178/190/209 history-restore guarantees hold. ✓');
+console.log('All BUG-178/207/209 history-restore guarantees hold. ✓');
 process.exit(0);

@@ -22,7 +22,9 @@
  *
  * WHAT IT IS NOT — READ THIS BEFORE ADDING AN ENTRY
  * -------------------------------------------------
- * It is STATIC and client-only. It cannot see Postgres, so it CANNOT know that a
+ * It is STATIC and client-only, and it has TWO structural blind spots.
+ *
+ * (1) It cannot see Postgres, so it CANNOT know that a
  * column is read by a trigger, a view, or an RLS policy. Several columns here are
  * read exactly that way and are NOT defects — that is what SERVER_SIDE below is
  * for, and each of those entries was verified by querying pg_proc / pg_policy,
@@ -31,6 +33,16 @@
  * workout_sessions.total_volume_lbs — both read by triggers); that correction is
  * recorded in the audit doc. Do not add a SERVER_SIDE entry without naming the
  * database object that reads it and how you confirmed it.
+ *
+ * (2) READS ARE MATCHED BY COLUMN NAME, NOT TABLE-QUALIFIED. `.select()` lists and
+ * PostgREST filters could be qualified by their `.from()`, but a row read as
+ * `r.updated_at` carries no static evidence of which table `r` came from, so a
+ * property-access read of a common name (`updated_at`, `note`, `data`) counts as a
+ * read of that name on EVERY table that writes it. That is a false-NEGATIVE source:
+ * it can only hide a dead column, never invent one. It bit immediately — BUG-195's
+ * cloud half added `.select('… updated_at')` and `c.updated_at` on `exercise_notes`,
+ * which silently stopped `personal_records.updated_at` reproducing. MASKED below is
+ * where such a finding goes; it is NOT a fix, and check [D] keeps it honest.
  *
  * THE RATCHET (same shape as reachability-smoke.mjs)
  * --------------------------------------------------
@@ -66,7 +78,11 @@ const KNOWN_OPEN = {
   'personal_records.week_targets':      'BUG-202 (D5) — written, read by nothing, yet ASSERTED by calibration-upsert-smoke.mjs:119',
   'users.calibration_session_id':       'BUG-202 (D5)',
   'users.color_theme':                  'BUG-197 (D9) — readers use theme_color; three homes for one rule',
-  'workout_sessions.notes':             'BUG-205 (D15) — holds real journal text with no read path; D6 shape on another surface',
+  // workout_sessions.notes CLOSED (BUG-205/D15) — a real live-session notes field
+  // was added; startOrResumeSession() now selects+reads `notes` on resume
+  // (data.notes hydrates the local draft when it's the only copy left), closing
+  // the "no read path" half of BUG-205 for this one column. The other D15
+  // columns below are untouched and still open.
   'workout_sessions.phase_name':        'BUG-205 (D15)',
   // `workout_sessions.week_number` CLOSED 2026-09-30 by BUG-209: the history restore
   // reads it into the row's `week`, which is what the History modal's "Wk3" badge
@@ -75,8 +91,20 @@ const KNOWN_OPEN = {
   'workout_sessions.duration_minutes':  'BUG-205 (D15) — candidate denormalisation, not necessarily dead',
   'sets.exercise_category':             'BUG-205 (D15) — found by this gate, added to that row 2026-09-30',
   'users.start_weight_lbs':             'BUG-205 (D15) — found by this gate, added to that row 2026-09-30',
-  'personal_records.updated_at':        'BUG-205 (D15) — audit timestamp, likely keep; verdict owed',
   'agent_log.resolved_at':              'BUG-205 (D15) — audit timestamp written by resolveQAItem; likely keep',
+};
+// MASKED: still write-only IN FACT, but blind spot (2) above means this detector
+// can no longer see it, so it cannot sit in KNOWN_OPEN — [B] would fail forever.
+// Deleting the entry instead would lose the finding, which is the outcome this whole
+// gate exists to prevent, so it is carried here with its tracker row and the exact
+// read that masks it. Check [D] asserts each of these is STILL invisible: if a
+// future change removes the masking read, [D] fails and the entry must move back to
+// KNOWN_OPEN (or be fixed). The ratchet still turns one way.
+const MASKED = {
+  'personal_records.updated_at':
+    'BUG-205 (D15) — audit timestamp, likely keep; verdict owed. MASKED 2026-09-30 by ' +
+    "hydrateNotesFromCloud()'s `.select('exercise_name, note, updated_at')` + `c.updated_at` " +
+    'on exercise_notes (BUG-195). No reader of a personal_records row touches it.',
 };
 const ALLOW = { ...SERVER_SIDE, ...KNOWN_OPEN };
 
@@ -190,8 +218,20 @@ if (stale.length) {
   for (const c of stale) console.log(`          ${c}  (${ALLOW[c]})`);
 } else console.log('  ok    [B] every allowlist entry still reproduces');
 
+// [D] every MASKED entry is STILL masked. If one becomes visible again the entry is
+// wrong where it sits: it belongs in KNOWN_OPEN (or is fixed). Either way, decide it
+// rather than leaving a finding parked in the one list nothing checks.
+const unmasked = Object.keys(MASKED).filter(c => deadNow.has(c)).sort();
+if (unmasked.length) {
+  fail(`[D] ${unmasked.length} MASKED entry/entries reproduce again — the detector can see them now, so move them to KNOWN_OPEN or fix them:`);
+  for (const c of unmasked) console.log(`          ${c}  (${MASKED[c]})`);
+} else if (Object.keys(MASKED).length) {
+  console.log(`  ok    [D] ${Object.keys(MASKED).length} MASKED finding(s) still invisible to this detector (carried, not fixed)`);
+}
+
 console.log('\nOPEN, carried deliberately:');
 for (const [c, why] of Object.entries(KNOWN_OPEN)) if (deadNow.has(c)) console.log(`  · ${c} — ${why}`);
+for (const [c, why] of Object.entries(MASKED)) console.log(`  · ${c} — MASKED (this gate can no longer detect it): ${why}`);
 
 console.log(failed === 0 ? '\ncolumn-reachability-smoke: PASS' : `\ncolumn-reachability-smoke: ${failed} FAILURE(S)`);
 process.exit(failed === 0 ? 0 : 1);

@@ -156,8 +156,11 @@ Three conditions, all non-negotiable:
    If it is judgment, write *"judgment — not mechanically checkable"*. Never imply a guard exists.
 
 This is the same discipline as the doctrine gate, pointed at your own reasoning: a rule nobody
-checks is a suggestion. The current rules are SC-01 staleness · SC-02 retracted claims · SC-03
-run-don't-simulate · SC-04 feedback is not a commit · SC-05 status docs are snapshots.
+checks is a suggestion. This list names the first five and the most recent block only — read the
+file, it is the authority: SC-01 staleness · SC-02 retracted claims · SC-03 run-don't-simulate ·
+SC-04 feedback is not a commit · SC-05 status docs are snapshots · … · SC-38 mutation-test each
+assertion individually · SC-39 a masked finding is not a fixed one · SC-40 never undo a mutation
+test with a HEAD-relative git revert.
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 

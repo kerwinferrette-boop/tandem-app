@@ -1226,7 +1226,7 @@ P1 Wrong Data / P2 Visual UX / P3 Low.
 
 ## SC-33 — My call-site gate located sites by regex and never asserted how many it found, so it silently guarded a subset
 
-**What happened (2026-09-30, BUG-190).** Writing the regression gate for the stale-history bug, I
+**What happened (2026-09-30, BUG-207).** Writing the regression gate for the stale-history bug, I
 wrote a check that grabbed "the returning-user init path" with a single `html.match(...)` and
 asserted it contained the new hydrate call. It passed. It was also wrong: `match()` returns the
 FIRST hit, and there are **two** `if (savedCfg?.goal) {` entry points in `tandem.html` — the init
@@ -1440,4 +1440,139 @@ incumbent AND that every call site passes it, since a builder that *can* carry b
 without the incumbent carries nothing. Teeth proved in both directions: removing the `maxDb` carry
 fails [A]/[D1] naming the uncapped prescription, and dropping the second argument at one call site
 fails [C] naming that site.
+
+---
+
+## SC-38 — Three of my new gate assertions were vacuous: the fixture could not reach the branch, so they passed with the defect live
+
+**What happened (2026-09-30, BUG-178 part 3).** I added four assertions guarding the
+localStorage de-dup repair, ran the gate, saw green, and would have shipped. Mutation-testing
+them found **three that never discriminated**:
+
+- *"a row with no derivable key is never dropped"* — my fixture was `{ id: 999, day, exercises }`.
+  `_historyRowKey()` keys that as `'id:999'`, so it was never unkeyable; the drop-unkeyable-rows
+  mutation left the gate green.
+- *"the survivor keeps the per-set data"* — only one of the two collapsing rows ever carries
+  `exercises`, so an object spread preserves it **whichever** row is chosen as keeper. The
+  assertion could not fail. The invariant that actually distinguishes them is the `id`: the local
+  row's numeric `Date.now()` must win, because `isBeforeProgramStart()`'s same-day refinement only
+  fires for `typeof h.id === 'number'`.
+- *"hydrate also repairs on the offline path"* — I grepped for the `dedupeLocalHistory(` **call**.
+  Deleting the `LS.set` that writes the result back left the call in place, so the check passed
+  while the repair was computed and thrown away.
+
+**The mechanism, not the trait.** All three are the same shape: I wrote the assertion against the
+*name* of the behaviour and never checked that the fixture or grep could reach the failing branch.
+A green assertion has two possible causes — the code is right, or the test cannot see the code —
+and reading it cannot tell them apart. This is SC-03 (run, don't simulate) pointed at test
+fixtures, and it is the same family as the gate bugs CLAUDE.md's no-emoji entry already records:
+two drafts of that script passed a file with a live injected emoji.
+
+> **THE RULE — SC-38.** Mutation-test every NEW assertion individually, not the gate as a whole.
+> For each one, name the specific mutation that should break it, apply that mutation, and confirm
+> **that assertion by name** appears in the failure list. An assertion that stays green under its
+> own mutation is not evidence, it is decoration — delete it or fix the fixture. Be especially
+> suspicious of (a) a "negative" fixture that a fallback path quietly makes positive, (b) a field
+> only one side of a merge carries, which survives any merge order, and (c) a source-grep for a
+> call rather than for its *effect*.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: if I cannot state
+"mutation M breaks assertion A, and I watched A fail," then A is unproven, no matter how green the
+run was. A gate's aggregate PASS is never that evidence.
+
+**Worked example added 2026-09-30, same session, BUG-195's cloud half.** Case (a) above has an
+inverted twin worth naming, because it cost a real assertion. `ex-notes-smoke.mjs` asserted
+*"anonymous pushes NOTHING to the cloud"* by counting Supabase calls and expecting zero. Under its
+own mutation — deleting the `!currentUser` guard in `pushExNote()` — it STAYED GREEN: without the
+guard, `currentUser.id` throws a TypeError that the function's own `try/catch` swallows, so the
+call count is zero either way. Zero for the wrong reason is indistinguishable from zero for the
+right one. The repair was to stop asserting the ABSENCE and start asserting the MECHANISM: a
+guarded return is silent, a caught exception warns, so the vm context now captures `console.warn`
+and `[L2]` fails if anything was warned. That mutation now fails by name. Generalised: **when an
+assertion's expected outcome is "nothing happened," find the second path that also produces
+nothing — an early return, a caught throw, a no-op fallback — and assert which one you took.**
+This is not academic: control flow by caught TypeError breaks the moment `currentUser` becomes
+`{}` rather than `null`, which would then upsert rows keyed `user_id: undefined` on every keystroke
+of look-around mode.
+
+## SC-39 — My reads-side gate matches column names globally, so fixing one table silenced a real finding on another
+
+**Date:** 2026-09-30 · **Found by:** `npm run verify` failing on my own new check, mid-BUG-195.
+
+`scripts/column-reachability-smoke.mjs` (SC-34's enforcement) reports every column the app writes
+and never reads. Its `[B]` ratchet asserts each allowlist entry *still reproduces*, so a fixed
+column must be removed and the ratchet only turns one way. Shipping BUG-195's cloud half broke
+`[B]`: `personal_records.updated_at` stopped being detected.
+
+Nothing about `personal_records` had changed. `hydrateNotesFromCloud()` added
+`.select('exercise_name, note, updated_at')` and `c.updated_at` — on **`exercise_notes`**. The
+detector's read test is by column NAME, not table-qualified, because a row read as `r.updated_at`
+carries no static evidence of which table `r` came from. So a property-access read of any common
+name (`updated_at`, `note`, `data`) counts as a read of that name on *every* table that writes it.
+
+**The mechanism, not the trait.** The tempting responses were both wrong. Deleting the entry to get
+green would have silently discarded a live finding — precisely the outcome the whole gate exists to
+prevent, and the "worse than no gate" shape CLAUDE.md names. Leaving it in `KNOWN_OPEN` would fail
+`[B]` forever and pressure the next person to weaken the ratchet. Both would have been *quiet*: the
+run would go green and nobody would learn that the detector had lost an eye.
+
+> **THE RULE — SC-39.** When a check stops reproducing a finding, establish WHY before touching the
+> allowlist. If the finding is still true in fact and only became invisible, it does not get
+> deleted and it does not stay where a freshness ratchet will fail on it — it moves to an explicit
+> MASKED list that records the finding, its tracker row, and the exact read that masks it. And
+> state the detector's matching limitation in its own header, since a false-negative source that
+> only lives in one person's head is a future silent regression.
+
+**Enforced by:** `scripts/column-reachability-smoke.mjs` check `[D]` — every `MASKED` entry must
+still be undetected. If a future change removes the masking read, `[D]` fails and the entry must
+move back to `KNOWN_OPEN` or be fixed; a finding cannot be parked in the one list nothing watches.
+Mutation-tested: a detectable column placed in `MASKED` fails `[D]` by name.
+
+## SC-40 — I used `git checkout --` to undo a mutation test and discarded hours of uncommitted work with it
+
+**Date:** 2026-09-30 · **Found by:** the file's own grep markers, immediately after running it.
+
+Mutation-testing a gate means editing the working tree to break the code on purpose, then putting
+it back. I had done that a dozen times in one session by restoring a `cp` backup. On the last one I
+typed `git checkout -- tandem.html` instead. Git did exactly what it was asked: it reverted the file
+to HEAD, which erased **every uncommitted change** — the whole BUG-195 cloud half, the
+`restoreFromCloud` re-render, both hydrate call sites, the threaded timestamp, `wipeCloudNotes`, the
+limits block — not just the two-line mutation I wanted gone. Recovery was only possible because a
+`cp` snapshot happened to exist in the scratchpad from twenty minutes earlier.
+
+**The mechanism, not the trait.** Mutation testing deliberately puts wrong code in the working tree,
+so during it the tree holds two indistinguishable kinds of edit: the fix I want to keep and the
+break I want to drop. `git checkout --` cannot tell them apart and neither can a habit. The failure
+was not carelessness about that one command; it was running a destructive-by-design workflow on a
+file whose only copy of hours of work was the working tree itself.
+
+> **THE RULE — SC-40.** Before the FIRST mutation of a session, get the work out of the working
+> tree's single copy: commit it (a WIP commit is fine and cheap), or take a named snapshot and write
+> the restore command down. Undo every mutation with that named snapshot. Never use
+> `git checkout --`, `git restore`, `git stash`, or any other HEAD-relative revert to undo a
+> mutation while uncommitted work is in the same file — HEAD is not the state you are returning to.
+> After restoring, confirm the fix is back by grepping for its markers, the way CLAUDE.md's
+> "confirm the code under test is the code you think it is" already requires.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: if the answer to
+"what restores this file?" is a git command rather than a path in the scratchpad, stop. The marker
+grep afterwards IS mechanical and is what caught this one; it cost nothing and should be routine.
+
+## SC-41 — I titled a story with a guessed Bug ID, one day after SC-28 told me not to
+
+**Date:** 2026-10-01 (Cycle 98) · **Found by:** reading the Bug ID back after create, same turn.
+
+Filing the discovery row for the generalized slot-coverage guard, I wrote the linked story's Story ID as
+`BUG-229-...` before the Bug Log row existed. `Bug ID` is an `auto_increment_id` (read-only); the real value
+was 218. I had the number from nowhere — the same invention SC-28 already records. Caught immediately because
+SC-28's habit (read it back) was run; the story was renamed `BUG-218-...` in the same cycle.
+
+**The mechanism, not the trait.** The create call returns the new page's URL but not its auto-increment id, so
+the title is written before the id is knowable. The tempting fix is to write a plausible next number.
+
+> **THE RULE — SC-41.** Create the Bug & QA Log row first, query its `Bug ID` back, and only then create or
+> name anything that cites it. If both must be created together, title the story with the Bug row's URL slug
+> or a descriptive name and rename after the read-back.
+
+**Enforced by:** judgment — not mechanically checkable (same limit as SC-28).
 

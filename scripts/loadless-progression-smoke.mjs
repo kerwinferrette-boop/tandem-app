@@ -45,7 +45,7 @@
 
 import {
   loadProgressionLayer, loadlessEntries, weightedEntries,
-  loadlessViolations, loadedViolations,
+  loadlessViolations, loadedViolations, missingLoadViolations,
 } from './lib/progression-layer.mjs';
 
 let layer;
@@ -127,7 +127,28 @@ console.log(`PASS  ${controlChecks} weighted controls (${weighted.length} moveme
   }
 }
 
+// ── 4. BUG-208: a LOADED lift with a MISSING weight is not a loadless case ──
+// "Logged 0 because it's a band pull-apart" and "logged blank on a barbell
+// squat" are different events. The first deserves rep coaching (sections 1-3);
+// the second is missing data, and the chip must PROMPT for the load — never
+// coach reps premised on a load that was never lifted, never fabricate a
+// number (Kerwin's Option-1 ruling, 2026-09-29). Both the new null capture and
+// the read-path coercion of legacy 0 rows land on the same guard, so both
+// stored shapes are swept.
+let missingChecks = 0;
+for (const ex of weighted) {
+  for (const stored of [null, 0]) {
+    for (const minReps of [30, 12, 2]) {
+      setLast(ex.name, stored, minReps);
+      const rec = recommend(ex, { goal: 'build_muscle', week: 4 });
+      missingChecks++;
+      report(missingLoadViolations(rec, `${ex.name} [${ex.equipment}] stored weight=${JSON.stringify(stored)} minReps=${minReps}`));
+    }
+  }
+}
+console.log(`PASS  ${missingChecks} missing-load prompts (${weighted.length} loaded movements × {null, legacy 0} × 3 rep cases) — loaded lift with no recorded load prompts, never rep-coaches or fabricates`);
+
 console.log(failures === 0
-  ? `\nLOADLESS PROGRESSION SMOKE: ALL PASS — ${loadlessChecks + controlChecks + 1} assertions, no non-load ever reaches a chip.`
+  ? `\nLOADLESS PROGRESSION SMOKE: ALL PASS — ${loadlessChecks + controlChecks + missingChecks + 1} assertions, no non-load ever reaches a chip.`
   : `\nLOADLESS PROGRESSION SMOKE: ${failures} FAILURE(S).`);
 process.exit(failures === 0 ? 0 : 1);

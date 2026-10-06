@@ -628,13 +628,12 @@ const EXERCISE_BANK = {
     // from the existing (mislabeled) in-bank comment: the real SAGE Open Medicine 2019 paper is
     // Silva Lopes, Machado, Micheletti et al., "Effects of training with elastic resistance versus
     // conventional resistance on muscular strength: A systematic review and meta-analysis," SAGE
-    // Open Medicine 2019, DOI 10.1177/2050312119831116 (18 trials; elastic ~= conventional
-    // resistance for strength gains) — the existing band-curl/band-lateral-raise/band-hammer-curl
-    // comments cite "Aboodarda et al. 2019, SAGE Open Medicine," which conflates two different real
+    // Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic ~= conventional resistance for strength gains; study count and
+    // upper/lower-limb attribution UNVERIFIED against the abstract — a 2020 corrigendum swapped limb labels, DOI 10.1177/2050312120961220) — formerly band-curl/band-shrug/band-straight-arm-pulldown/band-hammer-curl
+    // comments cited "Aboodarda et al. 2019, SAGE Open Medicine," which conflates two different real
     // papers (Aboodarda, Page & Behm, Clinical Biomechanics 2016 vol 39 — a different journal/year)
     // into one wrong byline. Verified live via WebSearch this cycle; filed as a new discovery
-    // (mislabeled citation, not fixed here — out of this story's declared scope) rather than
-    // silently correcting the other three entries in the same pass.
+    // (mislabeled citation; the other band-* entries were corrected under BUG-175).
     name:'Band Front Raise', videoId:null,
     muscleGroups:{primary:['anterior_delt'],secondary:['pec_major_clavicular']},
     emphasis:['shoulders','push','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
@@ -717,7 +716,8 @@ const EXERCISE_BANK = {
     // isolation exercises. Mirrors barbell-shrug/db-shrug's own rationale (direct upper-trap
     // stimulus via straight-arm elevation) applied to a band anchored underfoot. Band-vs-free-weight
     // modality equivalence (comparable activation/hypertrophy when volume/intensity matched):
-    // Aboodarda et al. 2019, SAGE Open Medicine, meta-analysis of elastic resistance training.
+    // Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in strength gains; limb-specific claim unverified post-corrigendum).
+    // Source supports STRENGTH-gain equivalence only, not EMG activation or hypertrophy (BUG-175).
     // FLAG: no band-shrug-specific EMG study was found (repo research-report(8)/Framework docx are
     // silent on band exercises entirely — 0 hits for 'band'/'elastic'/'shrug'); this entry rests on
     // (a) the established anatomical case for shrugging as upper-trap's direct action, already
@@ -789,9 +789,8 @@ const EXERCISE_BANK = {
     // exercises. Same movement pattern as straight-arm-pulldown above (only cable->band swap),
     // citing that entry's own rationale plus: (a) Washif et al. 2022, MDPI Applied Sciences —
     // straight-arm pulldown produces significantly higher concentric lat-dorsi activation than
-    // compound press movements; (b) Aboodarda et al. 2019, SAGE Open Medicine — band resistance
-    // produces comparable muscle activation/hypertrophy to free weights/cable when volume and
-    // intensity are matched, the citation already used for every other band-* entry in this bank.
+    // compound press movements; (b) Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in strength gains; limb-specific claim unverified post-corrigendum) — strength-gain
+    // equivalence only (not activation/hypertrophy), the citation used for every other band-* entry (BUG-175).
     name:'Band Straight-Arm Pulldown', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['tricep_long_head','posterior_delt']},
     emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
@@ -981,15 +980,28 @@ const EXERCISE_BANK = {
     // (FOCUS_SLOTS.back[3], arms[0], arms[2], pull[2]/[4] all request bare ['bicep']; groupsMatch's
     // prefix rule already makes 'bicep_brachii' satisfy a ['bicep'] search, same as every other
     // bicep entry in this bank). Standard supinated-grip curl, same pattern as barbell-curl/db-curl
-    // above. Citation: Aboodarda et al. 2019, SAGE Open Medicine meta-analysis — band resistance
-    // training produces comparable muscle activation and hypertrophy to free weights when volume
-    // and intensity are matched (the same citation already used for band-chest-fly/band-lateral-raise
-    // elsewhere in this bank).
+    // above. Citation: Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 (elastic vs conventional resistance: no difference in strength gains; limb-specific claim unverified post-corrigendum) — strength-gain
+    // equivalence only, not activation/hypertrophy (BUG-175; same citation as the other band-* entries).
     name:'Band Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The standard supinated curl pattern, needing only a band anchored underfoot — band tension rises through the range, peaking near the top where the bicep is already strongest, unlike a dumbbell which goes light at lockout.',
     cues:['Stand on the band, one handle in each hand, supinated grip','Elbows pinned to sides — do not let them drift forward','Full extension at bottom (stretch)','Squeeze at the top; do not swing — hinge at the elbow only']},
+  'band-concentration-curl':{
+    // BUG-119b bicep half (2026-10-01). Mirrors the in-bank 'concentration-curl' (DB, hotel_gym)
+    // movement and muscle tags exactly — no new anatomical claim; only the equipment/tier differ.
+    // Closes the home-tier gap where Band Curl was the ONLY bicep_brachii-primary isolation, so
+    // the second bicep slot fell to Band Hammer Curl (brachialis-primary) via D18's fallback.
+    // Band-modality equivalence: Silva Lopes JS, Machado AF, Micheletti JK, et al., "Effects of
+    // training with elastic resistance versus conventional resistance on muscular strength: A
+    // systematic review and meta-analysis," SAGE Open Medicine 2019, DOI 10.1177/2050312119831116,
+    // PubMed 30815258 (upper-limb strength SMD 0.09, 95% CI -0.18 to 0.35 — no difference).
+    // Needs a chair/edge of a sofa to sit on, same household-furniture convention as Bench Dip.
+    name:'Band Concentration Curl', videoId:null,
+    muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
+    emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
+    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work. Needs only a band under the foot and a seat.',
+    cues:['Sit on a chair with the band under the foot on your working side; brace that elbow against your inner thigh above the knee','Full extension at bottom — keep light tension on the band','Supinate at the top','Squeeze and hold one count at peak; lower slowly']},
   'band-hammer-curl':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero brachialis/
     // brachioradialis isolation exercises — closes FOCUS_SLOTS.arms[4]. Same neutral-grip pattern
@@ -998,7 +1010,7 @@ const EXERCISE_BANK = {
     // in-bank rationale) found the neutral/pronated grip drives the greatest brachioradialis
     // activation and higher brachialis recruitment than the supinated curl — the reason the DB
     // version above is tagged brachialis/brachioradialis-primary rather than bicep_brachii-primary.
-    // Band-modality equivalence: Aboodarda et al. 2019, SAGE Open Medicine (see band-curl above).
+    // Band-modality equivalence: Silva Lopes et al. 2019, SAGE Open Medicine (see band-curl above; BUG-175).
     name:'Band Hammer Curl', videoId:null,
     muscleGroups:{primary:['brachialis','brachioradialis'],secondary:['bicep_brachii']},
     emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
@@ -1753,7 +1765,7 @@ const MOVEMENT_FAMILIES = {
   'biceps-curl':{ label:'Biceps Curl', pattern:'isolation', canonicalLift:null,
     variants:['barbell-curl','ez-bar-curl','db-curl','incline-db-curl','concentration-curl',
               'preacher-curl','spider-curl','cable-curl','bayesian-cable-curl','zottman-curl',
-              'band-curl']},
+              'band-curl','band-concentration-curl']},
   'hammer-curl':{ label:'Hammer / Reverse Curl', pattern:'isolation', canonicalLift:null,
     variants:['hammer-curl','cross-body-hammer-curl','cable-rope-hammer-curl','band-hammer-curl',
               'reverse-curl']},

@@ -2077,6 +2077,19 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
   <!-- Workout Views injected here -->
   <div id="workoutViews"></div>
 
+  <!-- Session Notes: ONE field for the whole live session, not per-exercise
+       (per-exercise .ex-notes is local-only by design — BUG-195). Lives
+       outside buildDayHTML/workoutViews so switching day tabs never rebuilds
+       or clears it. Drafts to localStorage on every keystroke (so a reload
+       before Finish doesn't lose it) and is sent to workout_sessions.notes
+       at Finish — see finishSession() and saveExerciseToCloud(). -->
+  <div class="session-notes-wrap" style="margin:12px 16px 0;">
+    <label for="sessionNotesInput" style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Session notes</label>
+    <textarea id="sessionNotesInput" rows="2" oninput="onSessionNotesInput()"
+      placeholder="How'd it feel? Anything to remember for next time."
+      style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--font-body);font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+  </div>
+
   <!-- Finish Banner -->
   <div class="finish-banner hero-host" id="finishBanner" style="margin:12px 16px 0;">
     <div class="hero-fill" data-hero="complete" aria-hidden="true"></div>
@@ -2734,7 +2747,7 @@ sb.auth.onAuthStateChange((event, session) => {
         selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
         currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
         renderTracker(); showView('dashboard');
-        // BUG-190: the SECOND returning-user entry point with a saved cfg (magic-link
+        // BUG-207: the SECOND returning-user entry point with a saved cfg (magic-link
         // click / session restore / home-screen icon). It had the identical stale-cache
         // hole as the init IIFE: renderTracker() asks the queue what today's workout is
         // while tandem_history still holds only whatever this browser happened to have.
@@ -2788,7 +2801,8 @@ const LS_SCOPED_KEYS = [
   'tandem_cfg','tandem_history','tandem_prs','tandem_profile','tandem_week',
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
   'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
-  'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id'
+  'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id',
+  'tandem_session_notes_draft'
 ];
 let _lsScope = ANON_SCOPE;
 const lsKey = k => k + '::' + _lsScope;
@@ -3332,7 +3346,13 @@ async function computeCalibration1RMs(sessionUUID, userId) {
     .eq('id', userId);
 }
 
-function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
+// BUG-208: inputMode is the renderer's own 3-way row model ('sec'|'bw'|'reps',
+// buildDayHTML) — it tells THIS read path whether a non-positive stored weight is
+// a TRUE zero external load (bw/band row → rep coaching, D34) or MISSING DATA on
+// a loaded lift (reps row → prompt; never a prescription premised on a load that
+// was never lifted). It is a row-rendering fact, not an equipment key on the
+// progression rule: any weight > 0 still ladders regardless (D34 clause b).
+function getRecommendation(exId, compound, goal, exName, sex, repTarget, inputMode) {
   const lastSets = LS.get('tandem_lastsets') || {};
   // C-fix (2026-07-13): read by NAME (stable identity). No id fallback — a
   // recycled slot-id can hold another movement's set, which is exactly the
@@ -3436,6 +3456,13 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget) {
   // the loadless complement, and it reuses D24's existing PROGRESSION_REP_SURPLUS trigger rather
   // than inventing a threshold. Rep-TARGET scaling for bodyweight is OUT of scope (BUG-44/EPIC-34).
   if (!(Number(weight) > 0)) {
+    // BUG-208 (Kerwin's Option-1 ruling, 2026-09-29): on a LOADED row ('reps') a
+    // non-positive/absent stored weight is MISSING DATA — logSet now stores it as
+    // null, and legacy rows stored blank-as-0 (read-path coercion lands here too).
+    // Rep coaching would be advice premised on a load never lifted; a number would
+    // be a fabricated load. The only honest chip is a prompt for the datum.
+    if (inputMode !== 'bw' && inputMode !== 'sec')
+      return { weight: null, arrow: 'new', label: 'No load recorded', reason: 'Log your weight to get a target next session' };
     if (minReps >= topRange + PROGRESSION_REP_SURPLUS)
       return { weight: null, arrow: 'up', label: 'Add reps', reason: `${minReps} reps with no added load — progress by adding reps next session` };
     if (minReps >= topRange - 3)
@@ -4485,9 +4512,10 @@ function applySetupSelection() {
     // read "Hotel · Small DB" while resolveMaxDb() returned 0 and dumbbell
     // prescriptions went UNCAPPED — the UI claiming a constraint the engine had
     // forgotten. Safety-adjacent: it prescribes load the user's gym lacks.
-    // Local-only for now: there is no users.max_db column, and adding one is a
-    // migration (human-only). So this survives a reload but not a new device;
-    // the cloud half is still owed on BUG-192.
+    // Persisted BOTH ways as of migration 0023: LS.set('tandem_cfg') below keeps it
+    // on this device, and syncToCloud() writes users.max_db so it follows the
+    // account to a new one. Before 0023 this was local-only and the cloud half was
+    // an open item on BUG-192; it is now closed.
     cfg.maxDb = maxDb || null;
     // Write local FIRST so the choice survives a reload even if the cloud
     // round-trip is slow, offline, or the tab closes before it resolves —
@@ -5172,6 +5200,14 @@ async function startWorkoutTimer() {
 }
 
 function renderTracker() {
+  // Hydrate the session-notes draft once per page load — guarded by dataset
+  // so the many renderTracker() calls across a live session (switchDay,
+  // changeWeek, etc.) never stomp text the user is mid-typing.
+  const _notesEl = document.getElementById('sessionNotesInput');
+  if (_notesEl && !_notesEl.dataset.hydrated) {
+    _notesEl.value = LS.get('tandem_session_notes_draft') || '';
+    _notesEl.dataset.hydrated = '1';
+  }
   const _phases = scaledPhases(cfg.goal, cfg.weeks);
   const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
   const _phaseNum = _phases.findIndex(p => p === phase || (p.name === phase.name)) + 1 || 1;
@@ -5458,7 +5494,9 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
         // EPIC-031: authored (template) exercises carry their own rep target
         // (ex.repRange low bound in ex.r) — progression measures against THAT,
         // not the generated phase rep. Generated path (no repRange) unchanged.
-        : getRecommendation(ex.id, ex.compound, goalKey, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null);
+        // BUG-208: pass the row's own inputMode so the read path can tell a true
+        // loadless row (bw/band) from a loaded lift whose weight was never recorded.
+        : getRecommendation(ex.id, ex.compound, goalKey, ex.name, cfg.sex, (ex.isCore || ex.repRange) ? ex.r : null, inputMode);
       const _prStore = LS.get('tandem_prs') || {};
       // EPIC-9: effective 1RM = working (living) number first, then all-time PR.
       // C7/BUG-45: name-only when named — the id fallback was serving another
@@ -5579,7 +5617,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
           </div>
           <div class="ex-notes-wrap">
             <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."
-              oninput="saveExNote('${(ex.name||'').replace(/'/g,"\\'")}', this.value)"
+              oninput="saveExNote('${escNoteKey(ex.name)}', this.value)"
             >${escNoteHtml(exNoteFor(ex.name))}</textarea>
           </div>
         </div>
@@ -5706,12 +5744,23 @@ const sessionPrCache = {}; // exerciseName → best est1rm seen this session; pr
 const cloudSetRowIds = {};
 const pendingSetInserts = {};
 
+// Session notes: drafts on every keystroke so a reload/crash before Finish
+// doesn't lose it. currentSessionNotes() is the one read site — finishSession()
+// and saveExerciseToCloud() both call it instead of touching the DOM directly.
+function onSessionNotesInput() {
+  const val = document.getElementById('sessionNotesInput')?.value ?? '';
+  LS.set('tandem_session_notes_draft', val);
+}
+function currentSessionNotes() {
+  return (document.getElementById('sessionNotesInput')?.value || '').trim();
+}
+
 async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
   const storedId = LSraw.get('tandem_active_session_id');
   if (storedId) {
     const { data } = await sb.from('workout_sessions')
-      .select('id')
+      .select('id, notes')
       .eq('id', storedId)
       .eq('user_id', currentUser.id)
       .eq('completed', false)
@@ -5719,6 +5768,11 @@ async function startOrResumeSession() {
     if (data?.id) {
       if (!LSraw.get('tandem_session_start_time')) {
         LSraw.set('tandem_session_start_time', String(Date.now()));
+      }
+      // Resuming on a device whose local draft is empty (cleared storage, second
+      // device) falls back to whatever's already saved in the cloud row.
+      if (data.notes && !LS.get('tandem_session_notes_draft')) {
+        LS.set('tandem_session_notes_draft', data.notes);
       }
       // C11 diagnostic: remember the FIRST session id this workout ran under
       if (!LSraw.get('tandem_c11_first_session_id')) {
@@ -5798,11 +5852,23 @@ function logSet(id, i) {
   const rEl  = document.getElementById(`${id}-r${i}`);
 
   if (!already) {
-    const w = parseFloat(wEl.value) || 0;
+    // BUG-208 (Kerwin's Option-1 ruling, 2026-09-29): a blank/invalid weight cell
+    // on a LOADED row ('reps') is MISSING DATA, stored as null — the old
+    // `parseFloat(...)||0` coerced it to 0, which routed barbell lifts into D34's
+    // loadless rep coaching (a recommendation premised on a load never lifted).
+    // On a bw/sec row the blank is truthful: the external load IS 0.
+    // wNum is the numeric wire/aggregate form: sets.weight_lbs is NOT NULL and
+    // sessionSetsMap feeds volume sums — 0 there is wire format, and the read
+    // path (getRecommendation) coerces non-positives on loaded rows back to the
+    // missing-data case, so nothing downstream re-fabricates a prescription.
+    const rawW = parseFloat(wEl.value);
+    const rowUnit = document.getElementById(`sr-${id}-${i}`)?.dataset.unit || 'reps';
+    const w = Number.isFinite(rawW) && rawW > 0 ? rawW : (rowUnit === 'reps' ? null : 0);
+    const wNum = w ?? 0;
     const r = parseInt(rEl.value) || 0;
     // D12: calcRM selects Epley/Mayhew by rep range — a high-rep set counts toward
     // the PR at proper accuracy, not clamped to a 12-rep estimate.
-    const est1rm = Math.round(calcRM(w, r));
+    const est1rm = Math.round(calcRM(wNum, r));
     const prs = LS.get('tandem_prs') || {};
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
@@ -5822,7 +5888,7 @@ function logSet(id, i) {
     // different movements across rotations/weeks (see BUG-45), so a later
     // per-exercise history lookup that only trusted the id key would silently
     // mix in — or hide — sets logged under a since-rotated id.
-    sessionSetsMap[id].push({ set: i+1, w, r, est1rm, name: prExName, rpe: readSetRpe(id, i) });
+    sessionSetsMap[id].push({ set: i+1, w: wNum, r, est1rm, name: prExName, rpe: readSetRpe(id, i) });
 
     if (est1rm > prev && w > 0) {   // D12: est1rm already uses the correct formula for these reps
       prs[prExName] = est1rm;                 // C7: write by canonical name
@@ -5905,7 +5971,7 @@ function logSet(id, i) {
             exercise_name: rawName,
             exercise_category: exCat,
             set_number: i + 1,
-            weight_lbs: w,
+            weight_lbs: wNum, // wire shape — column is NOT NULL; 0 = no recorded load (BUG-208 read-path coerces)
             reps: r,
             rpe: readSetRpe(id, i),
             estimated_1rm_lbs: est1rm > 0 ? est1rm : null,
@@ -6037,7 +6103,7 @@ async function saveExerciseToCloud(id) {
       day_type: currentDay,
       program_goal: cfg.goal,
       completed: false,
-      notes: null
+      notes: currentSessionNotes() || null
     };
     if (currentCloudSessionId) sessionPayload.id = currentCloudSessionId;
     const { data: sessionData, error: sessionError } = await sb
@@ -6581,9 +6647,24 @@ function buildHistoryModal() {
 // scripts/lastsets-churn-smoke.mjs exists because keying durable per-lift memory
 // by slot id silently attributed one lift's history to another.
 //
-// LOCAL ONLY, deliberately: the cloud round-trip needs `exercise_notes`
-// recreated, which is a migration and human-only here. Local persistence ships
-// now rather than leaving the data loss live for however long that takes.
+// The cloud half shipped 2026-09-30 once migration 0022 recreated the table
+// (verified live: the unique index on (user_id, exercise_name) that `onConflict`
+// targets exists, an upsert-on-conflict updates in place under the `authenticated`
+// role with RLS on, and a foreign user_id is rejected 42501). The note above about
+// matching the dropped table's unique key is why that restore needed no reshape.
+// KNOWN LIMITS, stated rather than implied — see docs/waves/EPIC-63-WAVE-STATE.md:
+//   · No tombstones. Deleting a note removes the row, but a device still holding it
+//     locally will push it back up on its next hydrate. Deliberate: the alternative
+//     reading (cloud-absent means deleted-elsewhere) would silently discard every
+//     note written offline on a device that has never synced, which is the exact
+//     data-loss class BUG-195 exists to end. A resurrected note is noise; a lost one
+//     is gone. Tombstones are a follow-up row, cheapest while the table is small.
+//   · Both timestamps are CLIENT clocks (`at` here, `updated_at` in the payload), so
+//     a badly skewed device can win a conflict. Not worth machinery for two
+//     NTP-synced phones in one household.
+//   · clearHistory() clears the LOCAL key only, so the next hydrate pulls the notes
+//     back. That is pre-existing behaviour shared with tandem_history and
+//     tandem_lastsets, not new here — filed against all three together.
 // Escapes note text for injection into the textarea's inner HTML. & FIRST, then
 // < > — reversing that order double-escapes. This matters more than usual here:
 // the content is free-form user text going inside an element whose closing tag a
@@ -6591,18 +6672,145 @@ function buildHistoryModal() {
 // (Two inline copies of a weaker version of this already exist at :8193 and
 // :10601. Consolidating them is a real "one rule, one home" cleanup but it is
 // not this row's scope, so they are left alone rather than edited in passing.)
+// The note KEY goes somewhere escNoteHtml() does not reach: interpolated into the
+// oninput ATTRIBUTE, inside a single-quoted JS string inside a double-quoted HTML
+// attribute. The original escaped only `'`, so one exercise name containing `"` would
+// terminate the attribute early and the box would silently discard typing again — BUG-195
+// by a second route, with nothing watching it. Latent when found (no name in programs.js
+// or in public.exercises carries a risky char) but the ingestion agent adds exercise names
+// routinely, so a DATA change would have re-opened a closed bug.
+// Found by llm-council (Contrarian) on the pre-ship gate, 2026-09-30.
+// Order matters: JS escaping FIRST, then HTML entities. The parser decodes the entities
+// before JS ever sees the source, so `&amp;` arrives at the JS literal as a bare `&`.
+function escNoteKey(v) {
+  return String(v == null ? '' : v)
+    .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function escNoteHtml(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-function exNotesAll() { return LS.get('tandem_ex_notes') || {}; }
-function exNoteFor(name) { return exNotesAll()[name] || ''; }
+// LOCAL SHAPE: { "<exercise name>": { note: "<text>", at: "<ISO>" } }
+// The `at` stamp exists so a cloud hydrate can decide newest-wins instead of one
+// side blindly clobbering the other. Notes written BEFORE the cloud half shipped
+// are bare strings, so every read normalizes — a legacy entry gets at:null, which
+// makes the cloud copy win, which is correct: the cloud copy has a real timestamp
+// and the local one is of unknown age.
+function exNotesAll() {
+  const raw = LS.get('tandem_ex_notes') || {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v == null) continue;
+    out[k] = (typeof v === 'string') ? { note: v, at: null } : { note: v.note || '', at: v.at || null };
+  }
+  return out;
+}
+function exNoteFor(name) { return (exNotesAll()[name] || {}).note || ''; }
+
+// Per-name debounce. oninput fires per KEYSTROKE; upserting each one would hammer
+// Supabase and race its own writes. Local storage is still written synchronously
+// on every keystroke, so nothing is lost if the tab dies before a push lands.
+const _exNoteTimers = {};
+const EX_NOTE_PUSH_MS = 900;
+
 function saveExNote(name, val) {
   if (!name) return;
   const all = exNotesAll();
   const t = (val || '').trim();
-  if (t) all[name] = t; else delete all[name];   // empty clears rather than storing ''
+  const at = new Date().toISOString();
+  if (t) all[name] = { note: t, at };
+  else delete all[name];                     // empty CLEARS rather than storing ''
   LS.set('tandem_ex_notes', all);
+  if (_exNoteTimers[name]) clearTimeout(_exNoteTimers[name]);
+  // The stamp travels with the text — see pushExNote()'s header for the loss path that
+  // re-deriving it opens.
+  _exNoteTimers[name] = setTimeout(() => { delete _exNoteTimers[name]; pushExNote(name, t, at); }, EX_NOTE_PUSH_MS);
+}
+
+// One note, one row. A CLEARED note DELETEs its row rather than storing '' — leave
+// the row behind and the next hydrate resurrects the note the user just deleted.
+// `at` is the stamp the note was WRITTEN at and must be threaded through, never
+// re-derived here. Stamping `now()` on push looks harmless and is a silent-loss path
+// with no clock skew involved, on one clock: laptop writes A offline on the 1st, phone
+// writes B offline on the 5th, laptop syncs first — no cloud row, so it pushes A, which
+// lands stamped the 10th — then the phone syncs, sees cloud(10th) > local(5th), pulls A
+// and DESTROYS B, the newer note. Found by llm-council (Contrarian) on the pre-ship gate,
+// 2026-09-30. A legacy bare string has no stamp at all, so it falls back to now(): there
+// is no better information, and it only ever loses to a stamped copy anyway.
+async function pushExNote(name, text, at) {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;   // anonymous saves nothing, by design
+  try {
+    if (!text) {
+      await sb.from('exercise_notes').delete().eq('user_id', currentUser.id).eq('exercise_name', name);
+      return;
+    }
+    const { error } = await sb.from('exercise_notes').upsert(
+      { user_id: currentUser.id, exercise_name: name, note: text, updated_at: at || new Date().toISOString() },
+      { onConflict: 'user_id,exercise_name' });
+    if (error) throw error;
+  } catch (e) { console.warn('note push skipped (offline or denied):', e); }
+}
+
+// clearHistory() clears the LOCAL notes key. Without this the next hydrate reads
+// cloud-present + local-absent as "new from another device" and pulls every note back —
+// so the cloud half would have quietly made "Clear all history" a lie for notes, which is
+// the exact condition BUG-91 added tandem_working1rm to that list to prevent. The same
+// resurrection still applies to tandem_history / tandem_lastsets / tandem_prs, which
+// pre-date this change and are filed together rather than fixed in passing.
+// Residual, stated honestly: if this delete fails (offline), local is cleared and the
+// cloud rows survive, so a later hydrate restores them.
+async function wipeCloudNotes() {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;
+  try {
+    const { error } = await sb.from('exercise_notes').delete().eq('user_id', currentUser.id);
+    if (error) throw error;
+  } catch (e) { console.warn('cloud note wipe skipped (offline or denied):', e); }
+}
+
+// ── hydrateNotesFromCloud() — the ONE owner of note reconciliation ────────────
+// Called by BOTH restoreFromCloud() and syncFromCloud(). Deliberately one
+// function: `lastsets` is hydrated by two near-identical inline blocks (:7992,
+// :9348) and history had the same duplication until BUG-190 collapsed it into
+// hydrateHistoryFromCloud(). Repeating that shape for a third store would be
+// building the next drift by hand.
+//
+// TWO-WAY, newest-wins by `updated_at`:
+//   cloud newer (or no local)  -> take cloud
+//   local newer (or no cloud)  -> push local up
+// A note present in the cloud but absent locally is taken, NOT treated as a local
+// delete, because a real delete already removed its row in pushExNote() — so
+// cloud-present + local-absent genuinely means "new from another device".
+// Never throws: an offline load must still render whatever the cache holds.
+async function hydrateNotesFromCloud(uid) {
+  if (!uid || typeof sb === 'undefined' || !sb) return { pulled: 0, pushed: 0 };
+  try {
+    const { data: rows, error } = await sb.from('exercise_notes')
+      .select('exercise_name, note, updated_at').eq('user_id', uid);
+    if (error) throw error;
+    const local = exNotesAll();
+    const cloud = {};
+    (rows || []).forEach(r => { if (r.exercise_name) cloud[r.exercise_name] = r; });
+    let pulled = 0, pushed = 0;
+    for (const name of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+      // A pending debounce timer means the user is typing in THIS box right now, so
+      // localStorage already holds the newest text and the cloud cannot be newer.
+      // Without this, hydrate writes the cloud copy into LS and the stale timer then
+      // pushes the typed text over it anyway — the same end state via an inconsistent
+      // intermediate one, with a visible clobber if anything re-renders in between.
+      if (_exNoteTimers[name]) continue;
+      const c = cloud[name], l = local[name];
+      const cAt = c && c.updated_at ? Date.parse(c.updated_at) : -Infinity;
+      const lAt = l && l.at ? Date.parse(l.at) : -Infinity;   // legacy bare string => -Infinity, cloud wins
+      if (c && (!l || cAt > lAt)) { local[name] = { note: c.note || '', at: c.updated_at || null }; pulled++; }
+      else if (l && (!c || lAt > cAt)) { pushExNote(name, l.note, l.at); pushed++; }
+    }
+    LS.set('tandem_ex_notes', local);
+    return { pulled, pushed };
+  } catch (e) {
+    console.warn('note hydrate skipped (offline or query failed):', e);
+    return { pulled: 0, pushed: 0 };
+  }
 }
 
 function clearHistory() {
@@ -6613,7 +6821,12 @@ function clearHistory() {
     // tandem_ex_notes belongs here for the SAME reason BUG-91 put tandem_working1rm
     // here: a key omitted from this list survives the clear and cannot be removed by
     // any UI path. Flagged by llm-council, 2026-09-30.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes'].forEach(k=>LS.del(k));
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes','tandem_session_notes_draft'].forEach(k=>LS.del(k));
+    // Clearing the local key alone is not a clear once notes live in the cloud: the next
+    // hydrate reads cloud-present + local-absent as "new from another device" and pulls
+    // them all back. See wipeCloudNotes(). Not awaited — the confirm() dialog this sits
+    // behind is synchronous and the UI must not block on the network.
+    wipeCloudNotes();
     buildHistoryModal();
   }
 }
@@ -6805,7 +7018,7 @@ function skipAhead() {
   hist.unshift({
     id: Date.now(),
     date: historyDisplayDate(),
-    session_date: localDateStr(), // BUG-190: see finishSession() — same omission, same fix
+    session_date: localDateStr(), // BUG-207: see finishSession() — same omission, same fix
     week: currentWeek,
     goal: cfg.goal,
     day: currentDay,
@@ -6953,11 +7166,14 @@ function finishSession() {
   // tandem_session_start_time is still read below (duration calc) and cleared
   // at the end of this function, which flips the row back to "Start Workout".
   if (_sessionTimerInterval) { clearInterval(_sessionTimerInterval); _sessionTimerInterval = null; }
+  // Captured synchronously, before the async completion block below and before
+  // the field is cleared at the bottom of this function.
+  const finishedNotes = currentSessionNotes();
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
     date: historyDisplayDate(),
-    session_date: localDateStr(), // BUG-190: the merge's business key — without it this
+    session_date: localDateStr(), // BUG-207: the merge's business key — without it this
     // row can never match its own synced cloud twin and the session double-counts.
     week: currentWeek,
     goal: cfg.goal,
@@ -7133,7 +7349,8 @@ function finishSession() {
             completed: true,
             total_volume_lbs: totalVolume,
             duration_minutes: duration,
-            session_type: 'strength' // EPIC-006 step 8; EPIC-012 will set endurance/event types
+            session_type: 'strength', // EPIC-006 step 8; EPIC-012 will set endurance/event types
+            notes: finishedNotes || null
           })
           .eq('id', resolvedId)
           .eq('user_id', currentUser.id);
@@ -7192,6 +7409,11 @@ function finishSession() {
   // session's clock silently keeps counting into the next one.
   LSraw.del('tandem_session_start_time');
   renderSessionTimer();
+  // Same unconditional posture: the next session (signed in or not) starts
+  // with a blank notes field, not the last one's leftover text.
+  LS.del('tandem_session_notes_draft');
+  const _finishedNotesEl = document.getElementById('sessionNotesInput');
+  if (_finishedNotesEl) { _finishedNotesEl.value = ''; delete _finishedNotesEl.dataset.hydrated; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7664,6 +7886,10 @@ async function syncToCloud() {
         sex: cfg.sex,
         fitness_level: cfg.experience,
         equipment: cfg.equipment || null,
+        // BUG-192 / migration 0023: the gym's dumbbell ceiling. Written here so the
+        // cap follows the account; `|| null` because 0 means "no cap stated" and the
+        // column's CHECK rejects 0 outright (storing it would read as uncapped).
+        max_db: cfg.maxDb || null,
         muscle_emphasis: cfg.emphasis || 'balanced',
         workout_duration_minutes: cfg.workout_duration_minutes || null,
         preferred_workout_time: cfg.preferred_workout_time || null,
@@ -7758,7 +7984,7 @@ function mergeAvatarFieldsFromCloud(row) {
 // tandem_history writer respects. Does NOT change `completed`/`session_type`/
 // `day_type` semantics and does not special-case one-offs — isProgramHistoryRow()
 // stays the only home for that test.
-// BUG-190: the business key must be derivable from BOTH representations of one
+// BUG-207: the business key must be derivable from BOTH representations of one
 // session, or the dedupe below is dead for exactly the rows it exists to dedupe.
 // A row finishSession()/skipAhead() wrote locally carries only `date`, a human locale
 // string ("Tue, Sep 29, 2026"); its synced cloud twin carries `session_date`
@@ -7846,11 +8072,105 @@ function historyRowFromCloudSession(row, exercises) {
   return s;
 }
 
-// `cloudSetsBySession` is optional: { [session_id]: [ sets rows ] }. Absent, this
-// behaves exactly as before (session-level merge only), which is what keeps every
+// ── dedupeLocalHistory() — BUG-178 part 3 (the repair half) ──
+//
+// Parts 1 and 2 stop NEW duplicates. They do nothing about the ones already sitting in
+// a user's localStorage: between fdb5b31 (2026-09-27) and this change, every tap of
+// Restore persisted a second copy of every session that existed both locally and in the
+// cloud, and those rows do not self-heal — mergeCloudSessionsIntoHistory() only ever
+// compared CLOUD rows against existing ones, never existing against existing. Verified
+// by running before this was written: a history holding 4 real sessions twice counts 8
+// and serves day4 forever, and today's self-heal merge leaves it at 8.
+//
+// Idempotent by construction (collapsing an already-collapsed list is a no-op), so it is
+// safe on every boot, which is how it is wired — it runs inside the merge below, so every
+// caller repairs, and on hydrateHistoryFromCloud()'s offline path too.
+//
+// A row with no derivable key is NEVER dropped: unkeyable means "cannot prove it is a
+// duplicate", and silently deleting a session we cannot identify would be worse than the
+// double-count. When two rows DO collapse, the survivor is the one carrying `exercises`
+// (a Finish()-written row holds the per-set data the History modal renders; its cloud
+// twin does not), and the dropped twin's fields are unioned in underneath it so the
+// session_date/completed/total_volume the cloud copy carries are kept rather than lost.
+// ── _historyIsMidnightTwin() — BUG-207/178 residual ──
+//
+// PORTED from claude/fervent-mendel-sveri6 (a parallel session that fixed BUG-178
+// independently and caught this case, which the version shipped in 1acb874 missed).
+// Verified before porting, by reading the writers rather than trusting the claim: the
+// CLOUD row's session_date is stamped by startOrResumeSession() at the FIRST logged set
+// (tandem.html's `session_date: today` on that insert), while finishSession() stamps the
+// local row at FINISH. A workout begun before local midnight and finished after it
+// therefore has twins on DIFFERENT dates, their exact keys never match, and it
+// double-counts — the same class of defect part 1 closed for the no-session_date case.
+//
+// A local program row (numeric Date.now() id = the finish instant) is the twin of a cloud
+// program row when: same day key, local date is exactly cloud date + 1, and the cloud row
+// was created 0-12h before the local finish instant.
+//
+// ⚠ The 12h bound is an ENGINEERING bound on workout length, NOT a sourced number — the
+// original author flagged it as such and that flag is carried over rather than quietly
+// dropped. It exists to stop a 1-day program's genuine next-day repeat (same day key,
+// consecutive dates, but ~24h apart) from being eaten as a twin. No repo or research
+// source prescribes a maximum session duration; if one is ever added, this constant
+// should read from it.
+const HISTORY_TWIN_MAX_MS = 12 * 3600 * 1000;
+function _historyIsMidnightTwin(local, cloud) {
+  if (!local || !cloud || typeof local.id !== 'number' || typeof cloud.id === 'number') return false;
+  if (!isProgramHistoryRow(local) || !isProgramHistoryRow(cloud)) return false;
+  if ((local.day_type ?? local.day ?? '') !== (cloud.day_type ?? cloud.day ?? '')) return false;
+  const ld = _historyDateKey(local), cd = _historyDateKey(cloud);
+  if (!ld || !cd) return false;
+  const gapDays = Math.round((new Date(ld + 'T12:00:00Z') - new Date(cd + 'T12:00:00Z')) / 86400000);
+  if (gapDays !== 1) return false;
+  const created = Date.parse(cloud.created_at);
+  if (isNaN(created)) return false;
+  const dt = local.id - created;
+  return dt >= 0 && dt <= HISTORY_TWIN_MAX_MS;
+}
+
+function dedupeLocalHistory(hist) {
+  const rows = Array.isArray(hist) ? hist : [];
+  const seen = new Map(); // key -> index into out
+  const out = [];
+  const paired = new Set(); // out-indices that already absorbed an exact-key partner
+  for (const row of rows) {
+    // PROGRAM rows only. Ported reasoning from the parallel session, and it corrects a
+    // real defect in the 1acb874 version: the queue counts only program rows, and the
+    // cloud enforces one program row per user per day (migrations/0015's partial unique
+    // index), so two program rows under one key ARE one session. A user can legitimately
+    // log two one-offs on the same day under the same focus label, and those never move
+    // the queue — keying them risked collapsing two genuine sessions into one.
+    const key = (row && isProgramHistoryRow(row)) ? _historyRowKey(row) : null;
+    if (!key) { out.push(row); continue; } // one-off, or unidentifiable → always kept
+    if (!seen.has(key)) { seen.set(key, out.length); out.push(row); continue; }
+    const at = seen.get(key);
+    paired.add(at);
+    const prev = out[at];
+    // Keeper = whichever copy has the per-set data; ties go to the one already placed,
+    // which preserves the newest-first ordering the rest of the file relies on. The
+    // field UNION is deliberate and is what this version keeps over the ported one: a
+    // wholesale replace would discard the cloud twin's session_date/completed/
+    // total_volume_lbs, which the History modal and the Log tab read.
+    const keep = (prev && prev.exercises) ? prev : (row && row.exercises) ? row : prev;
+    const drop = keep === prev ? row : prev;
+    out[at] = { ...drop, ...keep }; // keeper wins; the twin only fills fields it lacks
+  }
+  // Midnight-crossing twins: drop the CLOUD row and keep the local one — but ONLY for a
+  // local row that has no exact-key partner. A local row that already absorbed its own
+  // partner is a complete session, so a nearby cloud row is a DIFFERENT session and must
+  // survive (the 1-day-program repeat case the 12h bound above exists for).
+  return out.filter((r, i) => !(r && typeof r.id !== 'number'
+    && out.some((o, j) => j !== i && !paired.has(j) && _historyIsMidnightTwin(o, r))));
+}
+
+// BUG-209: `cloudSetsBySession` is optional: { [session_id]: [ sets rows ] }. Absent,
+// this behaves exactly as before (session-level merge only), which is what keeps every
 // existing caller and history-merge-smoke.mjs honest.
 function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions, cloudSetsBySession) {
-  const existing = Array.isArray(existingLocal) ? existingLocal : [];
+  // BUG-178 part 3: collapse duplicates ALREADY in local history before doing anything
+  // else. Placed here, not at one call site, so restore / sync / the on-load self-heal
+  // all repair through the same owner.
+  const existing = dedupeLocalHistory(Array.isArray(existingLocal) ? existingLocal : []);
   const cloud = Array.isArray(cloudSessions) ? cloudSessions : [];
   if (!cloud.length) return existing;
   const setsBy = cloudSetsBySession || {};
@@ -7919,6 +8239,10 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions, cloudSetsBy
 // resolveMaxDb() fell to 0 and dumbbell prescriptions went UNCAPPED again: exactly
 // the bug BUG-192 was filed to fix, restored by BUG-193, with a green gate over
 // both because each smoke was scoped to its own bug and neither could see the seam.
+// `maxDb` has since been given a real column (migration 0023), so it is row-backed
+// now and no longer relies on the carry — but the carry stays as the fallback for a
+// pre-0023 local value, and the PARITY RULE below is what actually prevents the
+// next field from repeating this.
 //
 // `startEpoch` and `revertedAt` are the same shape and PRE-DATE this branch (the old
 // inline literal erased them too). Both are read — startEpoch filters pre-program
@@ -7930,8 +8254,13 @@ function cfgFromUserRow(u, prev) {
   if (!u) return null;
   const keep = prev || {};
   return {
-    // ── LOCAL-ONLY: no users column backs these, so carry the incumbent or they die
-    maxDb: keep.maxDb ?? null,
+    // BUG-192: max_db is now a real users column (migration 0023), so the cap is
+    // RESTORED from the row rather than merely preserved — it follows the user to a
+    // new device. The `keep` fallback still matters: an account that set a cap
+    // before 0023, or in a tab that has not synced yet, has a local value and a
+    // null column, and dropping it would re-open the defect on that one load.
+    maxDb: u.max_db ?? keep.maxDb ?? null,
+    // ── LOCAL-ONLY: no users column backs these two, so carry them or they die
     startEpoch: keep.startEpoch ?? null,
     revertedAt: keep.revertedAt ?? null,
     goal: canonicalGoal(u.program_goal), // old accounts may still carry legacy 'burn_fat'
@@ -7961,7 +8290,7 @@ function cfgFromUserRow(u, prev) {
   };
 }
 
-// ── hydrateHistoryFromCloud() — BUG-190, the self-heal half ──
+// ── hydrateHistoryFromCloud() — BUG-207, the self-heal half ──
 //
 // The program QUEUE (completedSessionCount() -> nextProgramDayKey()) reads ONE input:
 // the local tandem_history cache. Nothing refreshed that cache on the everyday path —
@@ -7987,6 +8316,11 @@ function cfgFromUserRow(u, prev) {
 // streaks all still correct), not a failed one.
 async function hydrateHistoryFromCloud(uid) {
   const NOTHING = { sessions: [], added: 0, enriched: 0 };
+  // BUG-178 part 3: repair first, so an offline or signed-out boot still un-poisons a
+  // history the pre-fix Restore duplicated. dedupeLocalHistory() is idempotent.
+  const _local = LS.get('tandem_history') || [];
+  const _repaired = dedupeLocalHistory(_local);
+  if (_repaired.length !== _local.length) LS.set('tandem_history', _repaired);
   if (!uid || typeof sb === 'undefined' || !sb) return NOTHING;
   try {
     const { data: sessions, error } = await sb.from('workout_sessions')
@@ -8019,7 +8353,10 @@ async function hydrateHistoryFromCloud(uid) {
       setsBySession = {};
     }
 
-    const existing = LS.get('tandem_history') || [];
+    // The REPAIRED list, not a fresh LS read: dedupeLocalHistory() above already ran,
+    // and counting `added` against the pre-repair list would bill its removals as
+    // negative additions.
+    const existing = _repaired;
     // Which local rows were exercise-less BEFORE the merge. The merge BACKFILLS those in
     // place (that is the whole repair for an account already holding empty hydrated
     // rows), and such a repair changes no row COUNT — so `added` alone would report
@@ -8040,7 +8377,7 @@ async function restoreFromCloud() {
   setSyncStatus('syncing');
   try {
     const uid = currentUser.id;
-    // Sessions — BUG-190: through the shared hydrator, so the manual Restore button and
+    // Sessions — BUG-207: through the shared hydrator, so the manual Restore button and
     // the automatic on-load self-heal can never reconcile history two different ways.
     const { sessions, added, enriched } = await hydrateHistoryFromCloud(uid);
     if (sessions.length) {
@@ -8084,6 +8421,9 @@ async function restoreFromCloud() {
       });
       LS.set('tandem_lastsets', ls);
     }
+    // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
+    // Restore button and the automatic on-load sync can never do it two ways.
+    await hydrateNotesFromCloud(uid);
     // Config
     const { data: configData } = await sb.from('users')
       .select('*').eq('id', uid).single();
@@ -8096,6 +8436,17 @@ async function restoreFromCloud() {
     }
     setSyncStatus('synced');
     buildHistoryModal();
+    // This function hydrates history, PRs, lastsets, notes and cfg and then re-rendered
+    // NOTHING — buildHistoryModal() only rebuilds the history modal. Press Restore with a
+    // workout on screen and every pulled value sat in localStorage behind stale pixels.
+    // For notes that was actively harmful, not merely stale: typing one character into the
+    // stale textarea stamps the OLD visible string with a fresh `at` and pushes it up,
+    // clobbering the newer note hydrate had just retrieved — BUG-195's own defect,
+    // reintroduced by a missing render. Fixed at this level, not in the notes path, because
+    // the gap is identical for the lastsets chips and the PR/1RM figures (one rule, one
+    // home). syncFromCloud() already renders at its tail; this is the caller that did not.
+    // Found by llm-council (First Principles), 2026-09-30, on the pre-ship gate.
+    renderTracker();
   } catch(e) {
     console.warn('Restore error:', e);
     setSyncStatus('error');
@@ -8115,7 +8466,7 @@ function localDateStr(d = new Date()) {
 
 // ── historyDisplayDate() — the ONE home for a history row's `date` string (BUG-209) ──
 // localDateStr() above owns the machine-readable calendar key; this owns the human one
-// the History modal renders and that _historyDateKey() parses back when a pre-BUG-190
+// the History modal renders and that _historyDateKey() parses back when a pre-BUG-207
 // row has no session_date. The exact format matters for that parse, which is why it
 // cannot be four inlined copies: it was literally inlined at skipAhead(),
 // finishSession(), the one-off writer and saveJournal(), and BUG-209's cloud restore
@@ -9422,7 +9773,7 @@ async function syncFromCloud() {
     // server-side-only row, e.g. BUG-131's repair insert, permanently invisible to
     // completedSessionCount()/nextProgramDayKey() the moment local history was
     // non-empty — see mergeCloudSessionsIntoHistory()'s own comment).
-    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-190: one owner for fetch+merge
+    const { sessions } = await hydrateHistoryFromCloud(uid); // BUG-207: one owner for fetch+merge
     // PRs
     const { data: prData } = await sb.from('personal_records').select('*').eq('user_id', uid);
     // C-fix (2026-07-13): MERGE cloud PRs into local instead of the old
@@ -9451,6 +9802,9 @@ async function syncFromCloud() {
       });
       LS.set('tandem_lastsets', ls);
     }
+    // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
+    // Restore button and the automatic on-load sync can never do it two ways.
+    await hydrateNotesFromCloud(uid);
     // Advance the day pointer past the last completed session
     // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13: a
     // one-off "should not count as an extra day"). The filter is not cosmetic: `sessions`
@@ -10675,7 +11029,7 @@ function refreshAvatarPreview(){
       selectedSex = cfg.sex || null; selectedExperience = cfg.experience || null;
       currentWeek = currentWeekFromStorage(); // BUG-92: advance with the calendar, never rewind
       if (currentUser) {
-        // BUG-190: reconcile local history against the cloud BEFORE anything asks the
+        // BUG-207: reconcile local history against the cloud BEFORE anything asks the
         // queue what today's workout is. This is the ONLY path a returning user takes,
         // and until now it never refreshed tandem_history at all — so a session that
         // existed only server-side left completedSessionCount() short and the app

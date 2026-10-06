@@ -68,15 +68,16 @@ const CHECKS = [
   { name: 'BUG-173 muscle-tag vocabulary gate (bank ↔ DB vocabulary agreement; offline vs committed snapshot, live in CI)', run: () => execFileSync('node', [join(scriptsDir, 'muscle-tag-vocabulary-gate.mjs')], { stdio: 'inherit' }) },
   { name: 'bank↔seed freshness (committed seed SQL matches EXERCISE_BANK — does NOT prove it is applied)', run: () => execFileSync('node', [join(scriptsDir, 'bank-seed-freshness.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-188 loadless progression (0-lb logged set coaches reps — no "null lbs"/fabricated "0 lbs" chip; weighted lifts still ladder)', run: () => execFileSync('node', [join(scriptsDir, 'loadless-progression-smoke.mjs')], { stdio: 'inherit' }) },
-  { name: 'BUG-195 ex-notes persistence (the notes textarea keeps notes; name-keyed, scoped, escaped)', run: () => execFileSync('node', [join(scriptsDir, 'ex-notes-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-195 ex-notes persistence (notes kept locally AND reconciled two-way with exercise_notes; name-keyed, scoped, escaped, debounced)', run: () => execFileSync('node', [join(scriptsDir, 'ex-notes-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-200 a11y keyboard (every role=button element is operable by Enter and Space)', run: () => execFileSync('node', [join(scriptsDir, 'a11y-keyboard-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-192/194 settings persistence (DB cap survives a reload; stats reach the cloud and the generator)', run: () => execFileSync('node', [join(scriptsDir, 'settings-persistence-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-193 cfg builder (restoreFromCloud and syncFromCloud share one home; injuries survives a restore)', run: () => execFileSync('node', [join(scriptsDir, 'cfg-builder-smoke.mjs')], { stdio: 'inherit' }) },
-  { name: 'EPIC-63 control reachability walkthrough (Playwright — the 5 fixed controls driven in a real browser)', run: () => execFileSync('node', [join(scriptsDir, 'control-reachability-walkthrough.mjs')], { stdio: 'inherit' }) },
+  { name: 'EPIC-63 control reachability walkthrough (Playwright — the fixed controls driven in a real browser, incl. the notes cloud round-trip at the pixel)', run: () => execFileSync('node', [join(scriptsDir, 'control-reachability-walkthrough.mjs')], { stdio: 'inherit' }) },
   { name: 'cfg field parity (every cfg writer survives a cloud rebuild — the BUG-192/193 seam)', run: () => execFileSync('node', [join(scriptsDir, 'cfg-field-parity-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-196 week pointer (the "Today" button actually moves and persists the week)', run: () => execFileSync('node', [join(scriptsDir, 'week-pointer-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'SC-34 column reachability (reads-side: no NEW column written by the app and read by nothing)', run: () => execFileSync('node', [join(scriptsDir, 'column-reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'QA feed status rule (badge + feed share one open-status home; no un-drainable .neq)', run: () => execFileSync('node', [join(scriptsDir, 'qa-feed-status-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-119b home-tier isolation coverage (>=2 bicep-primary, shoulders anterior_delt; D18 fallback must not mask a bank gap)', run: () => execFileSync('node', [join(scriptsDir, 'home-tier-isolation-coverage-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'no-emoji gate (Kerwin, 2026-09-30 — no pictograph emoji in UI text; arrows/checks/star/gender-symbols allowlisted)', run: () => execFileSync('node', [join(scriptsDir, 'no-emoji-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
