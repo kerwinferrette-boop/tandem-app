@@ -68,11 +68,13 @@ function check(label, cond) {
 // aesthetic-matrix tracking.
 const TRACKING_THRESHOLD_EM = 0.04;
 const ALLOWED_WIDE_TRACKING = [
-  { marker: 'id="authOtp"', reason: 'OTP code entry — spacing separates the 6 digits functionally' },
+  { marker: 'id="authOTPCode"', reason: 'OTP code entry — spacing separates the digits functionally' },
 ];
 
-// [C] keep-mono markers: tabular numbers, code entry, timers. A line using
-// the mono font variable must contain at least one of these.
+// [C] keep-mono markers: tabular numbers, code entry, timers. A mono use is
+// attributed to its CSS selector (brace-aware walk of the <style> block, so
+// multi-line rules attribute correctly) or, outside the style block, to its
+// own line; the attribution must contain one of these.
 const ALLOWED_MONO = [
   // numeric form inputs
   { marker: '.ob-input', reason: 'onboarding numeric stat inputs (weight/height/age)' },
@@ -82,11 +84,14 @@ const ALLOWED_MONO = [
   { marker: '.set-vol', reason: 'per-set volume figure' },
   { marker: '.eq-db-input', reason: 'equipment max-dumbbell numeric input' },
   { marker: '.calc-input', reason: '1RM calculator numeric inputs' },
-  { marker: '.jr-num', reason: 'journal numeric inputs (sets/reps/weight)' },
-  { marker: 'id="authOtp"', reason: 'OTP code entry' },
+  { marker: 'j-sets', reason: 'journal sets numeric input' },
+  { marker: 'j-reps', reason: 'journal reps numeric input' },
+  { marker: 'j-weight', reason: 'journal weight numeric input' },
+  { marker: 'j-rpe', reason: 'journal RPE numeric select' },
+  { marker: 'id="journalDate"', reason: 'journal date input — tabular date entry' },
+  { marker: 'authOTPCode', reason: 'OTP code entry' },
   // timers
   { marker: '.session-timer-live', reason: 'live session timer — ticking digits' },
-  { marker: '.rest-timer', reason: 'rest countdown digits' },
   // plate math
   { marker: '.plate-select', reason: 'plate-math weight selector' },
   { marker: '.pl-item', reason: 'plate-math per-side plate list' },
@@ -102,12 +107,12 @@ const ALLOWED_MONO = [
   { marker: '.log-axis', reason: 'chart axis labels' },
   { marker: '.log-bars .b span', reason: 'chart bar value labels' },
   { marker: '.i1rm-pct', reason: '1RM percent figure' },
-  { marker: '.ex-reps', reason: 'prescribed sets x reps figure on lift cards' },
-  { marker: 'id="themeHex"', reason: 'accent color hex readout' },
+  { marker: 'ex-reps', reason: 'prescribed sets x reps figure on lift cards' },
+  { marker: 'selectedThemeColor', reason: 'accent color hex readout in onboarding review' },
 ];
 // SC-33: pin the total so the allowlist cannot quietly absorb new sites.
 // Recount and update deliberately when a keep-mono surface is added/removed.
-const EXPECTED_MONO_TOTAL = { 'tandem.html': 36, 'programs.js': 0 };
+const EXPECTED_MONO_TOTAL = { 'tandem.html': 29, 'programs.js': 0 };
 
 // [D] legitimate all-caps runs, if any ever appear (acronym pairs etc.).
 // Single ALL-CAPS words (TANDEM, RPE, AMRAP, PR, OTP) are not matched by the
@@ -145,17 +150,30 @@ for (const file of ['tandem.html', 'programs.js']) {
   check(`[B] ${file} — no positive letter-spacing >= ${TRACKING_THRESHOLD_EM}em outside allowlist (found ${wide.length})`, wide.length === 0);
   wide.slice(0, 10).forEach(h => console.log(`     ${file}:${h.n}  (${h.v}em)  ${h.text}`));
 
-  // [C] mono attribution + pinned total.
+  // [C] mono attribution + pinned total. Inside the <style> block, a use on a
+  // continuation line of a multi-line rule is attributed to the rule's
+  // SELECTOR via a brace-depth walk (never cross-line comment state — this is
+  // brace state, which `accept="image/*"` cannot poison because it holds no
+  // braces); outside, to the line itself.
+  const styleStart = lines.findIndex(l => l.includes('<style>'));
+  const styleEnd = lines.findIndex(l => l.includes('</style>'));
   const monoLines = [];
+  let depth = 0, curSel = '';
   lines.forEach((line, i) => {
+    const inStyle = i > styleStart && i < styleEnd && styleStart >= 0;
+    if (inStyle && depth === 0) {
+      const b = line.indexOf('{');
+      if (b >= 0) curSel = line.slice(0, b).trim() || curSel;
+    }
     const count = (line.match(/var\(--font-mono\)/g) || []).length;
-    if (count) monoLines.push({ n: i + 1, count, line });
+    if (count) monoLines.push({ n: i + 1, count, line, attribution: inStyle ? curSel + ' ' + line : line });
+    if (inStyle) for (const ch of line) { if (ch === '{') depth++; else if (ch === '}') depth--; }
   });
   const monoTotal = monoLines.reduce((s, l) => s + l.count, 0);
   const unattributed = monoLines.filter(l =>
     // the token definition line itself is the one home, not a use site
     !/--font-mono\s*:/.test(l.line) &&
-    !ALLOWED_MONO.some(a => l.line.includes(a.marker)));
+    !ALLOWED_MONO.some(a => l.attribution.includes(a.marker)));
   check(`[C] ${file} — every mono use attributable to keep-mono allowlist (found ${unattributed.length} unattributed)`, unattributed.length === 0);
   unattributed.slice(0, 15).forEach(h => console.log(`     ${file}:${h.n}  ${h.line.trim().slice(0, 90)}`));
   check(`[C] ${file} — mono total pinned at ${EXPECTED_MONO_TOTAL[file]} (found ${monoTotal})`, monoTotal === EXPECTED_MONO_TOTAL[file]);
