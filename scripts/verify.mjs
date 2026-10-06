@@ -59,6 +59,7 @@ const CHECKS = [
   { name: 'BUG-27 calendar-day DST smoke (no off-by-one across spring-forward/fall-back)', run: () => execFileSync('node', [join(scriptsDir, 'calendar-day-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-153 asset freshness smoke (cache-busting wired, HTML always revalidates)', run: () => execFileSync('node', [join(scriptsDir, 'asset-freshness-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-146 day-label smoke (Day N of M tracks the queue, not the calendar slot)', run: () => execFileSync('node', [join(scriptsDir, 'daylabel-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-170 one-off save guard (saveExerciseToCloud never files a oneoff- id into the program session)', run: () => execFileSync('node', [join(scriptsDir, 'oneoff-save-guard-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-49 exercise_name write smoke (no slot-id ever reaches sets.exercise_name)', run: () => execFileSync('node', [join(scriptsDir, 'exercise-name-write-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-57 calibration upsert smoke (runs computeCalibration1RMs — trigger-equal case must still write is_calibrated)', run: () => execFileSync('node', [join(scriptsDir, 'calibration-upsert-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'MOVEMENT_FAMILIES partition (R1-R7 — now wired via movementPatternOf(), BUG-151/D30)', run: () => execFileSync('node', [join(scriptsDir, 'movement-families-check.mjs')], { stdio: 'inherit' }) },
