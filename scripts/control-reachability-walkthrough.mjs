@@ -113,7 +113,20 @@ const check = (label, cond, detail) => {
 
 // Boot the app with a DURABLE storage scope and a generated program in place.
 async function boot(page) {
-  await page.addInitScript(SUPABASE_STUB);
+  // The stub must be served AS the CDN script, not injected via addInitScript.
+  // tandem.html:8 loads the UMD supabase-js build, which assigns window.supabase
+  // AFTER every init script has run — so an init-script stub silently loses the
+  // race and `sb` (tandem.html:2731) becomes a REAL client pointed at prod.
+  // That is exactly how [3b]/[3c] shipped red: they passed only in a sandbox
+  // with no egress (CDN load failed, stub survived) and failed on CI and on any
+  // networked machine from the day they were added (2ac354c; first red run
+  // 2353d07, 2026-09-30) — while ALSO firing live HTTP at prod from CI, all
+  // rejected 400 on the non-uuid walkthrough id. Routing the CDN URL to the
+  // stub removes the race in both directions: no network, no real client.
+  // URL predicate, not a glob: `*` cannot cross `/` in Playwright globs, and the
+  // real URL continues `…supabase-js@2/dist/umd/supabase.min.js` past the package name.
+  await page.route(u => u.href.includes('/@supabase/supabase-js'), route =>
+    route.fulfill({ contentType: 'application/javascript', body: SUPABASE_STUB }));
   await page.goto(`http://localhost:${PORT}/tandem.html`);
   await page.waitForFunction(() => typeof window.setLSScope === 'function', { timeout: 15000 });
   return page.evaluate(() => {
