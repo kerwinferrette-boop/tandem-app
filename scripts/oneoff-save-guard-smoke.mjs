@@ -60,5 +60,12 @@ const reg = await run('bm-bench');
 check('program id: still upserts the program session', reg.writes.some(w => w.table === 'workout_sessions' && w.op === 'upsert'));
 check('program id: still inserts its sets', reg.writes.some(w => w.table === 'sets' && w.op === 'insert'));
 
+// BUG-170 follow-up: the per-card Save control must not be rendered for oneoff- cards (a
+// toast-only button is the reorderWeek() shape). SOURCE-level: the render template line that
+// emits manualSaveExercise(...) must be gated on the oneoff- prefix.
+const saveLine = html.split('\n').find(l => l.includes("manualSaveExercise('${ex.id}')")) || '';
+check("one-off cards: Save control is gated off for oneoff- ids in the card template",
+  /oneoff-/.test(saveLine) && /startsWith\('oneoff-'\)/.test(saveLine));
+
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

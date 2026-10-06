@@ -5599,7 +5599,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
               <div class="set-act" onclick="event.stopPropagation();openSwapPicker('${ex.id}')">${svgIcon('swap')} Swap</div>
-              <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>
+              ${ex.id.startsWith('oneoff-') ? '' /* BUG-170: one-offs save at Finish (finishOneOff); a per-card Save would be a no-op */ : `<div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>`}
               <div class="set-act" onclick="event.stopPropagation();openExerciseHistory('${ex.id}','${(ex.name||'').replace(/'/g,"\\'")}')">${svgIcon('clock')} History</div>
             </div>
             <div class="swap-picker" id="swap-${ex.id}"></div>
