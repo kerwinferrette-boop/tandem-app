@@ -84,7 +84,10 @@ function makeCtx({ signedIn = true } = {}) {
     delete: () => { const f = { _eq: {}, eq(k, v) { this._eq[k] = v; return this; },
       then: (r) => { calls.push({ op: 'delete', eq: f._eq }); return Promise.resolve(r({ error: null })); } };
       return f; },
-    select: () => ({ eq: () => Promise.resolve({ data: ctx.__cloudRows || [], error: null }) }),
+    // select IS recorded: [D3] asserts an anonymous hydrate performs NO cloud call at
+    // all — an unrecorded select let the "guard removed" mutation survive (SC-38).
+    select: () => ({ eq: (k, v) => { calls.push({ op: 'select', eq: { [k]: v } });
+      return Promise.resolve({ data: ctx.__cloudRows || [], error: null }); } }),
   });
   const warns = [];
   const ctx = {
