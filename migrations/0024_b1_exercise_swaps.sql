@@ -1,13 +1,15 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- B1 — `exercise_swaps`: give the durable user exercise swap a cloud home.
 --
--- NOT APPLIED BY THE AUTHORING SESSION. `apply_migration` is denied in
--- .claude/settings.json (:44) and loop-config reserves schema changes for a
--- human. KERWIN APPLIES THIS BY HAND. Until it is applied AND a real
--- round-trip against Postgres is verified, swaps are LOCAL ONLY
--- (localStorage key `tandem_swaps`, per-account scoped via LS_SCOPED_KEYS)
--- and cross-device sync is PENDING. A committed migration is not an applied
--- one.
+-- STATUS: APPLIED 2026-10-07 on Kerwin's explicit in-session instruction
+-- ("do it in this branch, then merge this branch to main"), atomically with
+-- the client cloud round-trip (branch wiring-b4-swap-cloud) per the council
+-- ruling of 2026-10-06. All post-migration assertions below were RUN against
+-- live Postgres the same day and passed: table+RLS+1 policy; isolation held
+-- between kerwinferrette+test and +testdani (owner sees 1, other sees 0,
+-- cross-user insert rejected); the no-noop CHECK rejected a self-swap; the
+-- client's exact upsert/delete paths round-tripped. Probe rows rolled back;
+-- table left empty.
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- WHY

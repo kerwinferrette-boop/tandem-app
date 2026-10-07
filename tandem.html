@@ -6321,8 +6321,11 @@ function loadVideo(exId, ytId, btn) {
 // buildDayHTML seam via resolveUserSwap(), so every downstream name-keyed
 // system (getRecommendation, PRs, computeMuscleWeeklyVolume/D6b, lastsets)
 // sees the substitute automatically. Gate: scripts/swap-persistence-smoke.mjs.
-// Local-only for now: cross-device sync is PENDING a Supabase table
-// (migrations/0024 — apply_migration is human-only, awaiting Kerwin).
+// B4: the cloud half below (pushExSwap / wipeCloudSwaps / hydrateSwapsFromCloud)
+// mirrors the notes cloud half one-for-one — gate: scripts/swap-cloud-smoke.mjs.
+// It is wired but INERT until migrations/0024_b1_exercise_swaps.sql is applied
+// (apply_migration is human-only — Kerwin applies, then the round-trip is
+// verified against real Postgres; every cloud call here fails soft until then).
 function exSwapsAll() { return LS.get('tandem_swaps') || {}; }
 function exSwapFor(origName) {
   const e = exSwapsAll()[origName];
@@ -6330,13 +6333,86 @@ function exSwapFor(origName) {
 }
 function saveExSwap(origName, toName) {
   const all = exSwapsAll();
+  const at = new Date().toISOString();
+  const isNoop = !toName || toName === origName;
   // Choosing the original (or clearing) DELETES the entry — a stored no-op
-  // would shadow future legality changes for no benefit.
-  if (!toName || toName === origName) delete all[origName];
-  else all[origName] = { to: toName, at: new Date().toISOString() };
+  // would shadow future legality changes for no benefit, and 0024's CHECK
+  // constraint rejects a self-swap row outright.
+  if (isNoop) delete all[origName];
+  else all[origName] = { to: toName, at };
   LS.set('tandem_swaps', all);
+  // No debounce (unlike saveExNote): a swap is a discrete tap, not a keystroke
+  // stream. The stamp stored above travels with the push — never re-derived at
+  // push time (the forged-stamp loss path pushExNote documents is identical here).
+  pushExSwap(origName, isNoop ? null : toName, at);
 }
 function clearExSwap(origName) { saveExSwap(origName, null); }
+
+// One swap, one row. An undo DELETEs its row rather than upserting — leave the
+// row behind and the next hydrate resurrects the swap the user just undid, and
+// 0024's no-noop CHECK would reject the self-swap upsert anyway. `at` is the
+// stamp the swap was MADE at and is threaded through, never re-derived (see
+// pushExNote's header for the one-clock loss path that opens).
+async function pushExSwap(origName, toName, at) {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;   // anonymous saves nothing, by design
+  try {
+    if (!toName || toName === origName) {
+      await sb.from('exercise_swaps').delete().eq('user_id', currentUser.id).eq('original_name', origName);
+      return;
+    }
+    const { error } = await sb.from('exercise_swaps').upsert(
+      { user_id: currentUser.id, original_name: origName, substitute_name: toName, updated_at: at || new Date().toISOString() },
+      { onConflict: 'user_id,original_name' });
+    if (error) throw error;
+  } catch (e) { console.warn('swap push skipped (offline or denied):', e); }
+}
+
+// Same contract as wipeCloudNotes: without this, "Clear all history" clears the
+// local tandem_swaps key and the next hydrate reads cloud-present + local-absent
+// as "new from another device" and pulls every swap straight back.
+async function wipeCloudSwaps() {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;
+  try {
+    const { error } = await sb.from('exercise_swaps').delete().eq('user_id', currentUser.id);
+    if (error) throw error;
+  } catch (e) { console.warn('cloud swap wipe skipped (offline or denied):', e); }
+}
+
+// ── hydrateSwapsFromCloud() — the ONE owner of swap reconciliation ───────────
+// Called by BOTH restoreFromCloud() and syncFromCloud(), same as
+// hydrateNotesFromCloud (whose header explains why one owner, not two inline
+// blocks). TWO-WAY, newest-wins by `updated_at`; a swap present in the cloud but
+// absent locally is taken, NOT treated as a local undo, because a real undo
+// already deleted its row in pushExSwap(). No pending-timer guard: swaps have no
+// debounce, so there is never an in-flight local edit to protect. Never throws —
+// an offline load must still render whatever the cache holds, and until 0024 is
+// applied the select fails soft here on every load, leaving local state intact.
+async function hydrateSwapsFromCloud(uid) {
+  if (!uid || typeof sb === 'undefined' || !sb) return { pulled: 0, pushed: 0 };
+  try {
+    const { data: rows, error } = await sb.from('exercise_swaps')
+      .select('original_name, substitute_name, updated_at').eq('user_id', uid);
+    if (error) throw error;
+    const local = exSwapsAll();
+    const cloud = {};
+    (rows || []).forEach(r => { if (r.original_name) cloud[r.original_name] = r; });
+    let pulled = 0, pushed = 0;
+    for (const name of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+      const c = cloud[name], l = local[name];
+      const cAt = c && c.updated_at ? Date.parse(c.updated_at) : -Infinity;
+      const lAt = l && l.at ? Date.parse(l.at) : -Infinity;
+      // Pulled rows land in the exact { to, at } shape exSwapFor/resolveUserSwap
+      // read — any other shape is a dead value behind a green gate.
+      if (c && (!l || cAt > lAt)) { local[name] = { to: c.substitute_name, at: c.updated_at || null }; pulled++; }
+      else if (l && (!c || lAt > cAt)) { pushExSwap(name, l.to, l.at); pushed++; }
+    }
+    LS.set('tandem_swaps', local);
+    return { pulled, pushed };
+  } catch (e) {
+    console.warn('swap hydrate skipped (offline or query failed):', e);
+    return { pulled: 0, pushed: 0 };
+  }
+}
 // Legality is evaluated NOW, on every render — never trusted from store time.
 // A swap stored before an injury was declared, or on a better-equipped device,
 // must not bypass the injury/tier filter (SAFETY: same two-layer discipline as
@@ -6950,6 +7026,9 @@ function clearHistory() {
     // them all back. See wipeCloudNotes(). Not awaited — the confirm() dialog this sits
     // behind is synchronous and the UI must not block on the network.
     wipeCloudNotes();
+    // Same resurrection path for swaps — tandem_swaps is cleared from the list above,
+    // so without this the next hydrate pulls every swap back from exercise_swaps.
+    wipeCloudSwaps();
     buildHistoryModal();
   }
 }
@@ -8547,6 +8626,8 @@ async function restoreFromCloud() {
     // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
     // Restore button and the automatic on-load sync can never do it two ways.
     await hydrateNotesFromCloud(uid);
+    // B4 cloud half: swaps reconcile through the one owner too (same rule as notes).
+    await hydrateSwapsFromCloud(uid);
     // Config
     const { data: configData } = await sb.from('users')
       .select('*').eq('id', uid).single();
@@ -9928,6 +10009,8 @@ async function syncFromCloud() {
     // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
     // Restore button and the automatic on-load sync can never do it two ways.
     await hydrateNotesFromCloud(uid);
+    // B4 cloud half: swaps reconcile through the one owner too (same rule as notes).
+    await hydrateSwapsFromCloud(uid);
     // Advance the day pointer past the last completed session
     // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13: a
     // one-off "should not count as an extra day"). The filter is not cosmetic: `sessions`
