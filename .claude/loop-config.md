@@ -732,7 +732,26 @@ verification:
   validate_command: "npm run validate:programs"   # EPIC-24 validator — 24 combos, Rules 1-5
   persona_matrix_command: "npm run validate:personas"  # scripts/persona-matrix.mjs — see
                                 # catalog.self_generated_sources above; run every cycle, not
-                                # just when fixing a generator story. 504 combos, Rules 6-9.
+                                # just when fixing a generator story. 1050 combos (5 goals x 5 day-counts
+                                # x 2 sexes x 3 tiers x 7 injury profiles), Rules 6-10 (count verified
+                                # 2026-10-07 by running it; the old '504' here was stale).
+                                # REACH + PARITY TRAPS (Kerwin, 2026-10-07: 'as many booby traps for loose code as
+                                # possible'): scripts/matrix-reach-detector.mjs (per-combo V8 coverage over
+                                # this same matrix; fails on NEW dead code, code live for exactly one goal AND
+                                # one day-count, or a function losing a goal/day-count) and scripts/axis-parity-
+                                # smoke.mjs (per-goal tables carry all 5 goals; no ghost goal literal; UI shows
+                                # exactly the 5) both run inside npm run verify. A failing reach check means
+                                # make the code reachable, or --update with the reason in the commit body.
+                                # REPORTING RULE (Kerwin, 2026-10-07): every cycle report states the
+                                # combo count as 'N/N combos', never bare 'PASS' — a gate result without
+                                # its denominator cannot be told from a shrunken matrix.
+                                # BUILD-FOR-THE-MATRIX RULE (Kerwin, 2026-10-07): a program-engine change
+                                # must hold across the WHOLE matrix, not only the combo the story names
+                                # (e.g. code that is only live for transform 5-day). The COULD section
+                                # of the audit names which other goals/day-counts were checked, and the
+                                # full-matrix run is that evidence. Legality only: still run verify
+                                # (doctrine) too. A rule that only holds for some combos and has no
+                                # matrix rule yet is a candidate for a new R-rule in persona-matrix.mjs.
   onboarding_walkthrough_command: "npm run walkthrough:onboarding"  # scripts/onboarding-
                                 # lifecycle-walkthrough.mjs — see catalog.self_generated_sources
                                 # above (onboarding_lifecycle_walkthrough); run every cycle.
