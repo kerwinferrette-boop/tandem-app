@@ -3356,6 +3356,42 @@ const GOAL_VOLUME = {
 // beyond it no additional benefit was detectable. The paper reports no muscle-specific
 // difference, so the ceiling binds EVERY tagged muscle, not only the MEV-tracked ones.
 const SESSION_MUSCLE_CEILING = 11;
+
+// Per-exercise ceiling (BUG-231). SESSION_MUSCLE_CEILING is necessary but NOT
+// sufficient: it binds the MUSCLE, so when a muscle has only one lift training it
+// in a session, that single lift absorbs the whole MEV deficit and still passes
+// (observed on main: 11 x Push-Up, 10 x Decline Barbell Press, 10 x Band Lateral
+// Raise — 1040 of 19780 working lifts above 6 sets across the 1050-combo matrix).
+// Three PRIMARY sources bound sets PER EXERCISE PER SESSION at 6:
+//   - ACSM position stand, Ratamess, Alvar, Evetoch, Housh, Kibler & Kraemer (2009),
+//     "Progression Models in Resistance Training for Healthy Adults", Med Sci Sports
+//     Exerc 41:687-708, doi:10.1249/MSS.0b013e3181915670 — "1-3 sets" per exercise for
+//     untrained, "3-6 sets" for advanced. 6 is the top of the recommended range.
+//   - Krieger (2010), "Single vs. multiple sets of resistance exercise for muscle
+//     hypertrophy: a meta-analysis", J Strength Cond Res 24:1150-1159,
+//     doi:10.1519/JSC.0b013e3181d4d436 — per-EXERCISE set bins; hypertrophy ES 0.24
+//     (1 set) / 0.34 (2-3) / 0.44 (4-6); no meaningful difference between 2-3 and 4-6,
+//     i.e. the dose-response has flattened by 4-6 and the meta-analysis measures
+//     nothing above 6.
+//   - Hackett, Amirthalingam, Mitchell et al. (2018), "Effects of a 12-Week Modified
+//     German Volume Training Program on Muscle Strength and Hypertrophy — A Pilot
+//     Study", Sports 6(1):7, doi:10.3390/sports6010007 — the only DIRECT test above 6:
+//     10 sets vs 5 sets of the same exercise for 12 weeks. "10 sets compared to five
+//     sets per resistance exercise over 12 weeks is no more effective for increasing
+//     muscle strength and hypertrophy"; concludes "4-6 sets per resistance exercise is
+//     advised". Honest limits: pilot, n=12, diet/outside-activity uncontrolled, and
+//     lean mass moved in NEITHER arm — it shows no advantage to 10, not harm from 10.
+// So 6 is a plateau bound, not a safety bound: nothing cited shows 7+ sets of one lift
+// is harmful, only that no source measures a benefit and every source's recommended
+// range stops at 6. Set it at the top of the cited range (6), not at Hackett's
+// speculated "closer to five" — their own word is "may suggest", and tightening past
+// what a source states is the fabrication this file exists to prevent.
+// NOT tiered by experience, although ACSM tiers it (1-3 untrained vs 3-6 advanced):
+// `experience` is captured at onboarding and consumed by no getProgram call site
+// (EPIC-10, unstarted), so a tiered cap has no input to read. Documented gap, not a
+// decision — raising the floor case needs EPIC-10 first.
+const PER_EXERCISE_SET_CEILING = 6;
+
 const muscleCeilingKey = (tag) =>
   MAJOR_MUSCLE_GROUP_TOKENS.filter(t => tag === t || tag.startsWith(t + '_'))
     .sort((a, b) => b.length - a.length)[0] || tag;
@@ -3420,22 +3456,53 @@ function applyGoalVolume(program, goal, compoundRef) {
       for (const [k, w] of Object.entries(s.ceilW)) session[s.di][k] = (session[s.di][k] || 0) + n * w;
     };
     slots.forEach(s => credit(s, s.sets));
-    const fits = (s, t) => {
+    // fits() is the ONE home for "may this slot take another set" — every raise pass
+    // (MEV raise, MAV restore, and canRestore's look-ahead) asks it, so a rule added
+    // here binds every goal x muscle x day-count at once rather than being re-stated
+    // per loop. The MAV trim pass deliberately does NOT consult it: a ceiling
+    // constrains raises, never reductions.
+    //
+    // `capped` selects which ceiling is in force. PER_EXERCISE_SET_CEILING is a
+    // PLATEAU bound, not a safety bound — Krieger/ACSM/Hackett show no measurable
+    // benefit above 6 sets of one lift, and none of them shows harm. Falling under
+    // D6b's MEV floor is a measured DEFICIT. So where the two conflict the floor
+    // wins, which is the precedence this very function already applies to
+    // SESSION_MUSCLE_CEILING (see the comment above: "past ~11 that is no added
+    // benefit, not harm, and withholding it would leave lats under MEV"). Same
+    // conflict shape, same resolution: an unmeasured plateau never costs a measured
+    // floor.
+    const fits = (s, t, capped = true) => {
+      if (capped && s.sets >= PER_EXERCISE_SET_CEILING) return false;
       const direct = (s.mevW[t] || 0) >= 1;
       const target = muscleCeilingKey(t);
       return Object.entries(s.ceilW).every(([k, w]) =>
         (direct && k !== target) || (session[s.di][k] || 0) + w <= SESSION_MUSCLE_CEILING);
     };
-    for (const compound of [true, false]) {
-      for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
-        while ((weekly[t] || 0) < landmark.mev) {
-          const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && fits(s, t));
-          if (!pool.length) break;
-          const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
-          const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
-            .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
-          s.sets++;
-          credit(s, 1);
+    // Two-pass raise (BUG-231). Pass 1 spreads the MEV deficit with the per-exercise
+    // cap ON, so the deficit lands on the 3-set fly beside the press instead of
+    // taking the press to 7+. Pass 2 re-runs with the cap OFF for whatever is STILL
+    // short — the structurally forced residue, where the split has no second lift for
+    // that muscle at all (2-day full_gym carries exactly ONE chest slot and ONE
+    // shoulder slot for the whole week, so chest MEV 10 is unreachable at <=6
+    // sets/lift). Pass 2 is what keeps D6b green; without it 46 cells fall below MEV,
+    // which means D6b's green on main was itself purchased by this stacking. It is
+    // not a loophole reinstating the bug: pass 1 has already exhausted every
+    // alternative slot, so anything pass 2 stacks is exactly the case D33 already
+    // records as a known gap, whose real fix is Kerwin's standing ruling — the engine
+    // should add a RELATED LIFT (D6d / muscle_tag_rescope), not more sets on the only
+    // lift present.
+    for (const capped of [true, false]) {
+      for (const compound of [true, false]) {
+        for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+          while ((weekly[t] || 0) < landmark.mev) {
+            const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && fits(s, t, capped));
+            if (!pool.length) break;
+            const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+            const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+              .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
+            s.sets++;
+            credit(s, 1);
+          }
         }
       }
     }
@@ -3465,7 +3532,16 @@ function applyGoalVolume(program, goal, compoundRef) {
     // extra guard: a restore raise may never push any token past the cap.
     if (landmark.mav) {
       const cleanRaise = (r) => Object.entries(r.mevW).every(([k, w]) => (weekly[k] || 0) + w <= landmark.mav);
-      const canRestore = (tok, exclude) => slots.some(r => r !== exclude && !r.fixed && r.mevW[tok] && cleanRaise(r) && fits(r, tok));
+      // `fits(r, tok, false)` — the cap is deliberately OFF in this look-ahead, and in
+      // the restore pass's second sweep below. Both the MEV floor and maintenance's MAV
+      // cap are CITED, closed bounds; PER_EXERCISE_SET_CEILING is an uncited plateau.
+      // With the cap ON here, a restore slot already stacked past 6 was rejected, so
+      // mevSafe() went false, the trim pool emptied, and the cap silently failed —
+      // measured, not reasoned: maintenance 2-day quad sat at 27 sets against a MAV of
+      // 15, and 3-day at 21. An uncited plateau must not veto a cited bound, so the
+      // look-ahead sees every slot that could restore the floor; the restore pass then
+      // still PREFERS an uncapped-free slot by trying capped first.
+      const canRestore = (tok, exclude) => slots.some(r => r !== exclude && !r.fixed && r.mevW[tok] && cleanRaise(r) && fits(r, tok, false));
       const mevSafe = (s) => Object.entries(s.mevW).every(([tok, w]) =>
         (weekly[tok] || 0) - w >= landmark.mev || canRestore(tok, s));
       for (const compound of [false, true]) {
@@ -3481,18 +3557,23 @@ function applyGoalVolume(program, goal, compoundRef) {
           }
         }
       }
-      // Restore pass — same shape as the MEV raise loop above, restricted to
-      // clean raises so restoring one floor can never re-break the cap.
-      for (const compound of [true, false]) {
-        for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
-          while ((weekly[t] || 0) < landmark.mev) {
-            const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && cleanRaise(s) && fits(s, t));
-            if (!pool.length) break;
-            const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
-            const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
-              .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
-            s.sets++;
-            credit(s, 1);
+      // Restore pass — same shape as the MEV raise loop above (including its two-pass
+      // cap/no-cap sweep, so a restore lands on a slot still under 6 whenever one
+      // exists), restricted to clean raises so restoring one floor can never re-break
+      // the cap. Pass 2 is what canRestore() above promised: the look-ahead and the
+      // restore must agree about which slots are reachable, or mevSafe() lies.
+      for (const capped of [true, false]) {
+        for (const compound of [true, false]) {
+          for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+            while ((weekly[t] || 0) < landmark.mev) {
+              const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && cleanRaise(s) && fits(s, t, capped));
+              if (!pool.length) break;
+              const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+              const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+                .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
+              s.sets++;
+              credit(s, 1);
+            }
           }
         }
       }
