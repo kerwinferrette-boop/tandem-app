@@ -201,7 +201,7 @@ fail quietly. Run `git status --short` first and never move branches over uncomm
 Local paths are deliberately not recorded here: **this repository is public.**
 
 ## Standing test gate (run before every commit that touches the engine)
-`npm run verify` (26 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
+`npm run verify` (every check in `scripts/verify.mjs`, incl. doctrine — the count grows with each guard; read the printed `ALL N CHECKS PASS`, never quote a number from memory) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law
 directive.
 

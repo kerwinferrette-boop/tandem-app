@@ -1576,3 +1576,19 @@ the title is written before the id is knowable. The tempting fix is to write a p
 
 **Enforced by:** judgment — not mechanically checkable (same limit as SC-28).
 
+
+## SC-42 — I reported a gate as PASS from the tail of its output, and numbered a cycle from a stale counter
+
+**Date:** 2026-10-07 (Cycle 99) · **Found by:** Kerwin asking "are we sure it passes 39 of 39?"; the cycle-number half found by checking SC-41's own date.
+
+Two errors, one shape: **I quoted a summary I had not fully read.**
+1. I piped `validate:personas` through `tail -6`, saw `All persona-matrix rules PASS`, and wrote "PASS" into the Goal Record with no combo count. The count (1050) was above the cut. A PASS with no denominator cannot be told from a shrunken matrix.
+2. I labelled my cycle "Cycle 98" from the State block's `CYCLE_COUNT: 97`. The Cycle log already held TWO Cycle 98 entries (2026-09-30, 2026-10-01); the counter had lagged the log.
+
+**The mechanism, not the trait.** Both are "read one field and trust it as the whole": the tail of a command's output, and one number in a State block. Neither source is authoritative; the log of what actually ran is.
+
+> **THE RULE — SC-42.** (a) A gate result goes into any report as `N/N` (the denominator printed by the gate itself), never bare PASS. (b) Take the next cycle number from the highest number in the Cycle LOG, not from `CYCLE_COUNT`; if they disagree, fix the counter in the same write.
+
+**Enforced by:** (a) loop-config's persona-matrix REPORTING RULE (2026-10-07) — judgment, not mechanically checkable. (b) judgment. The detectors added the same day (`matrix-reach-detector.mjs`, `axis-parity-smoke.mjs`) are mutation-tested; they do not enforce this rule.
+
+**Same-session note on SC-38:** my first detector draft passed two injected defects (a single-line `if (goal==='transform' && days===5) {...}` and a dead `days === 99` branch) because it read only each line's first character. Mutation-testing caught it before it shipped; a later parity mutation also hit a comment instead of the key and "passed" vacuously until the diff was read. Both are SC-38 recurring, not new rules.

@@ -735,6 +735,13 @@ verification:
                                 # just when fixing a generator story. 1050 combos (5 goals x 5 day-counts
                                 # x 2 sexes x 3 tiers x 7 injury profiles), Rules 6-10 (count verified
                                 # 2026-10-07 by running it; the old '504' here was stale).
+                                # REACH + PARITY TRAPS (Kerwin, 2026-10-07: 'as many booby traps for loose code as
+                                # possible'): scripts/matrix-reach-detector.mjs (per-combo V8 coverage over
+                                # this same matrix; fails on NEW dead code, code live for exactly one goal AND
+                                # one day-count, or a function losing a goal/day-count) and scripts/axis-parity-
+                                # smoke.mjs (per-goal tables carry all 5 goals; no ghost goal literal; UI shows
+                                # exactly the 5) both run inside npm run verify. A failing reach check means
+                                # make the code reachable, or --update with the reason in the commit body.
                                 # REPORTING RULE (Kerwin, 2026-10-07): every cycle report states the
                                 # combo count as 'N/N combos', never bare 'PASS' — a gate result without
                                 # its denominator cannot be told from a shrunken matrix.

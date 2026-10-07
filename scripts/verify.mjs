@@ -79,6 +79,8 @@ const CHECKS = [
   { name: 'SC-34 column reachability (reads-side: no NEW column written by the app and read by nothing)', run: () => execFileSync('node', [join(scriptsDir, 'column-reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'QA feed status rule (badge + feed share one open-status home; no un-drainable .neq)', run: () => execFileSync('node', [join(scriptsDir, 'qa-feed-status-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-119b home-tier isolation coverage (>=2 bicep-primary, shoulders anterior_delt; D18 fallback must not mask a bank gap)', run: () => execFileSync('node', [join(scriptsDir, 'home-tier-isolation-coverage-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'matrix reach detector (1050 combos x per-combo V8 coverage — no NEW dead code, no code live for only one goal AND one day-count, no function lost a goal/day-count)', run: () => execFileSync('node', [join(scriptsDir, 'matrix-reach-detector.mjs')], { stdio: 'inherit' }) },
+  { name: 'axis parity (static — every per-goal table carries all 5 goals or is allowlisted with a cited reason; no ghost goal literal; UI exposes exactly the 5 goals in both pickers)', run: () => execFileSync('node', [join(scriptsDir, 'axis-parity-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'no-emoji gate (Kerwin, 2026-09-30 — no pictograph emoji in UI text; arrows/checks/star/gender-symbols allowlisted)', run: () => execFileSync('node', [join(scriptsDir, 'no-emoji-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
