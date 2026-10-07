@@ -426,13 +426,13 @@ const EXERCISE_BANK = {
     name:'High Incline Barbell Press', videoId:null,
     muscleGroups:{primary:['pec_major_clavicular','anterior_delt'],secondary:['tricep']},
     emphasis:['chest','shoulders','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:0.80,
-    why:'At 45–60° the load shifts significantly toward the anterior deltoid — useful for shoulder-emphasis programming. Expect ~20% less pec activation than at 30°. Best as a periodisation variation rather than a primary chest builder.',
+    why:'Above ~45° the bench angle shifts work toward the anterior deltoid and pec major activation falls off versus lower inclines (Rodríguez-Ridao et al. 2020, IJERPH 17(19):7339, PMC7579505) — useful for shoulder-emphasis programming. Best as a periodisation variation rather than a primary chest builder.',
     cues:['Keep elbows directly under wrists','Scapula retracted throughout','Do not touch chest — stop one inch above','Control the descent; eccentric under full tension']},
   'decline-barbell-press':{
     name:'Decline Barbell Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['tricep']},
     emphasis:['chest','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:1.07,
-    why:'The decline angle puts pec major sternal fibres in their strongest mechanical position — most lifters press 5–10% more here than flat. Lower pec volume is chronically undertrained; decline closes that gap.',
+    why:'The decline angle puts pec major sternal fibres in a strong mechanical position, so most lifters can handle heavy loads here. Lower pec volume is chronically undertrained; decline closes that gap.',
     cues:['Secure ankles before unracking','Bar to lower chest (below nipple line)','Wrists stacked over elbows','Full lockout — triceps contribute heavily here']},
   'decline-db-press':{
     name:'Decline DB Press', videoId:null,
@@ -575,7 +575,7 @@ const EXERCISE_BANK = {
     name:'Push Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep','quad','glute_max','upper_trap']},
     emphasis:['shoulders','push','upper_body','full_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The leg drive in push press allows 10–15% heavier loads than a strict OHP, overloading the deltoids in the top-range lock-out position. Develops explosive pressing power and full-body coordination simultaneously.',
+    why:'The leg drive in push press allows heavier loads than a strict OHP, overloading the deltoids in the top-range lock-out position. Develops explosive pressing power and full-body coordination simultaneously.',
     cues:['Dip: slight knee bend (~20°), torso stays upright','Drive up from the legs explosively','Press overhead from leg momentum — continue pressing to lockout','Lower under control — do not drop the bar']},
   'z-press':{
     name:'Z-Press', videoId:null,
@@ -1054,7 +1054,7 @@ const EXERCISE_BANK = {
     name:'Tricep Overhead Extension', videoId:'nRiJVZDpdL0',
     muscleGroups:{primary:['tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'The long head of the tricep is 55% of total tricep mass and is ONLY fully activated in overhead position. Most programs do only pushdowns, leaving the biggest head undertrained. Without overhead extension, half your tricep potential is untapped.',
+    why:'The long head is the largest tricep head and the only one that crosses the shoulder, so it is lengthened and loaded hardest in overhead position. Most programs do only pushdowns, leaving the biggest head undertrained.',
     cues:['Hold one dumbbell with both hands overhead (diamond grip)','Elbows point to the ceiling — do not flare','Lower behind the head until forearms are parallel','Press back up through the elbows — do not swing']},
   'skull-crusher':{
     name:'Skull Crusher', videoId:null,
@@ -1664,13 +1664,13 @@ const EXERCISE_BANK = {
     name:'Elliptical', videoId:null,
     muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['anterior_delt']},
     emphasis:['lower_body','full_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
-    why:'Mimics a running stride with zero impact. The arm poles add upper body engagement and increase total energy expenditure by 10–15% versus leg-only use.',
+    why:'Mimics a running stride with zero impact. The arm poles add upper body engagement and raise total energy expenditure versus leg-only use.',
     cues:['Use the arm poles — they increase caloric burn and stabilise the trunk','Do not lean on the machine — maintain your own posture','Moderate resistance and pace — this is not a sprint','Zone 2 heart rate target: 60–70% of max']},
   'rower':{
     name:'Rower', videoId:null,
     muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep_brachii','hamstring','erector_spinae']},
     emphasis:['full_body','back','lower_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
-    why:'Engages 86% of muscle mass — more than any other cardio machine. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
+    why:'Engages legs, hips, back and arms in one stroke — a broader muscle recruitment than most cardio machines. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
     cues:['Drive order: LEGS → LEAN BACK → ARMS; reverse on recovery','Drive hard through the heels at the catch','Do not open the hips until the handle passes the knees','Damper setting 4–6 for aerobic work; higher is not better']},
   'kb-swing':{
     name:'KB Swing', videoId:'sSNGZzfMqE8',
@@ -4055,7 +4055,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 75 sec', exs:[
               {id:'fb-hack', name:'Hack Squat', badge:'compound', sets:4, w:160, r:15, rest:75, compound:true,
-               why:'At your frame, hack squat is the superior quad compound. Guided path means 100% of effort goes into the muscle. Machine removes the balance tax of barbell.',
+               why:'At your frame, hack squat is the superior quad compound. Guided path means more of the effort goes into the muscle. Machine removes the balance tax of barbell.',
                cues:['Feet mid-platform, shoulder-width, 20–30° toe-out.','Below parallel. Partial reps = partial development.','3-sec eccentric. No lockout at top — keep tension.']},
               {id:'fb-bss',  name:'Bulgarian Split Squat', badge:'compound', sets:3, w:20, r:12, rest:75, compound:true,
                why:'Single-leg work catches imbalances. Hip flexor stretch on rear leg addresses the tightness that desk work creates. Lower total load, same stimulus.',
@@ -4108,7 +4108,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Lateral delt is the V-taper muscle. At 6\'3" building this makes body composition changes visible even at higher bodyweight.',
                cues:['Cable at ankle. Arm crosses body at start.','Lead with elbow — pinky slightly higher than thumb.','Stop at shoulder height. 4-sec negative.']},
               {id:'bm-ohe',  name:'Tricep Overhead Extension', badge:'isolation', sets:3, w:65, r:12, rest:75, compound:false,
-               why:'The long head is 55% of tricep mass — only fully activated in overhead position. Most programs only do pushdowns and leave half the tricep untrained.',
+               why:'The long head is the largest tricep head and the only one that crosses the shoulder — loaded hardest in overhead position. Most programs only do pushdowns and leave it undertrained.',
                cues:['Elbows narrow, pointed forward, stay there throughout.','Only forearm moves. Upper arm stays pinned overhead.','Full stretch before driving up.']},
               {id:'bm-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:80, r:12, rest:75, compound:false,
                why:'Lateral and medial head isolation after overhead ext has burned out the long head. Final set: drop 30%, continue to failure.',
@@ -4928,7 +4928,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
         ]},
         { label:'Arms Block · Rest 75 sec', exs:[
           {id:'s5-ohe',name:'Tricep Overhead Extension', badge:'isolation', sets:3, w:65, r:12, rest:75, compound:false,
-           why:'Long head — 55% of tricep mass. Only hit in overhead position.',
+           why:'Long head — largest tricep head, crosses the shoulder. Loaded hardest in overhead position.',
            cues:['Elbows narrow and forward. Forearm only moves.']},
           {id:'s5-pd', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:80, r:12, rest:75, compound:false,
            why:'Lateral and medial head finisher.',
