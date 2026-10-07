@@ -1592,3 +1592,15 @@ Two errors, one shape: **I quoted a summary I had not fully read.**
 **Enforced by:** (a) loop-config's persona-matrix REPORTING RULE (2026-10-07) — judgment, not mechanically checkable. (b) judgment. The detectors added the same day (`matrix-reach-detector.mjs`, `axis-parity-smoke.mjs`) are mutation-tested; they do not enforce this rule.
 
 **Same-session note on SC-38:** my first detector draft passed two injected defects (a single-line `if (goal==='transform' && days===5) {...}` and a dead `days === 99` branch) because it read only each line's first character. Mutation-testing caught it before it shipped; a later parity mutation also hit a comment instead of the key and "passed" vacuously until the diff was read. Both are SC-38 recurring, not new rules.
+
+## SC-43 — I edited programs.js while a baseline gate chain was still running against it
+
+**Date:** 2026-10-07 (Cycle 101) · **Found by:** noticing `verify` was still running when I applied the BUG-121 edits.
+
+I started `verify` → `personas` → `walkthrough` as a background chain "to get a baseline", then began editing `programs.js` before it finished. Every later stage of that chain read the edited tree, so it was no longer a baseline. I killed it and re-ran on the final tree; nothing shipped from the contaminated run.
+
+> **THE RULE — SC-43.** Do not edit a tracked file while a background gate that reads it is running; wait for it or kill it first, and never call a run a "baseline" if the tree changed during it.
+
+**Enforced by:** judgment — not mechanically checkable.
+
+**Related finding (not an error of mine, filed here for the record):** `scripts/program-snapshot.mjs` serializes the `.shouldersArmsDay` extra with `JSON.stringify`, which includes `why`/`cues`, contradicting its own header ("copy excluded from the structural hash"). A why-text edit therefore moves the structural hash for ~700 combos. Fix is in a script outside the FIX scope-lock; needs a Bug & QA Log row.
