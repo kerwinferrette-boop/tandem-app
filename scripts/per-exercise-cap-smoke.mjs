@@ -80,6 +80,10 @@
 //      => A2 fails, 32 muscle-weeks below D6b's MEV floor.
 //   M4 raise PER_EXERCISE_SET_CEILING to 11
 //      => A3 fails (the ceiling left the cited range).
+//   M6 edit `count` in scripts/fixtures/bug231-forced-stacks.json without touching
+//      `cells` (the shape a hand-edit takes)  => A4 fails (fixture integrity).
+//   M7 drop 10 cells from that fixture's `cells`  => A5 fails, 10 novel cells
+//      (the ratchet refuses to let the forced residue grow back).
 //
 // AND ONE MUTATION THIS GATE DELIBERATELY DOES NOT CATCH, stated plainly rather
 // than implied away:
@@ -94,7 +98,7 @@
 // home for a rule D8 already owns (CLAUDE.md, "one rule, one home").
 // ═══════════════════════════════════════════════════════
 import vm from 'vm';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { combos, COMBO_COUNT } from './lib/persona-combos.mjs';
@@ -126,7 +130,31 @@ const weightOf = (name, t) => {
   return (g.primary || []).filter(hit).length + 0.5 * (g.secondary || []).filter(hit).length;
 };
 
-let liftCount = 0, overCap = 0, forcedCells = 0;
+// ── A4/A5 ratchet (council Decision 5, 2026-10-06). The forced residue is a real
+// gap, not a pass: the week has too few slots training that muscle to reach MEV at
+// <=CAP sets each, so the floor (measured) outranks the plateau (unmeasured) and one
+// lift gets stacked. Leaving that merely PRINTED means it can grow silently, which is
+// how BUG-231 itself survived — D33 printed a known gap and 1040 stacks accumulated
+// inside it. So the exception set is PINNED to a fixture and the gate asserts the live
+// set is (A4) no larger and (A5) a subset. That makes the gap a monotonic burn-down:
+// muscle_tag_rescope / D6d work can only shrink it, and a NEW forced cell — whether
+// from an engine change or a new persona axis — fails loudly and has to be justified.
+//
+// The key is the PERSONA-level structural gap (goal / day-count / sex / tier — muscle),
+// deliberately NOT the lift name or the injury profile. Which lift the allocator picked
+// inside a forced cell is an allocator detail that A1 already governs, and the 7 injury
+// profiles multiply the same structural gap ~5x with no new information. The key names
+// exactly the thing a fix would close: this split at this tier has nowhere else to put
+// that muscle's volume.
+//
+// Regenerate ONLY with `node scripts/per-exercise-cap-smoke.mjs --write-fixture`, and
+// only when the set SHRANK or a growth has a written justification. Never hand-edit —
+// same convention as scripts/fixtures/db-muscle-tag-vocabulary.json (check #25).
+const FIXTURE = join(root, 'scripts', 'fixtures', 'bug231-forced-stacks.json');
+const WRITE_FIXTURE = process.argv.includes('--write-fixture');
+
+let liftCount = 0, overCap = 0;
+const forced = new Map();       // persona-level forced cells (the ratchet set)
 const spreadable = new Map();   // A1 violations
 const belowMev = new Map();     // A2 violations
 const histogram = {};
@@ -155,7 +183,7 @@ for (const c of combos()) {
     // Is this stack structurally forced? Forced iff SOME token this lift trains
     // has a weekly MEV that cannot be met with every top-weight slot in the week
     // pinned at the ceiling.
-    let why = null;
+    let why = null, whyToken = null;
     for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
       const myW = weightOf(e.name, t);
       if (!myW || !landmark?.mev) continue;
@@ -164,11 +192,12 @@ for (const c of combos()) {
         .filter(x => Math.min(weightOf(x.name, t), 1) === tier0)
         .reduce((a, x) => a + CAP * Math.min(weightOf(x.name, t), 1), 0);
       if (headroom < landmark.mev) {
+        whyToken = t;
         why = `${t}: mev ${landmark.mev} > ${headroom} reachable at <=${CAP}/lift`;
         break;
       }
     }
-    if (why) forcedCells++;
+    if (why) forced.set(`${goal}/${days}d/${sex}/${tier} — ${whyToken}`, why);
     else spreadable.set(`${label} — ${e.sets}x ${e.name}`, 1);
   }
 
@@ -199,12 +228,66 @@ must(belowMev.size === 0,
   + `must yield to the floor (plateau bound vs measured deficit), so pass 2 of the raise loop is `
   + `missing or broken:\n` + [...belowMev.keys()].slice(0, 20).map(k => `      ${k}`).join('\n'));
 
+// ── A4/A5: the ratchet.
+const liveForced = [...forced.keys()].sort();
+if (WRITE_FIXTURE) {
+  writeFileSync(FIXTURE, JSON.stringify({
+    _comment: 'Pinned structurally-forced per-exercise stacks (doctrine D35 ratchet, council '
+      + 'Decision 5 2026-10-06). Key: goal/day-count/sex/tier — muscle token whose weekly MEV is '
+      + 'unreachable at <=PER_EXERCISE_SET_CEILING sets per lift. The gate asserts the live set is '
+      + 'no larger than this and a subset of it, so the gap can only shrink. Regenerate ONLY via '
+      + '`node scripts/per-exercise-cap-smoke.mjs --write-fixture`; never hand-edit. Growth needs a '
+      + 'written justification, not a refresh.',
+    ceiling: CAP,
+    generated: new Date().toLocaleDateString('en-CA'),   // local date, not UTC — the repo's dates are Kerwin's
+
+    count: liveForced.length,
+    cells: liveForced,
+  }, null, 2) + '\n');
+  console.log(`--write-fixture: pinned ${liveForced.length} forced cell(s) to ${FIXTURE}`);
+} else {
+  let pinned = null;
+  try { pinned = JSON.parse(readFileSync(FIXTURE, 'utf8')); } catch (err) {
+    fail.push(`A4/A5: could not read the forced-stack fixture (${err.message}) — the ratchet is the `
+      + `only thing keeping the forced residue from growing silently. Regenerate it deliberately with `
+      + `--write-fixture; do NOT delete this assertion.`);
+  }
+  if (pinned) {
+    const pinnedSet = new Set(pinned.cells || []);
+    // A4 — fixture integrity. Note what this does NOT assert: the council's Decision 5
+    // asked for "<= N AND a subset", but a subset can never be larger than its superset,
+    // so a separate size bound could never fire independently of A5 and would be a gate
+    // on a dead value. A4 instead guards the fixture itself: a hand-edit that drops cells
+    // and leaves `count` behind, or a fixture pinned against a different ceiling, makes
+    // A5's verdict meaningless. The size bound lives in A5, where it is real.
+    must(pinned.count === pinnedSet.size && pinned.ceiling === CAP,
+      `A4: the forced-stack fixture is inconsistent — it records count=${pinned.count} / `
+      + `ceiling=${pinned.ceiling} but carries ${pinnedSet.size} unique cell(s) against a live `
+      + `ceiling of ${CAP}. It was hand-edited or left stale; regenerate it with --write-fixture `
+      + `(and justify any growth in writing first).`);
+    const novel = liveForced.filter(k => !pinnedSet.has(k));
+    must(novel.length === 0,
+      `A5: ${novel.length} forced cell(s) are NOT in the pinned set of ${pinnedSet.size} — the `
+      + `forced residue is a RATCHET and may only shrink, so a new structural gap appeared. Fix the `
+      + `engine (add a related lift for that muscle, per Kerwin's standing ruling), or justify the `
+      + `growth in writing and then --write-fixture:\n`
+      + novel.slice(0, 20).map(k => `      ${k}  (${forced.get(k)})`).join('\n'));
+    const closed = [...pinnedSet].filter(k => !forced.has(k));
+    if (closed.length) {
+      console.log(`  ratchet: ${closed.length} pinned cell(s) no longer forced — re-run with `
+        + `--write-fixture to lock the improvement in:`);
+      for (const k of closed.slice(0, 10)) console.log(`      ${k}`);
+    }
+  }
+}
+
 console.log(`Per-exercise set ceiling (BUG-231): ${COMBO_COUNT} combos, ${liftCount} working lifts`);
 console.log('  sets histogram: ' + Object.keys(histogram).sort((a, b) => a - b)
   .map(k => `${k}:${histogram[k]}`).join(', '));
 console.log(`  ceiling = ${CAP} sets/exercise/session (ACSM 2009 · Krieger 2010 · Hackett 2018)`);
-console.log(`  above the ceiling: ${overCap} (${(100 * overCap / liftCount).toFixed(1)}%) — `
-  + `${forcedCells} structurally forced, ${spreadable.size} spreadable`);
+console.log(`  above the ceiling: ${overCap} lift-instance(s) (${(100 * overCap / liftCount).toFixed(1)}%), `
+  + `all structurally forced, ${spreadable.size} spreadable — ${forced.size} distinct forced cell(s) `
+  + `(goal/days/sex/tier — muscle), ratcheted against scripts/fixtures/bug231-forced-stacks.json`);
 console.log(`  forced residue = the gap D33/D6d already record: the week has too few slots training`);
 console.log(`  that muscle to reach MEV at <=${CAP} sets each. Kerwin's standing ruling is that the`);
 console.log(`  engine should add a RELATED LIFT there (muscle_tag_rescope), not more sets on the one`);
