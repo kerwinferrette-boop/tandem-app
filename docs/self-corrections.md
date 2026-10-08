@@ -1604,3 +1604,15 @@ I started `verify` → `personas` → `walkthrough` as a background chain "to ge
 **Enforced by:** judgment — not mechanically checkable.
 
 **Related finding (not an error of mine, filed here for the record):** `scripts/program-snapshot.mjs` serializes the `.shouldersArmsDay` extra with `JSON.stringify`, which includes `why`/`cues`, contradicting its own header ("copy excluded from the structural hash"). A why-text edit therefore moves the structural hash for ~700 combos. Fix is in a script outside the FIX scope-lock; needs a Bug & QA Log row.
+
+## SC-44 — BUG-121 fix softened one copy of a duplicated why-string and was marked done
+
+**Date:** 2026-10-08 (Cycle 102) · **Found by:** the independent Verify subagent, which grepped the named offenders instead of reading commit 07cf38b.
+
+07cf38b softened the hack-squat "100% of effort to the quad" claim at one site in `getProgram`; an identical claim survived at `programs.js:4289`. Same shape as BUG-73/BUG-114 (fix the instance, not the mechanism).
+
+> **THE RULE — SC-44.** When removing an uncited claim, grep the whole repo for the exact phrase and each named number before committing, and list every hit in the commit body.
+
+**Enforced by:** judgment — not mechanically checkable (`verify` has no uncited-number check; it stayed 45/45 green with the claim live).
+
+**Open, not fixed (non-numeric or mechanical, left for a decision):** programs.js:447 "outperforms any isolation exercise", :1465 "2× the resistance" (arithmetic identity), :1655 "dramatically".

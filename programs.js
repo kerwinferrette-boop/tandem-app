@@ -4286,7 +4286,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bm-hack', name:'Hack Squat', badge:'compound', sets:4, w:180, r:8, rest:150, compound:true,
-               why:'At 6\'3", barbell back squat mechanics shift load to the lower back due to femur length. Hack squat keeps you upright — 100% of effort to the quad. Not a compromise. The mechanically superior choice for your structure.',
+               why:'At 6\'3", barbell back squat mechanics shift load to the lower back due to femur length. Hack squat keeps your torso supported and upright, which takes the lower back out of the limiting position and lets the quads do the work. A good fit for your structure.',
                cues:['Feet mid-platform, shoulder-width, 20–30° out.','Below parallel. No partial reps.','3-sec eccentric. No lockout at top — maintain tension.']},
               {id:'bm-bss',  name:'Bulgarian Split Squat', badge:'compound', sets:3, w:27, r:8, rest:120, compound:true,
                why:'Single-leg training at equivalent or greater stimulus than bilateral at significantly lower total load. Hip flexor stretch on rear leg is therapeutic for desk-sitting lifters.',
