@@ -160,7 +160,7 @@ checks is a suggestion. This list names the first five and the most recent block
 file, it is the authority: SC-01 staleness · SC-02 retracted claims · SC-03 run-don't-simulate ·
 SC-04 feedback is not a commit · SC-05 status docs are snapshots · … · SC-38 mutation-test each
 assertion individually · SC-39 a masked finding is not a fixed one · SC-40 never undo a mutation
-test with a HEAD-relative git revert.
+test with a HEAD-relative git revert · SC-45 verify a mutation LANDED before believing its result.
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 
@@ -201,7 +201,7 @@ fail quietly. Run `git status --short` first and never move branches over uncomm
 Local paths are deliberately not recorded here: **this repository is public.**
 
 ## Standing test gate (run before every commit that touches the engine)
-`npm run verify` (26 checks incl. doctrine) · `npm run validate:personas` (Rules 6-9). Both green,
+`npm run verify` (every check in `scripts/verify.mjs`, incl. doctrine — the count grows with each guard; read the printed `ALL N CHECKS PASS`, never quote a number from memory) · `npm run validate:personas` (Rules 6-9). Both green,
 or it does not ship. See `.claude/loop-config.md` for the full standing sweep and doctrine-is-law
 directive.
 

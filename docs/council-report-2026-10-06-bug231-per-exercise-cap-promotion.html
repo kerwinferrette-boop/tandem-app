@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Council Verdict — BUG-231 per-exercise cap promotion</title>
+<style>
+  :root{
+    --ink:#14171a; --mute:#5b6570; --line:#e3e7ec; --bg:#fff; --soft:#f7f9fb;
+    --agree:#2f6f4f; --clash:#9a5b16; --blind:#6b4b9a; --rec:#1f4e79;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:56px 28px 96px}
+  .eyebrow{
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--mute); margin:0 0 10px
+  }
+  h1{font-size:30px; line-height:1.25; margin:0 0 18px; letter-spacing:-.01em}
+  .q{
+    border-left:3px solid var(--line); padding:14px 0 14px 18px; margin:0 0 10px;
+    color:#2a2f35
+  }
+  .q p{margin:0 0 10px} .q p:last-child{margin:0}
+  .meta{font-size:13px; color:var(--mute); margin:0 0 40px}
+  .meta code{background:var(--soft); padding:1px 5px; border-radius:3px; font-size:12px}
+  h2{
+    font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+    margin:44px 0 14px; padding-bottom:8px; border-bottom:1px solid var(--line)
+  }
+  h2.agree{color:var(--agree)} h2.clash{color:var(--clash)}
+  h2.blind{color:var(--blind)} h2.rec{color:var(--rec)}
+  p{margin:0 0 14px}
+  ol,ul{margin:0 0 14px; padding-left:22px} li{margin:0 0 10px}
+  blockquote{
+    margin:18px 0; padding:14px 18px; background:var(--soft);
+    border-left:3px solid var(--rec); font-size:15px
+  }
+  blockquote strong{display:block; margin-bottom:0}
+  .verdict{
+    background:var(--soft); border:1px solid var(--line); border-radius:6px;
+    padding:22px 26px; margin:0 0 8px
+  }
+  .one-thing{
+    border:1px solid var(--rec); border-radius:6px; padding:22px 26px; margin:28px 0 0
+  }
+  .one-thing .eyebrow{color:var(--rec)}
+  .one-thing p:last-child{margin:0}
+  table{border-collapse:collapse; width:100%; font-size:14px; margin:0 0 20px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute)}
+  td.pos{white-space:nowrap; font-variant-numeric:tabular-nums}
+  .y{color:var(--agree); font-weight:600} .n{color:#a33} .mid{color:var(--clash)}
+  details{border:1px solid var(--line); border-radius:6px; margin:0 0 10px; background:#fff}
+  details[open]{background:var(--soft)}
+  summary{
+    cursor:pointer; padding:13px 18px; font-weight:600; font-size:15px;
+    list-style:none; display:flex; justify-content:space-between; gap:14px
+  }
+  summary::-webkit-details-marker{display:none}
+  summary .tag{font-weight:400; font-size:12px; color:var(--mute); text-align:right}
+  details .body{padding:0 18px 18px; font-size:15px}
+  details .body p:last-child{margin:0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  footer{
+    margin-top:64px; padding-top:18px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--mute)
+  }
+  .checked{
+    font-size:13px; color:var(--agree); border:1px dashed var(--agree);
+    border-radius:5px; padding:10px 14px; margin:0 0 14px
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">LLM Council &middot; 2026-10-06</p>
+  <h1>Should the cited 6-set-per-exercise cap become a D-invariant?</h1>
+
+  <div class="q">
+    <p>BUG-231: the MEV raise loop satisfied a muscle's weekly volume floor by piling sets onto
+    <em>one</em> exercise — 7&times;12 Decline Barbell Press, up to 10–11 sets of one lift on 2-day
+    splits. Research produced a 6-set-per-exercise-per-session ceiling from three primary sources
+    (ACSM 2009, Krieger 2010, Hackett 2018). The fix is shipped and gated.</p>
+    <p>But D33 — already ACTIVE — says in its own text that the per-exercise cap is
+    <em>"a consequence, not a separate claim."</em> New D-number, D33 clause, or not doctrine at
+    all? Which tier? And is a rule with 700 standing exceptions an invariant at all?</p>
+  </div>
+  <p class="meta">
+    Branch <code>bug231-per-exercise-cap</code> @ <code>81a01ec</code> &middot;
+    5 advisors &rarr; 5 anonymized peer reviews &rarr; chairman synthesis &middot;
+    Full transcript: <code>council-transcript-2026-10-06-bug231-per-exercise-cap-promotion.md</code>
+  </p>
+
+  <h2 class="rec">Verdict in one line</h2>
+  <div class="verdict">
+    <p><strong>Don't promote "6." Promote the allocation rule instead — and amend D33's sentence,
+    which is now false under every option including "do nothing."</strong></p>
+    <p style="margin:0">The research establishes <em>"unknown above 6,"</em> not <em>"6 is a
+    ceiling."</em> An absence-of-evidence claim can't be violated, so it can't be an invariant. What
+    the fix actually changed is how the engine <em>allocates</em> a deficit — and that <em>is</em> a
+    closed, checkable claim with zero exceptions by construction.</p>
+  </div>
+
+  <h2>Where the advisors landed</h2>
+  <table>
+    <thead><tr>
+      <th>Advisor</th><th class="pos">Promote?</th><th class="pos">Where</th>
+      <th class="pos">Tier</th><th class="pos">Override key</th><th>Core move</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td>First Principles</td><td class="pos y">Yes*</td><td class="pos">New D#</td>
+        <td class="pos">—</td><td class="pos">—</td>
+        <td>Promote a <em>different rule</em>: never stack when a legal lift exists. "6" becomes an
+        allocator parameter.</td>
+      </tr>
+      <tr>
+        <td>Executor</td><td class="pos y">Yes</td><td class="pos">New D#</td>
+        <td class="pos">SCIENCE_DEFAULT</td><td class="pos n">No</td>
+        <td>Ratchet the 34 cells to a fixture: assert &le;34 <em>and</em> a subset, so the count can
+        only shrink.</td>
+      </tr>
+      <tr>
+        <td>Expansionist</td><td class="pos y">Yes</td><td class="pos">New D#</td>
+        <td class="pos">SCIENCE_DEFAULT</td><td class="pos y">Yes</td>
+        <td>The exceptions are an asset; formalize plateau-yields-to-floor as a precedence lattice.</td>
+      </tr>
+      <tr>
+        <td>Contrarian</td><td class="pos n">No</td><td class="pos mid">D33 clause<br><small>if forced</small></td>
+        <td class="pos">—</td><td class="pos">—</td>
+        <td>Three nulls stacked are still a null. And what audits the forced-ness classifier?</td>
+      </tr>
+      <tr>
+        <td>Outsider</td><td class="pos n">No</td><td class="pos">—</td>
+        <td class="pos">—</td><td class="pos">—</td>
+        <td>A ceiling you route around 700 times is a default with a tiebreak. Don't spend binary
+        authority on your softest claim.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="meta" style="margin:-8px 0 0">
+    * First Principles promotes the allocation rule, not the cap — which is why he reads as both
+    the most and least enthusiastic. <strong>All five peer reviewers independently named him
+    strongest, and all five named the Expansionist the biggest blind spot.</strong>
+  </p>
+
+  <h2 class="agree">Where the Council Agrees</h2>
+  <ol>
+    <li><strong>"6" is not a bound.</strong> Four of five reached this independently: ACSM's 3–6 is
+    a range where benefit was <em>observed</em>; Krieger's top bin stops at 6 because that's how the
+    literature clustered, so silence above 6 is a measurement-grid artifact; Hackett is an n=12
+    pilot whose lean-mass outcome moved in <em>neither</em> arm. The Contrarian's compression:
+    <em>"Stack three nulls and you still have a null."</em></li>
+    <li><strong>An absence-of-evidence claim cannot be an invariant.</strong> Invariants assert
+    something violable. "Nobody has measured past here" isn't.</li>
+    <li><strong>The 34 cells are debt, not law.</strong> All 700 remaining over-ceiling lifts share
+    one mechanism — no legal additional lift exists at that tier. That's a bank-coverage defect
+    already named in D33's own known gap and blocked on <code>muscle_tag_rescope</code>.</li>
+    <li><strong>The buried finding outranks the cap.</strong> Three advisors raised it unprompted:
+    D6b's MEV floor was green on <code>main</code> partly <em>because</em> of this bug. A cited floor
+    that was only green by accident is a bigger integrity problem than an uncited plateau.</li>
+    <li><strong>SAFETY is off the table.</strong> Nothing cited shows harm above 6 — SAFETY would
+    be, in the Executor's phrase, <em>"a lie you'd have to defend."</em></li>
+  </ol>
+
+  <h2 class="clash">Where the Council Clashes</h2>
+  <p><strong>1. Promote nothing vs. promote something else.</strong> Contrarian and Outsider both
+  land on "keep the gate, promote nothing." The Outsider's reason is the sharpest thing anyone
+  said:</p>
+  <blockquote>"A ceiling you deliberately route around 700 times is a default with a tiebreak.
+  Calling it an invariant and then shipping 34 standing exceptions teaches everyone reading
+  /DOCTRINE.md that D-numbers are negotiable — which is the one property your gate depends on not
+  being true."</blockquote>
+  <p>Against them, Executor wants durability (<em>"#44 is a standalone script someone will
+  'simplify' in six months, whereas a D-row has a Notion page explaining why 6"</em>) and
+  Expansionist wants leverage. Both sides are weighing real costs. <strong>First Principles is the
+  only advisor who refuses the trade</strong> — and that escape is what every reviewer picked as
+  strongest.</p>
+
+  <p><strong>2. Register the <code>OVERRIDE_KEYS</code> entry now?</strong> Expansionist calls a
+  keyless SCIENCE_DEFAULT <em>"a dead letter"</em> and the seam a future coach mode needs. Executor
+  calls it speculative work. Four of five reviewers sided against the Expansionist on a specific
+  technical ground: the project's own tier vocabulary says a keyless SCIENCE_DEFAULT
+  <em>authorizes no deviation at all — the tier records confidence, not permission.</em> "Dead
+  letter" misreads the vocabulary rather than finding a gap in it.</p>
+
+  <p><strong>3. New D-number vs. D33 clause.</strong> Executor: don't braid 6 to a PROVISIONAL 11
+  revisit-dated 2027-03-23 — you'll want to move 11 without touching 6. Contrarian: a new D-number
+  <em>asserts a new claim</em>, and you don't have one. Both are right about their own concern, which
+  is the signal that the thing being numbered is wrong, not the numbering.</p>
+
+  <h2 class="blind">Blind Spots the Council Caught</h2>
+  <ol>
+    <li><strong>D33's sentence is now false — and must be amended under EVERY option, including
+    "do nothing."</strong> Four of five reviewers caught this; no advisor did. D33 affirmatively
+    claims ownership: <em>"The per-exercise cap is a consequence, not a separate claim."</em> Written
+    when Remmert was the only source; now contradicted by three primary sources with a different
+    unit, bound and authors. Promoting a new D-number while leaving it standing ships
+    <strong>two ACTIVE invariants disputing ownership of one rule</strong> — a one-rule-one-home
+    violation. Leaving the rule in the gate doesn't help; the sentence is still false.</li>
+    <li><strong>The most attractive answer was rejected unanimously.</strong> All five reviewers
+    named the Expansionist the biggest blind spot. Reviewer 4: <em>"pure upside narration… never
+    tests whether the bound exists."</em> Reviewer 3: <em>"architecture astronomy built atop a bound
+    nobody has shown exists above 6."</em> An unverified premise in strategic language is still an
+    unverified premise.</li>
+    <li><strong>The pass-2 escape hatch is load-bearing and invisible to the gate.</strong> One
+    reviewer asked whether an uncapped second pass could push a muscle past D33's ~11.</li>
+    <div class="checked">Checked against the code rather than reasoned about:
+    <code>fits()</code> (<code>programs.js:3474</code>) applies the
+    <code>SESSION_MUSCLE_CEILING</code> term <strong>unconditionally</strong> — the
+    <code>capped</code> flag gates only the per-exercise line. Pass 2 cannot violate D33. The
+    reviewer's narrower framing stands: this is a gap in what the gate <em>asserts</em> versus what
+    the code <em>does</em>.</div>
+    <li><strong>One rule, one home — partly a misread, worth stating precisely.</strong> Three
+    reviewers assumed <code>6</code> is duplicated in engine and gate. It isn't:
+    <code>PER_EXERCISE_SET_CEILING</code> is declared once (<code>programs.js:3393</code>) and the
+    gate vm-extracts it live; the only second literal is the pin <code>CAP === 6</code>, which is
+    the gate doing its job. But the instinct about <em>naming</em> is right — a bare
+    <code>const</code> beside the raise loop is a weaker home than a named table, and the number
+    carries no revisit date the way D33's 11 does.</li>
+  </ol>
+
+  <h2 class="rec">The Recommendation</h2>
+  <ol>
+    <li><strong>Promote First Principles' claim, not mine.</strong> No exercise-science number, zero
+    exceptions by construction:
+    <blockquote>The engine must never satisfy a weekly volume floor by adding sets to an existing
+    exercise when a legal additional exercise exists.</blockquote>
+    When no legal lift exists the antecedent is false and the rule is silent — exactly where the 700
+    cases live. This is also <em>the rule D33's own known gap already names in prose and never made
+    executable.</em></li>
+    <li><strong>New D-number (D35), not a D33 clause.</strong> D33's 11 is PROVISIONAL and
+    revisit-dated; you'll want to move it without touching this. The Contrarian's objection
+    ("asserts a new claim you don't have") is answered by item 1 — the claim is now about the
+    allocator, which <em>is</em> new and <em>is</em> ours. Matches the D34-over-D24-clause
+    precedent.</li>
+    <li><strong>SCIENCE_DEFAULT. No <code>OVERRIDE_KEYS</code> entry.</strong> SAFETY is
+    indefensible; a key is speculative permission for a deviation nobody requested, and a keyless
+    SCIENCE_DEFAULT is already fully binding today.</li>
+    <li><strong>Amend D33's ownership sentence</strong> so it cedes the per-exercise unit to D35 and
+    keeps D33 to the per-muscle unit. Notion mirror first, then <code>/DOCTRINE.md</code> and
+    <code>doctrine.mjs</code> in one commit.</li>
+    <li><strong>Keep "6" as a parameter; bolt on the Executor's ratchet.</strong> The number stays in
+    code with its citations, its honest limits, and — new — a revisit date, the way D33's 11 carries
+    one. Then commit the 34 forced cells to a fixture and assert the live set is <strong>&le; 34 and
+    a subset</strong>. A floating exception count becomes a monotonic burn-down; a <em>new</em>
+    bank-coverage gap goes red the day it appears; and the stalled
+    <code>muscle_tag_rescope</code> item finally has a finish line.</li>
+  </ol>
+  <p><strong>File separately, not part of the promotion:</strong> (a) the buried finding — whether
+  D6b's MEV gate was ever mutation-tested against stacked allocation (an open SC-38/SC-39 question
+  three advisors argued deserves an entry more than the cap does); (b) the Contrarian's <em>"what
+  audits the forced classifier?"</em> — check #44's forced-ness computation shares inputs with the
+  engine, and "it was mutation-tested" should be verified assertion-by-assertion, not asserted.</p>
+
+  <div class="one-thing">
+    <p class="eyebrow">The One Thing to Do First</p>
+    <p><strong>Amend D33's sentence in Notion.</strong> Not the new D-number, not the fixture, not
+    the push.</p>
+    <p>That sentence — <em>"the per-exercise cap is a consequence, not a separate claim"</em> — is
+    false as of this research, and false under <em>every</em> option this council considered,
+    including "promote nothing." It's the only unconditionally required item, it's the Notion-first
+    step that gates the <code>/DOCTRINE.md</code> and <code>doctrine.mjs</code> edits, and until
+    it's fixed the doctrine contains a standing claim the sources contradict. Everything else
+    follows from it.</p>
+  </div>
+
+  <h2>Advisor responses in full</h2>
+
+  <details>
+    <summary>The Contrarian <span class="tag">promote nothing &middot; "stack three nulls and you still have a null"</span></summary>
+    <div class="body">
+      <p>Three citations, zero of them bound 6. ACSM's 3–6 is a recommended range for advanced
+      trainees, not a ceiling — ranges describe where benefit was observed, they do not forbid the
+      outside. Krieger measured nothing above 6 sets; that is absence of evidence, and you are
+      reading it as evidence of absence. And Hackett could not detect its own primary outcome — lean
+      mass moved in neither arm of an n=12 pilot with uncontrolled diet — so it cannot license a
+      bound on anything. Stack three nulls and you still have a null.</p>
+      <p>The 700 exceptions are unfalsifiable as written. You say every one is "structurally forced"
+      and computed independently. What audits the forced classifier? If the classifier shares an
+      assumption with the engine, the gate rubber-stamps whatever the engine does and reports zero
+      violations forever.</p>
+      <p>And the buried finding is the real one here, not the cap: D6b's MEV floor was green on main
+      partly BECAUSE of this stacking. The defect is exercise selection breadth, not set counting.
+      Capping sets caps the symptom and leaves the mechanism.</p>
+      <p>Answers: (1) keep check #44, promote nothing. (2) If forced to promote, a D33 clause — a new
+      D-number asserts a new claim and you do not have one. (3) A SCIENCE_DEFAULT with no
+      <code>OVERRIDE_KEYS</code> entry is permissionless theater. (4) No. It's a volume budget
+      heuristic. Name it that.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The First Principles Thinker <span class="tag">strongest, 5/5 reviewers &middot; promote the allocation rule</span></summary>
+    <div class="body">
+      <p>You are asking "what tier and what number," which presumes the rule you've written is the
+      rule you actually discovered. It isn't.</p>
+      <p>Strip it back. What did the evidence establish? Not "6 is a ceiling." It established that
+      nobody has measured a benefit above 6 sets of one exercise in one session. That is a statement
+      about the literature's coverage, not about muscle. An invariant whose content is absence of
+      evidence is a category error — invariants assert what must be true, and "we haven't looked past
+      here" can't be violated.</p>
+      <p>Now look at what the fix actually does. It doesn't enforce 6. It changes how the engine
+      ALLOCATES a volume deficit: spread across exercises before stacking on one. And the 700
+      "exceptions" all share exactly one mechanism — no legal additional lift exists for that muscle
+      at that tier. That's not 34 carve-outs from a law. That's a bank-coverage and
+      selection-breadth defect, enumerated. Thirty-four cells of technical debt.</p>
+      <p>So promote the rule D33 already names as its own gap, and state it without any
+      exercise-science number: <strong>the engine must never satisfy a weekly volume floor by adding
+      sets to an existing exercise when a legal additional exercise exists.</strong> That is a
+      closed, checkable claim about engine behavior. Zero exceptions by construction — when no legal
+      lift exists the condition is simply false. No plateau hand-waving required.</p>
+      <p>"6" then becomes what it is: a parameter of the allocator, versioned next to
+      <code>REP_BANDS</code>, not a law.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Expansionist <span class="tag">biggest blind spot, 5/5 reviewers &middot; promote + register the key</span></summary>
+    <div class="body">
+      <p>The 700 forced exceptions are the most valuable output of this work, and you're treating
+      them as an embarrassment. Promote it: new D-number, SCIENCE_DEFAULT, and register the
+      <code>OVERRIDE_KEYS</code> entry now. A SCIENCE_DEFAULT with no registered key is a dead
+      letter — and the key is exactly the legal seam you will need for hand-authored programming and
+      a future coach mode.</p>
+      <p>Three upsides nobody else is looking at. First, this cap is a diagnostic instrument, not
+      just a ceiling: the counterfactual you already ran (flat cap &rArr; 46 muscle-weeks below MEV)
+      is a new genre of gate — invariants that audit other invariants by counterfactual. Point that
+      technique at D28 and D8 next. Second, the 34 cells are not debt, they're a prioritized worklist
+      for the muscle-tag vocabulary gap D33 flagged in prose and never scoped. Fixing them adds real
+      exercise variety — a visible product win — and self-liquidates the exceptions. That makes the
+      exception count a roadmap metric. Third, and biggest: "an unmeasured plateau yields to a
+      measured floor" is the first explicit precedence relation between two cited bounds in this
+      doctrine. Formalize it as an ordering, not a footnote. A machine-checkable precedence lattice
+      over cited bounds is a genuinely defensible moat artifact — nobody else building fitness
+      software has one. This is also the doctrine's first plateau-tier bound; that is the template
+      for every "no measured benefit above X" finding you will ever cite.</p>
+      <p>An invariant with located, counted, mechanically-derived exceptions is stronger law than one
+      with none — because it knows where it doesn't apply.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Outsider <span class="tag">promote nothing &middot; "a default with a tiebreak"</span></summary>
+    <div class="body">
+      <p>"6" is an artifact of how the studies were binned, not a property of muscles. Krieger's top
+      bin was 4–6 because that's how the literature clustered; had the bin been 4–8, you'd be
+      promoting D-whatever at 8 with equal confidence. The honest number isn't 6, it's "unknown
+      above 6."</p>
+      <p>On Hackett: lean mass moved in neither arm. If the study couldn't detect growth in the group
+      that DID grow — and people training 12 weeks grow — that's a failed instrument, not a null
+      result. A reader with no stake in this will spot that immediately, and once they do, every
+      number downstream of it looks chosen rather than found.</p>
+      <p>Here's what reads strangest from outside. The thing you're describing isn't a ceiling. A
+      ceiling you deliberately route around 700 times is a default with a tiebreak. Calling it an
+      invariant and then shipping 34 standing exceptions teaches everyone reading
+      <code>/DOCTRINE.md</code> that D-numbers are negotiable — which is the one property your gate
+      depends on not being true. The doctrine's power is that a D-number is binary. Don't spend that
+      on your softest claim.</p>
+      <p>Keep it as check #44, where "a preference we enforce when we can" is an honest
+      description.</p>
+      <p>And the buried finding deserves its own entry far more than this does: D6b was passing
+      partly because of the bug. A cited floor that was only green by accident is a bigger integrity
+      problem than an uncited plateau.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>The Executor <span class="tag">promote (new D#) &middot; ratchet the 34 cells to a fixture</span></summary>
+    <div class="body">
+      <p>First: the branch isn't pushed. Everything else in this question is downstream of a
+      <code>git push</code> that hasn't happened. Do that.</p>
+      <p>(1) Promote, but understand it's trivial — three edits, maybe half a day: a Notion mirror
+      page, a <code>/DOCTRINE.md</code> row, an assertion in <code>doctrine.mjs</code>. The reason to
+      do it isn't purity, it's that #44 is a standalone script someone will "simplify" in six months,
+      whereas a D-row has a Notion page explaining why 6.</p>
+      <p>(2) New D-number. A clause on D33 forces you to re-open a row whose own number is PROVISIONAL
+      and revisit-dated 2027-03-23. When that date comes you want to change 11 without touching 6.
+      Don't braid them.</p>
+      <p>(3) SCIENCE_DEFAULT. SAFETY is a lie you'd have to defend — nothing cited shows harm above
+      6. Skip the <code>OVERRIDE_KEYS</code> entry: registering a key nobody has requested a
+      deviation for is speculative work.</p>
+      <p>(4) Here's the actual deliverable, and it's the only part of this that changes behavior: the
+      34 cells. An invariant with a floating exception count isn't law, it's a TODO. Make it one.
+      Commit the 34 cells to a fixture file and assert the live count is &le; 34 AND the set is a
+      subset. The number can then only shrink. A new bank-coverage gap turns the gate red the day it
+      appears, and the muscle-tag-vocabulary item finally has a burn-down with a finish line.</p>
+    </div>
+  </details>
+
+  <h2>Peer review highlights</h2>
+  <details>
+    <summary>All five reviews <span class="tag">anonymization mapping revealed</span></summary>
+    <div class="body">
+      <table>
+        <thead><tr><th>Letter</th><th>Advisor</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td>The Expansionist</td></tr>
+          <tr><td>B</td><td>The Contrarian</td></tr>
+          <tr><td>C</td><td>The Executor</td></tr>
+          <tr><td>D</td><td>The Outsider</td></tr>
+          <tr><td>E</td><td>The First Principles Thinker</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Unanimous on both questions:</strong> 5/5 reviewers named <strong>E</strong>
+      strongest; 5/5 named <strong>A</strong> the biggest blind spot. That is the first unanimous
+      double in this project's council history.</p>
+      <p><strong>Why E won, in reviewers' own words:</strong> <em>"the only response that fixes the
+      actual defect in the claim rather than negotiating its tier"</em> &middot; <em>"answers Q4 by
+      fixing the claim rather than grading it"</em> &middot; <em>"reframes the invariant so the 700
+      exceptions vanish by construction rather than being counted, allowlisted, or excused"</em>
+      &middot; <em>"D reaches the same skepticism but stops at 'don't promote'; E delivers a
+      shippable invariant."</em> Three reviewers independently added that C's fixture ratchet should
+      be grafted on — which is why the recommendation adopts both.</p>
+      <p><strong>Why A lost:</strong> <em>"pure upside narration… never tests whether the bound
+      exists"</em> &middot; <em>"architecture astronomy built atop a bound nobody has shown exists
+      above 6"</em> &middot; <em>"calls a keyless SCIENCE_DEFAULT a 'dead letter,' which contradicts
+      the stated vocabulary — the tier records confidence, not permission"</em> &middot;
+      <em>"it never touches the D33 conflict at all, which was the question's core."</em></p>
+      <p><strong>What all five advisors missed</strong> (converged across reviewers): D33's ownership
+      sentence is now false and must be amended under every option; the Notion-first ordering with
+      <code>/DOCTRINE.md</code> and <code>doctrine.mjs</code> in the same change; the pass-2 escape
+      being invisible to the gate's assertions; whether the forced-ness classifier and the MEV gate
+      were ever mutation-tested against stacked allocation (SC-38/SC-39); and that "6" carries no
+      revisit date the way D33's 11 does.</p>
+    </div>
+  </details>
+
+  <footer>
+    Council convened 2026-10-06 on BUG-231 doctrine promotion &middot; 5 advisors, 5 anonymized peer
+    reviews, 1 chairman synthesis &middot; branch <code>bug231-per-exercise-cap</code> @
+    <code>81a01ec</code> &middot; full transcript in
+    <code>docs/council-transcript-2026-10-06-bug231-per-exercise-cap-promotion.md</code>
+  </footer>
+
+</div>
+</body>
+</html>

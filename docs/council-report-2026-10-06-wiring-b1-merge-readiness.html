@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Council Report — wiring-b1-swap-persistence merge readiness</title>
+<style>
+  :root { --ink:#1a1d21; --soft:#5c636b; --line:#e3e6ea; --accent:#2d6cdf; --ok:#1d7a4f; --warn:#b3661a; --bad:#b03030; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:#fff; margin:0; line-height:1.55; }
+  .wrap { max-width:860px; margin:0 auto; padding:40px 24px 80px; }
+  h1 { font-size:1.5rem; margin:0 0 4px; }
+  .sub { color:var(--soft); font-size:.9rem; margin-bottom:28px; }
+  .q { border-left:4px solid var(--accent); background:#f6f9ff; padding:14px 18px; border-radius:0 8px 8px 0; font-size:.95rem; margin-bottom:30px; }
+  h2 { font-size:1.1rem; border-bottom:1px solid var(--line); padding-bottom:6px; margin-top:36px; }
+  .verdict { border:2px solid var(--ok); border-radius:10px; padding:4px 20px 16px; margin:24px 0; background:#f4faf7; }
+  .verdict h2 { border:none; color:var(--ok); margin-top:14px; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; margin:14px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--soft); font-weight:600; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:.78rem; font-weight:600; }
+  .p-ok { background:#e2f3ea; color:var(--ok); } .p-warn { background:#fbeedd; color:var(--warn); } .p-bad { background:#f9e3e3; color:var(--bad); }
+  details { border:1px solid var(--line); border-radius:8px; margin:10px 0; padding:0 16px; }
+  summary { cursor:pointer; font-weight:600; padding:12px 0; outline:none; }
+  details p { color:#2c3137; font-size:.92rem; }
+  ol li, ul li { margin:6px 0; }
+  .foot { margin-top:48px; color:var(--soft); font-size:.8rem; border-top:1px solid var(--line); padding-top:14px; }
+  code { background:#f2f3f5; border-radius:4px; padding:1px 5px; font-size:.85em; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Council Report</h1>
+<div class="sub">2026-10-06 · 5 advisors · 5 peer reviews · chairman synthesis · full transcript: <code>docs/council-transcript-2026-10-06-wiring-b1-merge-readiness.md</code></div>
+
+<div class="q"><strong>Question:</strong> Is branch <code>wiring-b1-swap-persistence</code> (B1 local swap persistence + unapplied migration 0024 · B2 notes read-back · B3 browser-gate extension; 41/41 verify green, independent re-verification clean, Netlify stale) ready for Kerwin to approve a merge to main?</div>
+
+<div class="verdict">
+<h2>Chairman's Verdict: APPROVE THE MERGE — with four stated conditions</h2>
+<ol>
+  <li><strong>Swaps are LOCAL ONLY</strong> (single device) until migration 0024 is applied <em>and</em> the client round-trip ships.</li>
+  <li><strong>Do NOT apply 0024 on its own.</strong> Apply it together with the cloud-wiring follow-up branch as one atomic unit — applying it alone recreates the dead <code>exercise_notes</code> table pattern.</li>
+  <li><strong>Zero live verification.</strong> Netlify is out of credits (site stale at <code>200fa8d</code>); everything was verified against a locally served build. Merge queues; deploy catches up when credits refresh; "done" is deferred until Kerwin taps a swap live.</li>
+  <li><strong>Known accepted limits</strong> assigned to the cloud-wiring slice: name-keying degrades safely but silently on rename; no gate executes a <em>swapped</em> program against doctrine; partner-view behavior unverified.</li>
+</ol>
+<p><strong>One thing to do first:</strong> merge (<code>git merge --no-ff wiring-b1-swap-persistence</code>) and watch the push-to-main CI run to green — the branch's first CI execution. Nothing else until it's green.</p>
+</div>
+
+<h2>Advisor positions</h2>
+<table>
+<tr><th>Advisor</th><th>Verdict</th><th>Core argument</th></tr>
+<tr><td>Contrarian</td><td><span class="pill p-bad">Not as-is</span></td><td>"Durable" overstates a device-siloed feature; name-keying fragility; no doctrine gate on swapped programs; unobserved auto-deploy.</td></tr>
+<tr><td>First Principles</td><td><span class="pill p-ok">Approve</span></td><td>Local slices traced to pixels = merge-ready; the unapplied migration must be bound atomically to the client wiring or it becomes a dead table. <em>(Peer-rated strongest 4/5.)</em></td></tr>
+<tr><td>Expansionist</td><td><span class="pill p-ok">Approve</span></td><td>Branch builds Tandem's preference layer; resolveUserSwap is a general substitution seam; gate is now a journey-level harness. <em>(Peer-rated biggest blind spot 5/5.)</em></td></tr>
+<tr><td>Outsider</td><td><span class="pill p-warn">Approve code, not feature</span></td><td>Approval message must state: migration unapplied, single-device persistence, zero live verification. Asked the key safety question: is the code safe if 0024 is never run? (Answer: yes.)</td></tr>
+<tr><td>Executor</td><td><span class="pill p-ok">Approve</span></td><td>Correctly-scoped increment; gave the Monday sequence. Chairman overrode his "apply 0024 Monday, wire later" ordering per First Principles' dead-table argument.</td></tr>
+</table>
+
+<h2>Where the council clashed</h2>
+<ul>
+<li><strong>0024 sequencing:</strong> Executor said apply now, wire later; First Principles (backed by 3 reviewers) said that exact order manufactures a dead table. Chairman sided with First Principles.</li>
+<li><strong>Name-keying:</strong> Contrarian called it a time bomb. Chairman's correction from the record: deliberate, documented (0024 header — slot ids churn, names don't), and an orphaned swap degrades safely to the original movement. Residual truth: the degradation is silent.</li>
+</ul>
+
+<h2>Blind spots caught in peer review</h2>
+<ul>
+<li><strong>Partner-view / competition integrity:</strong> what Dani's device shows for Kerwin's swapped day, and whether scoring cares — unverified; open question for Kerwin / cloud-wiring slice.</li>
+<li><strong>No gate runs a swapped program through doctrine:</strong> render-time legality is per-card only. Candidate assertion for the next slice.</li>
+<li><strong>Chairman corrections:</strong> the exercise-science-research skill WAS invoked on the swap-equivalence rule (audit in <code>10df9b4</code>'s body); the onclick bug was NEVER live — it was born and caught on this branch, pre-merge.</li>
+</ul>
+
+<details><summary>The Contrarian — full response</summary><p>Not ready as-is. Four blockers: (1) "Durable" is a misrepresentation in a couples app — localStorage swaps are device-siloed; the cloud half is unwritten client-side and unapplied server-side; merging ships a dead migration file, the "regenerated, not applied" trap. (2) Keying by movement NAME, not slug, is a time bomb — names have been edited before; a rename silently orphans stored swaps and "a lookup miss is not an error" means nothing screams. (3) Legality re-validation covers tier + injuries only — does a swapped program still pass VOLUME_LANDMARKS/doctrine? If doctrine.mjs can't see swapped programs, verify stays green while a user swaps out of compliance — the D17 shape. (4) Zero verification at the surface Kerwin sees — merge auto-deploys unobserved when credits refresh; decouple approval from deploy with a post-deploy live diff. Also unverified: does a stored swap survive goal/day-count regeneration?</p></details>
+
+<details><summary>The First Principles Thinker — full response</summary><p>The goal is not "merge a branch" but "Kerwin's lived workout changes in a way the science endorses." What works end-to-end: B1 local swap and B2 note stamp are traced to pixels, mutation-tested in real Chromium — merge-ready; the gate catching a real bug is the strongest evidence it's load-bearing. What is honest scaffolding: the unapplied migration is the exact shape that produced the dead exercise_notes table and week_targets green-gate-on-dead-value failures — if 0024 is applied without client wiring landing in the same motion, you've manufactured a dead table with a paper trail saying it was intentional. The merge should carry an explicit tracked item binding "apply 0024" and "wire round-trip" as one atomic unit. Netlify is outside the branch's control — merge anyway; main is integration truth, not delivery. Verdict: approve, with one tracked atomic cloud-wiring follow-up stated in the merge commit.</p></details>
+
+<details><summary>The Expansionist — full response</summary><p>Merge it. The gate already paid for itself by catching a real bug. Local-only swaps with visible Undo is a complete product; 0024 is pure upside later. The undersold part: this branch quietly builds Tandem's preference layer. (1) tandem_swaps is the first durable record of revealed user preference — adaptive-programming fuel once 0024 lands. (2) resolveUserSwap() is a general substitution seam — equipment-availability swaps, injury-week auto-substitution, travel mode are config away. (3) B2's structured-action pattern is the template for every future note-driven action including "too hard/too easy" when the citation gap closes. (4) The browser gate is now a journey-level harness — the next feature gets end-to-end coverage for the cost of assertions.</p></details>
+
+<details><summary>The Outsider — full response</summary><p>Reading cold: (1) name-keyed, per-device storage with the DB half unapplied is a landmine — in a couples competition app "my program looks different on each device" reads as a bug; does scoring care which exercise was done? (2) "Unapplied migration the owner must run by hand" is the riskiest sentence — is the code safe if the migration is NEVER run? Needs an explicit yes/no. (3) Nobody can see it work — approval-before-experience inverts the normal order; merge but defer "done" until Kerwin taps through a swap live. Smaller: "Swap this for me" inside a NOTES area is odd placement; the quote-escaping bug implies every swap tap was broken — was that ever live? Verdict: approvable as code, not as a finished feature; the approval message must state migration unapplied, single-device persistence, zero live verification.</p></details>
+
+<details><summary>The Executor — full response</summary><p>Yes — merge it. Correctly-scoped increment; the only real risk (code reading a nonexistent table) is neutralized because the round-trip isn't wired. Monday sequence: (1) merge --no-ff, push, watch CI to green — feature branches trigger no CI, so this is the branch's first CI run; (2) apply migration 0024 by hand, assert table/RLS/round-trip, record "applied"; (3) deploy = wait for credits, then diff live vs local and tap a swap live; (4) cloud wiring = NEW branch, same discipline — do NOT fold into this merge. Flag: track "too hard/too easy" in Notion so it doesn't silently die.</p></details>
+
+<details><summary>Peer-review highlights</summary><p><strong>Strongest:</strong> E (First Principles) 4/5 — "alone names the precise failure mode from this repo's own history and converts it into an actionable merge condition"; B (Contrarian) 1/5 — "tested the branch against the repo's actual failure catalog." <strong>Biggest blind spot:</strong> D (Expansionist) 5/5 — "a vision pitch, not a review." <strong>What all five missed:</strong> partner-sync/competition integrity; whether any gate executes a swapped program against doctrine; whether the substitution rule itself has a SHOULD citation (chairman: it does — the exercise-science-research skill was invoked, audit in the B1 commit body); mechanism-level sweep of the swap axis beyond the demoed combo.</p></details>
+
+<div class="foot">Counciled: merge readiness of <code>wiring-b1-swap-persistence</code> @ <code>8fc9723</code> · 2026-10-06 · Chairman verdict: APPROVE with 4 stated conditions · No push to main until Kerwin approves.</div>
+
+</div></body>
+</html>

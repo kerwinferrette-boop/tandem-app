@@ -426,13 +426,13 @@ const EXERCISE_BANK = {
     name:'High Incline Barbell Press', videoId:null,
     muscleGroups:{primary:['pec_major_clavicular','anterior_delt'],secondary:['tricep']},
     emphasis:['chest','shoulders','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:0.80,
-    why:'At 45–60° the load shifts significantly toward the anterior deltoid — useful for shoulder-emphasis programming. Expect ~20% less pec activation than at 30°. Best as a periodisation variation rather than a primary chest builder.',
+    why:'Above ~45° the bench angle shifts work toward the anterior deltoid and pec major activation falls off versus lower inclines (Rodríguez-Ridao et al. 2020, IJERPH 17(19):7339, PMC7579505) — useful for shoulder-emphasis programming. Best as a periodisation variation rather than a primary chest builder.',
     cues:['Keep elbows directly under wrists','Scapula retracted throughout','Do not touch chest — stop one inch above','Control the descent; eccentric under full tension']},
   'decline-barbell-press':{
     name:'Decline Barbell Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['tricep']},
     emphasis:['chest','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:1.07,
-    why:'The decline angle puts pec major sternal fibres in their strongest mechanical position — most lifters press 5–10% more here than flat. Lower pec volume is chronically undertrained; decline closes that gap.',
+    why:'The decline angle puts pec major sternal fibres in a strong mechanical position, so most lifters can handle heavy loads here. Lower pec volume is chronically undertrained; decline closes that gap.',
     cues:['Secure ankles before unracking','Bar to lower chest (below nipple line)','Wrists stacked over elbows','Full lockout — triceps contribute heavily here']},
   'decline-db-press':{
     name:'Decline DB Press', videoId:null,
@@ -575,7 +575,7 @@ const EXERCISE_BANK = {
     name:'Push Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep','quad','glute_max','upper_trap']},
     emphasis:['shoulders','push','upper_body','full_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The leg drive in push press allows 10–15% heavier loads than a strict OHP, overloading the deltoids in the top-range lock-out position. Develops explosive pressing power and full-body coordination simultaneously.',
+    why:'The leg drive in push press allows heavier loads than a strict OHP, overloading the deltoids in the top-range lock-out position. Develops explosive pressing power and full-body coordination simultaneously.',
     cues:['Dip: slight knee bend (~20°), torso stays upright','Drive up from the legs explosively','Press overhead from leg momentum — continue pressing to lockout','Lower under control — do not drop the bar']},
   'z-press':{
     name:'Z-Press', videoId:null,
@@ -693,11 +693,18 @@ const EXERCISE_BANK = {
     emphasis:['shoulders','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Upper trapezius training matters for shoulder aesthetics and neck posture. Heavy shrugs — not the light prehab variety — are the most direct stimulus for upper trap mass.',
     cues:['Straight arms throughout — do not bend the elbows','Shrug straight UP — not rolling the shoulders (which can damage AC joint)','Hold at peak for 1 second','Lower fully — a full stretch at the bottom matters']},
+  // tandem-exercise-science-ingestion pass (2026-10-05), STEP 1B equipment-substitution lens, shoulders pilot:
+  // Coratella et al. (2022), Frontiers in Physiology, "Front vs Back and Barbell vs Machine Overhead
+  // Press: An Electromyographic Analysis," PMC9354811 / PubMed 35936912 (EMG RMS, n=8 competitive
+  // bodybuilders). Back-barbell OHP produced greater activation than back-machine shoulder press
+  // across all three deltoid heads (anterior, medial, posterior) — the medial/lateral delt gap was
+  // largest, effect size 7.51. Not a like-for-like swap for a free-weight press; caveat added to why
+  // per skill STEP 1B rather than presenting machine and barbell OHP as equivalent.
   'machine-shoulder-press':{
     name:'Machine Shoulder Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep']},
     emphasis:['shoulders','push','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The guided vertical path lets a lifter overload the delts near failure without a spotter or the balance demand of free weights — ideal for driving overhead pressing volume when the stabilisers are already fatigued. Back support removes the core limitation of standing presses.',
+    why:'The guided vertical path lets a lifter overload the delts near failure without a spotter or the balance demand of free weights — ideal for driving overhead pressing volume when the stabilisers are already fatigued. Back support removes the core limitation of standing presses. Equipment-substitution note: EMG evidence (Coratella et al., 2022) shows barbell overhead press elicits greater activation across all three deltoid heads than a machine press of the same pattern — this is a complement to free-weight pressing, not an equivalent swap for it.',
     cues:['Set the seat so the handles start at shoulder height','Back flat against the pad, ribs down — do not arch to press','Press to full extension without locking harshly','Lower under control to a 90° elbow — do not crash the stack']},
   'reverse-pec-deck':{
     name:'Reverse Pec Deck', videoId:null,
@@ -740,11 +747,17 @@ const EXERCISE_BANK = {
     emphasis:['shoulders','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
     why:'The upright bench back-support removes leg drive and lower-back sway, isolating the delts and letting a lifter press heavier dumbbells with strict form. The stricter, higher-load seated counterpart to the standing DB press.',
     cues:['Sit tall against an upright bench, dumbbells at shoulder height','Press to full extension without shrugging or arching off the pad','Keep the wrists stacked over the elbows','Lower under control to a 90° elbow — do not bounce out of the bottom']},
+  // tandem-exercise-science-ingestion pass (2026-10-05), STEP 1B equipment-substitution lens, shoulders pilot:
+  // Coratella et al. (2022), Frontiers in Physiology, PMC9354811 / PubMed 35936912 (EMG RMS, n=8
+  // competitive bodybuilders) — see machine-shoulder-press above for the full citation. A Smith
+  // machine press is fixed-path like the plate-loaded machine press this study tested, so the same
+  // caveat applies: back-barbell OHP produced greater activation than a fixed-path press across all
+  // three deltoid heads (largest gap at the medial/lateral head, effect size 7.51).
   'smith-machine-shoulder-press':{
     name:'Smith Machine Shoulder Press', videoId:null,
     muscleGroups:{primary:['anterior_delt','lateral_delt'],secondary:['tricep']},
     emphasis:['shoulders','push','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The fixed bar path lets a lifter overload overhead pressing safely without a spotter and without the balance demand of free weights — useful for driving delt volume near failure once the stabilisers are fatigued.',
+    why:'The fixed bar path lets a lifter overload overhead pressing safely without a spotter and without the balance demand of free weights — useful for driving delt volume near failure once the stabilisers are fatigued. Equipment-substitution note: EMG evidence (Coratella et al., 2022) shows barbell overhead press elicits greater activation across all three deltoid heads than a fixed-path machine press — this is a complement to free-weight pressing, not an equivalent swap for it.',
     cues:['Set the bench so the bar starts at chin/collarbone height','Back supported and braced; press straight up the fixed track','Lock out overhead without shrugging into the traps','Lower under control to the start; use the safety hooks between sets']},
   'cable-rear-delt-fly':{
     name:'Cable Rear Delt Fly', videoId:null,
@@ -802,6 +815,19 @@ const EXERCISE_BANK = {
     emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
     why:'The neutral (palms-facing) grip keeps the shoulder in its strongest, most impingement-free position and biases the lower lat fibres, allowing a longer pull to the sternum. A shoulder-friendly vertical pull for lifters who feel the wide-grip pulldown in the front of the shoulder.',
     cues:['Neutral parallel handle, slight backward lean','Drive the elbows down and in toward the hip pockets','Pull the handle to the upper chest; squeeze the lats at the bottom','Let the scapula rise under control at the top for a full stretch']},
+  'inclined-torso-lat-pulldown':{
+    // Exercise Intake row 3dbca37f-935b-8170-bc4f-e22ebf368856 (2026-10-05 ingestion run).
+    // Dup Check: PARTIAL OVERLAP with lat-pulldown (line 775 above), which already cues a
+    // "slight backward lean." This entry formalizes a specific, larger ~30° incline into its
+    // own selectable variant, backed by a stats citation that the plain-lean cue never had.
+    // Source: Fonseca et al., PMC12452428 (muscle activation across lat-pulldown torso angles).
+    // Kerwin's ruling (2026-10-05): approved as a new entry, on the condition that the science
+    // AND the choose-this-vs-standard reasoning are built into the entry itself (see `why`).
+    name:'Inclined-Torso Lat Pulldown', videoId:null,
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
+    emphasis:['back','pull','upper_body'], equipment:'machine', tier:'full_gym', category:'compound', oneRmFactor:null,
+    why:'Leaning the torso back to roughly 30° through the pull — more than the standard pulldown\'s slight lean — significantly increases posterior deltoid activation without changing lat activation at all. Fonseca et al. (PMC12452428) tested torso angle during lat pulldown and found posterior deltoid activation differed significantly across angles (F(1,6)=3.621, p=0.002), with the 30° incline producing significantly more posterior deltoid activation than an upright torso (p=0.011) and more than a wide-neutral grip (p=0.017). Lat dorsi and every other measured muscle showed no significant difference across torso angles (p=0.298–0.868). Choose this version over the standard lat pulldown when posterior delt and scapular-retraction work are the priority — the incline adds that recruitment for free. Choose the standard upright pulldown when lat isolation alone is the goal, since the upright version trains the lat just as well without the added posterior-delt demand.',
+    cues:['Set a wide or neutral grip, then lean the torso back to roughly 30° from vertical — noticeably more than a standard pulldown\'s slight lean','Hold that fixed incline throughout the pull; don\'t rock or use momentum to get there','Drive the elbows down and back, squeezing the shoulder blades together at the bottom','Return under control to a full stretch at the top, keeping the 30° lean fixed the whole set']},
   'assisted-pull-up':{
     name:'Assisted Pull-Up', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
@@ -1028,7 +1054,7 @@ const EXERCISE_BANK = {
     name:'Tricep Overhead Extension', videoId:'nRiJVZDpdL0',
     muscleGroups:{primary:['tricep_long_head'],secondary:['anconeus']},
     emphasis:['triceps','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'The long head of the tricep is 55% of total tricep mass and is ONLY fully activated in overhead position. Most programs do only pushdowns, leaving the biggest head undertrained. Without overhead extension, half your tricep potential is untapped.',
+    why:'The long head is the largest tricep head and the only one that crosses the shoulder, so it is lengthened and loaded hardest in overhead position. Most programs do only pushdowns, leaving the biggest head undertrained.',
     cues:['Hold one dumbbell with both hands overhead (diamond grip)','Elbows point to the ceiling — do not flare','Lower behind the head until forearms are parallel','Press back up through the elbows — do not swing']},
   'skull-crusher':{
     name:'Skull Crusher', videoId:null,
@@ -1184,6 +1210,73 @@ const EXERCISE_BANK = {
     cues:['Hold the barbell end at the chest, feet shoulder-width','Sit straight down, letting the arc guide the bar','Keep the chest tall and the torso upright throughout','Drive through the heels to stand; the bar path is an arc, not vertical']},
 
   // ── HAMSTRINGS ────────────────────────────────────────
+  // tandem-exercise-science-ingestion pass (2026-10-05), Track A: new bank entry. The conventional
+  // barbell deadlift did not exist anywhere in the bank before this commit, despite
+  // MOVEMENT_FAMILIES['romanian-deadlift'] already naming "Barbell Deadlift" as the canonical lift
+  // for the entire RDL-pattern family (see canonicalLift field below). This entry fills that gap.
+  // Source: Martín-Fuentes, Oliva-Lozano & Muyor (2020), PLOS ONE, "Electromyographic activity in
+  // deadlift exercise and its variants. A systematic review," DOI 10.1371/journal.pone.0229507.
+  // Systematic review (explicitly NOT a meta-analysis per the authors — insufficient method
+  // homogeneity across studies to pool). 10/19 included studies examine the conventional barbell
+  // deadlift directly; participants across studies had >=6 months prior resistance-training
+  // experience, n=8-34 per study.
+  // General finding across deadlift + its variants as a class: "Erector spinae presented higher
+  // muscle activation than the gluteus maximus and the biceps femoris muscles"; "muscles from the
+  // quadriceps complex appeared to elicit the greatest muscle activation compared to gluteus
+  // maximus and hamstrings."
+  // FLAG: both comparisons are reported at the review level across the full deadlift-and-variants
+  // class studied (which includes trap-bar/sumo/stiff-leg studies), not isolated to the
+  // conventional barbell variant alone — no single quantified percentage specific to conventional
+  // deadlift alone was present in the fetched text. The review's narrower, variant-specific quad
+  // finding (greater anterior-thigh activity, reduced erector spinae activity) is for the HEX/TRAP
+  // BAR variant specifically — see trap-bar-deadlift below, evidence tier there is thinner
+  // (2/19 studies vs 10/19 here).
+  // SECONDARY TAG DECISION: a secondary quad_rectus_femoris/quad_vastus tag was drafted and then
+  // REMOVED during this commit's own verify pass. It cleared the source bar but failed doctrine
+  // conformance live: it is reachable in the hamstring/hinge slot, and the 0.5 secondary-credit it
+  // contributes to weekly quad volume pushed maintenance/2d and maintenance/3d (both sexes) over
+  // D8's MAV cap (15 sets) for quad — 20 and 28 sets respectively, confirmed by running
+  // scripts/doctrine.mjs with and without the tag. Given the tag was already flagged above as
+  // review-level-only (not conventional-deadlift-specific), the honest resolution is to drop it
+  // rather than force a stacking conflict the engine cannot absorb today — this is itself a Track C
+  // finding (logged separately) pointing at D6d (the MEV/MAV-floor-on-every-axis gap), not a reason
+  // to weaken D8's gate. Primary stays hamstring/glute_max/erector_spinae only.
+  // oneRmFactor: null — no sourced 1RM ratio found; not invented, matching every other hinge-family
+  // entry in this bank (romanian-deadlift, stiff-leg-deadlift, db-rdl, good-morning all carry null).
+  'barbell-deadlift':{
+    name:'Barbell Deadlift', videoId:null,
+    muscleGroups:{primary:['hamstring','glute_max','erector_spinae'],secondary:[]},
+    emphasis:['hamstrings','glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
+    why:'The heaviest full-body pull available in a gym — hip and knee extension together from a dead stop, driving maximum posterior-chain loading and total-body strength. EMG across the deadlift and its variants shows erector spinae activation exceeding glute max and biceps femoris during the pull (Martín-Fuentes, Oliva-Lozano & Muyor, 2020) — a whole-chain strength and spinal-erector builder, not an isolated hamstring or glute move. The same review-level data also flags meaningful quad-complex activation across the deadlift class, but not isolated to this variant specifically, so that is not tagged here as a secondary mover.',
+    cues:['Bar over mid-foot, shins close to the bar','Hip hinge to grip — chest up, back flat, brace before pulling','Drive the floor away through the heels; hips and shoulders rise together','Lock out by squeezing the glutes — do not hyperextend the lower back']},
+  // Exercise Intake row 3cbca37f-935b-81d2-9ea9-ff6962707b6d (2026-10-05 ingestion run).
+  // Source: Martín-Fuentes, Oliva-Lozano & Muyor (2020), PLOS ONE, systematic review synthesizing
+  // two peer-reviewed cross-over studies — Andersen et al. 2018 (J Strength Cond Res 32(3):587-93,
+  // PMID 28151780) and Camara et al. 2016 (J Strength Cond Res 30(5):1183-8, PMID 26840440).
+  // EQUIPMENT ENUM: the bank has no dedicated hex/trap-bar value (barbell/dumbbell/bodyweight/
+  // machine/cable/band only). Mapped to 'barbell' as the closest existing category — both are
+  // axial free-weight bars loaded with plates. This was flagged in Notion as an ingestion judgment
+  // call, not a source claim. Kerwin initially asked for a dedicated trap_bar value instead; three
+  // separate web searches for an NSCA-grade (or comparably rigorous) per-sex starting weight for
+  // that new value turned up only mutually-contradictory commercial "strength standards" content
+  // (~83-110 lbs, ~140-169 lbs, and ~185-225 lbs for "beginner" men across the three searches) —
+  // no credible source, so no number was fabricated to force the new value through. Once it was
+  // clarified that the `equipment` field is purely an internal seedWeight()-bucket/sort-tiebreak
+  // classification — not a user-facing "use this literal implement" instruction, and that name/
+  // cues/video below still correctly describe a trap bar — Kerwin's ruling (2026-10-05) was to
+  // accept the barbell alias on that basis. No dedicated trap_bar value added.
+  // SEMITENDINOSUS NUANCE: Camara et al.'s raw data shows semitendinosus activation was actually
+  // HIGHER in the hex bar than the conventional deadlift (119.9% vs 96.8% of 1RM-normalized
+  // activation) even though biceps femoris was lower — the popular "hex bar = less hamstring,
+  // period" shorthand oversimplifies this; not claimed here.
+  // oneRmFactor: null, consistent with every other hinge entry in this bank (romanian-deadlift,
+  // stiff-leg-deadlift, good-morning, db-rdl, sumo-rdl, single-leg-db-rdl, bodyweight-single-leg-rdl).
+  'trap-bar-deadlift':{
+    name:'Trap Bar Deadlift', videoId:null,
+    muscleGroups:{primary:['quad_vastus_lateralis','glute_max'],secondary:['hamstring','erector_spinae','lat_dorsi']},
+    emphasis:['quads','glutes','lower_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
+    why:'The deadlift pattern\'s own answer for lifters whose lower back limits a conventional pull. A systematic review synthesizing two cross-over EMG studies (Martín-Fuentes, Oliva-Lozano & Muyor, 2020) found the hex/trap bar produces comparable-to-greater quad activation than the straight-bar deadlift while measurably reducing erector spinae and biceps femoris activation — the reviewers\' own language frames it as an appropriate variant specifically for lifters with lower-back issues. Choose this over the conventional barbell-deadlift when back-sparing, quad-dominant mechanics are the priority; choose the straight bar when maximum posterior-chain (hamstring/erector) loading is the goal, since that is what the straight bar trades back for.',
+    cues:['Step inside the hex bar, feet hip-width, handles at your sides','Hinge to grip the handles — shins vertical, chest up, neutral spine','Push the floor away through mid-foot as you stand; bar path stays vertical','Lock out by extending the hips — do not lean back at the top']},
   'romanian-deadlift':{
     name:'Romanian Deadlift', videoId:'JCXUYuzwNrM',
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae','adductor']},
@@ -1571,13 +1664,13 @@ const EXERCISE_BANK = {
     name:'Elliptical', videoId:null,
     muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['anterior_delt']},
     emphasis:['lower_body','full_body'], equipment:'machine', tier:'hotel_gym', category:'cardio', oneRmFactor:null,
-    why:'Mimics a running stride with zero impact. The arm poles add upper body engagement and increase total energy expenditure by 10–15% versus leg-only use.',
+    why:'Mimics a running stride with zero impact. The arm poles add upper body engagement and raise total energy expenditure versus leg-only use.',
     cues:['Use the arm poles — they increase caloric burn and stabilise the trunk','Do not lean on the machine — maintain your own posture','Moderate resistance and pace — this is not a sprint','Zone 2 heart rate target: 60–70% of max']},
   'rower':{
     name:'Rower', videoId:null,
     muscleGroups:{primary:['lat_dorsi','quad','glute_max'],secondary:['bicep_brachii','hamstring','erector_spinae']},
     emphasis:['full_body','back','lower_body'], equipment:'machine', tier:'full_gym', category:'cardio', oneRmFactor:null,
-    why:'Engages 86% of muscle mass — more than any other cardio machine. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
+    why:'Engages legs, hips, back and arms in one stroke — a broader muscle recruitment than most cardio machines. The sequencing of leg drive → hip hinge → arm pull mirrors the deadlift pattern, making it the most functional cardio for strength programs.',
     cues:['Drive order: LEGS → LEAN BACK → ARMS; reverse on recovery','Drive hard through the heels at the catch','Do not open the hips until the handle passes the knees','Damper setting 4–6 for aerobic work; higher is not better']},
   'kb-swing':{
     name:'KB Swing', videoId:'sSNGZzfMqE8',
@@ -1688,8 +1781,10 @@ const EXERCISE_BANK = {
 //     vertical pulls. Flagged.
 // G7  `close-grip-barbell-press` is in `bench-press` (it is a bench press)
 //     although the bank tags tricep as its primary mover.
-// G8  There is no conventional Barbell Deadlift slug in EXERCISE_BANK, so the
-//     `Barbell Deadlift` canonical lift has no self-referential member here.
+// G8  RESOLVED 2026-10-05 (tandem-exercise-science-ingestion, Track A): a conventional
+//     `barbell-deadlift` slug now exists in EXERCISE_BANK (Martín-Fuentes, Oliva-Lozano &
+//     Muyor, 2020) and is filed below as a self-referential member of the `romanian-deadlift`
+//     family — the `Barbell Deadlift` canonical lift no longer lacks a real bank entry.
 //
 // ── STATUS: WIRED (2026-09-24, BUG-151/D30) ─────────────────────────────
 // Was inert data from 2026-08-21 to 2026-09-24, deliberately, so it could not
@@ -1749,7 +1844,7 @@ const MOVEMENT_FAMILIES = {
 
   // ── VERTICAL PULL ────────────────────────────────────
   'pull-up':{ label:'Pull-Up / Pulldown', pattern:'vertical_pull', canonicalLift:'Weighted Pull-up',
-    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown']},
+    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown','inclined-torso-lat-pulldown']},
 
   // ── HORIZONTAL PULL ──────────────────────────────────
   'row':{ label:'Row', pattern:'horizontal_pull', canonicalLift:null,
@@ -1796,8 +1891,8 @@ const MOVEMENT_FAMILIES = {
 
   // ── HINGE ────────────────────────────────────────────
   'romanian-deadlift':{ label:'Romanian Deadlift', pattern:'hinge', canonicalLift:'Barbell Deadlift',
-    variants:['romanian-deadlift','stiff-leg-deadlift','db-rdl','single-leg-db-rdl',
-              'bodyweight-single-leg-rdl','sumo-rdl']},
+    variants:['barbell-deadlift','trap-bar-deadlift','romanian-deadlift','stiff-leg-deadlift','db-rdl',
+              'single-leg-db-rdl','bodyweight-single-leg-rdl','sumo-rdl']},
   'good-morning':{ label:'Good Morning', pattern:'hinge', canonicalLift:null,
     variants:['good-morning']},
   'hip-thrust':{ label:'Hip Thrust / Glute Bridge', pattern:'hinge', canonicalLift:null,   // G3
@@ -3261,6 +3356,42 @@ const GOAL_VOLUME = {
 // beyond it no additional benefit was detectable. The paper reports no muscle-specific
 // difference, so the ceiling binds EVERY tagged muscle, not only the MEV-tracked ones.
 const SESSION_MUSCLE_CEILING = 11;
+
+// Per-exercise ceiling (BUG-231). SESSION_MUSCLE_CEILING is necessary but NOT
+// sufficient: it binds the MUSCLE, so when a muscle has only one lift training it
+// in a session, that single lift absorbs the whole MEV deficit and still passes
+// (observed on main: 11 x Push-Up, 10 x Decline Barbell Press, 10 x Band Lateral
+// Raise — 1040 of 19780 working lifts above 6 sets across the 1050-combo matrix).
+// Three PRIMARY sources bound sets PER EXERCISE PER SESSION at 6:
+//   - ACSM position stand, Ratamess, Alvar, Evetoch, Housh, Kibler & Kraemer (2009),
+//     "Progression Models in Resistance Training for Healthy Adults", Med Sci Sports
+//     Exerc 41:687-708, doi:10.1249/MSS.0b013e3181915670 — "1-3 sets" per exercise for
+//     untrained, "3-6 sets" for advanced. 6 is the top of the recommended range.
+//   - Krieger (2010), "Single vs. multiple sets of resistance exercise for muscle
+//     hypertrophy: a meta-analysis", J Strength Cond Res 24:1150-1159,
+//     doi:10.1519/JSC.0b013e3181d4d436 — per-EXERCISE set bins; hypertrophy ES 0.24
+//     (1 set) / 0.34 (2-3) / 0.44 (4-6); no meaningful difference between 2-3 and 4-6,
+//     i.e. the dose-response has flattened by 4-6 and the meta-analysis measures
+//     nothing above 6.
+//   - Hackett, Amirthalingam, Mitchell et al. (2018), "Effects of a 12-Week Modified
+//     German Volume Training Program on Muscle Strength and Hypertrophy — A Pilot
+//     Study", Sports 6(1):7, doi:10.3390/sports6010007 — the only DIRECT test above 6:
+//     10 sets vs 5 sets of the same exercise for 12 weeks. "10 sets compared to five
+//     sets per resistance exercise over 12 weeks is no more effective for increasing
+//     muscle strength and hypertrophy"; concludes "4-6 sets per resistance exercise is
+//     advised". Honest limits: pilot, n=12, diet/outside-activity uncontrolled, and
+//     lean mass moved in NEITHER arm — it shows no advantage to 10, not harm from 10.
+// So 6 is a plateau bound, not a safety bound: nothing cited shows 7+ sets of one lift
+// is harmful, only that no source measures a benefit and every source's recommended
+// range stops at 6. Set it at the top of the cited range (6), not at Hackett's
+// speculated "closer to five" — their own word is "may suggest", and tightening past
+// what a source states is the fabrication this file exists to prevent.
+// NOT tiered by experience, although ACSM tiers it (1-3 untrained vs 3-6 advanced):
+// `experience` is captured at onboarding and consumed by no getProgram call site
+// (EPIC-10, unstarted), so a tiered cap has no input to read. Documented gap, not a
+// decision — raising the floor case needs EPIC-10 first.
+const PER_EXERCISE_SET_CEILING = 6;
+
 const muscleCeilingKey = (tag) =>
   MAJOR_MUSCLE_GROUP_TOKENS.filter(t => tag === t || tag.startsWith(t + '_'))
     .sort((a, b) => b.length - a.length)[0] || tag;
@@ -3325,22 +3456,53 @@ function applyGoalVolume(program, goal, compoundRef) {
       for (const [k, w] of Object.entries(s.ceilW)) session[s.di][k] = (session[s.di][k] || 0) + n * w;
     };
     slots.forEach(s => credit(s, s.sets));
-    const fits = (s, t) => {
+    // fits() is the ONE home for "may this slot take another set" — every raise pass
+    // (MEV raise, MAV restore, and canRestore's look-ahead) asks it, so a rule added
+    // here binds every goal x muscle x day-count at once rather than being re-stated
+    // per loop. The MAV trim pass deliberately does NOT consult it: a ceiling
+    // constrains raises, never reductions.
+    //
+    // `capped` selects which ceiling is in force. PER_EXERCISE_SET_CEILING is a
+    // PLATEAU bound, not a safety bound — Krieger/ACSM/Hackett show no measurable
+    // benefit above 6 sets of one lift, and none of them shows harm. Falling under
+    // D6b's MEV floor is a measured DEFICIT. So where the two conflict the floor
+    // wins, which is the precedence this very function already applies to
+    // SESSION_MUSCLE_CEILING (see the comment above: "past ~11 that is no added
+    // benefit, not harm, and withholding it would leave lats under MEV"). Same
+    // conflict shape, same resolution: an unmeasured plateau never costs a measured
+    // floor.
+    const fits = (s, t, capped = true) => {
+      if (capped && s.sets >= PER_EXERCISE_SET_CEILING) return false;
       const direct = (s.mevW[t] || 0) >= 1;
       const target = muscleCeilingKey(t);
       return Object.entries(s.ceilW).every(([k, w]) =>
         (direct && k !== target) || (session[s.di][k] || 0) + w <= SESSION_MUSCLE_CEILING);
     };
-    for (const compound of [true, false]) {
-      for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
-        while ((weekly[t] || 0) < landmark.mev) {
-          const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && fits(s, t));
-          if (!pool.length) break;
-          const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
-          const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
-            .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
-          s.sets++;
-          credit(s, 1);
+    // Two-pass raise (BUG-231). Pass 1 spreads the MEV deficit with the per-exercise
+    // cap ON, so the deficit lands on the 3-set fly beside the press instead of
+    // taking the press to 7+. Pass 2 re-runs with the cap OFF for whatever is STILL
+    // short — the structurally forced residue, where the split has no second lift for
+    // that muscle at all (2-day full_gym carries exactly ONE chest slot and ONE
+    // shoulder slot for the whole week, so chest MEV 10 is unreachable at <=6
+    // sets/lift). Pass 2 is what keeps D6b green; without it 46 cells fall below MEV,
+    // which means D6b's green on main was itself purchased by this stacking. It is
+    // not a loophole reinstating the bug: pass 1 has already exhausted every
+    // alternative slot, so anything pass 2 stacks is exactly the case D33 already
+    // records as a known gap, whose real fix is Kerwin's standing ruling — the engine
+    // should add a RELATED LIFT (D6d / muscle_tag_rescope), not more sets on the only
+    // lift present.
+    for (const capped of [true, false]) {
+      for (const compound of [true, false]) {
+        for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+          while ((weekly[t] || 0) < landmark.mev) {
+            const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && fits(s, t, capped));
+            if (!pool.length) break;
+            const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+            const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+              .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
+            s.sets++;
+            credit(s, 1);
+          }
         }
       }
     }
@@ -3370,7 +3532,16 @@ function applyGoalVolume(program, goal, compoundRef) {
     // extra guard: a restore raise may never push any token past the cap.
     if (landmark.mav) {
       const cleanRaise = (r) => Object.entries(r.mevW).every(([k, w]) => (weekly[k] || 0) + w <= landmark.mav);
-      const canRestore = (tok, exclude) => slots.some(r => r !== exclude && !r.fixed && r.mevW[tok] && cleanRaise(r) && fits(r, tok));
+      // `fits(r, tok, false)` — the cap is deliberately OFF in this look-ahead, and in
+      // the restore pass's second sweep below. Both the MEV floor and maintenance's MAV
+      // cap are CITED, closed bounds; PER_EXERCISE_SET_CEILING is an uncited plateau.
+      // With the cap ON here, a restore slot already stacked past 6 was rejected, so
+      // mevSafe() went false, the trim pool emptied, and the cap silently failed —
+      // measured, not reasoned: maintenance 2-day quad sat at 27 sets against a MAV of
+      // 15, and 3-day at 21. An uncited plateau must not veto a cited bound, so the
+      // look-ahead sees every slot that could restore the floor; the restore pass then
+      // still PREFERS an uncapped-free slot by trying capped first.
+      const canRestore = (tok, exclude) => slots.some(r => r !== exclude && !r.fixed && r.mevW[tok] && cleanRaise(r) && fits(r, tok, false));
       const mevSafe = (s) => Object.entries(s.mevW).every(([tok, w]) =>
         (weekly[tok] || 0) - w >= landmark.mev || canRestore(tok, s));
       for (const compound of [false, true]) {
@@ -3386,18 +3557,23 @@ function applyGoalVolume(program, goal, compoundRef) {
           }
         }
       }
-      // Restore pass — same shape as the MEV raise loop above, restricted to
-      // clean raises so restoring one floor can never re-break the cap.
-      for (const compound of [true, false]) {
-        for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
-          while ((weekly[t] || 0) < landmark.mev) {
-            const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && cleanRaise(s) && fits(s, t));
-            if (!pool.length) break;
-            const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
-            const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
-              .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
-            s.sets++;
-            credit(s, 1);
+      // Restore pass — same shape as the MEV raise loop above (including its two-pass
+      // cap/no-cap sweep, so a restore lands on a slot still under 6 whenever one
+      // exists), restricted to clean raises so restoring one floor can never re-break
+      // the cap. Pass 2 is what canRestore() above promised: the look-ahead and the
+      // restore must agree about which slots are reachable, or mevSafe() lies.
+      for (const capped of [true, false]) {
+        for (const compound of [true, false]) {
+          for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
+            while ((weekly[t] || 0) < landmark.mev) {
+              const pool = slots.filter(s => s.compound === compound && !s.fixed && s.mevW[t] && cleanRaise(s) && fits(s, t, capped));
+              if (!pool.length) break;
+              const topW = Math.max(...pool.map(s => Math.min(s.mevW[t], 1)));
+              const s = pool.filter(p => Math.min(p.mevW[t], 1) === topW)
+                .sort((a, b) => (a.sets - b.sets) || (a.order - b.order))[0];
+              s.sets++;
+              credit(s, 1);
+            }
           }
         }
       }
@@ -3960,7 +4136,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 75 sec', exs:[
               {id:'fb-hack', name:'Hack Squat', badge:'compound', sets:4, w:160, r:15, rest:75, compound:true,
-               why:'At your frame, hack squat is the superior quad compound. Guided path means 100% of effort goes into the muscle. Machine removes the balance tax of barbell.',
+               why:'At your frame, hack squat is the superior quad compound. Guided path means more of the effort goes into the muscle. Machine removes the balance tax of barbell.',
                cues:['Feet mid-platform, shoulder-width, 20–30° toe-out.','Below parallel. Partial reps = partial development.','3-sec eccentric. No lockout at top — keep tension.']},
               {id:'fb-bss',  name:'Bulgarian Split Squat', badge:'compound', sets:3, w:20, r:12, rest:75, compound:true,
                why:'Single-leg work catches imbalances. Hip flexor stretch on rear leg addresses the tightness that desk work creates. Lower total load, same stimulus.',
@@ -4013,7 +4189,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Lateral delt is the V-taper muscle. At 6\'3" building this makes body composition changes visible even at higher bodyweight.',
                cues:['Cable at ankle. Arm crosses body at start.','Lead with elbow — pinky slightly higher than thumb.','Stop at shoulder height. 4-sec negative.']},
               {id:'bm-ohe',  name:'Tricep Overhead Extension', badge:'isolation', sets:3, w:65, r:12, rest:75, compound:false,
-               why:'The long head is 55% of tricep mass — only fully activated in overhead position. Most programs only do pushdowns and leave half the tricep untrained.',
+               why:'The long head is the largest tricep head and the only one that crosses the shoulder — loaded hardest in overhead position. Most programs only do pushdowns and leave it undertrained.',
                cues:['Elbows narrow, pointed forward, stay there throughout.','Only forearm moves. Upper arm stays pinned overhead.','Full stretch before driving up.']},
               {id:'bm-push', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:80, r:12, rest:75, compound:false,
                why:'Lateral and medial head isolation after overhead ext has burned out the long head. Final set: drop 30%, continue to failure.',
@@ -4110,7 +4286,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bm-hack', name:'Hack Squat', badge:'compound', sets:4, w:180, r:8, rest:150, compound:true,
-               why:'At 6\'3", barbell back squat mechanics shift load to the lower back due to femur length. Hack squat keeps you upright — 100% of effort to the quad. Not a compromise. The mechanically superior choice for your structure.',
+               why:'At 6\'3", barbell back squat mechanics shift load to the lower back due to femur length. Hack squat keeps your torso supported and upright, which takes the lower back out of the limiting position and lets the quads do the work. A good fit for your structure.',
                cues:['Feet mid-platform, shoulder-width, 20–30° out.','Below parallel. No partial reps.','3-sec eccentric. No lockout at top — maintain tension.']},
               {id:'bm-bss',  name:'Bulgarian Split Squat', badge:'compound', sets:3, w:27, r:8, rest:120, compound:true,
                why:'Single-leg training at equivalent or greater stimulus than bilateral at significantly lower total load. Hip flexor stretch on rear leg is therapeutic for desk-sitting lifters.',
@@ -4833,7 +5009,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
         ]},
         { label:'Arms Block · Rest 75 sec', exs:[
           {id:'s5-ohe',name:'Tricep Overhead Extension', badge:'isolation', sets:3, w:65, r:12, rest:75, compound:false,
-           why:'Long head — 55% of tricep mass. Only hit in overhead position.',
+           why:'Long head — largest tricep head, crosses the shoulder. Loaded hardest in overhead position.',
            cues:['Elbows narrow and forward. Forearm only moves.']},
           {id:'s5-pd', name:'Tricep Rope Pushdown', badge:'isolation', sets:3, w:80, r:12, rest:75, compound:false,
            why:'Lateral and medial head finisher.',

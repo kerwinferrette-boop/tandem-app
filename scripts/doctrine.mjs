@@ -47,8 +47,8 @@ import {
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
-const { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey } = vm.runInNewContext(
-  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey }; })()`, {});
+const { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey, PER_EXERCISE_SET_CEILING } = vm.runInNewContext(
+  `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey, PER_EXERCISE_SET_CEILING }; })()`, {});
 
 const TIER_ORDER = ['home', 'hotel_gym', 'full_gym'];
 const TIER_BY_NAME = {};
@@ -155,6 +155,14 @@ const TIERS = {
   // tierGuard() still fails every authored deviation (see OVERRIDE_KEYS) — the
   // SCIENCE_DEFAULT clause binds every path today exactly as SAFETY does.
   D34: 'SPLIT',           // no fabricated load = SAFETY; rep-progression mode = SCIENCE_DEFAULT
+  // SCIENCE_DEFAULT, and the reason is the whole ruling (BUG-231, council 2026-10-06).
+  // SAFETY would assert harm above 6 sets of one lift. No source shows harm — ACSM
+  // prescribes 3-6, Hackett found 10 no better than 5, and Krieger measured NOTHING
+  // above 6. The cap sits at the edge of the evidence, not at a demonstrated
+  // inflection, so it is a PLATEAU bound and must yield to D6b's cited MEV floor and
+  // D8's cited MAV cap. Same as D34: no override key is registered, so tierGuard()
+  // still fails every authored deviation — the tier records confidence, not permission.
+  D35: 'SCIENCE_DEFAULT', // volume floors are met by spreading across exercises, never by stacking one lift
 };
 
 // A SPLIT invariant has no single tier — the caller must name the CLAUSE. These are
@@ -1352,6 +1360,120 @@ for (const days of [2, 3, 4, 5, 6]) for (const sex of ['male', 'female']) for (c
             fail('D33', `${tag} — raised above its goal's normal ${normal} but every muscle it directly trains is already past ${SESSION_MUSCLE_CEILING} fractional sets this session (${direct.map(k => `${k}=${session[k]}`).join(', ') || 'no direct muscle'}) — volume stacked, not distributed`);
         }
       }
+    }
+  }
+}
+
+// ── D35 (ACTIVE, 2026-10-07, BUG-231) — a volume floor is met by SPREADING ──────
+// Sources (all three read, all three primary-tier):
+//   ACSM position stand, Ratamess NA et al. 2009, Med Sci Sports Exerc 41(3):687-708,
+//     doi:10.1249/MSS.0b013e3181915670 — 3-6 sets PER EXERCISE for advanced trainees
+//     (1-3 untrained). The band the cap must sit inside.
+//   Krieger JW 2010 meta-analysis, J Strength Cond Res 24(4):1150-9,
+//     doi:10.1519/JSC.0b013e3181d4d436, PMID 20300012 — its bins are PER EXERCISE:
+//     ES 0.24 / 0.34 / 0.44 for 1 / 2-3 / 4-6 sets. It measures NOTHING above 6.
+//   Hackett DA et al. 2018, Sports 6(1):7, doi:10.3390/sports6010007 — the only direct
+//     test above 6: 10 vs 5 sets of the same exercise, 12 wk, no more effective;
+//     "4-6 sets per resistance exercise is advised".
+//
+// WHY A NEW D-NUMBER AND NOT A D33 CLAUSE (council 2026-10-06, transcript
+// docs/council-transcript-2026-10-06-bug231-per-exercise-cap-promotion.md): D33's 11 is
+// PROVISIONAL and revisit-dated 2027-03-23, and 11 must stay movable without disturbing
+// the spread rule. D33 owns the per-MUSCLE unit; D35 owns the per-EXERCISE unit. Same
+// reasoning that gave D34 its own number instead of a D24 clause. D33's old sentence
+// ("the per-exercise cap is a consequence, not a separate claim") was the overreach that
+// let 1040 exercise-sessions carry >6 sets of one lift with D33 fully green; it is
+// amended in Notion (Canonical Reference, dated section 2026-10-07) and /DOCTRINE.md.
+//
+// TIER: SCIENCE_DEFAULT, and the tier IS the ruling. No source shows HARM above 6 —
+// only no measured benefit — so the cap is a PLATEAU bound, and a plateau must yield to
+// D6b's cited MEV floor and D8's cited MAV cap. SAFETY would assert harm nothing cites.
+// No override key is registered, so tierGuard() still refuses every authored deviation.
+//
+// DIVISION OF LABOUR — do not collapse these two (recorded in the Notion D35 mirror
+// 3f3ca37f935b81f19645c3af3281c7a7 and in /DOCTRINE.md's D35 row):
+//   THIS BLOCK = LAW. The rule itself, adversarially: the cap has one home, sits inside
+//     the cited band, is strictly tighter than D33, is read in exactly one predicate,
+//     fails SAFE by default, has exactly ONE declared opt-out, and the plateau sweeps
+//     before the floor in both volume loops — never the reverse.
+//   verify check #44 (scripts/per-exercise-cap-smoke.mjs) = BREADTH. The generated
+//     output over the whole bank × 1050-combo matrix, plus the forced-cell ratchet.
+// No MAV assertion lives in either place beyond D8's own block — one rule, one home.
+let d35Checked = 0;
+{
+  const fn = code.match(/function applyGoalVolume\(program, goal, compoundRef\) \{[\s\S]*?\n\}/);
+  if (!fn) {
+    fail('D35', 'could not locate applyGoalVolume() in programs.js — if the allocator was renamed, re-point this block at it; do NOT delete it');
+  } else {
+    // Strip line comments: the allocator's own citation comments name the constant in
+    // prose (and so does this block), so grepping raw bytes would self-trip.
+    const body = fn[0].split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+    const decls = (code.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
+      .match(/\b(?:const|let|var)\s+PER_EXERCISE_SET_CEILING\b/g) || []).length;
+
+    // (1) ONE HOME. The cap is a named rule, so it is declared exactly once.
+    d35Checked++;
+    if (decls !== 1) {
+      fail('D35', `PER_EXERCISE_SET_CEILING is declared ${decls} time(s) in programs.js — a named rule has exactly one home (CLAUDE.md, "one rule, one home"); a second literal that merely matches today is a silo and silos drift`);
+    }
+
+    // (2) INSIDE THE CITED BAND. ACSM prescribes 3-6 sets per exercise. A cap outside
+    // that band is not this doctrine — it is an invented number. (check #44's A3 pins
+    // the exact current value; this asserts why any value is legal at all.)
+    d35Checked++;
+    if (!(Number.isInteger(PER_EXERCISE_SET_CEILING) && PER_EXERCISE_SET_CEILING >= 3 && PER_EXERCISE_SET_CEILING <= 6)) {
+      fail('D35', `PER_EXERCISE_SET_CEILING is ${PER_EXERCISE_SET_CEILING} — outside ACSM's cited 3-6 sets-per-exercise band (Ratamess 2009). Krieger 2010 measures nothing above 6 and Hackett 2018 found 10 no better than 5, so a value above 6 cites no source`);
+    }
+
+    // (3) STRICTLY TIGHTER THAN D33. If the per-exercise cap were >= the per-muscle
+    // ceiling, D35 would be vacuous under D33 and the amended D33 ownership sentence
+    // ("ask D35 for the distribution question") would be a lie.
+    d35Checked++;
+    if (!(PER_EXERCISE_SET_CEILING < SESSION_MUSCLE_CEILING)) {
+      fail('D35', `PER_EXERCISE_SET_CEILING (${PER_EXERCISE_SET_CEILING}) is not strictly below D33's SESSION_MUSCLE_CEILING (${SESSION_MUSCLE_CEILING}) — D35's per-exercise unit must bind tighter than D33's per-muscle unit, or the ownership split is decorative`);
+    }
+
+    // (4) READ IN EXACTLY ONE PREDICATE. fits() is the single question every raise pass
+    // already asks, which is why the cap binds all 5 goals × every token × every
+    // day-count × tier × sex at once (fix the mechanism, not the instance). A second
+    // read site means a second raise path with its own opinion.
+    d35Checked++;
+    const reads = (body.match(/PER_EXERCISE_SET_CEILING/g) || []).length;
+    const fits = body.match(/const fits = \([^)]*\) => \{[\s\S]*?\n {4}\};/);
+    if (reads !== 1) {
+      fail('D35', `applyGoalVolume() reads PER_EXERCISE_SET_CEILING ${reads} time(s) — it must be consulted in exactly one predicate (fits()), the one gate every raise pass already goes through`);
+    } else if (!fits || !fits[0].includes('PER_EXERCISE_SET_CEILING')) {
+      fail('D35', 'the single PER_EXERCISE_SET_CEILING read in applyGoalVolume() is not inside fits() — the cap must sit in the shared predicate, not beside one loop');
+    }
+
+    // (5) FAILS SAFE. `capped` defaults to TRUE, so a call site added later inherits the
+    // cap instead of silently opting out of it. A default of false is fail-OPEN.
+    d35Checked++;
+    if (!/const fits = \(s, t, capped = true\) =>/.test(body)) {
+      fail('D35', 'fits() does not declare `capped = true` as its default — the cap must be the default so a new call site inherits it; a fail-open default reinstates BUG-231 for any code written after this gate');
+    }
+
+    // (6) EXACTLY ONE DECLARED OPT-OUT. The plateau-yields-to-floor precedence has one
+    // exception by design: the MAV look-ahead canRestore(), which must see every slot
+    // that could restore a cited floor (with the cap ON there, maintenance 2-day quad
+    // sat at 27 sets against a MAV of 15 — measured, not reasoned). Any SECOND explicit
+    // `false` is an undeclared escape hatch.
+    d35Checked++;
+    const optOuts = body.match(/fits\([^)]*,\s*false\s*\)/g) || [];
+    if (optOuts.length !== 1) {
+      fail('D35', `${optOuts.length} call site(s) pass the cap OFF explicitly (${optOuts.join(', ') || 'none'}) — exactly one is authorized (canRestore()'s MAV look-ahead). Every other path must route the cap through the two-pass sweep, where it yields to a floor only after pass 1 has exhausted the alternatives`);
+    }
+
+    // (7) PLATEAU SWEEPS BEFORE FLOOR, IN BOTH LOOPS. `[true, false]` means: spread with
+    // the cap on first, and only stack for whatever is STILL short. Collapsed to [true]
+    // the cap costs cited floors (32 muscle-weeks below MEV, measured); collapsed to
+    // [false] the bug is reinstated (282 spreadable stacks); reversed to [false, true]
+    // the stacking happens first and pass 2 can never undo it.
+    d35Checked++;
+    const sweeps = (body.match(/for \(const capped of \[true, false\]\)/g) || []).length;
+    const bad = body.match(/for \(const capped of \[(?!true, false\])[^\]]*\]\)/g) || [];
+    if (sweeps !== 2 || bad.length) {
+      fail('D35', `the capped/uncapped sweep appears ${sweeps} time(s) as [true, false]${bad.length ? ` plus ${bad.length} other form(s): ${bad.join(', ')}` : ''} — both volume loops (the MEV raise and the MAV restore) must sweep capped THEN uncapped. An unmeasured plateau never costs a measured floor, and never gets to stack before the spread has been tried`);
     }
   }
 }
@@ -2975,6 +3097,7 @@ console.log(`  D6  weekly volume scales by goal in MEV order (T≥BM≥FB) — $
 console.log(`  D8  strength: zero supersets (SAFETY, structural + behavioral); maintenance: per-muscle volume ≤ MAV ${VOLUME_LANDMARKS.maintenance?.mav} (SCIENCE_DEFAULT) — ${d8Checked} checks`);
 console.log(`  D6b per-muscle weekly volume meets the goal's MEV floor (primary 1.0 / secondary 0.5 credit, Kerwin 2026-09-14) — ${d6bChecked} goal×day-count×sex×muscle checked`);
 console.log(`  D33 per-muscle per-session ceiling (~${SESSION_MUSCLE_CEILING} fractional sets, Remmert et al. 2025): no lift above it alone, extra sets only for a muscle still within it — ${d33Checked} exercise-sessions checked across goal×day-count×sex×tier`);
+console.log(`  D35 a volume floor is met by SPREADING across exercises, never by stacking one lift (<=${PER_EXERCISE_SET_CEILING}/lift, ACSM 3-6; plateau yields to D6b's cited floor) — ${d35Checked} assertions (one home + inside the cited band + strictly tighter than D33 + read in exactly one predicate + fails safe by default + exactly one declared opt-out + both loops sweep capped-then-uncapped). Breadth is verify check #44.`);
 console.log(`  D32 fat_burn cardio finisher gated by sex + weight delta (men optional <=20lb, women never gated, unknown delta keeps cardio on, build_muscle/transform unaffected) — ${d32Checked} day-count×sex×delta checks`);
 console.log(`  D10 rep schemes within each goal's taxonomy band — ${d10Checked} phase-week reps checked`);
 console.log(`  D11 monotonic %1RM overload + earned-only 1RM, live weekFactor() across the full 4-24wk range — ${d11Checked} week-steps checked`);

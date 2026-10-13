@@ -2806,7 +2806,7 @@ const LS_SCOPED_KEYS = [
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
   'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
   'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id',
-  'tandem_session_notes_draft'
+  'tandem_session_notes_draft','tandem_swaps'
 ];
 let _lsScope = ANON_SCOPE;
 const lsKey = k => k + '::' + _lsScope;
@@ -5480,7 +5480,12 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
     block.exs.forEach((_ex, ei) => {
       if (!_ex) return;
       // Phase substitution resolver — phases can declare exercise swaps via subs map
-      const ex = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
+      // B1: then the USER's durable swap (tandem_swaps) — resolveUserSwap is an
+      // identity pass-through when no swap is stored, so non-swapped cards render
+      // byte-identically. Downstream of this line, rec/PR/volume/log all key off
+      // ex.name and therefore see the substitute automatically.
+      const _phEx = (phase.subs && phase.subs[_ex.id]) ? {..._ex, ...phase.subs[_ex.id]} : _ex;
+      const ex = resolveUserSwap(_phEx);
       // LOG 3-way input model: 'sec' = timed hold (seconds only, weight locked),
       // 'bw' = bodyweight/band reps (weight blank w/ BW placeholder — still typeable
       // for weighted pull-ups/dips), 'reps' = standard weight × reps.
@@ -5562,7 +5567,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
       const videoId = VIDEO_IDS[ex.name];
 
       html += `
-        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
+        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" data-orig-name="${escNoteKey(ex.userSwappedFrom || ex.name)}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
           <div class="ex-header">
             <div class="ex-check"></div>
             <div class="ex-info">
@@ -5576,6 +5581,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
               <div class="po-reason">${rec.reason}</div>
               ${ex.technique && TECHNIQUE_TIPS[ex.technique] ? `<div class="po-reason" style="color:var(--accent2);margin-top:3px;"><strong>${TECHNIQUE_TIPS[ex.technique].name}:</strong> ${TECHNIQUE_TIPS[ex.technique].tip}</div>` : ''}
               ${ex.substitutedFrom ? `<div class="po-reason" style="color:var(--amber);margin-top:3px;"><strong>Swapped:</strong> the program calls for ${ex.substitutedFrom}, which your equipment or injury profile rules out. This trains the same muscle.</div>` : ''}
+              <div class="po-reason swap-note" id="swapnote-${ex.id}" style="color:var(--amber);margin-top:3px;${ex.userSwappedFrom ? '' : 'display:none;'}">${ex.userSwappedFrom ? `<strong>Your swap:</strong> replaces ${ex.userSwappedFrom}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(ex.userSwappedFrom)}');applySwap('${ex.id}','${escNoteKey(ex.userSwappedFrom)}')">Undo</span>` : ''}</div>
             </div>
             <div class="ex-expand">▾</div>
           </div>
@@ -5599,7 +5605,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
               <div class="set-act blue" onclick="event.stopPropagation();quickPlatesFor('${ex.id}')">${svgIcon('plate')} Plates</div>
               <div class="set-act" onclick="event.stopPropagation();quickCalcFor('${ex.id}')">${svgIcon('chart')} 1RM</div>
               <div class="set-act" onclick="event.stopPropagation();openSwapPicker('${ex.id}')">${svgIcon('swap')} Swap</div>
-              <div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>
+              ${ex.id.startsWith('oneoff-') ? '' /* BUG-170: one-offs save at Finish (finishOneOff); a per-card Save would be a no-op */ : `<div class="set-act green" onclick="event.stopPropagation();manualSaveExercise('${ex.id}')">${svgIcon('save')} Save</div>`}
               <div class="set-act" onclick="event.stopPropagation();openExerciseHistory('${ex.id}','${(ex.name||'').replace(/'/g,"\\'")}')">${svgIcon('clock')} History</div>
             </div>
             <div class="swap-picker" id="swap-${ex.id}"></div>
@@ -5620,9 +5626,12 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
                 <div class="ex-video-frame" id="vid-${ex.id}"></div>` : ''}</div>
           </div>
           <div class="ex-notes-wrap">
+            ${exNoteStamp(ex.name) ? `<div class="ex-note-stamp" style="font-size:11px;color:var(--muted);margin-bottom:4px;">Your note · ${exNoteStamp(ex.name)}</div>` : ''}
             <textarea class="ex-notes" placeholder="Notes — feel, pain level, weight adjustments..."
               oninput="saveExNote('${escNoteKey(ex.name)}', this.value)"
             >${escNoteHtml(exNoteFor(ex.name))}</textarea>
+            <div class="ex-note-swap" style="font-size:12px;color:var(--accent2);margin-top:4px;cursor:pointer;"
+              onclick="event.stopPropagation();openSwapPicker('${ex.id}')">Swap this for me →</div>
           </div>
         </div>
       `;
@@ -5774,9 +5783,16 @@ async function startOrResumeSession() {
         LSraw.set('tandem_session_start_time', String(Date.now()));
       }
       // Resuming on a device whose local draft is empty (cleared storage, second
-      // device) falls back to whatever's already saved in the cloud row.
+      // device) falls back to whatever's already saved in the cloud row — and
+      // must reach the PIXEL, not just localStorage: renderTracker()'s one-shot
+      // hydrate (dataset.hydrated) has already run by the time this resume
+      // lands, so writing LS alone left the visible box empty (B2, caught by
+      // notes-readback-smoke [C2]). Guarded on an empty box so a user mid-typing
+      // is never clobbered.
       if (data.notes && !LS.get('tandem_session_notes_draft')) {
         LS.set('tandem_session_notes_draft', data.notes);
+        const _snEl = document.getElementById('sessionNotesInput');
+        if (_snEl && !_snEl.value) _snEl.value = data.notes;
       }
       // C11 diagnostic: remember the FIRST session id this workout ran under
       if (!LSraw.get('tandem_c11_first_session_id')) {
@@ -6096,6 +6112,14 @@ function checkExComplete(id) {
 
 async function saveExerciseToCloud(id) {
   if (!currentUser) return;
+  // BUG-170: same guard as logSet(). A one-off exercise belongs to no program day —
+  // finishOneOff() batch-writes it under its own session_type='oneoff' row. Without this
+  // the Save button upserted into the PROGRAM day's workout_sessions row and filed the
+  // one-off's sets there (under a real exercise name since BUG-49, so hard to spot).
+  if (id.startsWith('oneoff-')) {
+    showToast('One-off sets are saved when you tap Finish');
+    return;
+  }
   const sets = sessionSetsMap[id];
   if (!sets?.length) return;
   if (!sessionStartTime) sessionStartTime = Date.now();
@@ -6289,6 +6313,138 @@ function loadVideo(exId, ytId, btn) {
 // ═══════════════════════════════════════════════════════
 // EXERCISE SUBSTITUTION — Swap button on each exercise card
 // ═══════════════════════════════════════════════════════
+// B1 (fable-prompt-1-wiring): the swap is DURABLE. applySwap used to mutate one
+// card's DOM and toast "Swapped to X" while persisting nothing — the exact
+// "wired is not working" shape CLAUDE.md warns about. The store below is keyed
+// by the engine-served exercise NAME (never the slot id — slot ids churn;
+// lastsets-churn-smoke.mjs / C7 / BUG-45/48 precedent) and re-applied at the
+// buildDayHTML seam via resolveUserSwap(), so every downstream name-keyed
+// system (getRecommendation, PRs, computeMuscleWeeklyVolume/D6b, lastsets)
+// sees the substitute automatically. Gate: scripts/swap-persistence-smoke.mjs.
+// B4: the cloud half below (pushExSwap / wipeCloudSwaps / hydrateSwapsFromCloud)
+// mirrors the notes cloud half one-for-one — gate: scripts/swap-cloud-smoke.mjs.
+// It is wired but INERT until migrations/0024_b1_exercise_swaps.sql is applied
+// (apply_migration is human-only — Kerwin applies, then the round-trip is
+// verified against real Postgres; every cloud call here fails soft until then).
+function exSwapsAll() { return LS.get('tandem_swaps') || {}; }
+function exSwapFor(origName) {
+  const e = exSwapsAll()[origName];
+  return (e && e.to) ? e.to : null;
+}
+function saveExSwap(origName, toName) {
+  const all = exSwapsAll();
+  const at = new Date().toISOString();
+  const isNoop = !toName || toName === origName;
+  // Choosing the original (or clearing) DELETES the entry — a stored no-op
+  // would shadow future legality changes for no benefit, and 0024's CHECK
+  // constraint rejects a self-swap row outright.
+  if (isNoop) delete all[origName];
+  else all[origName] = { to: toName, at };
+  LS.set('tandem_swaps', all);
+  // No debounce (unlike saveExNote): a swap is a discrete tap, not a keystroke
+  // stream. The stamp stored above travels with the push — never re-derived at
+  // push time (the forged-stamp loss path pushExNote documents is identical here).
+  pushExSwap(origName, isNoop ? null : toName, at);
+}
+function clearExSwap(origName) { saveExSwap(origName, null); }
+
+// One swap, one row. An undo DELETEs its row rather than upserting — leave the
+// row behind and the next hydrate resurrects the swap the user just undid, and
+// 0024's no-noop CHECK would reject the self-swap upsert anyway. `at` is the
+// stamp the swap was MADE at and is threaded through, never re-derived (see
+// pushExNote's header for the one-clock loss path that opens).
+async function pushExSwap(origName, toName, at) {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;   // anonymous saves nothing, by design
+  try {
+    if (!toName || toName === origName) {
+      await sb.from('exercise_swaps').delete().eq('user_id', currentUser.id).eq('original_name', origName);
+      return;
+    }
+    const { error } = await sb.from('exercise_swaps').upsert(
+      { user_id: currentUser.id, original_name: origName, substitute_name: toName, updated_at: at || new Date().toISOString() },
+      { onConflict: 'user_id,original_name' });
+    if (error) throw error;
+  } catch (e) { console.warn('swap push skipped (offline or denied):', e); }
+}
+
+// Same contract as wipeCloudNotes: without this, "Clear all history" clears the
+// local tandem_swaps key and the next hydrate reads cloud-present + local-absent
+// as "new from another device" and pulls every swap straight back.
+async function wipeCloudSwaps() {
+  if (!currentUser || typeof sb === 'undefined' || !sb) return;
+  try {
+    const { error } = await sb.from('exercise_swaps').delete().eq('user_id', currentUser.id);
+    if (error) throw error;
+  } catch (e) { console.warn('cloud swap wipe skipped (offline or denied):', e); }
+}
+
+// ── hydrateSwapsFromCloud() — the ONE owner of swap reconciliation ───────────
+// Called by BOTH restoreFromCloud() and syncFromCloud(), same as
+// hydrateNotesFromCloud (whose header explains why one owner, not two inline
+// blocks). TWO-WAY, newest-wins by `updated_at`; a swap present in the cloud but
+// absent locally is taken, NOT treated as a local undo, because a real undo
+// already deleted its row in pushExSwap(). No pending-timer guard: swaps have no
+// debounce, so there is never an in-flight local edit to protect. Never throws —
+// an offline load must still render whatever the cache holds, and until 0024 is
+// applied the select fails soft here on every load, leaving local state intact.
+async function hydrateSwapsFromCloud(uid) {
+  if (!uid || typeof sb === 'undefined' || !sb) return { pulled: 0, pushed: 0 };
+  try {
+    const { data: rows, error } = await sb.from('exercise_swaps')
+      .select('original_name, substitute_name, updated_at').eq('user_id', uid);
+    if (error) throw error;
+    const local = exSwapsAll();
+    const cloud = {};
+    (rows || []).forEach(r => { if (r.original_name) cloud[r.original_name] = r; });
+    let pulled = 0, pushed = 0;
+    for (const name of new Set([...Object.keys(local), ...Object.keys(cloud)])) {
+      const c = cloud[name], l = local[name];
+      const cAt = c && c.updated_at ? Date.parse(c.updated_at) : -Infinity;
+      const lAt = l && l.at ? Date.parse(l.at) : -Infinity;
+      // Pulled rows land in the exact { to, at } shape exSwapFor/resolveUserSwap
+      // read — any other shape is a dead value behind a green gate.
+      if (c && (!l || cAt > lAt)) { local[name] = { to: c.substitute_name, at: c.updated_at || null }; pulled++; }
+      else if (l && (!c || lAt > cAt)) { pushExSwap(name, l.to, l.at); pushed++; }
+    }
+    LS.set('tandem_swaps', local);
+    return { pulled, pushed };
+  } catch (e) {
+    console.warn('swap hydrate skipped (offline or query failed):', e);
+    return { pulled: 0, pushed: 0 };
+  }
+}
+// Legality is evaluated NOW, on every render — never trusted from store time.
+// A swap stored before an injury was declared, or on a better-equipped device,
+// must not bypass the injury/tier filter (SAFETY: same two-layer discipline as
+// the bank injury filter + pruneInjuries).
+function swapTargetFor(origName) {
+  const to = exSwapFor(origName);
+  if (!to) return null;
+  const legal = getExerciseSubstitutes(origName, resolveEquipmentTier(), cfg.injuries, 50);
+  return legal.find(s => s.name === to) || null;
+}
+function resolveUserSwap(ex) {
+  if (!ex || !ex.name) return ex;
+  const target = swapTargetFor(ex.name);
+  if (!target) return ex;   // identity: zero-diff for every non-swapped card
+  return { ...ex,
+    name: target.name,
+    compound: target.category === 'compound',
+    badge: target.category === 'compound' ? 'compound' : 'isolation',
+    equipment: target.equipment,
+    unit: target.unit,
+    // NO oneRmFactor copy: generated slots never carry it, nothing downstream
+    // reads ex.oneRmFactor (all load scaling is bank-by-name), and D29 pins
+    // the read-site count — a copy here is a dead value AND a doctrine breach.
+    why: target.why,
+    cues: target.cues,
+    // The original's warning/technique text describes the ORIGINAL movement —
+    // carrying it over would caption the substitute with the wrong coaching.
+    warning: null,
+    technique: null,
+    userSwappedFrom: ex.name };
+}
+
 function openSwapPicker(id) {
   const picker = document.getElementById('swap-' + id);
   const nameEl = document.getElementById('en-' + id);
@@ -6296,9 +6452,21 @@ function openSwapPicker(id) {
   const wasOpen = picker.classList.contains('open');
   document.querySelectorAll('.swap-picker.open').forEach(p => p.classList.remove('open'));
   if (wasOpen) return;
-  const subs = getExerciseSubstitutes(nameEl.textContent, resolveEquipmentTier(), cfg.injuries, 5);
+  // B1: substitutes are computed from the ORIGINAL engine-served movement (the
+  // card's data-orig-name), not the currently displayed substitute — otherwise a
+  // second swap would key the store off the wrong name and chain drift.
+  const card = document.getElementById('ec-' + id);
+  const orig = card?.dataset?.origName || nameEl.textContent;
+  const subs = getExerciseSubstitutes(orig, resolveEquipmentTier(), cfg.injuries, 5)
+    .filter(s => s.name !== nameEl.textContent);
+  // Already swapped? Offer the way back at the top.
+  if (orig !== nameEl.textContent) subs.unshift({ name: orig, _isOriginal: true });
   picker.innerHTML = subs.length
-    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}',${JSON.stringify(s.name)})">${s.name}</div>`).join('')
+    // escNoteKey, NOT JSON.stringify: this string sits inside a double-quoted HTML
+    // attribute, and JSON's double quotes TERMINATE the attribute mid-call — every
+    // option's onclick parsed as `applySwap('<id>',` and threw on tap. Caught by the
+    // browser walkthrough ([5b]), invisible to the vm smoke (it reads source, not DOM).
+    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}','${escNoteKey(s.name)}')">${s._isOriginal ? `↻ Back to ${s.name}` : s.name}</div>`).join('')
     : `<div class="swap-empty">No substitutes available for your equipment tier.</div>`;
   picker.classList.add('open');
 }
@@ -6347,7 +6515,22 @@ function applySwap(id, newName) {
       : '';
   }
   if (picker) { picker.classList.remove('open'); picker.innerHTML = ''; }
-  showToast(`Swapped to ${entry.name}`);
+  // B1: PERSIST — keyed by the original engine-served name from the card, so the
+  // swap survives reloads and future weeks (resolveUserSwap re-applies it at
+  // render). Swapping back to the original deletes the entry (saveExSwap no-op
+  // rule), which is also the Undo path.
+  const card = document.getElementById('ec-' + id);
+  const orig = card?.dataset?.origName || null;
+  if (orig) saveExSwap(orig, entry.name);
+  const note = document.getElementById('swapnote-' + id);
+  if (note) {
+    if (!orig || entry.name === orig) { note.style.display = 'none'; note.innerHTML = ''; }
+    else {
+      note.innerHTML = `<strong>Your swap:</strong> replaces ${orig}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(orig)}');applySwap('${id}','${escNoteKey(orig)}')">Undo</span>`;
+      note.style.display = '';
+    }
+  }
+  showToast(orig && entry.name === orig ? `Back to ${entry.name}` : `Swapped to ${entry.name} — saved for future sessions`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -6598,6 +6781,23 @@ function buildPRModal() {
 // ═══════════════════════════════════════════════════════
 // HISTORY MODAL
 // ═══════════════════════════════════════════════════════
+// ── historyExLabel() — what to CALL a lift in the history list (BUG-209) ──────
+// The key of an `exercises` entry is a bank SLOT ID on a locally-written row
+// ('fb-curl') but an exercise NAME on a cloud-restored one ('Pull-Up') — the cloud
+// has no slot id to restore and `name` is what every other name-based reader already
+// matches on (C7 PRs, findExerciseHistorySessions, BUG-48's per-set stamp).
+//
+// The old derivation was `id.replace(/^\w+-/,'').replace(/-/g,' ')`, applied blind.
+// Run against real names it is destructive, not cosmetic — verified by running it:
+// "Pull-Up" -> "Up", "T-Bar Row" -> "Bar Row". So prefer the canonical `name` the
+// sets already carry (BUG-48 stamps it on every set precisely because slot ids get
+// recycled across rotations, BUG-45), and fall back to the slug de-mangling only for
+// a legacy row logged before that stamp existed.
+function historyExLabel(key, sets) {
+  const stamped = (sets || []).find(x => x && x.name)?.name;
+  if (stamped) return stamped;
+  return String(key || '').replace(/^\w+-/, '').replace(/-/g, ' ');
+}
 function buildHistoryModal() {
   const hist = LS.get('tandem_history') || [];
   const list = document.getElementById('historyList');
@@ -6606,10 +6806,15 @@ function buildHistoryModal() {
     const exEntries = Object.entries(s.exercises||{}).map(([id,sets]) => {
       if(!sets?.length) return '';
       const setsStr = sets.map(x=>`${x.w}×${x.r}${x.est1rm?' ('+x.est1rm+'e)':''}`).join('  ');
-      return `<div class="hist-ex">${id.replace(/^\w+-/,'').replace(/-/g,' ')}</div><div class="hist-sets">${setsStr}</div>`;
+      return `<div class="hist-ex">${escNoteHtml(historyExLabel(id, sets))}</div><div class="hist-sets">${setsStr}</div>`;
     }).join('');
+    // BUG-209: `week`/`goal` are absent on a cloud row whose week_number/program_goal were
+    // never set, and `Wk${undefined}` put the literal string "Wkundefined" on screen. Drop
+    // the segment instead of rendering a non-value — same rule as D34's chip labels.
+    const badge = [s.week != null ? 'Wk' + s.week : null, (s.goal || '').replace('_', ' ') || null]
+      .filter(Boolean).join(' · ');
     return `<div class="hist-session">
-      <div class="hist-date"><span>${s.date}</span><span class="hist-badge">Wk${s.week} · ${(s.goal||'').replace('_',' ')}</span></div>
+      <div class="hist-date"><span>${escNoteHtml(s.date || '')}</span>${badge ? `<span class="hist-badge">${escNoteHtml(badge)}</span>` : ''}</div>
       ${exEntries}
     </div>`;
   }).join('') + `<button class="clear-btn" onclick="clearHistory()">Clear All History</button>`;
@@ -6689,6 +6894,18 @@ function exNotesAll() {
   return out;
 }
 function exNoteFor(name) { return (exNotesAll()[name] || {}).note || ''; }
+// B2: the note's age, made visible. Formats the stored `at` stamp for the card's
+// "noted <date>" line. A legacy bare-string note has NO stamp (at:null) — return ''
+// and show nothing rather than fabricate a date for a note of unknown age.
+function exNoteStamp(name) {
+  const at = (exNotesAll()[name] || {}).at;
+  if (!at) return '';
+  const d = new Date(at);
+  if (isNaN(d.getTime())) return '';
+  const opts = { month: 'short', day: 'numeric' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString(undefined, opts);
+}
 
 // Per-name debounce. oninput fires per KEYSTROKE; upserting each one would hammer
 // Supabase and race its own writes. Local storage is still written synchronously
@@ -6803,12 +7020,15 @@ function clearHistory() {
     // tandem_ex_notes belongs here for the SAME reason BUG-91 put tandem_working1rm
     // here: a key omitted from this list survives the clear and cannot be removed by
     // any UI path. Flagged by llm-council, 2026-09-30.
-    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes','tandem_session_notes_draft'].forEach(k=>LS.del(k));
+    ['tandem_history','tandem_prs','tandem_lastsets','tandem_working1rm','tandem_ex_notes','tandem_session_notes_draft','tandem_swaps'].forEach(k=>LS.del(k));
     // Clearing the local key alone is not a clear once notes live in the cloud: the next
     // hydrate reads cloud-present + local-absent as "new from another device" and pulls
     // them all back. See wipeCloudNotes(). Not awaited — the confirm() dialog this sits
     // behind is synchronous and the UI must not block on the network.
     wipeCloudNotes();
+    // Same resurrection path for swaps — tandem_swaps is cleared from the list above,
+    // so without this the next hydrate pulls every swap back from exercise_swaps.
+    wipeCloudSwaps();
     buildHistoryModal();
   }
 }
@@ -6999,7 +7219,7 @@ function skipAhead() {
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
-    date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    date: historyDisplayDate(),
     session_date: localDateStr(), // BUG-207: see finishSession() — same omission, same fix
     week: currentWeek,
     goal: cfg.goal,
@@ -7154,7 +7374,7 @@ function finishSession() {
   const hist = LS.get('tandem_history') || [];
   hist.unshift({
     id: Date.now(),
-    date: new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    date: historyDisplayDate(),
     session_date: localDateStr(), // BUG-207: the merge's business key — without it this
     // row can never match its own synced cloud twin and the session double-counts.
     week: currentWeek,
@@ -8003,6 +8223,57 @@ function _historySortKey(row) {
   if (row.date) { const d = new Date(row.date); if (!isNaN(d)) return d.toISOString(); }
   return '';
 }
+// ── BUG-209: the per-lift half of the restore ────────────────────────────────
+//
+// Every reader of a history row's LIFTS keys on `exercises`:
+// buildHistoryModal() (:6536), findExerciseHistorySessions() (:6619) and
+// buildLiftSeries() (:7316, which explicitly `return`s on a row without it).
+// A cloud `workout_sessions` row has no such key — the sets live one table over,
+// in `sets` — and nothing ever read them back. So the sync engine pushed 305 set
+// rows UP for this account and had no path to bring a single one DOWN: clear a
+// browser, sign in on a new device, and every logged lift was unreachable while
+// sitting safely in Postgres. The :7307 comment had documented the missing map as
+// something to SKIP since BUG-135; skipping is why it stayed invisible for months.
+//
+// Keyed by exercise NAME, not slot id, for the same reason C7 keys PRs and BUG-48
+// stamps `name` on every set: the cloud has no slot id to restore, and name is what
+// both name-based readers already match on. Slot ids also churn across rotations
+// (BUG-45), so a guessed id would attribute one lift's history to another.
+function exercisesFromCloudSets(setRows) {
+  const out = {};
+  for (const r of (setRows || [])) {
+    const name = r?.exercise_name;
+    if (!name) continue;
+    (out[name] = out[name] || []).push({
+      set: Number(r.set_number) || 0,
+      w: Number(r.weight_lbs) || 0,
+      r: Number(r.reps) || 0,
+      est1rm: r.estimated_1rm_lbs == null ? 0 : Number(r.estimated_1rm_lbs) || 0,
+      name,                                  // BUG-48: the field every reader matches on
+      rpe: r.rpe == null ? null : Number(r.rpe)
+    });
+  }
+  for (const k of Object.keys(out)) out[k].sort((a, b) => a.set - b.set);
+  return out;
+}
+
+// Cloud column names are not the names the readers use. `session_date`/`week_number`/
+// `program_goal`/`day_type` were carried through verbatim, so the History modal
+// rendered its header as the literal string "undefined / Wkundefined · " on any
+// restored row. Adds the local aliases WITHOUT dropping the cloud originals:
+// _historyRowKey() prefers `session_date` and `day_type`, so the dedupe key of a
+// restored row is byte-identical to what it was before this change.
+function historyRowFromCloudSession(row, exercises) {
+  const { user_id, ...s } = row || {}; // never let the DB's user_id leak into local storage
+  const day = _historyDateKey(s);
+  if (day && s.date == null) s.date = historyDisplayDate(new Date(day + 'T00:00:00'));
+  if (s.week == null) s.week = s.week_number ?? null;
+  if (s.goal == null) s.goal = s.program_goal ?? null;
+  if (s.day == null) s.day = s.day_type ?? null;
+  if (exercises && Object.keys(exercises).length) s.exercises = exercises;
+  return s;
+}
+
 // ── dedupeLocalHistory() — BUG-178 part 3 (the repair half) ──
 //
 // Parts 1 and 2 stop NEW duplicates. They do nothing about the ones already sitting in
@@ -8094,26 +8365,49 @@ function dedupeLocalHistory(hist) {
     && out.some((o, j) => j !== i && !paired.has(j) && _historyIsMidnightTwin(o, r))));
 }
 
-function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions) {
+// BUG-209: `cloudSetsBySession` is optional: { [session_id]: [ sets rows ] }. Absent,
+// this behaves exactly as before (session-level merge only), which is what keeps every
+// existing caller and history-merge-smoke.mjs honest.
+function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions, cloudSetsBySession) {
   // BUG-178 part 3: collapse duplicates ALREADY in local history before doing anything
   // else. Placed here, not at one call site, so restore / sync / the on-load self-heal
   // all repair through the same owner.
   const existing = dedupeLocalHistory(Array.isArray(existingLocal) ? existingLocal : []);
   const cloud = Array.isArray(cloudSessions) ? cloudSessions : [];
   if (!cloud.length) return existing;
-  const seenKeys = new Set(existing.map(_historyRowKey).filter(Boolean));
+  const setsBy = cloudSetsBySession || {};
+  const byKey = new Map();
+  for (const r of existing) { const k = _historyRowKey(r); if (k && !byKey.has(k)) byKey.set(k, r); }
+  const seenKeys = new Set(byKey.keys());
   const seenIds = new Set(existing.filter(r => r && r.id != null).map(r => r.id));
   const toAdd = [];
   for (const row of cloud) {
-    const { user_id, ...s } = row || {}; // never let the DB's user_id leak into local storage
+    const exercises = exercisesFromCloudSets(setsBy[row?.id]);
+    const s = historyRowFromCloudSession(row, exercises);
     const key = _historyRowKey(s);
-    if (key && seenKeys.has(key)) continue;
+    // A row already present LOCALLY but exercise-less is the state every account that
+    // ever ran the old hydrate is stuck in — 24 empty rows that the add-only merge
+    // would skip forever as "already seen", so the repair would never reach the users
+    // who need it. Backfill it instead. Local is authoritative when it HAS sets: it
+    // may hold a set logged offline that has not synced up yet, so a non-empty local
+    // `exercises` is never overwritten.
+    if (key && seenKeys.has(key)) {
+      const local = byKey.get(key);
+      if (local) {
+        if (!local.exercises || !Object.keys(local.exercises).length) {
+          if (Object.keys(exercises).length) local.exercises = exercises;
+        }
+        if (local.date == null && s.date != null) local.date = s.date;
+        if (local.week == null && s.week != null) local.week = s.week;
+        if (local.goal == null && s.goal != null) local.goal = s.goal;
+      }
+      continue;
+    }
     if (s.id != null && seenIds.has(s.id)) continue;
-    if (key) seenKeys.add(key);
+    if (key) { seenKeys.add(key); byKey.set(key, s); }
     if (s.id != null) seenIds.add(s.id);
     toAdd.push(s);
   }
-  if (!toAdd.length) return existing;
   const merged = existing.concat(toAdd);
   merged.sort((a, b) => {
     const ka = _historySortKey(a), kb = _historySortKey(b);
@@ -8211,27 +8505,72 @@ function cfgFromUserRow(u, prev) {
 // "wired is not working" shape CLAUDE.md names.
 //
 // This is the one owner of "pull sessions down and reconcile them into local history."
-// Returns { sessions, added } so a caller can report what changed; never throws — an
-// offline load must still render from whatever the cache already holds.
+// Returns { sessions, added, enriched } so a caller can report what changed; never
+// throws — an offline load must still render from whatever the cache already holds.
+//
+// BUG-209: it also pulls the SETS, because a workout_sessions row alone cannot answer
+// the only question the History modal and the per-lift chart actually ask ("what did I
+// lift?"). Sessions came down, sets never did, so every restored row rendered as a
+// date with nothing under it. The two queries are deliberately separate rather than a
+// nested select: `sets` is the larger table by an order of magnitude and a failed join
+// would take the session hydrate — which the program QUEUE depends on — down with it.
+// Hence the inner try/catch: no sets is a DEGRADED restore (dates, queue position,
+// streaks all still correct), not a failed one.
 async function hydrateHistoryFromCloud(uid) {
+  const NOTHING = { sessions: [], added: 0, enriched: 0 };
   // BUG-178 part 3: repair first, so an offline or signed-out boot still un-poisons a
   // history the pre-fix Restore duplicated. dedupeLocalHistory() is idempotent.
   const _local = LS.get('tandem_history') || [];
   const _repaired = dedupeLocalHistory(_local);
   if (_repaired.length !== _local.length) LS.set('tandem_history', _repaired);
-  if (!uid || typeof sb === 'undefined' || !sb) return { sessions: [], added: 0 };
+  if (!uid || typeof sb === 'undefined' || !sb) return NOTHING;
   try {
     const { data: sessions, error } = await sb.from('workout_sessions')
       .select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (error) throw error;
-    if (!sessions?.length) return { sessions: [], added: 0 };
-    const existing = LS.get('tandem_history') || [];
-    const merged = mergeCloudSessionsIntoHistory(existing, sessions);
+    if (!sessions?.length) return NOTHING;
+
+    // Bounded on purpose: mergeCloudSessionsIntoHistory() keeps 100 rows, so sets for
+    // sessions older than the 100th most recently created one could never be rendered.
+    // A `sets` row is always created at or after its session (logSet writes the session
+    // first), so a floor at that session's created_at cannot exclude a set belonging to
+    // a session we DO keep — the bound drops only unreachable rows. Keyed by
+    // session_id, which is what ties a set back to the row it belongs to.
+    let setsBySession = {};
+    try {
+      const floor = (sessions[Math.min(sessions.length, 100) - 1] || {}).created_at;
+      let q = sb.from('sets')
+        .select('session_id, exercise_name, set_number, weight_lbs, reps, rpe, estimated_1rm_lbs')
+        .eq('user_id', uid);
+      if (floor) q = q.gte('created_at', floor);
+      const { data: setRows, error: setsErr } = await q.order('set_number', { ascending: true });
+      if (setsErr) throw setsErr;
+      for (const r of (setRows || [])) {
+        if (!r?.session_id) continue;
+        (setsBySession[r.session_id] = setsBySession[r.session_id] || []).push(r);
+      }
+    } catch (setsErr) {
+      // Degraded, not failed — say so out loud rather than silently shipping empty rows.
+      console.warn('[history] set hydrate failed; restoring sessions without lifts:', setsErr);
+      setsBySession = {};
+    }
+
+    // The REPAIRED list, not a fresh LS read: dedupeLocalHistory() above already ran,
+    // and counting `added` against the pre-repair list would bill its removals as
+    // negative additions.
+    const existing = _repaired;
+    // Which local rows were exercise-less BEFORE the merge. The merge BACKFILLS those in
+    // place (that is the whole repair for an account already holding empty hydrated
+    // rows), and such a repair changes no row COUNT — so `added` alone would report
+    // "already up to date" on the very run that fixed months of missing history.
+    const wasEmpty = existing.filter(r => r && (!r.exercises || !Object.keys(r.exercises).length));
+    const merged = mergeCloudSessionsIntoHistory(existing, sessions, setsBySession);
+    const enriched = wasEmpty.filter(r => r.exercises && Object.keys(r.exercises).length).length;
     LS.set('tandem_history', merged);
-    return { sessions, added: merged.length - existing.length };
+    return { sessions, added: merged.length - existing.length, enriched };
   } catch (e) {
     console.warn('history hydrate skipped (offline or query failed):', e);
-    return { sessions: [], added: 0 };
+    return NOTHING;
   }
 }
 
@@ -8242,10 +8581,16 @@ async function restoreFromCloud() {
     const uid = currentUser.id;
     // Sessions — BUG-207: through the shared hydrator, so the manual Restore button and
     // the automatic on-load self-heal can never reconcile history two different ways.
-    const { sessions, added } = await hydrateHistoryFromCloud(uid);
+    const { sessions, added, enriched } = await hydrateHistoryFromCloud(uid);
     if (sessions.length) {
-      showToast(added > 0
-        ? `History synced from cloud (${added} session${added === 1 ? '' : 's'} merged in)`
+      // BUG-209: `enriched` is reported because the repair it counts adds no ROW — it
+      // fills in the lifts on rows the old hydrate had already created empty. Without
+      // this the toast said "already up to date" on the run that restored the lifts.
+      const parts = [];
+      if (added > 0) parts.push(`${added} session${added === 1 ? '' : 's'} merged in`);
+      if (enriched > 0) parts.push(`lifts restored on ${enriched} session${enriched === 1 ? '' : 's'}`);
+      showToast(parts.length
+        ? `History synced from cloud (${parts.join(', ')})`
         : 'History already up to date with the cloud');
     } else {
       showToast('No cloud data found');
@@ -8281,6 +8626,8 @@ async function restoreFromCloud() {
     // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
     // Restore button and the automatic on-load sync can never do it two ways.
     await hydrateNotesFromCloud(uid);
+    // B4 cloud half: swaps reconcile through the one owner too (same rule as notes).
+    await hydrateSwapsFromCloud(uid);
     // Config
     const { data: configData } = await sb.from('users')
       .select('*').eq('id', uid).single();
@@ -8319,6 +8666,17 @@ async function restoreFromCloud() {
 // dashboard day-dots — must agree on the user's local day.
 function localDateStr(d = new Date()) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+}
+
+// ── historyDisplayDate() — the ONE home for a history row's `date` string (BUG-209) ──
+// localDateStr() above owns the machine-readable calendar key; this owns the human one
+// the History modal renders and that _historyDateKey() parses back when a pre-BUG-207
+// row has no session_date. The exact format matters for that parse, which is why it
+// cannot be four inlined copies: it was literally inlined at skipAhead(),
+// finishSession(), the one-off writer and saveJournal(), and BUG-209's cloud restore
+// would have made a fifth. One format, one place, every writer agrees by construction.
+function historyDisplayDate(d = new Date()) {
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ── calendarDaysBetween() — BUG-27 DST fix ──
@@ -8946,7 +9304,7 @@ async function finishOneOff() {
     const hist = LS.get('tandem_history') || [];
     hist.unshift({
       id: Date.now(),
-      date: new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      date: historyDisplayDate(),
       session_date: localDateStr(),
       week: currentWeek,
       goal: oneOffGoalKey(),
@@ -9194,7 +9552,7 @@ async function saveJournal() {
     const hist = LS.get('tandem_history') || [];
     hist.unshift({
       id: Date.now(),
-      date: new Date(sessionDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      date: historyDisplayDate(new Date(sessionDate + 'T00:00:00')),
       session_date: sessionDate,
       week: currentWeek,
       goal: goalKeyFor(cfg.goal),
@@ -9651,6 +10009,8 @@ async function syncFromCloud() {
     // BUG-195 cloud half: notes reconcile through the ONE owner, so the manual
     // Restore button and the automatic on-load sync can never do it two ways.
     await hydrateNotesFromCloud(uid);
+    // B4 cloud half: swaps reconcile through the one owner too (same rule as notes).
+    await hydrateSwapsFromCloud(uid);
     // Advance the day pointer past the last completed session
     // Only a PROGRAM session moves the program pointer (Kerwin ruling 2026-09-13: a
     // one-off "should not count as an extra day"). The filter is not cosmetic: `sessions`

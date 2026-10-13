@@ -117,7 +117,7 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       Mutation-tested, four for four: a wrong `onConflict` target, a dropped `onConflict`,
       a misspelled payload column, and a delete missing its `exercise_name` filter each fail
       by name. (The first attempt at the wrong-target mutation hit one of FOUR identical
-      strings elsewhere in the file and passed — see SC-42.)
+      strings elsewhere in the file and passed — see SC-45.)
 
       **A CORRECTION this run forced, and it makes the limitation worse than written.**
       Step 4 was expected to show a deleted note staying deleted. It does not, and the
