@@ -661,7 +661,7 @@ const EXERCISE_BANK = {
     name:'Prone T-Raise', videoId:null,
     muscleGroups:{primary:['posterior_delt','middle_trap'],secondary:['rhomboid']},
     emphasis:['shoulders','back','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting. Alongside Y-raise, it completes the upper back health trifecta.',
+    why:'The T-raise targets the middle trapezius and posterior delt. Alongside Y-raise, it completes the upper back health trifecta.',
     cues:['Lie face down; arms straight out to the sides (T position)','Thumbs pointing up (external rotation)','Lift arms by squeezing shoulder blades — height matters less than contraction','Lower slowly; repeat with full range of motion']},
   'upright-row':{
     name:'Upright Row', videoId:null,
@@ -1602,7 +1602,7 @@ const EXERCISE_BANK = {
     name:'V-Up', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['hip_flexor']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
-    why:'Lifting the straight arms and legs to meet over the hips folds the body at the abs, contracting the full rectus abdominis top-and-bottom simultaneously. A no-equipment progression up from the crunch that trains the whole ab wall in one movement.',
+    why:'Lifting the straight arms and legs to meet over the hips folds the body at the abs, contracting the full rectus abdominis top-and-bottom simultaneously. A progression up from the crunch that trains the whole ab wall in one movement.',
     cues:['Lie flat, arms extended overhead, legs straight','Lift the arms and legs together to touch over the hips in a V','Keep both the arms and legs straight — hinge only at the hips','Lower under control without letting the feet or hands touch down']},
   'standing-cable-crunch':{
     name:'Standing Cable Crunch', videoId:null,
@@ -4735,10 +4735,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
      why:'Compound pull with neutral grip — different stimulus than cable row, no spine compression.',
      cues:['Hinge at hip. Drive elbow to hip. Chest tall throughout.']},
     {id:'sub-ipu',   name:'Incline Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'Zero-equipment push filler — hands elevated on a chair/counter reduces load versus a standard push-up, useful when the push-day pool is already exhausted.',
+     why:'Push filler — hands elevated on a chair/counter reduces load versus a standard push-up, useful when the push-day pool is already exhausted.',
      cues:['Hands on a stable elevated surface, body in a straight line.','Lower chest to the surface, press back up.']},
     {id:'sub-bpa',   name:'Band Pull-Apart',        badge:'isolation', tier:'home', sets:3, w:0, r:20, rest:30, compound:false,
-     why:'Zero-equipment (or light-band) rear-delt/upper-back filler — safe volume add when the pull-day pool is already exhausted.',
+     why:'Rear-delt/upper-back filler — safe volume add when the pull-day pool is already exhausted.',
      cues:['Arms straight, band or towel at chest height.','Pull apart squeezing shoulder blades together; control the return.']},
     // BUG-58: home tier only had 2 backfill candidates above, so 3/5/6-day
     // rotations (which cycle the small home pool faster than 2/4-day) ran out
@@ -4765,7 +4765,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
      why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available.',
      cues:['Supine on floor, feet flat and close to hips.','Drive through heels; lift hips until body is a plank; squeeze glutes hard at top.']},
     {id:'sub-ptr',   name:'Prone T-Raise',          badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting — upper-back health filler distinct from the pull-day compounds.',
+     why:'The T-raise targets the middle trapezius and posterior delt — upper-back health filler distinct from the pull-day compounds.',
      cues:['Lie face down; arms straight out to the sides (T position), thumbs up.','Lift arms by squeezing shoulder blades; lower slowly with full range of motion.']},
   ];
 
