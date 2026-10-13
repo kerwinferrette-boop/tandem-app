@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Council Report — D11 Retraction Scope — 2026-10-05</title>
+<style>
+  :root{
+    --ink:#16181d; --mute:#6b7280; --line:#e4e6ea; --bg:#fff; --soft:#f7f8fa;
+    --accent:#2b5fd9; --warn:#b4541a; --ok:#1d7a4c; --bad:#a32020;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:860px;margin:0 auto;padding:48px 24px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:32px}
+  .kicker{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  h1{font-size:28px;line-height:1.25;margin:10px 0 8px;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--mute);font-size:14px}
+  h2{font-size:19px;margin:40px 0 12px;font-weight:650;letter-spacing:-.01em}
+  h3{font-size:15px;margin:26px 0 6px;font-weight:650}
+  p{margin:10px 0}
+  .q{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:18px 20px;font-size:15px}
+  .q p{margin:8px 0}
+  .verdict{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
+    padding:4px 22px 18px;margin:18px 0 8px;background:#fcfdff}
+  .ruling{font-size:17px;font-weight:650;line-height:1.45;margin:18px 0 4px}
+  ul{margin:10px 0 10px 20px;padding:0}
+  li{margin:6px 0}
+  code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:14px 0}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-weight:650}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin:14px 0}
+  .card{border:1px solid var(--line);border-radius:9px;padding:12px 13px;background:#fff}
+  .card .who{font-weight:650;font-size:14px}
+  .card .pos{font-size:12.5px;color:var(--mute);margin-top:4px}
+  .tag{display:inline-block;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;
+    border-radius:999px;padding:2px 8px;margin-top:8px;border:1px solid}
+  .t-a{color:var(--ok);border-color:#bfe3cf;background:#f1faf5}
+  .t-b{color:var(--bad);border-color:#eccdcd;background:#fdf4f4}
+  .t-x{color:var(--warn);border-color:#edd9c6;background:#fdf7f1}
+  .spectrum{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0;font-size:14px}
+  .spectrum div{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px}
+  .spectrum div:last-child{border-bottom:0}
+  .spectrum .lbl{flex:0 0 190px;font-weight:650}
+  .unan{background:#f1faf5}
+  details{border:1px solid var(--line);border-radius:9px;margin:10px 0;background:#fff}
+  details[open]{background:#fcfcfd}
+  summary{cursor:pointer;padding:12px 15px;font-weight:650;font-size:15px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"+";display:inline-block;width:16px;color:var(--mute);font-weight:400}
+  details[open] summary::before{content:"\2212"}
+  .body{padding:0 18px 14px;font-size:15px}
+  .note{font-size:13.5px;color:var(--mute)}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">LLM Council &middot; Tandem</div>
+  <h1>Does recomputing a stored 1RM downward after a set is deleted violate D11?</h1>
+  <div class="sub">2026-10-05 &middot; attended session &middot; 5 advisors, 5 anonymized peer reviews, chairman synthesis<br>
+  Full transcript: <code>docs/council-transcript-2026-10-05-d11-retraction-scope.md</code></div>
+</header>
+
+<h2>The question</h2>
+<div class="q">
+  <p>Kerwin's local history shows <strong>Good Morning 905 lbs &times; 12</strong> (Epley est. 1RM 1267).
+  It is physically impossible and it is <strong>not in Supabase</strong> &mdash; cloud <code>sets</code> tops out at
+  <code>135 &times; 10</code> (est. 180) and <code>personal_records</code> = 180. The 905 lives only in
+  <code>localStorage.tandem_history</code>, because the cloud-hydrate path is add-only and nothing prunes a local
+  entry the cloud lacks. The History modal is read-only, so he cannot correct it.</p>
+  <p>The requested fix recomputes the stored PR and working 1RM from the sets that remain &mdash; which
+  <strong>lowers</strong> them. <strong>D11</strong> is ACTIVE and SAFETY tier (no override ever authorized), and its own
+  text says the running max is one-sided: a session "can only fail to raise a number, <strong>never lower one</strong>."</p>
+  <p><strong>Reading A:</strong> outside D11 &mdash; one-sidedness is a property of the <em>operator</em>; retracting a
+  never-real entry changes the <em>input set</em>. <strong>Reading B:</strong> a violation &mdash; "never lower" is
+  literal and SAFETY tier, so the invariant must be amended first.</p>
+  <p class="note">At stake: the gate text-greps one function, so a new lowering function elsewhere would pass CI fully
+  green while a live SAFETY-tier violation sat in the product.</p>
+</div>
+
+<h2>Council verdict</h2>
+<div class="verdict">
+  <p class="ruling">Reading A is correct in principle &mdash; but it must not be implemented as a lowering path.
+  Ship it as a <em>void</em> (tombstone), and do not weaken D11: split it.</p>
+  <p>A voided set is filtered out of the input set, so the max operator stays one-sided and nothing "lowers" a
+  measurement. That dissolves the A-vs-B fight instead of betting on it &mdash; which matters, because D11 is SAFETY
+  tier and per D16's <code>tierGuard</code> no override key exists, so under Reading B the feature could not ship at
+  all and the council has no standing to settle that bet unilaterally.</p>
+  <p><strong>Split the invariant:</strong> D11a = the prescription curve never dips. D11b = the max operator is
+  one-sided <em>over the set of valid measurements</em>. New clause: <strong>validity is a property of the input, not
+  the operator; a voided set is not a measurement.</strong> Notion first, then <code>DOCTRINE.md</code> +
+  <code>scripts/doctrine.mjs</code> in the same change. This amends for underspecification, not as an exception.</p>
+  <p><strong>One home + a real gate:</strong> a single <code>deriveBestFrom(sets)</code> that every derivation path
+  calls, asserted <em>behaviorally</em> &mdash; and enumerate every writer of <code>tandem_prs</code> /
+  <code>tandem_working1rm</code>, failing on an unregistered one. Text-grepping the inside of one named function is,
+  in the Contrarian's words, "a comment with CI privileges."</p>
+  <p><strong>Do first, before any code:</strong> clear the 905 from Kerwin's browser and verify at the pixel that
+  Good Morning reads 180 &mdash; then audit what est-1RM 1267 already prescribed. The ghost is cosmetic; what it
+  already told a human to lift is not.</p>
+</div>
+
+<h2>Where the advisors landed</h2>
+<div class="grid">
+  <div class="card"><div class="who">The Contrarian</div>
+    <div class="pos">Squarely inside D11. No runtime oracle separates "never real" from "want it gone" &mdash; it's a
+    button, in a competition app. And it won't persist: cloud merge-up re-raises it.</div>
+    <span class="tag t-b">Reading B</span></div>
+  <div class="card"><div class="who">First Principles</div>
+    <div class="pos">Wrong question. The 905 never entered the measurement domain. D11 conflates operator monotonicity
+    with history immutability &mdash; that conflation is the bug.</div>
+    <span class="tag t-a">Reading A</span></div>
+  <div class="card"><div class="who">The Expansionist</div>
+    <div class="pos">Reading A, and too small. Name D35 Retraction, log retraction events, let Dani dispute Kerwin's
+    PRs.</div>
+    <span class="tag t-a">Reading A</span></div>
+  <div class="card"><div class="who">The Outsider</div>
+    <div class="pos">Nobody can tell, and that is the defect. D11 is two rules wearing one name; both readings are
+    textually valid. Split it.</div>
+    <span class="tag t-x">Spec bug</span></div>
+  <div class="card"><div class="who">The Executor</div>
+    <div class="pos">Reading A, but sequence it: unblock the browser now, fix the add-only hydrate next, feature last
+    &mdash; and fix the gate regardless.</div>
+    <span class="tag t-a">Reading A</span></div>
+</div>
+
+<div class="spectrum">
+  <div class="unan"><span class="lbl">Unanimous (5/5)</span><span>The gate is not a gate &mdash; enumerate every writer
+    of <code>tandem_prs</code>/<code>tandem_working1rm</code> and assert behaviorally.</span></div>
+  <div class="unan"><span class="lbl">Unanimous (5/5 reviews)</span><span>Strongest response: the
+    <strong>Contrarian</strong>. Biggest blind spot: the <strong>Expansionist</strong>.</span></div>
+  <div><span class="lbl">Strong majority</span><span>D11's text bundles a prescription rule, an operator rule and a
+    threat model; it is underspecified, not wrong.</span></div>
+  <div><span class="lbl">Majority</span><span>The delete button is the instance; the add-only hydrate is the
+    mechanism.</span></div>
+  <div><span class="lbl">Contested</span><span>Whether a local lowering even persists &mdash; it does for Kerwin's case
+    (cloud=180), not in general.</span></div>
+  <div><span class="lbl">Rejected on review</span><span>Prune-on-hydrate (3 advisors proposed it) &mdash; it would
+    destroy legitimately offline-logged sets.</span></div>
+</div>
+
+<h2>Blind spots the peer review caught</h2>
+<ul>
+  <li><strong>The void/tombstone option nobody proposed.</strong> It makes the fight moot: filter the input, don't lower
+  the output.</li>
+  <li><strong>Contamination is unaudited.</strong> Est-1RM 1267 may already have driven <code>seedWeight</code>,
+  prescribed loads, the 1RM-trend star, streaks, calibration rows, and Dani's comparison surface.</li>
+  <li><strong>D11 is SAFETY tier, so no <code>OVERRIDE_KEYS</code> entry exists</strong> (D16 <code>tierGuard</code>) &mdash;
+  under Reading B the feature cannot ship at all, which is why the verdict must not rest on Reading A alone.</li>
+  <li><strong>The durability asymmetry, verified in code:</strong> <code>tandem_working1rm</code> is device-local (zero
+  <code>working_1rm</code> references in <code>tandem.html</code>), but <code>earnedOneRM()</code> returns
+  <code>Math.max(working, prs)</code> and <code>tandem_prs</code> merges up from cloud at
+  <code>tandem.html:8419</code> and <code>:9800</code>, both <code>if (v &gt; prs[name])</code>. So a local lowering is
+  durable only when cloud is not higher.</li>
+  <li><strong>A local-only set may be a failed write, not a phantom.</strong> Cloud is not provably authoritative.</li>
+  <li><strong>The two phones can hold permanently divergent earned 1RMs</strong> &mdash; pre-existing, unfiled.</li>
+</ul>
+
+<h2>Disposition</h2>
+<table>
+  <tr><th>Verdict item</th><th>Status</th></tr>
+  <tr><td>Reading A correct in principle; implement as <strong>void</strong>, not a lowering path</td><td>Adopted</td></tr>
+  <tr><td>Split D11 &rarr; D11a (prescription) / D11b (operator over <em>valid</em> measurements) + validity clause</td><td>Adopted &mdash; Notion first</td></tr>
+  <tr><td>One home <code>deriveBestFrom(sets)</code>; behavioral gate over all writers</td><td>Adopted</td></tr>
+  <tr><td>Disclose in the UI when cloud holds a higher value that will re-raise</td><td>Adopted</td></tr>
+  <tr><td>D35 + audit log + Dani-disputes-PR social flow</td><td>Rejected</td></tr>
+  <tr><td>Prune-on-hydrate</td><td>Rejected for now &mdash; follow-up</td></tr>
+  <tr><td>Cloud-side void/recompute of <code>personal_records</code>; <code>sets</code> delete path</td><td>Out of scope (schema/migration, human-apply) &mdash; follow-up</td></tr>
+  <tr><td>Entry-time plausibility bound on <code>logSet</code></td><td>Follow-up</td></tr>
+  <tr><td>Cross-device <code>working_1rm</code> divergence</td><td>Follow-up</td></tr>
+  <tr><td>Contamination audit of est-1RM 1267</td><td>Do first &mdash; read-only, in scope</td></tr>
+</table>
+
+<h2>Full responses</h2>
+
+<details><summary>The Contrarian (anonymized as C) &mdash; picked strongest by all 5 reviewers</summary>
+<div class="body">
+<p><strong>The fatal flaw: you are debating doctrine about a feature that doesn't fix the bug you have.</strong></p>
+<p>The 905 exists because the hydrate path is add-only and never prunes local entries the cloud lacks, and because
+nothing rejected <code>905 x 12</code> at entry. A delete button fixes <em>this one ghost</em>. The next one needs
+another button press. That is textbook fix-the-instance-not-the-mechanism, the exact rule this repo already has in
+writing. The real fixes are (1) a reconcile that prunes local-only sets, and (2) an entry-time plausibility bound.
+Neither touches D11.</p>
+<p><strong>Reading A collapses under one question: what distinguishes "a set that was never real" from "a set the user
+wants gone?"</strong> Nothing. At runtime there is no truth oracle &mdash; there's a button. A's whole argument rests on
+"corrected input set," but the code cannot verify the correction. So you haven't changed the input set; you've handed
+the user a downward ratchet on their own measured max. In a <em>competition</em> app between two people whose
+progression difficulty is driven by that number. The incentive to lower it is structural, not hypothetical. That is
+squarely inside D11, and SAFETY tier means it does not ship on a clever scope argument.</p>
+<p><strong>Second flaw nobody's raised: it won't even work at the pixel.</strong> Cloud <code>personal_records</code>
+stays 180, monotonic, unlowerable. Local drops. Next hydrate the number climbs back and the user watches their deletion
+undo itself &mdash; a toast saying "fixed" over a value that wasn't. That's <code>reorderWeek()</code> again.</p>
+<p><strong>If you amend anything, amend the gate first:</strong> enumerate every writer to
+<code>tandem_working1rm</code>/<code>tandem_prs</code> and assert the one-sided guard across all of them. A grep inside
+one function is not an invariant; it's a comment with CI privileges.</p>
+</div></details>
+
+<details><summary>The First Principles Thinker (anonymized as E)</summary>
+<div class="body">
+<p>You're asking a doctrine-scope question about a data-integrity bug. Wrong question.</p>
+<p>Strip it down. What are you actually trying to solve? <strong>The local cache can contain records that never
+happened, and nothing can remove them.</strong> The 905 isn't a bad measurement. It isn't a measurement at all. It's a
+cache artifact of an add-only hydrate path. D11 is a theory of how measurements compose; this value never entered the
+measurement domain, so D11 has literally nothing to say about it, and arguing (A) vs (B) is arguing about which law
+governs a thing that isn't in either jurisdiction.</p>
+<p>Notice what the real defect is: the hydrate path is add-only. Local can hold what cloud denies, forever, with no
+reconciliation. An Edit/Delete button is a manual workaround for a sync engine that has no concept of
+<em>authoritative source</em>. Build the button if Kerwin wants it &mdash; but if that's all you build, the next phantom
+arrives the same way and he files the same bug again. Fix the mechanism: local history must be reconcilable against
+cloud, which already holds 135&times;10.</p>
+<p>And reframe the invariant. D11 says "never lower one," which conflates two different things: <strong>monotonicity of
+the max operator</strong> (correct, SAFETY) and <strong>immutability of stored history</strong> (never argued for, never
+cited, accidentally smuggled in by the word "never"). That conflation is the actual bug in your doctrine. The right rule
+isn't "numbers never go down" &mdash; it's <em>"derived values are never authoritative; they are always recomputable
+from the set of real measurements."</em> Under that framing, recompute-downward on deletion isn't an exception you have
+to carve out. It's the invariant working correctly.</p>
+<p>Amend for the right reason: D11 was underspecified, not wrong.</p>
+</div></details>
+
+<details><summary>The Expansionist (anonymized as A) &mdash; flagged as the biggest blind spot by all 5 reviewers</summary>
+<div class="body">
+<p><strong>Reading A is right, but you're all asking too small a question.</strong> The real find here isn't "can we
+delete a set" &mdash; it's that D11 has been silently missing a whole half of itself. D11 governs the <em>operator</em>.
+Nothing in the doctrine governs the <strong>provenance of the inputs</strong>. That's the gap, and it's worth far more
+than this one ghost set.</p>
+<p>Name it now: <strong>D35 &mdash; Retraction.</strong> A measurement can be retracted; retraction recomputes the max
+over the surviving record. One rule, one home: a single <code>recomputeBestFrom(sets)</code> function that every
+lowering path must call &mdash; no exceptions, no second entrance. Gate it the way check #27 gates D34: not a text-grep
+(that's the blind spot you already identified), but a <em>behavioral</em> assertion &mdash; feed it a set list, assert
+the recomputed max equals <code>max(remaining)</code> exactly, and assert that no path lowers a max without a retraction
+event in the audit log.</p>
+<p>That audit log is the undervalued asset. Once retraction is a first-class, logged event, you get things you can't get
+today:</p>
+<ul>
+<li><strong>The cloud divergence becomes measurable.</strong> The 905 ghost proves the hydrate path is add-only and
+silently lies. Retraction events give you a reconciliation primitive &mdash; local-vs-cloud drift detection, which is a
+<em>whole class</em> of bugs you currently can't see.</li>
+<li><strong>Dani can dispute Kerwin's PRs.</strong> This is a competition app. A couples-facing "flag this lift" flow
+turns a data-integrity chore into the product's most social feature.</li>
+<li><strong>Edit/Delete on sets is the entry point to a real set editor</strong> &mdash; correcting reps, fixing a
+mis-tapped exercise. The modal becomes write-capable once, and everything downstream benefits.</li>
+</ul>
+<p>Don't amend D11. Extend the doctrine with the axis it never had, and ship the mechanism, not the instance.</p>
+</div></details>
+
+<details><summary>The Outsider (anonymized as B)</summary>
+<div class="body">
+<p>I know nothing about exercise science, and that's useful here, because a stranger reading your own words hits a wall
+immediately:</p>
+<p><strong>D11 is two different rules wearing one name.</strong> Read it cold. The headline is about a <em>prescription
+curve</em> &mdash; "the prescribed %1RM curve rises-or-holds every week." That's a statement about what the program
+tells the user to lift. Then there's a parenthetical mechanism about <code>calcRM</code> being one-sided. Those are not
+the same claim. A fresh reader cannot tell which one the gate is protecting, because the gate greps a string inside one
+function and the failure message talks about "a fatigued session," which is a <em>third</em> thing &mdash; an
+input-provenance condition, not an operator property.</p>
+<p>So the honest answer to "is this inside D11's scope?" is: <strong>nobody can tell, and that's the actual
+defect.</strong> You're arguing about the intent of a sentence that bundles a goal, a mechanism, and a threat model
+together. Reading A and reading B are both legitimate because the text supports both. That's not a tie to break; that's
+a specification bug.</p>
+<p>What an outsider would do: split D11 into the two rules it already contains. One about prescriptions never dipping.
+One about the measurement operator. Then the delete case answers itself &mdash; it's clearly not the first, and whether
+it's the second depends on a question you haven't written down anywhere: <strong>is a logged set authoritative, or is it
+a claim that can be retracted?</strong> That's the real invariant you're missing, and it's absent from the doctrine
+entirely.</p>
+<p>Also, plainly: the gate checks that a <em>string</em> exists. That isn't enforcement, it's a spelling test. Any rule
+worth SAFETY tier should be checked by behavior.</p>
+</div></details>
+
+<details><summary>The Executor (anonymized as D)</summary>
+<div class="body">
+<p>Reading A is correct but it doesn't matter yet, because you've conflated two shippable units and one of them is a
+five-minute job.</p>
+<p><strong>Monday morning, 9am: unblock Kerwin without touching D11 at all.</strong> The 905 lb set is a corrupt cache
+entry in one browser. Open devtools on his machine, <code>delete</code> the entry from <code>tandem_history</code>, and
+delete the <code>tandem_prs</code>/<code>tandem_working1rm</code> keys for Good Morning so the next hydrate re-derives
+them from Supabase (135x10 &rarr; 180). Done. No PR, no gate, no council artifact in the critical path. Do that first
+and stop treating the feature as the fix for the symptom.</p>
+<p><strong>9:15am: the real bug is the hydrate path, not the missing Edit button.</strong> Add-only hydrate that never
+prunes local entries the cloud lacks is the mechanism; the ghost set is the instance. A reconcile-on-hydrate that drops
+local sets with no cloud counterpart fixes <em>every</em> ghost, for both users, forever &mdash; and it never lowers a
+1RM from a <em>measurement</em>, it lowers it by removing a non-record. That ships under reading A with far less
+doctrine surface than a user-facing delete button, because the trigger is "cloud is authoritative," not "user said
+so."</p>
+<p><strong>Then, and only then, the Edit/Delete feature.</strong> It needs the amendment, so don't start it before the
+Notion/DOCTRINE/doctrine.mjs change is merged.</p>
+<p>The gate work is the one thing you cannot defer or hand-wave: text-grepping the inside of one named function is not a
+gate, it's a comment. Whatever you write next must assert over <em>all</em> writers of
+<code>tandem_working1rm</code>/<code>tandem_prs</code> &mdash; enumerate the write sites and fail on an unregistered
+one. Otherwise you've built the silo this question is about.</p>
+</div></details>
+
+<h2>Peer review highlights</h2>
+
+<details><summary>All five reviews (anonymized at the time; mapping revealed)</summary>
+<div class="body">
+<p class="note">A = Expansionist &middot; B = Outsider &middot; C = Contrarian &middot; D = Executor &middot;
+E = First Principles. All five reviewers chose C strongest and A weakest, independently.</p>
+
+<h3>Review 1</h3>
+<p>Strongest: C &mdash; the only response that traces the fix to a pixel. Biggest blind spot: A &mdash; its proposed gate
+("no path lowers a max without a retraction event") constrains <em>logging</em>, not the lowering itself, so it would
+pass with the ghost's twin in place; and it invents D35 without the mandated Notion-first ordering. All five missed:
+nobody asked what else the 905 already contaminated &mdash; prescribed <code>seedWeight</code>/progression already
+issued, the 1RM-trend star, streaks, calibration rows &mdash; or whether it reached Dani's comparison surface. And none
+produced the required should/could/did audit, which is the gating artifact here, not a verdict.</p>
+
+<h3>Review 2</h3>
+<p>Strongest: C. "A comment with CI privileges" is the sharpest line here. <strong>One correction: C's pixel claim
+overshoots.</strong> Deleting <em>this</em> ghost resolves to exactly 180 via the <code>v &gt; prs[name]</code> cloud
+merge &mdash; correct, not self-undoing. The undo-itself failure applies only to deletions below cloud's floor. All five
+missed: (a) <strong>the non-destructive option</strong> &mdash; a syncing tombstone/exclude flag fixes the display and
+the derivation while keeping measurement history append-only, requiring neither reading A's scope gymnastics nor reading
+B's amendment; (b) <code>tandem_working1rm</code> is device-local and never synced, so the two phones can disagree on
+earned 1RM permanently; (c) nothing checks whether <code>905x12</code> was even reachable via <code>logSet</code>.</p>
+
+<h3>Review 3</h3>
+<p>Strongest: C. Biggest blind spot: A &mdash; it proposes <em>expanding</em> the lowering surface into a social "Dani
+disputes Kerwin's PR" feature, manufacturing precisely the adversarial downward path D11's SAFETY tier exists to forbid.
+An audit log records a violation; it doesn't license one. All five missed: <strong>prune-on-hydrate destroys
+legitimately offline-logged sets</strong> that never reached Supabase &mdash; add-only may be deliberate; the correct
+mechanism nobody proposed is a <strong>synced tombstone/void flag</strong> so the <em>cloud</em> recomputes
+<code>personal_records</code>; and no one checked whether a PR-lowering path already exists server-side.</p>
+
+<h3>Review 4</h3>
+<p>Strongest: C. Biggest blind spot: A &mdash; "one home, <code>recomputeBestFrom()</code>" without noticing the second
+input (<code>prs</code>, cloud-fed, monotonic) that <code>Math.max</code> will override. Doctrine scaffolding over an
+unverified mechanism. All five missed: <strong>D11 is SAFETY-tier, so per D16's <code>tierGuard</code> no override key
+exists</strong> &mdash; under reading B the feature <em>cannot</em> ship at all, making "A is correct" a bet the council
+has no authority to settle; and nobody asked whether cloud <code>personal_records</code>/<code>sets</code> need a delete
+path, or extended the prune fix to the other add-only local keys (<code>lastsets</code>, <code>streaks</code>).</p>
+
+<h3>Review 5</h3>
+<p>Strongest: C &mdash; the only response that checks the surface the user sees. Biggest blind spot: A. D is close
+behind: its 9am devtools fix assumes the next hydrate "re-derives" from Supabase, but hydrate is add-only and
+merge-up-only; it won't. All five missed: <strong>nobody asked whether cloud is actually authoritative</strong> &mdash; a
+local-only set may be a <em>failed write</em>, not a phantom, so pruning local-minus-cloud silently destroys
+legitimately unsynced offline sessions, the inverse data-loss bug. Also unasked: what else the 1267 already contaminated
+(prescriptions, streaks, head-to-head scoring).</p>
+</div></details>
+
+<footer>
+  Convened 2026-10-05 for the attended Edit/Delete-a-set build (EPIC-16 manual log entry). Councilled: whether
+  recomputing <code>tandem_prs</code> / <code>tandem_working1rm</code> downward after a set is deleted falls inside
+  D11's one-sidedness condition. Repo HEAD at convene time: <code>867e442</code>.
+  Transcript: <code>docs/council-transcript-2026-10-05-d11-retraction-scope.md</code>.
+</footer>
+
+</div>
+</body>
+</html>
