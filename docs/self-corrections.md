@@ -1576,3 +1576,36 @@ the title is written before the id is knowable. The tempting fix is to write a p
 
 **Enforced by:** judgment — not mechanically checkable (same limit as SC-28).
 
+## SC-42 — My mutation anchor matched the first of four identical strings, so the mutation tested unrelated code and I read the green as "this assertion has no teeth"
+
+**Date:** 2026-10-13 · **Found by:** disbelief at a single passing mutation, then `grep -n`.
+
+Mutation-testing the new real-client round-trip gate, four mutations were applied to
+`tandem.html` by string replacement. Three failed the expected assertions by name. The
+fourth — changing `pushExNote`'s `onConflict: 'user_id,exercise_name'` to a wrong target —
+**passed**, which would have meant the `on_conflict` assertion was decoration.
+
+It was not. `onConflict: 'user_id,exercise_name'` appears **four times** in the file
+(`:3344`, `:6006`, `:6732`, `:7914`). `str.replace(old, new, 1)` hit `:3344`, a calibration
+upsert the harness never exercises. The mutation landed in code under no test, the code
+under test was untouched, and the run was green for the most boring reason possible.
+Re-applied by line number at `:6732`, it failed both expected assertions immediately.
+
+**The mechanism, not the trait.** SC-38 says mutation-test every assertion individually.
+It does not say the mutation must be *verified to have landed where intended*, and a
+non-unique anchor makes those two different things. The failure mode is nasty because it
+is silent and inverted: a mutation that misses produces a PASS, which reads as "the
+assertion is worthless," so the honest response (delete the assertion) destroys a real
+guard. I came within one `grep` of deleting a check that catches a genuine live-only bug.
+
+> **THE RULE — SC-42.** A mutation is not applied until you have seen that it changed the
+> intended site. Before mutating by string match, `grep -c` the anchor: if it is not 1,
+> mutate by line number or extend the anchor until it is unique, and print the before/after
+> line. Treat an unexpected PASS under mutation as "the mutation may not have landed"
+> before "the assertion is toothless" — check which, every time. This is CLAUDE.md's
+> "confirm the code under test is the code you think it is" pointed at the mutation rather
+> than at the fix.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: a mutation
+run that prints no before/after line for the site it claims to have changed is unproven.
+

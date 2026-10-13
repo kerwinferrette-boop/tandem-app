@@ -99,7 +99,41 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       `tandem-fitness-tracker.netlify.app`. Anyone who ran live QA against the README URL was
       testing nothing at all.
 
-      **STILL OWED, and not claimed as done — one real signed-in cross-device round-trip.**
+      **NARROWED 2026-10-13 — the round-trip now runs with the REAL client, two devices.**
+      `scripts/notes-roundtrip-real-client.mjs` (`npm run roundtrip:notes`, wired into
+      `verify`). What unblocked it: the container's egress policy denies all external HTTPS,
+      but `registry.npmjs.org` is in the proxy's noProxy list, so the real
+      `@supabase/supabase-js` (2.117.3, now a devDependency) can be installed and served
+      locally in place of the blocked jsdelivr tag. Two Playwright browser CONTEXTS act as
+      two devices (separate localStorage), both running the real page against one
+      PostgREST-shaped store that enforces the constraints verified against live Postgres
+      on 2026-09-30: five NOT NULL columns, unique(user_id, exercise_name), merge-duplicates
+      upsert semantics, and RLS rejecting a foreign `user_id`.
+      It proves what every earlier gate could not: the REAL client's wire format for this
+      call — `on_conflict=user_id,exercise_name`, `Prefer: resolution=merge-duplicates`, the
+      select's column list, the delete's two `eq` filters — plus that the Authorization
+      header carries the USER's token rather than the anon key. Device A types, device B
+      RENDERS it in the textarea, B clears, the DELETE fires scoped to both columns.
+      Mutation-tested, four for four: a wrong `onConflict` target, a dropped `onConflict`,
+      a misspelled payload column, and a delete missing its `exercise_name` filter each fail
+      by name. (The first attempt at the wrong-target mutation hit one of FOUR identical
+      strings elsewhere in the file and passed — see SC-42.)
+
+      **A CORRECTION this run forced, and it makes the limitation worse than written.**
+      Step 4 was expected to show a deleted note staying deleted. It does not, and the
+      earlier wording here ("a device still holding it will push it back") understated it.
+      Observed: B deletes, the row goes; A still holds it locally, sees no cloud row, and
+      pushes it back; B then takes it again as "new from another device". So **a delete is
+      not merely resurrectable — while a second device holds a copy it is reliably undone.**
+      Asserted as `[4a]` so the limitation cannot drift from the behaviour. The tombstone
+      row is re-prioritised on that basis.
+
+      **STILL OWED, narrowed but not closed — one round-trip against the DEPLOYED build.**
+      The mock agreeing with me is not the live host agreeing with me, the session is
+      injected rather than obtained from GoTrue with a password, and the deployed build
+      still predates the fix (Netlify build credits exhausted until 2026-10-21, per Kerwin
+      2026-10-13). Say "verified against the real client and the real schema; not yet
+      against the production host."
       Nobody has signed in on two devices, typed a note on one and seen it on the other. It cannot
       be done from the cloud container: no test-account password, no service-role key. The council
       split on whether that is a merge blocker (Outsider: yes) or an item to run against the
