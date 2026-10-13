@@ -75,9 +75,7 @@ const SERVER_SIDE = {
 // KNOWN_OPEN: genuine chain breaks, each with its tracker row. Removing an entry
 // is the deliberate act of closing it.
 const KNOWN_OPEN = {
-  'personal_records.week_targets':      'BUG-202 (D5) — written, read by nothing, yet ASSERTED by calibration-upsert-smoke.mjs:119',
   'users.calibration_session_id':       'BUG-202 (D5)',
-  'users.color_theme':                  'BUG-197 (D9) — readers use theme_color; three homes for one rule',
   // workout_sessions.notes CLOSED (BUG-205/D15) — a real live-session notes field
   // was added; startOrResumeSession() now selects+reads `notes` on resume
   // (data.notes hydrates the local draft when it's the only copy left), closing

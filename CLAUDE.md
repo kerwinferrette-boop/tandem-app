@@ -79,17 +79,37 @@ for — run it *before* shipping, not after he catches it.
   (`programs.js:3618`) promotes it to `authoredRest`, rendered as `data-rest` (`tandem.html:5487`)
   and read by the rest timer (`tandem.html:6124`). That chain is what "traced to a pixel" looks
   like):
-    - **`reorderWeek()` (`tandem.html:6790`) — the worst shape, because the UI says it worked.**
-      It writes `tandem_day_order`, then toasts *"Moved to the back of this week — nothing lost."*
-      Nothing reads that key except `reorderWeek()` itself; `nextProgramDayKey()`
-      (`tandem.html:8931`) derives the day from `completedSessionCount() % perWeek` and never
-      consults the order. The reorder does not happen.
-    - **`personal_records.week_targets` — a green gate on a dead value.** Written
-      (`tandem.html:3166`, `:3297`), read by nothing, and *asserted* by
-      `scripts/calibration-upsert-smoke.mjs:119`. This is the "worse than no gate" case, in tree.
-    - **`.ex-notes` (`tandem.html:5545`)** — a textarea on every exercise of every session whose
-      `.value` is never read. Its backing table `exercise_notes` was then dropped for being empty
-      (`migrations/0008_bug72_dead_object_cleanup.sql:148`): the dead control starved its own schema.
+    **All three exemplars this bullet carried are now CLOSED — kept here as worked examples,
+    because watching a chain get closed teaches the check better than a list of open sores. Do
+    not cite them as live; the live ones are whatever `scripts/column-reachability-smoke.mjs`
+    prints under "OPEN, carried deliberately" on the day you read this.**
+    - **`reorderWeek()` — the worst shape, because the UI said it worked.** It wrote
+      `tandem_day_order`, then toasted *"Moved to the back of this week — nothing lost."*
+      Nothing read that key except `reorderWeek()` itself; `nextProgramDayKey()` derives the day
+      from `completedSessionCount() % perWeek` and never consulted the order. **DELETED
+      2026-10-13** (BUG-191) on a unanimous `llm-council` verdict: honoring the order would have
+      made the key a second home for queue position, and the toast's promise was already the
+      queue's default. Guarded by `scripts/council-forks-smoke.mjs`, which fails if the function,
+      the key, or the toast string returns.
+    - **`personal_records.week_targets` — a green gate on a dead value.** Written, read by
+      nothing, and *asserted* by `scripts/calibration-upsert-smoke.mjs`. **RETIRED 2026-10-13**
+      (BUG-202). The lesson that generalises: "wire it in" was the WRONG half of the fork —
+      `getWeekTarget()` already computed the same number live in the prescription path, so the
+      column was a frozen cache of a pure function and wiring it would have *created* the silo.
+      Check for a live owner before you adopt a dead value.
+    - **`.ex-notes`** — a textarea on every exercise of every session whose `.value` was never
+      read. Its backing table `exercise_notes` was then dropped for being empty
+      (`migrations/0008_bug72_dead_object_cleanup.sql:148`): the dead control starved its own
+      schema, and that emptiness was then used as evidence the feature was dead. **FIXED
+      2026-09-30** (BUG-195), table restored by `migrations/0022`, now reconciled two-way by
+      `hydrateNotesFromCloud()` and guarded by `scripts/notes-roundtrip-real-client.mjs`.
+    - **A fourth shape, worth more than the three above because the gate could not see it:**
+      the Settings colour picker upserted `users.color_theme` — a column that **does not exist in
+      Postgres**. Every pick fired a write that failed `42703` and was swallowed in silence
+      (supabase-js resolves with `{error}`; the call was unawaited and uncaught). A static
+      reads-side gate classified it as merely "written, read by nothing". **Only a live
+      `information_schema` query found it** (BUG-197, 2026-10-13). `verify` cannot see Postgres —
+      so "no reader" and "no column" look identical from inside the repo.
   D17 exists because a live doctrine violation sat in Postgres while `verify` reported 9/9 green.
   Trace every new value end-to-end to a pixel, or say plainly that you did not. **A value being
   written — even written to Supabase — is not evidence it is read.** `scripts/audit-dead-handlers.mjs`

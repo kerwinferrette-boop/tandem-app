@@ -2226,14 +2226,22 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       No judgment. Pick how you want it handled.
     </div>
 
-    <!-- Readjust loses nothing → neutral card. Skip ahead forfeits the session → destructive red. -->
-    <button class="card-btn" style="padding:14px;margin-bottom:10px;" onclick="reorderWeek()">
-      <div style="font-size:14px;color:var(--text);margin-bottom:3px;">Readjust the week</div>
+    <!-- BUG-191: this was a BUTTON calling reorderWeek(), which wrote tandem_day_order — a key
+         nothing else in the file read — and then toasted "Moved to the back of this week —
+         nothing lost". The reorder never happened; the toast asserted that it did, which is
+         worse than a button that visibly does nothing. Deleted on a unanimous llm-council
+         verdict, 2026-10-13: docs/council/council-forks-2026-10-13-bug191-197-202.md.
+         It is now a static line, because the promise was already TRUE without the button —
+         nextProgramDayKey() serves the next UNPERFORMED day, so a missed session is delayed,
+         not dropped (Kerwin's BUG-93 ruling). The reassurance was real; only the mechanism
+         was fake. Choosing a DIFFERENT session on purpose is a separate feature, filed. -->
+    <div style="padding:14px;margin-bottom:10px;border:1px solid var(--s3);border-radius:11px;">
+      <div style="font-size:14px;color:var(--text);margin-bottom:3px;">Just leave it</div>
       <div style="font-size:11px;color:var(--muted);font-weight:300;line-height:1.45;">
-        Move it to the back of this week and pull the next session forward. Nothing is lost —
-        you still do it, just later.
+        Nothing is lost. Your next session picks this workout back up — the program waits for
+        you rather than moving past you.
       </div>
-    </button>
+    </div>
 
     <!-- Red destructive frame, but typography matches the neutral card above
          (.clear-btn's mono/uppercase is meant for one-line labels, not prose). -->
@@ -2804,7 +2812,7 @@ const LS_LEGACY_CLAIMED = 'tandem_legacy_claimed'; // unscoped by design — a o
 const LS_SCOPED_KEYS = [
   'tandem_cfg','tandem_history','tandem_prs','tandem_profile','tandem_week',
   'tandem_lastsets','tandem_working1rm','tandem_current_day','tandem_adopted_program',
-  'tandem_skipped_cardio','tandem_skips','tandem_day_order','tandem_ex_notes',
+  'tandem_skipped_cardio','tandem_skips','tandem_ex_notes',
   'tandem_active_session_id','tandem_session_start_time','tandem_c11_first_session_id',
   'tandem_session_notes_draft','tandem_swaps'
 ];
@@ -3181,35 +3189,34 @@ function getWeekTarget(exerciseName, week, goal, oneRM, sex, compound1RMs, total
 
   return { weight: null, source: 'none' };
 }
+// ── END OF THE FORMULA LAYER — LOAD-BEARING SENTINEL, do not delete or reword ──
+// scripts/c7-smoke.mjs slices PROGRESSION..here out of this file and runs it in a vm, so
+// the formula under test is provably the shipped one rather than a copy. Until 2026-10-13
+// it anchored that slice on `async function persistWeekTargets`, an UNRELATED function that
+// merely happened to sit next; deleting that function under BUG-202 broke the gate with
+// "could not locate formula layer". An explicit sentinel makes the dependency visible to
+// whoever edits here next, which the implicit one did not.
 
-// EPIC-9: full weekly target map for one exercise — persisted to
-// personal_records.week_targets jsonb ({ "2": 95, "3": 100, ... }).
-function computeWeekTargets(oneRM, goal, totalWeeks) {
-  const T = Math.max(Number(totalWeeks) || 8, 3);
-  const targets = {};
-  for (let w = 2; w <= T; w++) targets[w] = roundTo5(oneRM * weekFactor(goal, w, T));
-  return targets;
-}
-
-// EPIC-9: recompute + persist week_targets for the given exercise names
-// (fire-and-forget — failures never block the session flow).
-async function persistWeekTargets(names) {
-  if (!currentUser || !names || !names.length) return;
-  try {
-    const prs = LS.get('tandem_prs') || {};
-    const working = LS.get('tandem_working1rm') || {};
-    const T = (typeof cfg !== 'undefined' && cfg && cfg.weeks) || 8;
-    const goal = (typeof cfg !== 'undefined' && cfg && cfg.goal) || 'build_muscle';
-    for (const name of names) {
-      const rm = working[name]?.rm ?? prs[name];
-      if (!rm) continue;
-      await sb.from('personal_records')
-        .update({ week_targets: computeWeekTargets(rm, goal, T) })
-        .eq('user_id', currentUser.id)
-        .eq('exercise_name', name);
-    }
-  } catch (e) { console.warn('week_targets persist skipped:', e); }
-}
+// BUG-202 — computeWeekTargets() and persistWeekTargets() were DELETED here on 2026-10-13,
+// on a unanimous llm-council verdict: docs/council/council-forks-2026-10-13-bug191-197-202.md.
+// They wrote personal_records.week_targets, a jsonb map read by NOTHING — and
+// scripts/calibration-upsert-smoke.mjs asserted it, which is CLAUDE.md's named
+// worse-than-no-gate case: a ship gate standing guard over a value the app never reads.
+//
+// The fork as filed was "wire it into the prescription path, or retire it". Verified by
+// running the code rather than reading the ticket: WIRING IT IN WOULD HAVE BEEN WORSE.
+// getWeekTarget() (above) -> weekFactor() already computes the per-week target LIVE, in the
+// real prescription path, at the three call sites that matter. computeWeekTargets() ran the
+// same weekFactor loop and froze the result into Postgres — a persisted cache of a pure
+// function whose every input (cfg.goal, cfg.weeks, the 1RM) moves underneath it. Wiring it
+// would have CREATED the second home that "one rule, one home" forbids, not closed one.
+// Live evidence at deletion: of 81 personal_records rows, 70 held the bare '{}' column
+// default and only 11 any computed data.
+// The invariant the gate was credited with — targets derive from the STORED best, not the
+// session estimate, so a genuinely higher historical PR is never regressed — is NOT lost:
+// calibration-upsert-smoke.mjs already asserts it directly on best_estimated_1rm_lbs, a
+// column the live path really reads. Dropping the column itself is a migration and so
+// human-only here; see migrations/0024_bug202_drop_week_targets.sql.
 
 // D11 (earned-only feedback loop): the WORKING 1RM is a MEASUREMENT, never a
 // schedule. It rises ONLY when the lifter's real performance earns it — the running
@@ -3222,8 +3229,9 @@ async function persistWeekTargets(names) {
 // The estimate itself uses calcRM's multi-formula selection (D12: Epley ≤12 reps,
 // Mayhew 13+) rather than a single formula, so high-rep sets are estimated properly
 // instead of clamped. The stored all-time PR is a running max and is never lowered.
-// Recomputes week_targets for any exercise whose 1RM moved. Skips core/timed work
-// and cardio.
+// Skips core/timed work and cardio. (It also used to recompute week_targets for any
+// exercise whose 1RM moved; that was deleted under BUG-202 — the per-week target is
+// computed live by getWeekTarget() and was never read from the cache.)
 //
 // `explicitDay` (EPIC-036, Kerwin ruling 2026-09-13 — "it should also look to add to
 // one-rep max calculations: weights lifted, etc."): a one-off's day object is built by
@@ -3268,7 +3276,6 @@ function reconcileWorking1RMs(sessionExs, program, explicitDay = null) {
   if (changed.length) {
     LS.set('tandem_working1rm', working);
     LS.set('tandem_prs', prs);
-    persistWeekTargets(changed); // async fire-and-forget; own try/catch
   }
 }
 
@@ -3314,18 +3321,16 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   // this function the DB has already stored the identical calcRM value this function is
   // about to compute. existingMap[name] === best1RMs[name] for every exercise, `>` is false,
   // `rows` came out empty, no upsert fired at all, and is_calibrated / calibration_session_id
-  // / week_targets were never written — while the users.calibration_complete = true write
+  // were never written — while the users.calibration_complete = true write
   // below fired unconditionally. That divergence IS the reported symptom.
+  // (week_targets was in that list until BUG-202 deleted the column's writers, 2026-10-13.)
   // The higher-of guarantee the filter appeared to protect never depended on the filter: it
-  // is preserved explicitly below by writing Math.max(new, existing) and deriving
-  // week_targets from that same stored best, so a genuinely higher historical PR is not
-  // regressed. D11/D12 are untouched — calcRM and computeWeekTargets are not called
-  // differently, and no 1RM is lowered. This is a persistence-gating fix, not a
-  // prescription change.
-  // EPIC-9: also persist the full weekly target map (week_targets jsonb)
-  // so prescriptions are queryable/syncable, not just computed in the UI.
-  const calGoal = (typeof cfg !== 'undefined' && cfg && cfg.goal) || 'build_muscle';
-  const calWeeks = (typeof cfg !== 'undefined' && cfg && cfg.weeks) || 8;
+  // is preserved explicitly below by writing Math.max(new, existing), so a genuinely higher
+  // historical PR is not regressed. D11/D12 are untouched — calcRM is not called differently
+  // and no 1RM is lowered. This is a persistence-gating fix, not a prescription change.
+  // BUG-202 (2026-10-13) removed the week_targets write that used to sit here and the two
+  // cfg-derived locals it needed. The stored-best guarantee above is unaffected and is still
+  // asserted by scripts/calibration-upsert-smoke.mjs on best_estimated_1rm_lbs itself.
   const rows = exNames
     .map(name => {
       const best = Math.max(best1RMs[name], existingMap[name] || 0);
@@ -3335,7 +3340,6 @@ async function computeCalibration1RMs(sessionUUID, userId) {
         best_estimated_1rm_lbs: best,
         is_calibrated: true,
         calibration_session_id: sessionUUID,
-        week_targets: computeWeekTargets(best, calGoal, calWeeks)
       };
     });
 
@@ -7303,20 +7307,6 @@ function skipAhead() {
   }
 }
 
-// Push today's day to the back of the week; pull the next one forward. Nothing forfeit.
-function reorderWeek() {
-  const order = LS.get('tandem_day_order') || null;
-  const program = getActiveProgram() || [];
-  const keys = program.map(d => d.key);
-  const base = (order && order.length === keys.length) ? order : keys.slice();
-  const i = base.indexOf(currentDay);
-  if (i >= 0) { base.push(base.splice(i, 1)[0]); LS.set('tandem_day_order', base); }
-  closeModal('skip');
-  renderTracker();
-  showToast('Moved to the back of this week — nothing lost');
-  if (typeof syncToCloud === 'function') syncToCloud();
-}
-
 // The scoring rule has ONE owner (CLAUDE.md, "one rule, one home"): POINTS_PER_SESSION for a
 // completed session + POINTS_PER_PR per PR, with the streak advancing only across consecutive
 // calendar days. Two finishers call it — the program day's finishSession() and, per
@@ -10924,7 +10914,7 @@ function openProfileModal() {
     b.classList.toggle('active', b.dataset.hair === profileState.hair);
   });
   // Theme swatches
-  const curTheme = (profile.colorTheme || '#1B5E38').toLowerCase();
+  const curTheme = userThemeColor().toLowerCase();   // BUG-197: one home
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
     b.classList.toggle('active', b.dataset.color.toLowerCase() === curTheme);
   });
@@ -11070,18 +11060,44 @@ function applyAccentColor(hex) {
   root.setProperty('--teal-dim', accent2 + '1a');
 }
 
+// BUG-197 — ONE HOME for "what colour is this user", and this function is the only reader.
+// Council verdict, unanimous 2026-10-13: docs/council/council-forks-2026-10-13-bug191-197-202.md.
+// `users.theme_color` owns it. It is the only home that syncs, the only one BOTH partners read
+// (the duel and dashboard read it for each of them), and the only one applyColorTakeover()
+// consults. cfg.themeColor is its in-memory/localStorage mirror, written by onboarding and
+// rebuilt from the row by cfgFromUserRow().
+// `profile.colorTheme` was a SECOND, local-only home the Settings picker wrote instead. It is
+// no longer written; it is still READ here, once, as a fallback, so anyone who picked a colour
+// before this fix keeps it rather than silently reverting to their onboarding choice. Drop the
+// fallback once Kerwin and Dani have each opened Settings after this ships.
+// `users.color_theme` (note the word order) was the third: the picker upserted to it and
+// NOTHING read it. Verified against live Postgres 2026-10-13 — that column DOES NOT EXIST, so
+// every colour pick fired a PostgREST write that failed with 42703 and was swallowed in
+// silence (supabase-js resolves with {error}; the call was unawaited and uncaught). That write
+// is gone. No migration is needed because there is no column to drop.
+// NOT TOUCHED, deliberately: applyColorTakeover() (the whole app wears the leader's colour).
+// The council split on whether that should be scoped to the duel or extended app-wide, and
+// under `design_changes_hold` that is Kerwin's aesthetic call, not an agent's. It is filed.
+function userThemeColor() {
+  if (typeof cfg !== 'undefined' && cfg && cfg.themeColor) return cfg.themeColor;
+  const legacy = (LS.get('tandem_profile') || {}).colorTheme;   // pre-BUG-197 picks
+  return legacy || '#1B5E38';
+}
+
 function applyColorTheme(hex) {
   applyAccentColor(hex);
   // Update swatch active states
   document.querySelectorAll('#profileThemeRow .profile-swatch').forEach(b => {
     b.classList.toggle('active', b.dataset.color.toLowerCase() === String(hex).toLowerCase());
   });
-  const profile = LS.get('tandem_profile') || {};
-  profile.colorTheme = hex;
-  LS.set('tandem_profile', profile);
-  if (currentUser) {
-    sb.from('users').upsert({ id: currentUser.id, color_theme: hex }, { onConflict: 'id' });
+  // Write the ONE home. syncToCloud() persists cfg.themeColor to users.theme_color (:8092),
+  // which is what the duel, the dashboard and the colour takeover all read — so the pick now
+  // reaches the competition instead of only this device.
+  if (typeof cfg !== 'undefined' && cfg) {
+    cfg.themeColor = hex;
+    LS.set('tandem_cfg', cfg);
   }
+  if (currentUser && typeof syncToCloud === 'function') syncToCloud();
 }
 
 function saveProfileAvatar() {
@@ -11226,9 +11242,9 @@ function refreshAvatarPreview(){
     }
     // Restore saved color theme — after scoping, so it is this account's theme
     const savedProfile = LS.get('tandem_profile');
-    if (savedProfile?.colorTheme) {
-      applyAccentColor(savedProfile.colorTheme);
-    }
+    // BUG-197: resolved through the one owner, which prefers cfg.themeColor (mirroring
+    // users.theme_color) and falls back to the legacy local pick.
+    applyAccentColor(userThemeColor());
     const savedCfg = LS.get('tandem_cfg');
     if (savedCfg?.goal) {
       cfg = savedCfg; cfg.goal = canonicalGoal(cfg.goal); selectedGoal = cfg.goal; selectedDays = cfg.days || 4;

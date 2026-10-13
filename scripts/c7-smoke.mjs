@@ -31,7 +31,10 @@ const programsSrc = readFileSync(path.join(root, 'programs.js'), 'utf8');
 
 // ── 1. Extract the formula layer from tandem.html (live source, no drift) ──
 const start = html.indexOf('const PROGRESSION = {');
-const end = html.indexOf('async function persistWeekTargets');
+// Anchored on an explicit sentinel in tandem.html, NOT on a neighbouring function. The
+// previous anchor was `async function persistWeekTargets`, which had nothing to do with the
+// formula layer; BUG-202 deleted it and this gate failed with a confusing "could not locate".
+const end = html.indexOf('// ── END OF THE FORMULA LAYER');
 if (start === -1 || end === -1 || end <= start) {
   console.error('FAIL: could not locate formula layer in tandem.html');
   process.exit(1);
