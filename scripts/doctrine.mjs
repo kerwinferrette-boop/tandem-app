@@ -1031,6 +1031,11 @@ let d26SeedCoverageGaps = [];
   }
 }
 
+// RATIFIED 2026-09-27 (Kerwin, council; BUG-76 closed 2026-09-29) — COMMENT ONLY, no constant/table/assertion
+// below changed: D4's uniform 4-6 week band stays. Exercise Science Schema v0.5 Part 2's per-goal
+// "Deload Every" column is SUPERSEDED-IN-PART and NON-BINDING. Goal-specific cadence is PENDING under
+// D4b (needs a Kerwin ruling AND a cited source for the per-goal numbers). Doctrine order was
+// followed: Notion (v0.5 page + D4 amendment page) first, then DOCTRINE.md D4b, then this comment.
 // ── D4 (ACTIVE) — Deloads per the Part B length table ──────────────────────────
 // Every mesocycle ends in a deload (every 4-6 wk, block-final): reduced volume,
 // load held. Assert, for each length onboarding actually offers (4-24 — tandem.html
