@@ -132,6 +132,38 @@ D17 stays ACTIVE — the invariant and the file-side tier entry are both still c
 DB-connected enforcement mechanism is PENDING ON THAT MIGRATION, and this note says so plainly
 rather than repeating the overclaim.
 
+## Core-block carve-out (BUG-95, 2026-10-13) — a declaration, not a new invariant
+
+**Authority:** Kerwin's ruling `bug95_council = plumbing_now_values_later` (2026-10-01). **Notion mirror:
+PENDING** — Notion is law and this session could not write it; the exact edit text is in
+`docs/bug95-core-rep-ratification-sheet.md` (Appendix A). Per the doctrine order, apply that edit to
+Notion first; if Notion words it differently, this section changes to match, not the other way round.
+It is deliberately NOT a `| **Dn** |` table row: no numbered invariant is minted ahead of Notion
+(D16's completeness rule would demand a tier for it), and nothing here is blocking beyond the
+form-only gate named below.
+
+1. **Core is outside D10 and D6 by declaration, not by accident.** D10's rep bands (Fat Burn >=10,
+   Build Muscle 6-15, Transform 8-12, Strength 1-5, Maintenance 6-10) were written for LOADED resistance
+   work, and D10's gate iterates `GOAL_PHASES[goal].reps`, never an emitted core entry. D6 excludes core
+   from volume by `.filter(e => !e.cardioOnly && !e.isCore)`. The loaded bands do NOT apply to core.
+   **Per-goal variation of core reps is REJECTED** (unanimous across both council rounds): taking a
+   loaded band and applying it to core is an extrapolation wearing a citation costume.
+2. **The current flat rep default (`DEFAULT_REPS`, 10) is an UNCITED value, not a neutral default.**
+   No canonical source prescribes it (BUG-95 audit 2026-08-17: DOCTRINE.md, `research-report (8).pdf`,
+   the Exercise Science Framework docx/csv, and Notion are all silent on core reps). It ships to every
+   rep-based core slot of every generated program. It stays in force ONLY as the fallback until Kerwin
+   ratifies per-movement values in a dated decision record. Keeping it is recorded here as a
+   known-unsourced default, not as a decision that 10 is right. Timed holds (`secs`) are Kerwin-authored
+   2026-07-13 and likewise uncited (see D25).
+3. **Core SETS and core VOLUME remain ungoverned.** This ruling covers reps only. Nothing here
+   constrains or changes either.
+4. **Provenance is declared, structurally, with no numeric band.** Every core entry carries an `rxBasis`
+   tag naming where its prescription comes from (`flat-default-uncited`, `authored-secs-uncited`,
+   `legacy-static-uncited`). `scripts/core-rx-provenance-smoke.mjs` (`npm run verify`) asserts the FORM
+   only. It must never assert a rep or seconds band: a band needs the science that does not exist, which
+   is why BUG-95 is open. The change that adds a ratified value adds its tag, its citation and its numeric
+   assertion together.
+
 **D7 promotion note (2026-07-30):** researched before promoting, not assumed. The only recoverable
 Part B content (Notion "Periodization & Structured Program Engine Spec — Parts A–C, residue
 transcription") is the deload-week table itself, already implemented as D4/D14; Parts D–H are

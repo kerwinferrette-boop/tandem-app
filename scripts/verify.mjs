@@ -91,6 +91,7 @@ const CHECKS = [
   { name: 'why availability (FEAT rationale-per-tier: no EXERCISE_BANK `why` carries anywhere/zero-equipment/accessible phrasing — the one string is shared by every tier the ladder serves)', run: () => execFileSync('node', [join(scriptsDir, 'why-availability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-81 principles guard (file-side: 0025 migration carries DELETE + re-key + reassign coverage, 0009 error vocabulary, SECURITY DEFINER, cascade pass-through; CANNOT see Postgres — applied state is a human step)', run: () => execFileSync('node', [join(scriptsDir, 'bug81-principles-guard-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'no-emoji gate (Kerwin, 2026-09-30 — no pictograph emoji in UI text; arrows/checks/star/gender-symbols allowlisted)', run: () => execFileSync('node', [join(scriptsDir, 'no-emoji-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-95 core prescription provenance (FORM only - every core entry declares an rxBasis tag; no numeric band, the flat 10 stays UNCITED)', run: () => execFileSync('node', [join(scriptsDir, 'core-rx-provenance-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];

@@ -1272,7 +1272,9 @@ for (const [goal, [lo, hi]] of Object.entries(REP_BANDS)) {
 // differentiation; per-muscle MEV balancing + the within-block MEV→MRV week ramp
 // remain flagged (Finding 3 remainder + Finding 4), tied to the per-length meso work.
 let d6Checked = 0;
-const weeklyVol = (g, days, sex) => (gen(g, days, sex, 1, 0) || []).reduce((n, d) =>
+// D6 FILTER SITE: `!e.isCore` is a DECLARED carve-out (BUG-95, DOCTRINE.md "Core-block carve-out"),
+// not an oversight: core sets/volume and core reps are ungoverned; the flat core rep default is UNCITED.
+const weeklyVol =(g, days, sex) => (gen(g, days, sex, 1, 0) || []).reduce((n, d) =>
   n + (d.blocks || []).reduce((m, b) => m + (b.exs || []).filter(e => !e.cardioOnly && !e.isCore)
     .reduce((k, e) => k + (e.sets || 0), 0), 0), 0);
 for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
