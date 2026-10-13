@@ -88,6 +88,7 @@ const CHECKS = [
   { name: 'BUG-218 tier x focus x slot coverage (every FOCUS_SLOTS slot primary-matched or in the recorded D18 fallback baseline; fallback set may not grow)', run: () => execFileSync('node', [join(scriptsDir, 'tier-isolation-coverage-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'matrix reach detector (1050 combos x per-combo V8 coverage — no NEW dead code, no code live for only one goal AND one day-count, no function lost a goal/day-count)', run: () => execFileSync('node', [join(scriptsDir, 'matrix-reach-detector.mjs')], { stdio: 'inherit' }) },
   { name: 'axis parity (static — every per-goal table carries all 5 goals or is allowlisted with a cited reason; no ghost goal literal; UI exposes exactly the 5 goals in both pickers)', run: () => execFileSync('node', [join(scriptsDir, 'axis-parity-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'why availability (FEAT rationale-per-tier: no EXERCISE_BANK `why` carries anywhere/zero-equipment/accessible phrasing — the one string is shared by every tier the ladder serves)', run: () => execFileSync('node', [join(scriptsDir, 'why-availability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'no-emoji gate (Kerwin, 2026-09-30 — no pictograph emoji in UI text; arrows/checks/star/gender-symbols allowlisted)', run: () => execFileSync('node', [join(scriptsDir, 'no-emoji-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 

@@ -516,7 +516,7 @@ const EXERCISE_BANK = {
     name:'DB Floor Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['tricep','anterior_delt']},
     emphasis:['chest','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:0.82,
-    why:'The floor stops the elbows at roughly 90°, cutting the bottom range that stresses the shoulder — the most shoulder-friendly heavy pressing option and a strong tricep-lockout builder. Needs only dumbbells and floor space, so it travels anywhere.',
+    why:'The floor stops the elbows at roughly 90°, cutting the bottom range that stresses the shoulder — the most shoulder-friendly heavy pressing option and a strong tricep-lockout builder.',
     cues:['Lie on the floor, knees bent, dumbbells over the chest','Lower until the upper arms rest lightly on the floor — do not bounce','Pause briefly, then press back to full lockout','Keep the wrists stacked over the elbows throughout']},
   'cable-chest-press':{
     name:'Cable Chest Press', videoId:null,
@@ -649,7 +649,7 @@ const EXERCISE_BANK = {
     name:'Rear Delt Fly', videoId:null,
     muscleGroups:{primary:['posterior_delt','rhomboid'],secondary:['middle_trap','lower_trap']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Posterior delt is the most undertrained muscle in lifters. Weak posterior delts drive forward shoulder posture, rotator cuff injuries, and limit pressing performance. Can be done anywhere with dumbbells — no cable required.',
+    why:'Posterior delt is the most undertrained muscle in lifters. Weak posterior delts drive forward shoulder posture, rotator cuff injuries, and limit pressing performance.',
     cues:['Hinge at hips 45°, chest toward floor','Lead with the elbow, not the hand','Stop at shoulder height — slight elbow bend is fine','Squeeze for one count at peak; lower with control']},
   'prone-y-raise':{
     name:'Prone Y-Raise', videoId:null,
@@ -716,7 +716,7 @@ const EXERCISE_BANK = {
     name:'DB Shrug', videoId:null,
     muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front, and available anywhere a pair of dumbbells is. The direct stimulus for upper-trap mass and a fuller yoke.',
+    why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front. The direct stimulus for upper-trap mass and a fuller yoke.',
     cues:['Dumbbells at the sides, arms straight, shoulders relaxed to start','Shrug straight up toward the ears — do not roll the shoulders','Hold the top squeeze for one count','Lower to a full stretch at the bottom before the next rep']},
   'band-shrug':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero upper_trap
@@ -733,7 +733,7 @@ const EXERCISE_BANK = {
     name:'Band Shrug', videoId:null,
     muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull, needing no equipment beyond a band.',
+    why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull.',
     cues:['Stand on the band with both feet, one handle in each hand','Arms straight throughout — do not bend the elbows','Shrug straight UP toward the ears — do not roll the shoulders','Hold the top squeeze for one count, then lower to a full stretch']},
   'alternating-db-shoulder-press':{
     name:'Alternating DB Shoulder Press', videoId:null,
@@ -789,7 +789,7 @@ const EXERCISE_BANK = {
     name:'Table Inverted Row', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
     emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
+    why:'A bodyweight pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row.',
     cues:['Lie under a sturdy table, hands gripping the edge, body straight','Pull chest toward the table edge, squeezing shoulder blades together','Keep the body rigid — no hip sag','Lower under control; walk feet further out to increase difficulty']},
   'straight-arm-pulldown':{
     name:'Straight-Arm Pulldown', videoId:null,
@@ -1026,7 +1026,7 @@ const EXERCISE_BANK = {
     name:'Band Concentration Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work. Needs only a band under the foot and a seat.',
+    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work.',
     cues:['Sit on a chair with the band under the foot on your working side; brace that elbow against your inner thigh above the knee','Full extension at bottom — keep light tension on the band','Supinate at the top','Squeeze and hold one count at peak; lower slowly']},
   'band-hammer-curl':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero brachialis/
@@ -1084,7 +1084,7 @@ const EXERCISE_BANK = {
     name:'Bench Dip', videoId:null,
     muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anterior_delt']},
     emphasis:['triceps','push','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'A bodyweight triceps builder needing only a bench, chair, or step — the vertical descent loads all three heads and progresses easily by elevating the feet or setting a plate on the lap. The go-to triceps overload with no gym access.',
+    why:'A bodyweight triceps builder using a bench, chair, or step — the vertical descent loads all three heads and progresses easily by elevating the feet or setting a plate on the lap. The go-to bodyweight triceps overload.',
     cues:['Hands on the bench edge behind you, legs out front','Lower by bending the elbows straight back — keep them tucked','Descend until the upper arms are parallel to the floor','Press back to a full lockout; keep the hips close to the bench']},
   'tricep-dip-machine':{
     name:'Tricep Dip Machine', videoId:null,
@@ -1096,7 +1096,7 @@ const EXERCISE_BANK = {
     name:'Diamond Push-Up', videoId:null,
     muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['pec_major_sternal','anterior_delt']},
     emphasis:['triceps','push','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Zero-equipment triceps mass work; elevate the feet to progress.',
+    why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Direct triceps mass work; elevate the feet to progress.',
     cues:['Hands together under the chest, index fingers and thumbs forming a diamond','Body rigid in a straight line — no hip sag','Lower until the chest nearly touches the hands, elbows tucked','Press to full lockout; elevate the feet to add difficulty']},
   'jm-press':{
     name:'JM Press', videoId:null,
@@ -1140,19 +1140,19 @@ const EXERCISE_BANK = {
     name:'Sissy Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher requiring nothing but bodyweight.',
+    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch. An effective bodyweight quad finisher.',
     cues:['Hold a support for balance; rise onto the balls of the feet','Drive knees forward and lean the torso back in one line','Lower until you feel a deep quad stretch — hips stay open','Squeeze the quads to return; add a plate hugged to the chest to progress']},
   'reverse-nordic':{
     name:'Reverse Nordic', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience with zero equipment.',
+    why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience.',
     cues:['Kneel tall, hips fully extended, core braced','Lean the whole body back in a straight line from knees to head','Lower as far as quad control allows — no hip bend','Pull back up with the quads; hold a wall or band to assist if needed']},
   'bodyweight-squat':{
     name:'Bodyweight Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis','quad_vastus'],secondary:['glute_max']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'The zero-equipment squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available; add tempo, pauses, or a loaded backpack to progress.',
+    why:'The bodyweight squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available; add tempo, pauses, or a loaded backpack to progress.',
     cues:['Feet shoulder-width, toes slightly out','Sit hips back and down — knees track over toes','Drive through the whole foot to stand','Chest tall throughout — brace the core before descending']},
   'goblet-squat':{
     name:'Goblet Squat', videoId:'MeIiIdhvXT4',
@@ -1188,7 +1188,7 @@ const EXERCISE_BANK = {
     name:'DB Split Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus'],secondary:['glute_max']},
     emphasis:['quads','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'A stationary split stance (both feet on the floor) delivers most of the unilateral quad stimulus of a Bulgarian split squat with far less balance demand — an accessible single-leg builder for lifters not yet ready to elevate the rear foot.',
+    why:'A stationary split stance (both feet on the floor) delivers most of the unilateral quad stimulus of a Bulgarian split squat with far less balance demand — a single-leg builder for lifters not yet ready to elevate the rear foot.',
     cues:['Split stance, front shin vertical, torso upright','Lower straight down until the back knee nearly touches the floor','Drive through the front heel to stand','Keep the dumbbells hanging at the sides; complete all reps, then switch']},
   'reverse-lunge':{
     name:'Reverse Lunge', videoId:null,
@@ -1287,7 +1287,7 @@ const EXERCISE_BANK = {
     name:'Single-Leg Romanian Deadlift', videoId:null,
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae']},
     emphasis:['hamstrings','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'The zero-equipment hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL with no equipment required.',
+    why:'The bodyweight hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
     cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
@@ -1344,7 +1344,7 @@ const EXERCISE_BANK = {
     name:'DB RDL', videoId:null,
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae']},
     emphasis:['hamstrings','glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'Identical hip hinge to barbell RDL but accessible with just a pair of dumbbells. The dumbbell version allows a slightly more natural arc and is easier to set up without a squat rack.',
+    why:'Identical hip hinge to barbell RDL, using a pair of dumbbells. The dumbbell version allows a slightly more natural arc and is easier to set up without a squat rack.',
     cues:['Dumbbells hang at thigh level — slide them down the legs','Hip hinge back; feel the hamstring stretch at the bottom','Flat back throughout — brace the core hard','Drive hips forward to return; squeeze glutes at the top']},
   'single-leg-db-rdl':{
     name:'Single-Leg DB RDL', videoId:null,
@@ -1412,7 +1412,7 @@ const EXERCISE_BANK = {
     name:'Banded Hip Abduction', videoId:null,
     muscleGroups:{primary:['glute_medius','glute_minimus'],secondary:['tensor_fasciae_latae']},
     emphasis:['glutes','lower_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band replaces the abductor machine with near-identical isolation anywhere.',
+    why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band gives near-identical isolation to the abductor machine.',
     cues:['Loop a mini-band just above the knees','Standing or side-lying, drive the knee out against the band','Keep the pelvis still — move only at the hip','Slow return; never let the band snap the leg back']},
   'cable-pull-through':{
     name:'Cable Pull-Through', videoId:null,
@@ -1436,7 +1436,7 @@ const EXERCISE_BANK = {
     name:'Frog Pump', videoId:null,
     muscleGroups:{primary:['glute_max'],secondary:['adductor']},
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The soles-together, knees-out position pre-shortens the glutes so every rep peaks in deep hip extension with minimal quad or hamstring contribution — a high-rep glute burnout that isolates the glute max better than most bridges, no equipment needed.',
+    why:'The soles-together, knees-out position pre-shortens the glutes so every rep peaks in deep hip extension with minimal quad or hamstring contribution — a high-rep glute burnout that isolates the glute max better than most bridges.',
     cues:['Lie on your back, soles of the feet together, knees dropped wide','Drive the hips up by squeezing the glutes — heels stay together','Pause and squeeze hard at the top','Lower with control; keep the reps quick and continuous for the pump']},
 
   // ── CALVES ────────────────────────────────────────────
@@ -1542,7 +1542,7 @@ const EXERCISE_BANK = {
     name:'Dragon Flag', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['transverse_abdominis','hip_flexor']},
     emphasis:['core','full_body'], equipment:'bodyweight', tier:'hotel_gym', category:'core', oneRmFactor:null,
-    why:'The hardest bodyweight anti-extension exercise — the whole body is held rigid as a lever while the abs resist gravity trying to pull the spine into extension. Popularised by Bruce Lee, it produces among the highest rectus abdominis demands possible with no equipment beyond something to hold.',
+    why:'The hardest bodyweight anti-extension exercise — the whole body is held rigid as a lever while the abs resist gravity trying to pull the spine into extension. Popularised by Bruce Lee, it produces among the highest rectus abdominis demands possible.',
     cues:['Lie on a bench or floor; grip a solid post behind the head','Brace and lift the whole body toward vertical, weight on the upper back','Lower the straight, rigid body as one unit — no bend at the hips','Keep the lower back from arching; regress by bending the knees']},
   'hanging-leg-raise':{
     name:'Hanging Leg Raise', videoId:null,
@@ -1596,7 +1596,7 @@ const EXERCISE_BANK = {
     name:'Bicycle Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis','oblique_external'],secondary:['oblique_internal']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
-    why:'Consistently one of the highest EMG-ranked ab exercises — the pedaling twist trains the rectus abdominis and obliques together through flexion plus rotation, with zero equipment. A staple for combined ab and oblique work anywhere.',
+    why:'Consistently one of the highest EMG-ranked ab exercises — the pedaling twist trains the rectus abdominis and obliques together through flexion plus rotation. A staple for combined ab and oblique work.',
     cues:['Lie back, hands lightly behind the head, shoulders off the floor','Bring one elbow toward the opposite knee as that leg drives in','Extend the other leg straight without letting it touch down','Rotate from the torso, not the neck; move slowly and with control']},
   'v-up':{
     name:'V-Up', videoId:null,
@@ -1640,13 +1640,13 @@ const EXERCISE_BANK = {
     // bodyweight movement, not in place of it.
     muscleGroups:{primary:['calf','glute_medius','anterior_delt'],secondary:['quad','hip_flexor','glute_max']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
-    why:'Zero-equipment full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
+    why:'Full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
     cues:['Land softly, knees soft on impact','Full arm extension overhead each rep','Steady rhythm — this is Zone 2, not a sprint','20+ min continuous, or interval with High Knees']},
   'high-knees':{
     name:'High Knees', videoId:null,
     muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['hip_flexor','calf']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
-    why:'Zero-equipment hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work with no equipment required.',
+    why:'Hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work.',
     cues:['Drive knees to hip height, quick cadence','Land on the balls of the feet','Pump the arms to maintain rhythm','Moderate, sustainable pace for Zone 2 duration']},
   'incline-treadmill':{
     name:'Incline Treadmill', videoId:null,
@@ -1694,7 +1694,7 @@ const EXERCISE_BANK = {
     // live request token with no tag behind it on entries missing this co-tag).
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus'],secondary:['glute_max','glute_medius']},
     emphasis:['quads','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a zero-equipment single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
+    why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
     cues:['Stand on a 6-7 inch step with all the weight through the working leg','Reach the free leg out to the side and tap the heel down - do not push off it','Let the working knee travel forward; that range is what you are training','Slow and controlled on the way down; hold a wall or rail if balance is the limiter']},
   'band-row':{
     name:'Band Row', videoId:null,
@@ -4750,16 +4750,16 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // so no new muscle-group tag or oneRmFactor is being invented — spanning
     // push/pull/legs/glutes so a 2-short day has enough non-colliding options.
     {id:'sub-tir',   name:'Table Inverted Row',     badge:'compound',  tier:'home', sets:3, w:0, r:12, rest:60, compound:true,
-     why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
+     why:'A bodyweight pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row.',
      cues:['Lie under a sturdy table, hands gripping the edge, body straight.','Pull chest toward the table edge, squeezing shoulder blades together.']},
     {id:'sub-dpu',   name:'Diamond Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Zero-equipment triceps mass work.',
+     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Direct triceps mass work.',
      cues:['Hands together under the chest forming a diamond.','Lower until the chest nearly touches the hands, elbows tucked; press to lockout.']},
     {id:'sub-bwsq',  name:'Bodyweight Squat',       badge:'compound',  tier:'home', sets:3, w:0, r:15, rest:60, compound:true,
-     why:'The zero-equipment squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available.',
+     why:'The bodyweight squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available.',
      cues:['Feet shoulder-width, sit hips back and down — knees track over toes.','Drive through the whole foot to stand; chest tall throughout.']},
     {id:'sub-slrdl', name:'Single-Leg Romanian Deadlift', badge:'compound', tier:'home', sets:3, w:0, r:12, rest:60, compound:true,
-     why:'The zero-equipment hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
+     why:'The bodyweight hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
      cues:['Stand tall, hinge forward while the free leg extends straight back.','Keep hips square; squeeze the glute and hamstring to return to standing.']},
     {id:'sub-glb',   name:'Glute Bridge',           badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
      why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available.',
