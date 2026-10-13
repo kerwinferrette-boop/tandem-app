@@ -81,7 +81,7 @@ const TIERS = {
   D6b: 'SCIENCE_DEFAULT', // per-muscle MEV floor — ACTIVE since 2026-09-14 (per-muscle allocation in applyGoalVolume() since BUG-122, 2026-09-23); see the D6b check block below
   D33: 'SCIENCE_DEFAULT', // per-muscle per-session ceiling (~11 fractional sets, Remmert et al. 2025 PREPRINT — number PROVISIONAL, revisit 2027-03-23) — ACTIVE 2026-09-23 (BUG-122)
   D6d: 'SCIENCE_DEFAULT', // D6b's MEV floor across tier × experience × duration (PENDING — 72 cells below MEV, docs/bug122-below-mev-cells.md)
-  D6c: 'SCIENCE_DEFAULT', // within-block MEV->MRV ramp cadence (PENDING — needs numeric ruling, depends on D6b)
+  D6c: 'SCIENCE_DEFAULT', // within-block MEV->MRV ramp — OPEN QUESTION, not engine-binding (no primary-source cadence; council 2026-10-13)
   D7: 'SCIENCE_DEFAULT',
   D8: 'SPLIT',            // zero-supersets-on-strength-primaries = SAFETY; Maintenance MAV cap = SCIENCE_DEFAULT
   D9: 'SAFETY',           // one-off structural law (compound-first, tier-legal, dup-free)
@@ -2892,7 +2892,7 @@ let d21Checked = 0;
 // Promote to ACTIVE (write the assertion above) when the phase lands. Do NOT delete.
 const PENDING = [
   ['D4b', 'Deload cadence scales with training age (RP: 3-4wk advanced vs up to 12wk beginner); cfg.experience exists but the deload layer ignores it. Per-experience numbers deliberately NOT invented — needs a ruling + a citation', 'when ruled'],
-  ['D6c', 'Within-block MEV→MRV ramp: shape cited (RP\'s three-tier volume model), no numeric week-by-week cadence for this project\'s block lengths. Depends on D6b (now ACTIVE) as its real per-muscle baseline', 'needs numeric ramp cadence'],
+  ['D6c', 'OPEN QUESTION, not engine-binding, no ramp built: no primary-source numeric cadence for a within-block set ramp (Israetel et al. 2020 SCJ supports direction only and is contested; +1/wk is secondary-source only). Outcome already bounded by D6b/D33/D35/D4. Council 2026-10-13: docs/council-transcript-2026-10-13-d6c-ramp.md', 'when ruled — reopens when a primary source gives a cadence'],
   ['D6d', 'D6b\'s weekly MEV floor must hold on EVERY axis the generator branches on (tier × experience × duration), not only full_gym at default experience/duration, which is all D6b sweeps. After BUG-122 + the D28 major-muscle ruling (2026-09-23): 126 cells below MEV across that sweep (old engine: 144); the 72 new ones are cells the old engine reached only by stacking one lift past ~11 sets/session — 54 home 2-day anterior delt (blocked on tags: the only home-tier primary anterior-delt bank entry is Jumping Jacks), 18 3-day beginner full_gym hamstring. Every cell: docs/bug122-below-mev-cells.md', 'needs the engine to add a related lift for a muscle still under MEV (muscle_tag_rescope first for home front-delt tags)'],
   ['D28', 'Time-constrained session drops ONE isolation accessory — the one training no major muscle group, acc3 only if all do (Kerwin 2026-09-23, droppableAccessory()) (shape cited: NSCA time-efficient-training + D3); exact minute cutoff (SHORT_SESSION_MAX_MINUTES) is an unsourced engineering default — needs a ruling + citation before the number itself is law. scripts/duration-smoke.mjs guards the shape today.', 'when ruled'],
 ];
