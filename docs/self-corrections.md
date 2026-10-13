@@ -1649,3 +1649,25 @@ guard. I came within one `grep` of deleting a check that catches a genuine live-
 
 **Enforced by:** judgment — not mechanically checkable. The operational tell: a mutation
 run that prints no before/after line for the site it claims to have changed is unproven.
+
+## SC-46 — I chained `verify | tail -1 && git push`, so the pipe's exit status gated the push and a red gate shipped
+
+On 2026-10-13 I ran `npm run verify 2>&1 | tail -1 && git push origin HEAD:main`. `verify`
+printed `1/47 CHECK(S) FAILED — DO NOT SHIP.` and the push went out anyway, because the `&&`
+tested `tail`'s exit status (0), not `verify`'s (1). The commit was docs-only and the red
+turned out to be a missing `npm install` for another session's new BUG-195 check (47/47 after
+install), so nothing broke — but the gate that exists to stop exactly this did not stop it,
+and I only noticed because I read the printed line.
+
+**The mechanism, not the trait.** A pipeline's exit status is its last command's, so piping a
+gate through `tail`/`head`/`grep` discards the gate's verdict. Without `pipefail`, "gate && ship"
+is not a gate.
+
+> **THE RULE — SC-46.** Never put a ship step behind a piped gate. Run the gate on its own
+> (redirect to a file, then `tail` the file), capture `$?` of the gate itself, and push only on
+> `0`. After a merge/rebase that brings in other sessions' commits, run `npm install` BEFORE
+> `verify` — a new check can need a dependency the old tree lacked (SC-01-adjacent: the tree
+> under test is not the tree you last tested).
+
+**Enforced by:** judgment — not mechanically checkable. Operational tell: any command line
+containing `verify … | … && git push`.
