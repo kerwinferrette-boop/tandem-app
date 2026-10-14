@@ -46,6 +46,7 @@ import { statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { pickPort } from './lib/safe-port.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // The real client bundle. tandem.html loads it from jsdelivr, which this container's
@@ -66,7 +67,7 @@ if (!SB_UMD) {
   process.exit(1);
 }
 const UID = 'e5074b4c-3808-4338-aeb7-b9db59d61f49';   // the allowlisted TEST account id
-const APP_PORT = 9300 + Math.floor(Math.random() * 300);
+const APP_PORT = pickPort(9300, 300);
 const API_PORT = APP_PORT + 1;
 
 let failures = 0;

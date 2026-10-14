@@ -34,9 +34,10 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { pickPort } from './lib/safe-port.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const PORT = 9820 + Math.floor(Math.random() * 400);
+const PORT = pickPort(9820, 400);
 
 const SUPABASE_STUB = `
   function autoMock() {

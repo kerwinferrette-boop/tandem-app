@@ -94,6 +94,7 @@ const CHECKS = [
   { name: 'BUG-95 core prescription provenance (FORM only - every core entry declares an rxBasis tag; no numeric band, the flat 10 stays UNCITED)', run: () => execFileSync('node', [join(scriptsDir, 'core-rx-provenance-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-234 forced-stack classifier audit (independent constructive oracle re-derives feasibility for every lift per-exercise-cap calls "forced"; contradictions ratcheted; secondary-keyed ratchet cells allowlisted with derived reasons)', run: () => execFileSync('node', [join(scriptsDir, 'forced-stack-classifier-audit.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-108 selection reachability (getProgram() output swept over the persona matrix x weeks 1-24: the never-selected bank set may not grow, stale baseline entries fail)', run: () => execFileSync('node', [join(scriptsDir, 'selection-reachability-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'safe test ports (no Playwright gate picks a port Chromium refuses: ERR_UNSAFE_PORT on 10080 made EPIC-63 red ~1 run in 400; pickPort exhaustive + real-browser proof)', run: () => execFileSync('node', [join(scriptsDir, 'safe-port-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 const results = [];

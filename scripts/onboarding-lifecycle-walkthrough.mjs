@@ -28,9 +28,10 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pickPort } from './lib/safe-port.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const PORT = 8934 + Math.floor(Math.random() * 500); // avoid colliding with a concurrent run
+const PORT = pickPort(8934, 500); // avoid colliding with a concurrent run
 
 const SUPABASE_STUB = `
   function autoMock() {
