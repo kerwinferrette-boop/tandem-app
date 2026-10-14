@@ -36,7 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const PORT = 9820 + Math.floor(Math.random() * 400);
+const PORT = 22000 + Math.floor(Math.random() * 400) /* >10080 (Chromium refuses 10080 with ERR_UNSAFE_PORT) and <32768 (Linux ephemeral range): see scripts/test-port-range-smoke.mjs */;
 
 const SUPABASE_STUB = `
   function autoMock() {

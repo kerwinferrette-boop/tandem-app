@@ -66,7 +66,7 @@ if (!SB_UMD) {
   process.exit(1);
 }
 const UID = 'e5074b4c-3808-4338-aeb7-b9db59d61f49';   // the allowlisted TEST account id
-const APP_PORT = 9300 + Math.floor(Math.random() * 300);
+const APP_PORT = 22500 + Math.floor(Math.random() * 300) /* >10080 (Chromium refuses 10080 with ERR_UNSAFE_PORT) and <32768 (Linux ephemeral range): see scripts/test-port-range-smoke.mjs */;
 const API_PORT = APP_PORT + 1;
 
 let failures = 0;
