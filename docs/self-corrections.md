@@ -1701,26 +1701,23 @@ done or could be done in the same turn (`exhaust_before_parking`).
 **Enforced by:** judgment — not mechanically checkable. Operational tell: a Goal Record cycle
 entry that lists tracker counts but no per-story command or result.
 
-## SC-48 — Two test-harness mistakes this session: a deterministic stub under a retry loop, and `pkill -f` on a pattern my own shell contained
+## SC-48 — Two test-harness mistakes: a deterministic stub under a retry loop, and `pkill -f` on a pattern my own shell contained
 
-(1) My exhaustive port test fed `pickPort` a stub that returned the same draw every call. When
-the draw landed on the restricted port, `pickPort` correctly re-drew — forever. The run hung and
-I first read it as a slow browser. (2) I then ran `pkill -f safe-port-smoke`; the pattern also
-matched the bash process running that very command line, so it killed my own shell (exit 144)
-and the file edit queued in the same command never ran, leaving the infinite-loop stub in place
-for one more run.
+(1) I fed a retry-loop function (a port picker that re-draws a restricted value) a stub that returned the
+same draw every call. When the draw hit the restricted value the function correctly re-drew forever; the run
+hung and I first read it as a slow browser. (2) I then ran `pkill -f <test-name>`; the pattern also matched the
+bash process running that command line, killing my own shell (exit 144), and the file edit queued in the same
+command never ran, so the broken stub survived one more run.
 
-**The mechanism, not the trait.** A test double for a function with a retry loop must be able to
-return a *different* value on retry, or it turns "rejects a bad value" into "never terminates".
-And `pkill -f <pattern>` matches the full command line of every process, including the shell
-that carries the pattern as text.
+**The mechanism, not the trait.** A test double under a retry/re-draw loop must be able to return a *different*
+value on retry, or "rejects a bad value" becomes "never terminates". And `pkill -f <pattern>` matches the full
+command line of every process, including the shell that carries the pattern as text.
 
-> **THE RULE — SC-48.** (a) When stubbing a random source under a retry/re-draw loop, make the
-> stub stateful (advance on each call) and put a bounded timeout on the test run so a bad stub
-> fails instead of hanging. (b) Never `pkill -f` with a pattern that appears in your own command;
-> kill by PID from `pgrep` (excluding `$$`) or use `timeout` on the child so cleanup is
-> unnecessary. (c) When a multi-step command is killed midway, re-check that its earlier edit
-> actually landed (`grep -c` the marker) before re-running.
+> **THE RULE — SC-48.** (a) When stubbing a random source under a retry loop, make the stub stateful (advance on
+> each call) and run the test under `timeout` so a bad stub fails instead of hanging. (b) Never `pkill -f` with a
+> pattern that appears in your own command; kill by PID from `pgrep` or use `timeout` on the child. (c) When a
+> multi-step command is killed midway, re-check that its earlier edit actually landed (`grep -c` the marker)
+> before re-running.
 
-**Enforced by:** `scripts/safe-port-smoke.mjs` carries the stateful stub and is run under
-`timeout` here; the pkill rule is judgment — not mechanically checkable.
+**Enforced by:** judgment — not mechanically checkable. (No gate wraps a harness in `timeout`; `verify.mjs`
+would hang on a stub that never terminates.)

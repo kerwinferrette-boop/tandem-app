@@ -28,10 +28,9 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pickPort } from './lib/safe-port.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const PORT = pickPort(8934, 500); // avoid colliding with a concurrent run
+const PORT = 21500 + Math.floor(Math.random() * 500) /* >10080 (Chromium refuses 10080 with ERR_UNSAFE_PORT) and <32768 (Linux ephemeral range): see scripts/test-port-range-smoke.mjs */; // avoid colliding with a concurrent run
 
 const SUPABASE_STUB = `
   function autoMock() {
