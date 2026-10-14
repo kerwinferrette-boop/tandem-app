@@ -1721,3 +1721,5 @@ command line of every process, including the shell that carries the pattern as t
 
 **Enforced by:** judgment — not mechanically checkable. (No gate wraps a harness in `timeout`; `verify.mjs`
 would hang on a stub that never terminates.)
+
+**Recurrence of SC-48(b), 2026-10-14:** I ran `pkill -f weekday-render-smoke.mjs` in a command line that also contained that string; it matched my own shell (exit 144) and killed it, the very mistake SC-48(b) names. Rule unchanged: kill by PID from `pgrep` (excluding `$$`) or wrap the child in `timeout`. Enforced by: judgment — not mechanically checkable.
