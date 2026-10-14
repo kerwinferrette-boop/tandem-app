@@ -1671,3 +1671,53 @@ is not a gate.
 
 **Enforced by:** judgment — not mechanically checkable. Operational tell: any command line
 containing `verify … | … && git push`.
+
+## SC-47 — A scheduled cycle reported "nothing worked" without running a single story assertion, and parked 24 stories as "needs research"
+
+On 2026-10-13 a scheduled /loop cycle ran preflight and the gates, read the tracker counts
+(24 Untested, 3 Failing, 19 Needs Human), judged every open row "program-engine or
+forbidden-adjacent", changed nothing, and reported GOAL NOT MET. Kerwin's reply: "why would you
+fix & ship nothing? Test the 24 untested, triple check them, why are the 3 failing, are we sure
+the Needs Humans are needs human?" Running the assertions found 6 PASS, 3 diagnosed, 7 real
+failures, 5 not built, 3 stale, a stale "Failing" (BUG-76 was already Resolved), 7 of 19 Needs
+Human rows that were stale or closable, and one fixable bug that shipped the same day.
+
+**The mechanism, not the trait.** The cycle treated the CATALOG/TEST stages as satisfied by
+*reading the row's own Evidence field*, which is exactly what the loop prompt calls out as not
+a test ("TEST (baseline). Run each story's assertion against the current app"). A row's
+Evidence is a snapshot written by an earlier session and is the thing most likely to be stale
+(several here were: deleted functions, columns already dropped, a ruling already ratified).
+"Needs research" was also used as a stopping point for rows where the research had either been
+done or could be done in the same turn (`exhaust_before_parking`).
+
+> **THE RULE — SC-47.** A cycle that touches a story must RUN its assertion this cycle, against
+> current code, and report the result as PASS / FAIL / NOT-BUILT / STALE with the command it ran.
+> "Untested -> still Untested" is only a legitimate cycle outcome when the cycle shows the
+> assertions it ran and could not complete. Never carry a row's Evidence forward as the current
+> state. Independent read-only agents in parallel are the cheap way to do this for 20+ stories;
+> use them. Before parking anything as "needs research", run the research (WebSearch is
+> available — verify by trying) and state what was searched.
+
+**Enforced by:** judgment — not mechanically checkable. Operational tell: a Goal Record cycle
+entry that lists tracker counts but no per-story command or result.
+
+## SC-48 — Two test-harness mistakes: a deterministic stub under a retry loop, and `pkill -f` on a pattern my own shell contained
+
+(1) I fed a retry-loop function (a port picker that re-draws a restricted value) a stub that returned the
+same draw every call. When the draw hit the restricted value the function correctly re-drew forever; the run
+hung and I first read it as a slow browser. (2) I then ran `pkill -f <test-name>`; the pattern also matched the
+bash process running that command line, killing my own shell (exit 144), and the file edit queued in the same
+command never ran, so the broken stub survived one more run.
+
+**The mechanism, not the trait.** A test double under a retry/re-draw loop must be able to return a *different*
+value on retry, or "rejects a bad value" becomes "never terminates". And `pkill -f <pattern>` matches the full
+command line of every process, including the shell that carries the pattern as text.
+
+> **THE RULE — SC-48.** (a) When stubbing a random source under a retry loop, make the stub stateful (advance on
+> each call) and run the test under `timeout` so a bad stub fails instead of hanging. (b) Never `pkill -f` with a
+> pattern that appears in your own command; kill by PID from `pgrep` or use `timeout` on the child. (c) When a
+> multi-step command is killed midway, re-check that its earlier edit actually landed (`grep -c` the marker)
+> before re-running.
+
+**Enforced by:** judgment — not mechanically checkable. (No gate wraps a harness in `timeout`; `verify.mjs`
+would hang on a stub that never terminates.)
