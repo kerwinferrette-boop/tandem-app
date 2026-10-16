@@ -809,6 +809,32 @@ const EXERCISE_BANK = {
     emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
     why:'The only home-tier movement that isolates the lat without any bicep contribution — the arm stays straight throughout, same pattern as the cable version. Trains the lat-to-hip-drive pattern that makes deadlifts and rows stronger, needing only a band anchored overhead.',
     cues:['Anchor the band overhead (door anchor or high point), arms straight throughout','Hinge forward at hips 45°','Drive arms down and back to hips — not to thighs','Squeeze lats at the bottom; arms stop at hip height']},
+  'band-lat-pulldown':{
+    // Exercise Intake row 3d8ca37f-935b-81cc-9fc4-f5dc886b24c6 (2026-09-11 ingestion run,
+    // committed 2026-10-16). Fills the only vertical-pull gap left in the home tier: every
+    // lat_dorsi vertical pull in the bank (lat-pulldown, neutral-grip-lat-pulldown,
+    // inclined-torso-lat-pulldown, pull-up, chin-up) needs full_gym or hotel_gym equipment.
+    // Pattern + muscle mapping + form: Sutton B., "The Biomechanics of the Lat Pulldown:
+    // Muscles, Grip, and Form," NASM (MA Sport & Fitness Mgmt, MS Exercise Science, CSCS,
+    // NASM-CPT/CNC/CES/PES, NASM Master Instructor). Strength-outcome equivalence for elastic
+    // vs conventional resistance (NOT an activation/hypertrophy claim): Lopes JSS et al.,
+    // SAGE Open Medicine 2019, DOI 10.1177/2050312119831116, PMID 30815258 (7 trials, n=224;
+    // corrigendum SAGE Open Medicine 2020, PMID 32953119, PMC7485002) — the same strength-only
+    // citation used for every other band-* entry. EQUIPMENT-SUBSTITUTION CAVEAT, stated and not
+    // glossed: no published EMG study compares a band lat pulldown to the cable version — Di
+    // Fonza D et al., "Electromyographic Analysis of Latissimus Dorsi Activation During Common
+    // Resistance Training Exercises: A Narrative Review," JFMK 2026, PMC13510307, states every
+    // exercise it reviewed used cable, barbell, or bodyweight resistance and that no elastic-
+    // resistance study was included. This entry is NOT presented as a like-for-like swap for
+    // lat-pulldown; it is the only way a home-tier user trains the vertical-pull pattern at all.
+    // oneRmFactor deliberately null — no source states a band-pulldown 1RM ratio and band
+    // tension is not expressible in pounds (same precedent as lat-pulldown, band-row,
+    // band-straight-arm-pulldown).
+    name:'Band Lat Pulldown', videoId:null,
+    muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
+    emphasis:['back','pull','upper_body'], equipment:'band', tier:'home', category:'compound', oneRmFactor:null,
+    why:'The only vertical pull available at home tier. Every other lat_dorsi vertical pull in the bank needs full_gym or hotel_gym equipment, so without this a home-tier user trains the back through horizontal pulling only. An overhead-anchored band restores the vertical-pull pattern with no bar, machine, or pull-up bar needed, with resistance scaling by band choice and anchor distance. Equipment-substitution note: no EMG study has compared a band pulldown to the cable version, so this is the home-tier vertical pull, not an activation-equivalent swap for Lat Pulldown.',
+    cues:['Anchor the band overhead — a door anchor, a beam, or a sturdy fixed point above head height','Kneel or sit tall, far enough back that the band already has tension with arms fully extended','Pull down toward the upper chest, in front of the head, never behind the neck','Drive the elbows down and toward the ribs — the hands are just hooks','Keep the torso stable; a slight lean back is fine, rocking for momentum is not','Control the return all the way up and let the shoulder blades rise at the top']},
   'neutral-grip-lat-pulldown':{
     name:'Neutral-Grip Lat Pulldown', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','rhomboid','posterior_delt']},
@@ -1844,7 +1870,7 @@ const MOVEMENT_FAMILIES = {
 
   // ── VERTICAL PULL ────────────────────────────────────
   'pull-up':{ label:'Pull-Up / Pulldown', pattern:'vertical_pull', canonicalLift:'Weighted Pull-up',
-    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown','inclined-torso-lat-pulldown']},
+    variants:['pull-up','chin-up','assisted-pull-up','lat-pulldown','neutral-grip-lat-pulldown','inclined-torso-lat-pulldown','band-lat-pulldown']},
 
   // ── HORIZONTAL PULL ──────────────────────────────────
   'row':{ label:'Row', pattern:'horizontal_pull', canonicalLift:null,
