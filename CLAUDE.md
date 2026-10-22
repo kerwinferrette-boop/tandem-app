@@ -180,7 +180,10 @@ checks is a suggestion. This list names the first five and the most recent block
 file, it is the authority: SC-01 staleness · SC-02 retracted claims · SC-03 run-don't-simulate ·
 SC-04 feedback is not a commit · SC-05 status docs are snapshots · … · SC-38 mutation-test each
 assertion individually · SC-39 a masked finding is not a fixed one · SC-40 never undo a mutation
-test with a HEAD-relative git revert · SC-45 verify a mutation LANDED before believing its result.
+test with a HEAD-relative git revert · SC-45 verify a mutation LANDED before believing its result ·
+SC-49 an assertion that can only go green by deleting trustworthy data is the WRONG assertion, never
+the data · SC-50 a fabricated merge commit is parented on the merge BASE, and a restoration that
+deletes anything is not a restoration.
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 

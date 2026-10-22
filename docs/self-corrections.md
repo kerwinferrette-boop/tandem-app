@@ -1723,3 +1723,55 @@ command line of every process, including the shell that carries the pattern as t
 would hang on a stub that never terminates.)
 
 **Recurrence of SC-48(b), 2026-10-14:** I ran `pkill -f weekday-render-smoke.mjs` in a command line that also contained that string; it matched my own shell (exit 144) and killed it, the very mistake SC-48(b) names. Rule unchanged: kill by PID from `pgrep` (excluding `$$`) or wrap the child in `timeout`. Enforced by: judgment — not mechanically checkable.
+
+## SC-49 — I wrote a gate assertion that contradicted a standing ruling, then read my own correct fix as a failure
+
+Building the BUG-230 finish-path gate, I asserted the accounting invariant as
+`total_volume_lbs <= SUM(weight_lbs*reps)` over the session's sets rows. It read as obviously right: a session
+should not claim volume its sets cannot account for. But the task's standing constraint — and the 2026-10-21
+audit's own conclusion — is the opposite: `total_volume_lbs` is the TRUSTWORTHY number and `sets` is the
+incomplete one, so the ONLY way to satisfy my assertion was to reduce a session's stored volume to match a short
+table, i.e. delete real training history to make a gate look tidy. I then shipped the correct fix (keep the
+lifted volume, mark and surface the shortfall), watched my own gate go red on it, and my first instinct was to
+re-examine the fix. The fix was right. The assertion was wrong.
+
+**The mechanism, not the trait.** I wrote the assertion from what the invariant *sounded* like in the abstract
+(two numbers should agree) instead of from the ruling that governs those two numbers, which was written down in
+the task I was executing. That is the prime directive's plausibility-first failure aimed at a *gate's contract*
+rather than at exercise science — and it is more dangerous there, because a gate encodes the contract for
+everyone after me: had I "fixed" the code to satisfy it, the gate would have *enforced* the data loss forever,
+greenly.
+
+> **THE RULE — SC-49.** Before writing an assertion, write down which source makes it law (a D-invariant, a
+> Kerwin ruling, a cited study) and check that the assertion is satisfiable WITHOUT destroying data the source
+> calls trustworthy. If the only way to go green is to delete or overwrite real user data, the assertion is
+> wrong — never the data. And when a new gate fails a change you believe is correct, hold both suspects: re-read
+> the assertion's own justification before touching the code. State the source in the gate's header so the next
+> reader cannot re-introduce the assertion by instinct (done: the header of
+> `scripts/finish-set-integrity-smoke.mjs` records this exact wrong first draft and why it was wrong).
+
+**Enforced by:** judgment — not mechanically checkable. Nothing can tell a well-formed assertion from a
+well-formed assertion pointed the wrong way; only the cited source can.
+
+## SC-50 — I re-parented a synthetic commit on the wrong base, and the "correct" merge silently deleted 3 files
+
+To repair BUG-245 (a merge whose tree was identical to its first parent, so `git revert -m 1` is a no-op) I
+built a synthetic commit carrying the discarded side's tree and merged it, to force the real 3-way merge git
+had never performed. I parented that synthetic commit on `055f9de` — the *local side's tip* — because that was
+the commit in front of me. With that base, the 3 files `055f9de` had ADDED looked to git like files the
+synthetic side had DELETED, and the merge dutifully removed them. The merge reported no conflict and the gates
+would have passed; only `git status --short` showed the three `D` lines. The right parent was the TRUE merge
+base, `git merge-base 055f9de 15bc1cc` = `00b134b`; re-running with it preserved both sides.
+
+**The mechanism, not the trait.** A synthetic commit's PARENT is not bookkeeping — it is the declaration of what
+the 3-way merge will treat as the common ancestor, and therefore of what counts as an addition versus a
+deletion. Choosing a parent that already contains one side's new work reclassifies that work as removable.
+
+> **THE RULE — SC-50.** When fabricating a commit with `git commit-tree` in order to force a merge, parent it on
+> the output of `git merge-base`, never on either side's tip. Then, before committing ANY merge, run
+> `git diff --name-status <the-side-being-restored> --cached | grep '^D'` and require it to be empty: a
+> restoration that deletes anything is not a restoration. A clean auto-merge is not a correct merge, and
+> "no conflicts" is not "nothing lost" — the loss this very bug is about was recorded as a conflict-free merge.
+
+**Enforced by:** judgment for the parent choice — not mechanically checkable. The deletion check IS mechanical
+and is the one to actually run: `git diff --name-status <restored-side> --cached` must show no `D` lines.
