@@ -96,7 +96,41 @@ const CHECKS = [
   { name: 'BUG-234 forced-stack classifier audit (independent constructive oracle re-derives feasibility for every lift per-exercise-cap calls "forced"; contradictions ratcheted; secondary-keyed ratchet cells allowlisted with derived reasons)', run: () => execFileSync('node', [join(scriptsDir, 'forced-stack-classifier-audit.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-108 selection reachability (getProgram() output swept over the persona matrix x weeks 1-24: the never-selected bank set may not grow, stale baseline entries fail)', run: () => execFileSync('node', [join(scriptsDir, 'selection-reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'test port range (every random Playwright test port is in (10080, 32767]: Chromium refuses 10080 with ERR_UNSAFE_PORT, which made EPIC-63 red ~1 run in 400; static, no browser)', run: () => execFileSync('node', [join(scriptsDir, 'test-port-range-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-246 check floor (the suite may not silently shrink — registration count >= committed floor, every registered script present, names unique)', run: () => execFileSync('node', [join(scriptsDir, 'check-floor-smoke.mjs')], { stdio: 'inherit' }) },
 ];
+
+// ── BUG-246: the suite may not silently shrink ───────────────────────────
+// On 2026-10-15 merge b6356bf deleted 9 of 55 CHECKS registrations and this file
+// cheerfully printed "ALL 46 CHECKS PASS", exit 0: `results.length` reports whatever
+// survived, so the summary line measured the damage and called it the suite.
+//
+// scripts/check-floor-smoke.mjs is registered above and enforces the same floor, plus
+// script-existence and name-uniqueness. This assertion is here as well because that
+// check cannot police its OWN registration: delete its line from CHECKS and it never
+// runs. This runs unconditionally, before any check does. The floor itself has ONE home
+// — scripts/fixtures/verify-check-floor.json — which both readers load; neither
+// hard-codes it.
+{
+  const floorFile = join(scriptsDir, 'fixtures', 'verify-check-floor.json');
+  let floor;
+  try {
+    floor = JSON.parse(readFileSync(floorFile, 'utf8')).floor;
+  } catch (err) {
+    console.error(`\nVERIFY ABORTED — cannot read the committed check floor (${floorFile}): ${err.message}`);
+    console.error('This file is the one home for how many checks this suite must register. Restore it; do not delete it to get a green run.');
+    process.exit(1);
+  }
+  if (!Number.isInteger(floor) || floor <= 0) {
+    console.error(`\nVERIFY ABORTED — "floor" in ${floorFile} must be a positive integer, got ${JSON.stringify(floor)}.`);
+    process.exit(1);
+  }
+  if (CHECKS.length < floor) {
+    console.error(`\nVERIFY ABORTED — this suite registers ${CHECKS.length} checks but the committed floor is ${floor}: ${floor - CHECKS.length} registration(s) have been deleted.`);
+    console.error('Restore them. If a check was deliberately retired, lower the floor in scripts/fixtures/verify-check-floor.json IN THE SAME COMMIT, with the reason.');
+    console.error('Nothing below this line ran, so no "ALL N CHECKS PASS" can be quoted from this run.');
+    process.exit(1);
+  }
+}
 
 const results = [];
 for (const check of CHECKS) {
