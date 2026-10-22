@@ -9,7 +9,7 @@
  * best_estimated_1rm_lbs live DURING the session — so by the time finishSession() reaches
  * this function, the DB already holds the identical calcRM value it is about to compute.
  * existingMap[name] === best1RMs[name], `>` is false, `rows` is empty, NO upsert fires, and
- * is_calibrated / calibration_session_id / week_targets are never written — while the
+ * is_calibrated / calibration_session_id are never written — while the
  * users.calibration_complete = true write immediately below fires unconditionally.
  * Measured on prod 2026-09-24: Kerwin has calibration_complete = true and 51 PR rows, of
  * which only 6 carry is_calibrated.
@@ -21,11 +21,19 @@
  * the REAL computeCalibration1RMs out of tandem.html (no re-implementation) and executes it
  * against the prod-observed condition.
  *
- * SCOPE, stated rather than implied: sb and computeWeekTargets are stubbed. calcRM is the
- * real one. Stubbing computeWeekTargets is deliberate and makes the test STRONGER, not
- * weaker — it records the oneRM it was handed, which is how we assert week_targets is
- * derived from max(new, existing) rather than from the session estimate. The progression
- * curve itself is D11's gate's job, not this one's.
+ * SCOPE, stated rather than implied: sb is stubbed. calcRM is the real one.
+ *
+ * BUG-202 (2026-10-13) removed two assertions from this file and the computeWeekTargets stub
+ * they needed: "every row carries week_targets", and "week_targets derived from the STORED
+ * best, not the session estimate (400, not 263)". The column was written and read by nothing,
+ * so asserting it was CLAUDE.md's worse-than-no-gate case, in this very file.
+ * NOTHING WAS LOST, and that is the whole reason the retirement was safe: the invariant the
+ * deleted pair was credited with — a genuinely higher historical PR is never regressed to a
+ * session estimate — is asserted DIRECTLY below on best_estimated_1rm_lbs ("400 stays 400"),
+ * a column the live prescription path really reads. The deleted assertion merely witnessed
+ * the same fact a second time, routed through a dead value. Verified by mutation: regress
+ * that write to the session estimate and the surviving check fails by name.
+ * Council verdict: docs/council/council-forks-2026-10-13-bug191-197-202.md.
  *
  * Run: node scripts/calibration-upsert-smoke.mjs
  */
@@ -67,7 +75,7 @@ const EXISTING = {
 };
 
 function makeCtx() {
-  const captured = { upserts: [], userUpdates: [], weekTargetInputs: [] };
+  const captured = { upserts: [], userUpdates: [] };
   const sb = {
     from(table) {
       const api = {
@@ -97,7 +105,6 @@ function makeCtx() {
   const ctx = {
     sb, console,
     cfg: { goal: 'build_muscle', weeks: 8 },
-    computeWeekTargets(oneRM) { captured.weekTargetInputs.push(oneRM); return { 2: oneRM * 0.67 }; },
     Math, Object, Promise, Number, parseFloat, parseInt,
   };
   vm.createContext(ctx);
@@ -116,15 +123,12 @@ check('an upsert to personal_records was issued at all (pre-fix: ZERO — this i
 check(`one row per session exercise (expected 3, got ${rows.length})`, rows.length === 3);
 check('every row carries is_calibrated = true', rows.length > 0 && rows.every(r => r.is_calibrated === true));
 check('every row carries calibration_session_id', rows.length > 0 && rows.every(r => r.calibration_session_id === SESSION));
-check('every row carries week_targets', rows.length > 0 && rows.every(r => r.week_targets != null));
 
 const byName = Object.fromEntries(rows.map(r => [r.exercise_name, r]));
 check('trigger-equal exercise IS written (the case the old filter silently dropped)',
       !!byName['Barbell Row'] && byName['Barbell Row'].best_estimated_1rm_lbs === rm(135, 10));
 check('a genuinely higher historical PR is NOT regressed (400 stays 400)',
       !!byName['Barbell Back Squat'] && byName['Barbell Back Squat'].best_estimated_1rm_lbs === 400);
-check('week_targets derived from the STORED best, not the session estimate (400, not 263)',
-      captured.weekTargetInputs.includes(400));
 check('users.calibration_complete is still marked', captured.userUpdates.some(u => u.patch?.calibration_complete === true));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

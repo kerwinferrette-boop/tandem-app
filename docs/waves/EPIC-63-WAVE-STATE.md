@@ -99,7 +99,41 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       `tandem-fitness-tracker.netlify.app`. Anyone who ran live QA against the README URL was
       testing nothing at all.
 
-      **STILL OWED, and not claimed as done — one real signed-in cross-device round-trip.**
+      **NARROWED 2026-10-13 — the round-trip now runs with the REAL client, two devices.**
+      `scripts/notes-roundtrip-real-client.mjs` (`npm run roundtrip:notes`, wired into
+      `verify`). What unblocked it: the container's egress policy denies all external HTTPS,
+      but `registry.npmjs.org` is in the proxy's noProxy list, so the real
+      `@supabase/supabase-js` (2.117.3, now a devDependency) can be installed and served
+      locally in place of the blocked jsdelivr tag. Two Playwright browser CONTEXTS act as
+      two devices (separate localStorage), both running the real page against one
+      PostgREST-shaped store that enforces the constraints verified against live Postgres
+      on 2026-09-30: five NOT NULL columns, unique(user_id, exercise_name), merge-duplicates
+      upsert semantics, and RLS rejecting a foreign `user_id`.
+      It proves what every earlier gate could not: the REAL client's wire format for this
+      call — `on_conflict=user_id,exercise_name`, `Prefer: resolution=merge-duplicates`, the
+      select's column list, the delete's two `eq` filters — plus that the Authorization
+      header carries the USER's token rather than the anon key. Device A types, device B
+      RENDERS it in the textarea, B clears, the DELETE fires scoped to both columns.
+      Mutation-tested, four for four: a wrong `onConflict` target, a dropped `onConflict`,
+      a misspelled payload column, and a delete missing its `exercise_name` filter each fail
+      by name. (The first attempt at the wrong-target mutation hit one of FOUR identical
+      strings elsewhere in the file and passed — see SC-45.)
+
+      **A CORRECTION this run forced, and it makes the limitation worse than written.**
+      Step 4 was expected to show a deleted note staying deleted. It does not, and the
+      earlier wording here ("a device still holding it will push it back") understated it.
+      Observed: B deletes, the row goes; A still holds it locally, sees no cloud row, and
+      pushes it back; B then takes it again as "new from another device". So **a delete is
+      not merely resurrectable — while a second device holds a copy it is reliably undone.**
+      Asserted as `[4a]` so the limitation cannot drift from the behaviour. The tombstone
+      row is re-prioritised on that basis.
+
+      **STILL OWED, narrowed but not closed — one round-trip against the DEPLOYED build.**
+      The mock agreeing with me is not the live host agreeing with me, the session is
+      injected rather than obtained from GoTrue with a password, and the deployed build
+      still predates the fix (Netlify build credits exhausted until 2026-10-21, per Kerwin
+      2026-10-13). Say "verified against the real client and the real schema; not yet
+      against the production host."
       Nobody has signed in on two devices, typed a note on one and seen it on the other. It cannot
       be done from the cloud container: no test-account password, no service-role key. The council
       split on whether that is a merge blocker (Outsider: yes) or an item to run against the
@@ -166,20 +200,64 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       equal should for the end-to-end supabase-js path; that is the owed item above, stated rather
       than implied.
 
-- [ ] **3. Council forks — BUG-191, BUG-197, BUG-202.** Run `llm-council`, record verdict +
-      citation here and on the row, THEN implement. Do not pick.
-      **BUG-191** (`reorderWeek` lies): honour `tandem_day_order` in `nextProgramDayKey()`, or delete
-      the button and toast? The comment above `:8931` records a deliberate BUG-93 ruling that the app
-      must not skip past work — which is *why* day selection is completion-count based. Option (a)
-      may reopen it.
-      **BUG-197** (theme colour): which of `users.theme_color` / `users.color_theme` /
-      `profile.colorTheme` owns the rule. Note `competition_leaderboard` excludes `theme_color` as
-      "broken in the view" (`:9231`), and onboarding writes a fourth key that reaches nothing.
-      **BUG-202** (`week_targets`): wire into the prescription path, or retire the column AND
-      `calibration-upsert-smoke.mjs:119`/`:126` together — never one without the other, or `verify`
-      breaks. **Advisory only:** `personal_records` is plausibly `safety.forbidden`; confirm with
-      Kerwin.
+- [x] **3. Council forks — BUG-191, BUG-197, BUG-202. COUNCIL RUN + SHIPPED 2026-10-13.**
+      Verdict artifact: `docs/council/council-forks-2026-10-13-bug191-197-202.md`.
+      **Unanimous 5/5 on all three.** All premises were re-grepped against `main` first — the
+      audit that filed these rows was two weeks old.
 
+      **BUG-191 — DELETED.** `reorderWeek()`, the "Readjust the week" button, the
+      "Moved to the back of this week" toast and `tandem_day_order` are all gone; the modal now
+      carries an honest static line. "Honor the order" was never live: it would have made the key
+      a second home for queue position against `completedSessionCount() % perWeek`, bounding it
+      would need a number no source supplies, and it reopens Kerwin's BUG-93 ruling
+      (*"a missed workout is DELAYED, not skipped"*). The toast's promise was already TRUE without
+      the button. **Filed, not built:** "swap today's session" — the real need — is Kerwin's
+      ruling, not a bug fix.
+
+      **BUG-197 — PLUMBING SHIPPED, DESIGN HELD.** `users.theme_color` owns the colour;
+      `userThemeColor()` is the single resolver; the picker now writes `cfg.themeColor` and syncs,
+      so a pick finally reaches the duel and the dashboard instead of one device.
+      `profile.colorTheme` is no longer written but is still read once as a fallback so pre-fix
+      picks are not silently reverted. **New finding, from live Postgres and not in the audit:
+      `users.color_theme` DOES NOT EXIST** — every pick fired a PostgREST write that failed
+      `42703` and was swallowed (unawaited, uncaught, supabase-js resolves with `{error}`). So
+      there was no dead column to drop and no migration needed, only a broken write to delete.
+      **HELD for Kerwin, deliberately untouched:** `applyColorTakeover()` — the whole app wears
+      the leader's colour. The council split on scoping it down vs extending it app-wide, and
+      `design_changes_hold` makes that his. The Contrarian found the concrete defect underneath:
+      `applyAccentColor()` has three callers and **nothing restores your colour when you leave the
+      dashboard**, so if Dani is ahead Kerwin's whole app stays her colour for the session.
+
+      **BUG-202 — RETIRED (code shipped; the column DROP needs Kerwin).** The fork inverted on
+      inspection: **wiring it in would have been worse.** `getWeekTarget()` → `weekFactor()`
+      already computes the per-week target live in the real prescription path (`:3414`, `:5528`,
+      `:5542`); `computeWeekTargets()` ran the same loop and froze it, so the column was a cache
+      of a pure function whose inputs all move. Deleted both writers, the two assertions
+      (`every row carries week_targets`, and the `400 not 263` witness) and the stub. Nothing was
+      lost: `calibration-upsert-smoke.mjs` already asserts the stored-best invariant directly on
+      `best_estimated_1rm_lbs` — **mutation-tested**, regress that write and the surviving check
+      fails by name. Live measurement before retiring: 81 PR rows, 81 non-null, **70 of them the
+      bare `'{}'` default**, only 11 with real data.
+      **OWED FROM KERWIN:** apply `migrations/0024_bug202_drop_week_targets.sql` by hand — it
+      touches `personal_records`, the 1RM store. The code is already inert, so there is no rush
+      and no intermediate broken state.
+
+      **Gate:** `scripts/council-forks-smoke.mjs`, in `verify` — 18 assertions, static plus
+      behavioural (it executes the real `userThemeColor()`/`applyColorTheme()` in a vm). Six
+      mutations tested, each with an anchor-uniqueness check per SC-45: the toast returning, the
+      key returning, the `color_theme` write returning, the sync being dropped, the legacy
+      fallback being dropped, and a reader re-deriving locally. All six fail by name.
+      **Two side-effects worth knowing:** (a) `scripts/c7-smoke.mjs` anchored its formula-layer
+      slice on `async function persistWeekTargets` — an unrelated neighbour — so deleting it
+      broke that gate with "could not locate formula layer"; it now anchors on an explicit
+      load-bearing sentinel in `tandem.html`, mutation-tested. (b) CLAUDE.md's three
+      "wired is not working" exemplars were ALL closed by this session's work and are now
+      recorded as worked examples, with the live list delegated to the gate's own output.
+
+      **Also filed, not built:** `:10119` — the leaderboard view excludes `theme_color` as
+      *"broken in the view"*, forcing a separate per-user query at `:10129`. A broken view hiding
+      behind a comment is its own defect. And: nothing stops both users picking the same colour,
+      which is the colour's one job in a two-person competition.
 - [ ] **4. Research-gated — BUG-199, BUG-198, BUG-201.** `exercise-science-research` FIRST, before
       any code. All three are program-generation changes.
       **BUG-199 first** — it is the highest-value of the three: `INJURY_RULES` covers 6 keyword

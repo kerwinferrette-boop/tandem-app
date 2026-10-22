@@ -1,0 +1,66 @@
+{
+  "_comment": "BUG-234 O1 baseline: over-cap lifts the classifier calls FORCED but the constructive oracle (scripts/forced-stack-classifier-audit.mjs) re-allocates legally. Pinned so the gate is green while the finding is open; it may only SHRINK. Category and reason are derived from the sweep, not authored. Regenerate ONLY with `node scripts/forced-stack-classifier-audit.mjs --write-fixtures`; never hand-edit.",
+  "count": 12,
+  "entries": {
+    "build_muscle/2d/female/home/lowerback — 11x Bodyweight Squat": {
+      "key": "build_muscle/2d/female/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 10"
+    },
+    "build_muscle/2d/male/home/lowerback — 11x Bodyweight Squat": {
+      "key": "build_muscle/2d/male/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 10"
+    },
+    "fat_burn/2d/female/full_gym/lowerback — 11x Barbell Hip Thrust": {
+      "key": "fat_burn/2d/female/full_gym — hamstring",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Barbell Hip Thrust 11->6; lowers below-MEV hamstring 5.5->3 of mev 8"
+    },
+    "fat_burn/2d/female/home/lowerback — 11x Bodyweight Squat": {
+      "key": "fat_burn/2d/female/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 8"
+    },
+    "fat_burn/2d/female/hotel_gym/lowerback — 11x Bulgarian Split Squat": {
+      "key": "fat_burn/2d/female/hotel_gym — hamstring",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bulgarian Split Squat 11->6; lowers below-MEV hamstring 5.5->3 of mev 8"
+    },
+    "fat_burn/2d/male/full_gym/lowerback — 11x Barbell Hip Thrust": {
+      "key": "fat_burn/2d/male/full_gym — hamstring",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Barbell Hip Thrust 11->6; lowers below-MEV hamstring 5.5->3 of mev 8"
+    },
+    "fat_burn/2d/male/home/lowerback — 11x Bodyweight Squat": {
+      "key": "fat_burn/2d/male/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 8"
+    },
+    "fat_burn/2d/male/hotel_gym/lowerback — 11x Bulgarian Split Squat": {
+      "key": "fat_burn/2d/male/hotel_gym — hamstring",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bulgarian Split Squat 11->6; lowers below-MEV hamstring 5.5->3 of mev 8"
+    },
+    "maintenance/2d/female/home/lowerback — 11x Bodyweight Squat": {
+      "key": "maintenance/2d/female/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 10"
+    },
+    "maintenance/2d/male/home/lowerback — 11x Bodyweight Squat": {
+      "key": "maintenance/2d/male/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 10"
+    },
+    "transform/2d/female/home/lowerback — 11x Bodyweight Squat": {
+      "key": "transform/2d/female/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 10"
+    },
+    "transform/2d/male/home/lowerback — 11x Bodyweight Squat": {
+      "key": "transform/2d/male/home — glute_max",
+      "category": "partial-credit-stack: every muscle at >= MEV stays >= MEV after unstacking; the stack serves only a muscle that is below MEV with or without it",
+      "reason": "plan Bodyweight Squat 11->6; lowers below-MEV glute_max 5.5->3 of mev 10"
+    }
+  }
+}

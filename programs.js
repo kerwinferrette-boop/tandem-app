@@ -121,13 +121,39 @@ const PROGRESSION_PCT_MAX = 10;  // ACSM position stand, PMID 19204579
 // against a malformed future bank entry, not a prescription anyone receives. The day it
 // CAN fire, the gate fails first and the bank gets fixed — which is the point.
 //
-// DEFAULT_REPS is likewise a placeholder, not a prescription: the render layer resolves
-// weighted work through effectiveReps() (D10/D14), so this value only survives where a
-// phase has not spoken.
+// DEFAULT_REPS is a placeholder for LOADED work only: the render layer resolves weighted
+// non-core work through effectiveReps() (D10/D14), so there it survives only where a phase
+// has not spoken. For CORE it is NOT a placeholder - tandem.html reads `ex.r` for core
+// (anchorReps / getRecommendation's repTarget), so this uncited 10 IS what a user is shown.
 const TIMED_HOLD_FALLBACK_SECS = 45;
 const DEFAULT_REPS = 10;
 function defaultPrescription(e) {
-  return e && e.unit === 'sec' ? (e.secs || TIMED_HOLD_FALLBACK_SECS) : DEFAULT_REPS;
+  // Routed through the declared basis (BUG-95, below). A tagless or malformed entry falls back to
+  // the EXISTING unit-based behaviour inside prescriptionBasis(), so every output is unchanged.
+  return prescriptionBasis(e) === 'authored-secs-uncited' ? ((e && e.secs) || TIMED_HOLD_FALLBACK_SECS) : DEFAULT_REPS;
+}
+
+// ── CORE-BLOCK PRESCRIPTION PROVENANCE (BUG-95, plumbing only) ──────────────────
+// Every core movement (bank `category:'core'`, static literal `isCore:true`) declares WHERE its
+// prescription comes from in an `rxBasis` tag. The tag is PROVENANCE, not a value: no rep or
+// seconds number lives in it, and none is authored anywhere by this mechanism.
+//   flat-default-uncited   rep-based; prescription = DEFAULT_REPS (10). That 10 is UNCITED: no
+//                          canonical source prescribes it (BUG-95 audit, 2026-08-17). It is the
+//                          existing behaviour, shipped to every rep-based core slot, kept ONLY
+//                          until Kerwin ratifies per-movement values.
+//   authored-secs-uncited  timed; prescription = the entry's own `secs`. Kerwin set it 2026-07-13;
+//                          D25 notes the sources are silent on isometric durations.
+//   legacy-static-uncited  the hand-authored static programs' own `r`. Authored, never cited.
+// The tag lives on the bank entry / static literal and is deliberately NOT copied onto the
+// emitted exercise (makeEx / mk() pick fields explicitly), so generated output is byte-identical.
+// `prescriptionBasis` is the one reader and falls back to the EXISTING behaviour when a tag is
+// absent, and `defaultPrescription` above is its live caller (so the tag is read by the generator,
+// not only by the gate). scripts/core-rx-provenance-smoke.mjs fails if any core entry omits the tag.
+// Ungoverned and NOT touched here: core SETS and core VOLUME (D6 excludes core; see below).
+const RX_BASES = ['flat-default-uncited', 'authored-secs-uncited', 'legacy-static-uncited'];
+function prescriptionBasis(e) {
+  if (e && RX_BASES.indexOf(e.rxBasis) !== -1) return e.rxBasis;
+  return e && e.unit === 'sec' ? 'authored-secs-uncited' : 'flat-default-uncited';
 }
 
 // ── The ONE home for an untrained lifter's STARTING load ──────────────────────
@@ -516,7 +542,7 @@ const EXERCISE_BANK = {
     name:'DB Floor Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['tricep','anterior_delt']},
     emphasis:['chest','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:0.82,
-    why:'The floor stops the elbows at roughly 90°, cutting the bottom range that stresses the shoulder — the most shoulder-friendly heavy pressing option and a strong tricep-lockout builder. Needs only dumbbells and floor space, so it travels anywhere.',
+    why:'The floor stops the elbows at roughly 90°, cutting the bottom range that stresses the shoulder — the most shoulder-friendly heavy pressing option and a strong tricep-lockout builder.',
     cues:['Lie on the floor, knees bent, dumbbells over the chest','Lower until the upper arms rest lightly on the floor — do not bounce','Pause briefly, then press back to full lockout','Keep the wrists stacked over the elbows throughout']},
   'cable-chest-press':{
     name:'Cable Chest Press', videoId:null,
@@ -649,7 +675,7 @@ const EXERCISE_BANK = {
     name:'Rear Delt Fly', videoId:null,
     muscleGroups:{primary:['posterior_delt','rhomboid'],secondary:['middle_trap','lower_trap']},
     emphasis:['shoulders','back','pull','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Posterior delt is the most undertrained muscle in lifters. Weak posterior delts drive forward shoulder posture, rotator cuff injuries, and limit pressing performance. Can be done anywhere with dumbbells — no cable required.',
+    why:'Posterior delt is the most undertrained muscle in lifters. Weak posterior delts drive forward shoulder posture, rotator cuff injuries, and limit pressing performance.',
     cues:['Hinge at hips 45°, chest toward floor','Lead with the elbow, not the hand','Stop at shoulder height — slight elbow bend is fine','Squeeze for one count at peak; lower with control']},
   'prone-y-raise':{
     name:'Prone Y-Raise', videoId:null,
@@ -661,7 +687,7 @@ const EXERCISE_BANK = {
     name:'Prone T-Raise', videoId:null,
     muscleGroups:{primary:['posterior_delt','middle_trap'],secondary:['rhomboid']},
     emphasis:['shoulders','back','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting. Alongside Y-raise, it completes the upper back health trifecta.',
+    why:'The T-raise targets the middle trapezius and posterior delt. Alongside Y-raise, it completes the upper back health trifecta.',
     cues:['Lie face down; arms straight out to the sides (T position)','Thumbs pointing up (external rotation)','Lift arms by squeezing shoulder blades — height matters less than contraction','Lower slowly; repeat with full range of motion']},
   'upright-row':{
     name:'Upright Row', videoId:null,
@@ -716,7 +742,7 @@ const EXERCISE_BANK = {
     name:'DB Shrug', videoId:null,
     muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'isolation', oneRmFactor:null,
-    why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front, and available anywhere a pair of dumbbells is. The direct stimulus for upper-trap mass and a fuller yoke.',
+    why:'Dumbbells let the traps shrug straight up with the load hanging at the sides — a cleaner line of pull than a barbell held in front. The direct stimulus for upper-trap mass and a fuller yoke.',
     cues:['Dumbbells at the sides, arms straight, shoulders relaxed to start','Shrug straight up toward the ears — do not roll the shoulders','Hold the top squeeze for one count','Lower to a full stretch at the bottom before the next rep']},
   'band-shrug':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero upper_trap
@@ -733,7 +759,7 @@ const EXERCISE_BANK = {
     name:'Band Shrug', videoId:null,
     muscleGroups:{primary:['upper_trap'],secondary:['levator_scapulae']},
     emphasis:['shoulders','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull, needing no equipment beyond a band.',
+    why:'Same straight-arm elevation pattern as a barbell or DB shrug — the direct stimulus for upper-trap mass — using a band anchored under both feet so the resistance rises through the pull.',
     cues:['Stand on the band with both feet, one handle in each hand','Arms straight throughout — do not bend the elbows','Shrug straight UP toward the ears — do not roll the shoulders','Hold the top squeeze for one count, then lower to a full stretch']},
   'alternating-db-shoulder-press':{
     name:'Alternating DB Shoulder Press', videoId:null,
@@ -789,7 +815,7 @@ const EXERCISE_BANK = {
     name:'Table Inverted Row', videoId:null,
     muscleGroups:{primary:['lat_dorsi'],secondary:['bicep_brachii','posterior_delt','rhomboid']},
     emphasis:['back','pull','upper_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
+    why:'A bodyweight pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row.',
     cues:['Lie under a sturdy table, hands gripping the edge, body straight','Pull chest toward the table edge, squeezing shoulder blades together','Keep the body rigid — no hip sag','Lower under control; walk feet further out to increase difficulty']},
   'straight-arm-pulldown':{
     name:'Straight-Arm Pulldown', videoId:null,
@@ -1026,7 +1052,7 @@ const EXERCISE_BANK = {
     name:'Band Concentration Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','upper_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work. Needs only a band under the foot and a seat.',
+    why:'Band version of the concentration curl — the elbow braced against the inner thigh removes momentum and shoulder help, so the bicep does the work.',
     cues:['Sit on a chair with the band under the foot on your working side; brace that elbow against your inner thigh above the knee','Full extension at bottom — keep light tension on the band','Supinate at the top','Squeeze and hold one count at peak; lower slowly']},
   'band-hammer-curl':{
     // BUG-88 (2026-08-16, exercise-science-research pass): home tier had zero brachialis/
@@ -1084,7 +1110,7 @@ const EXERCISE_BANK = {
     name:'Bench Dip', videoId:null,
     muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['anterior_delt']},
     emphasis:['triceps','push','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'A bodyweight triceps builder needing only a bench, chair, or step — the vertical descent loads all three heads and progresses easily by elevating the feet or setting a plate on the lap. The go-to triceps overload with no gym access.',
+    why:'A bodyweight triceps builder using a bench, chair, or step — the vertical descent loads all three heads and progresses easily by elevating the feet or setting a plate on the lap. The go-to bodyweight triceps overload.',
     cues:['Hands on the bench edge behind you, legs out front','Lower by bending the elbows straight back — keep them tucked','Descend until the upper arms are parallel to the floor','Press back to a full lockout; keep the hips close to the bench']},
   'tricep-dip-machine':{
     name:'Tricep Dip Machine', videoId:null,
@@ -1096,7 +1122,7 @@ const EXERCISE_BANK = {
     name:'Diamond Push-Up', videoId:null,
     muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['pec_major_sternal','anterior_delt']},
     emphasis:['triceps','push','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Zero-equipment triceps mass work; elevate the feet to progress.',
+    why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Direct triceps mass work; elevate the feet to progress.',
     cues:['Hands together under the chest, index fingers and thumbs forming a diamond','Body rigid in a straight line — no hip sag','Lower until the chest nearly touches the hands, elbows tucked','Press to full lockout; elevate the feet to add difficulty']},
   'jm-press':{
     name:'JM Press', videoId:null,
@@ -1140,19 +1166,19 @@ const EXERCISE_BANK = {
     name:'Sissy Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch with zero equipment. Ideal quad finisher requiring nothing but bodyweight.',
+    why:'The bodyweight answer to the leg extension — knees travel far forward while the hips stay extended, isolating the quads (especially the rectus femoris) under a deep stretch. An effective bodyweight quad finisher.',
     cues:['Hold a support for balance; rise onto the balls of the feet','Drive knees forward and lean the torso back in one line','Lower until you feel a deep quad stretch — hips stay open','Squeeze the quads to return; add a plate hugged to the chest to progress']},
   'reverse-nordic':{
     name:'Reverse Nordic', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus_medialis','quad_vastus'],secondary:['hip_flexor']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience with zero equipment.',
+    why:'A kneeling eccentric quad isolation that loads the rectus femoris under a long stretch — the exact lengthened-position stimulus the leg extension cannot reach. Builds quads and knee resilience.',
     cues:['Kneel tall, hips fully extended, core braced','Lean the whole body back in a straight line from knees to head','Lower as far as quad control allows — no hip bend','Pull back up with the quads; hold a wall or band to assist if needed']},
   'bodyweight-squat':{
     name:'Bodyweight Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_medialis','quad_vastus'],secondary:['glute_max']},
     emphasis:['quads','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'The zero-equipment squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available; add tempo, pauses, or a loaded backpack to progress.',
+    why:'The bodyweight squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available; add tempo, pauses, or a loaded backpack to progress.',
     cues:['Feet shoulder-width, toes slightly out','Sit hips back and down — knees track over toes','Drive through the whole foot to stand','Chest tall throughout — brace the core before descending']},
   'goblet-squat':{
     name:'Goblet Squat', videoId:'MeIiIdhvXT4',
@@ -1188,7 +1214,7 @@ const EXERCISE_BANK = {
     name:'DB Split Squat', videoId:null,
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus'],secondary:['glute_max']},
     emphasis:['quads','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'A stationary split stance (both feet on the floor) delivers most of the unilateral quad stimulus of a Bulgarian split squat with far less balance demand — an accessible single-leg builder for lifters not yet ready to elevate the rear foot.',
+    why:'A stationary split stance (both feet on the floor) delivers most of the unilateral quad stimulus of a Bulgarian split squat with far less balance demand — a single-leg builder for lifters not yet ready to elevate the rear foot.',
     cues:['Split stance, front shin vertical, torso upright','Lower straight down until the back knee nearly touches the floor','Drive through the front heel to stand','Keep the dumbbells hanging at the sides; complete all reps, then switch']},
   'reverse-lunge':{
     name:'Reverse Lunge', videoId:null,
@@ -1287,7 +1313,7 @@ const EXERCISE_BANK = {
     name:'Single-Leg Romanian Deadlift', videoId:null,
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae']},
     emphasis:['hamstrings','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'The zero-equipment hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL with no equipment required.',
+    why:'The bodyweight hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
     cues:['Stand tall, soft bend in the standing knee','Hinge forward while the free leg extends straight back','Keep hips square — do not let them rotate open','Squeeze the glute and hamstring to return to standing; hold a wall for balance if needed']},
   'lying-leg-curl':{
     name:'Lying Leg Curl', videoId:'ELOCsoDSmrg',
@@ -1344,7 +1370,7 @@ const EXERCISE_BANK = {
     name:'DB RDL', videoId:null,
     muscleGroups:{primary:['hamstring','glute_max'],secondary:['erector_spinae']},
     emphasis:['hamstrings','glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'Identical hip hinge to barbell RDL but accessible with just a pair of dumbbells. The dumbbell version allows a slightly more natural arc and is easier to set up without a squat rack.',
+    why:'Identical hip hinge to barbell RDL, using a pair of dumbbells. The dumbbell version allows a slightly more natural arc and is easier to set up without a squat rack.',
     cues:['Dumbbells hang at thigh level — slide them down the legs','Hip hinge back; feel the hamstring stretch at the bottom','Flat back throughout — brace the core hard','Drive hips forward to return; squeeze glutes at the top']},
   'single-leg-db-rdl':{
     name:'Single-Leg DB RDL', videoId:null,
@@ -1412,7 +1438,7 @@ const EXERCISE_BANK = {
     name:'Banded Hip Abduction', videoId:null,
     muscleGroups:{primary:['glute_medius','glute_minimus'],secondary:['tensor_fasciae_latae']},
     emphasis:['glutes','lower_body'], equipment:'band', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band replaces the abductor machine with near-identical isolation anywhere.',
+    why:'Targets the glute medius and minimus — the lateral hip stabilisers whose weakness drives knee valgus and hip drop. A mini-band gives near-identical isolation to the abductor machine.',
     cues:['Loop a mini-band just above the knees','Standing or side-lying, drive the knee out against the band','Keep the pelvis still — move only at the hip','Slow return; never let the band snap the leg back']},
   'cable-pull-through':{
     name:'Cable Pull-Through', videoId:null,
@@ -1436,7 +1462,7 @@ const EXERCISE_BANK = {
     name:'Frog Pump', videoId:null,
     muscleGroups:{primary:['glute_max'],secondary:['adductor']},
     emphasis:['glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The soles-together, knees-out position pre-shortens the glutes so every rep peaks in deep hip extension with minimal quad or hamstring contribution — a high-rep glute burnout that isolates the glute max better than most bridges, no equipment needed.',
+    why:'The soles-together, knees-out position pre-shortens the glutes so every rep peaks in deep hip extension with minimal quad or hamstring contribution — a high-rep glute burnout that isolates the glute max better than most bridges.',
     cues:['Lie on your back, soles of the feet together, knees dropped wide','Drive the hips up by squeezing the glutes — heels stay together','Pause and squeeze hard at the top','Lower with control; keep the reps quick and continuous for the pump']},
 
   // ── CALVES ────────────────────────────────────────────
@@ -1481,145 +1507,145 @@ const EXERCISE_BANK = {
   'dead-bug':{
     name:'Dead Bug', videoId:null,
     muscleGroups:{primary:['transverse_abdominis','rectus_abdominis'],secondary:['psoas','erector_spinae']},
-    emphasis:['core','full_body'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core','full_body'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'McGill-approved anti-extension movement. Forces the core to resist spinal extension while contralateral limbs move — exactly what the core does during every compound lift. Zero spinal shear. Safest core exercise for any lower back history.',
     cues:['Press lower back FLAT into floor throughout — this is the whole exercise','Move opposite arm and leg simultaneously','Breathe out as you lower the limbs','If the back lifts, the set is over']},
   'plank':{
     name:'Plank', videoId:'pSHjTRCQxIw', unit:'sec', secs:60,
     muscleGroups:{primary:['transverse_abdominis','rectus_abdominis'],secondary:['erector_spinae','glute_max']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'authored-secs-uncited', oneRmFactor:null,
     why:'Anti-extension core training — builds the ability to resist spinal extension under load, exactly the demand during heavy squats and deadlifts.',
     cues:['Forearms on floor, elbows under shoulders','Body in a straight line from head to heels','Squeeze glutes and abs simultaneously','Breathe normally — if you cannot breathe, reduce the duration']},
   'side-plank':{
     name:'Side Plank', videoId:null, unit:'sec', secs:45,
     muscleGroups:{primary:['quadratus_lumborum','oblique_external','glute_medius'],secondary:['transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'authored-secs-uncited', oneRmFactor:null,
     why:'McGill Big 3 staple — the only exercise that loads the lateral core (QL and obliques) without spinal compression. QL weakness is the most overlooked contributor to lower back pain.',
     cues:['Elbow directly under shoulder','Hips stacked — do not let the top hip rotate forward','Straight line from head through feet','Keep neck neutral — do not let the head drop']},
   'bird-dog':{
     name:'Bird Dog', videoId:null,
     muscleGroups:{primary:['erector_spinae','glute_max','transverse_abdominis'],secondary:['oblique_external']},
-    emphasis:['core','full_body'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core','full_body'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'McGill Big 3 exercise — simultaneously trains lumbar extensors, glute max, and contralateral rotator coordination without any spinal compression.',
     cues:['Start on all fours, spine neutral','Extend opposite arm and leg simultaneously','Do not let the hip rotate or the lower back arch','Pause at full extension for two counts; reset with control']},
   'ab-wheel-rollout':{
     name:'Ab Wheel Rollout', videoId:null,
     muscleGroups:{primary:['rectus_abdominis','transverse_abdominis'],secondary:['lat_dorsi','hip_flexor']},
-    emphasis:['core','upper_body'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core','upper_body'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The highest rectus abdominis activation exercise that exists — significantly higher than crunches, planks, or leg raises. Start from the knees; progress to standing rollouts.',
     cues:['Start on knees; wheel directly under shoulders','Roll out keeping hips down — do not let the back arch','Roll to maximum range before your back starts to arch','Pull back in with lats AND abs — both are working']},
   'cable-crunch':{
     name:'Cable Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external']},
-    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The only weighted abs exercise with constant resistance through the full ROM. Allows progressive overload on the rectus abdominis — you can add load every week.',
     cues:['Kneel facing the cable, hands behind your neck (not pulling)','Crunch by flexing the spine — do not hip hinge','Round the upper back; bring sternum toward the pelvis','Slow return — the eccentric phase is 70% of the benefit']},
   'hanging-knee-raise':{
     name:'Hanging Knee Raise', videoId:null,
     muscleGroups:{primary:['rectus_abdominis','hip_flexor'],secondary:['transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The hanging position also trains grip and shoulder girdle stability. Progressed from knee raise to straight-leg raise to full toes-to-bar. A pull-up bar is sufficient — no dedicated equipment needed.',
     cues:['Dead hang; do not swing','Draw knees to chest by curling the pelvis — not just lifting the legs','Lower with control — do not drop','Advanced: straighten legs for a dramatically harder version']},
   'reverse-crunch':{
     name:'Reverse Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis_lower'],secondary:['transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'One of very few exercises that specifically targets the lower rectus abdominis fibres. The curling pelvis motion (posterior pelvic tilt) is the key mechanic that distinguishes it from basic leg raises.',
     cues:['Lie flat; curl the knees to the chest by tilting the pelvis — not just lifting the knees','Lower back should press into the floor throughout','Slow and controlled — not momentum-based','Progress by adding a pause at peak tilt']},
   'pallof-press':{
     name:'Pallof Press', videoId:null,
     muscleGroups:{primary:['transverse_abdominis','oblique_internal','oblique_external'],secondary:['anterior_delt']},
-    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'Anti-rotation core exercise — the cable pulls the body sideways and the core resists that rotation. Exactly the demand placed on the core in rotational sports and under asymmetric loads.',
     cues:['Cable at chest height; stand perpendicular to it','Press hands straight out from chest; resist the lateral pull','Keep hips square — the fight is between the cable and your core','Hold extended position for two counts; controlled throughout']},
   'russian-twist':{
     name:'Russian Twist', videoId:null,
     muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['hip_flexor']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'Trains the obliques through rotation — the pattern that generates punching power, throwing velocity, and athletic rotation. Progressed with a medicine ball, weight plate, or dumbbell.',
     cues:['Sit at 45° with feet elevated (harder) or on floor (easier)','Rotate from the torso, not just the arms','Touch the floor beside each hip each rep','Brace the core throughout — do not let the spine collapse']},
   'dragon-flag':{
     name:'Dragon Flag', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['transverse_abdominis','hip_flexor']},
-    emphasis:['core','full_body'], equipment:'bodyweight', tier:'hotel_gym', category:'core', oneRmFactor:null,
-    why:'The hardest bodyweight anti-extension exercise — the whole body is held rigid as a lever while the abs resist gravity trying to pull the spine into extension. Popularised by Bruce Lee, it produces among the highest rectus abdominis demands possible with no equipment beyond something to hold.',
+    emphasis:['core','full_body'], equipment:'bodyweight', tier:'hotel_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
+    why:'The hardest bodyweight anti-extension exercise — the whole body is held rigid as a lever while the abs resist gravity trying to pull the spine into extension. Popularised by Bruce Lee, it produces among the highest rectus abdominis demands possible.',
     cues:['Lie on a bench or floor; grip a solid post behind the head','Brace and lift the whole body toward vertical, weight on the upper back','Lower the straight, rigid body as one unit — no bend at the hips','Keep the lower back from arching; regress by bending the knees']},
   'hanging-leg-raise':{
     name:'Hanging Leg Raise', videoId:null,
     muscleGroups:{primary:['rectus_abdominis_lower','hip_flexor'],secondary:['transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The straight-leg progression of the hanging knee raise — the longer lever dramatically increases the load on the lower rectus abdominis, while the dead hang trains grip and shoulder stability. The benchmark hanging ab movement on the way to toes-to-bar.',
     cues:['Dead hang from a bar, no swinging','Raise straight legs by curling the pelvis up — not just lifting the legs','Bring the legs to at least parallel; higher recruits more lower abs','Lower under control; keep the movement strict, not momentum-driven']},
   'weighted-decline-sit-up':{
     name:'Weighted Decline Sit-Up', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['hip_flexor','oblique_external']},
-    emphasis:['core'], equipment:'dumbbell', tier:'hotel_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'dumbbell', tier:'hotel_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The decline angle lengthens the range of the sit-up and holding a plate or dumbbell adds progressive load — one of the few ways to train the full rectus abdominis with heavy, trackable resistance rather than endless bodyweight reps.',
     cues:['Anchor the feet on a decline bench, hold a plate on the chest','Curl up by flexing the spine — round the back off the bench segment by segment','Do not yank with the hip flexors; the abs initiate','Lower under control through the full range; add load as it gets easy']},
   'cable-woodchopper':{
     name:'Cable Woodchopper', videoId:null,
     muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['transverse_abdominis']},
-    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'A loaded rotational chop trains the obliques through the exact diagonal power pattern used in throwing, swinging, and rotating — with constant cable tension the whole way. Progressive resistance for rotational strength that the bodyweight Russian twist cannot match.',
     cues:['Set the pulley high; grip the handle with both hands','Rotate down and across the body to the opposite hip — pivot the back foot','Drive the motion from the trunk, not the arms','Control the return; keep the arms fairly straight throughout']},
   'machine-ab-crunch':{
     name:'Machine Ab Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external']},
-    emphasis:['core'], equipment:'machine', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'machine', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The ab crunch machine adds selectable, progressive resistance to spinal flexion through a guided path — letting a lifter overload the rectus abdominis in small increments exactly like any other muscle, safely and to failure. Weighted, trackable ab training in a fixed groove.',
     cues:['Set the seat and pad so the resistance sits across the chest/shoulders','Crunch by rounding the spine — bring the sternum toward the pelvis','Do not hinge at the hips; the movement is spinal flexion','Control the eccentric all the way back — that phase drives most of the growth']},
   'hollow-body-hold':{
     name:'Hollow Body Hold', videoId:null, unit:'sec', secs:30,
     muscleGroups:{primary:['rectus_abdominis','transverse_abdominis'],secondary:['hip_flexor']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'authored-secs-uncited', oneRmFactor:null,
     why:'The gymnastics foundation for anti-extension strength — pressing the lower back flat while holding the arms and legs off the ground trains the abs to hold a braced, neutral spine under a long lever. Directly transfers to the midline stability every heavy lift demands.',
     cues:['Lie supine; press the lower back FLAT into the floor — this never releases','Lift the shoulders and legs off the floor into a shallow banana shape','Arms overhead by the ears; legs straight — the lower the harder','If the back lifts off the floor, raise the arms/legs higher and rebuild']},
   'standing-cable-oblique-crunch':{
     name:'Standing Cable Oblique Crunch', videoId:null,
     muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['quadratus_lumborum']},
-    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'A loaded lateral-flexion crunch that trains the obliques and QL through the side-bending pattern with progressive cable resistance — the frontal-plane counterpart to the cable crunch. Builds the lateral core that stabilises the spine under uneven loads like suitcase carries.',
     cues:['Stand side-on to a high pulley, handle in the near hand','Crunch the torso down toward the working-side hip — bend at the waist','Keep the hips still; the motion is pure lateral flexion','Resist the cable back up under control; finish all reps, then switch sides']},
   'landmine-rotation':{
     name:'Landmine Rotation', videoId:null,
     muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['transverse_abdominis','anterior_delt']},
-    emphasis:['core'], equipment:'barbell', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'barbell', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'Sweeping a landmine bar in an arc from hip to hip trains rotation and anti-rotation together under a load that scales indefinitely — building trunk rotational power through a long, controlled range that a barbell landmine makes easy to progress.',
     cues:['Hold the barbell end at full arm extension in front of the chest','Rotate the bar in an arc down to one hip, pivoting the feet','Drive the rotation from the trunk, arms fairly straight','Control the arc across to the other hip — do not let it free-fall']},
   'toes-to-bar':{
     name:'Toes-to-Bar', videoId:null,
     muscleGroups:{primary:['rectus_abdominis_lower','hip_flexor'],secondary:['lat_dorsi','transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'The full-range endpoint of hanging ab work — bringing the toes all the way to the bar demands maximal lower-ab and hip-flexor strength plus lat engagement to control the swing. The benchmark advanced hanging core movement.',
     cues:['Dead hang; engage the lats to stop any swing','Curl the pelvis and drive the straight legs all the way up to the bar','Control the descent — no kipping or momentum','Regress to knee raises or leg raises until the strength is there']},
   'bicycle-crunch':{
     name:'Bicycle Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis','oblique_external'],secondary:['oblique_internal']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
-    why:'Consistently one of the highest EMG-ranked ab exercises — the pedaling twist trains the rectus abdominis and obliques together through flexion plus rotation, with zero equipment. A staple for combined ab and oblique work anywhere.',
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
+    why:'Consistently one of the highest EMG-ranked ab exercises — the pedaling twist trains the rectus abdominis and obliques together through flexion plus rotation. A staple for combined ab and oblique work.',
     cues:['Lie back, hands lightly behind the head, shoulders off the floor','Bring one elbow toward the opposite knee as that leg drives in','Extend the other leg straight without letting it touch down','Rotate from the torso, not the neck; move slowly and with control']},
   'v-up':{
     name:'V-Up', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['hip_flexor']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
-    why:'Lifting the straight arms and legs to meet over the hips folds the body at the abs, contracting the full rectus abdominis top-and-bottom simultaneously. A no-equipment progression up from the crunch that trains the whole ab wall in one movement.',
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
+    why:'Lifting the straight arms and legs to meet over the hips folds the body at the abs, contracting the full rectus abdominis top-and-bottom simultaneously. A progression up from the crunch that trains the whole ab wall in one movement.',
     cues:['Lie flat, arms extended overhead, legs straight','Lift the arms and legs together to touch over the hips in a V','Keep both the arms and legs straight — hinge only at the hips','Lower under control without letting the feet or hands touch down']},
   'standing-cable-crunch':{
     name:'Standing Cable Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external']},
-    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'cable', tier:'full_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'A standing, weighted spinal-flexion crunch against a high cable — constant progressive resistance on the rectus abdominis without kneeling, convenient to superset between other standing lifts. Loads the abs like any other muscle for real overload.',
     cues:['Face away from a high pulley, rope held at the collarbones','Crunch down by rounding the spine — bring the ribs toward the pelvis','Keep the hips fixed; the motion is spinal flexion, not a hip hinge','Resist the cable back up slowly to a full stretch']},
   'copenhagen-plank':{
     name:'Copenhagen Plank', videoId:null, unit:'sec', secs:30,
     muscleGroups:{primary:['adductor','oblique_external'],secondary:['transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'authored-secs-uncited', oneRmFactor:null,
     why:'A side plank with the top leg on a bench that loads the adductors isometrically while the lateral core holds the hips level — building groin strength that dramatically lowers adductor-strain risk, alongside the obliques and QL.',
     cues:['Side plank position, elbow under the shoulder','Rest the top (upper) leg on a bench, bottom leg hanging or lifted','Lift the hips so the body is a straight line — squeeze the top inner thigh','Hold for time; regress by resting the bottom knee, progress by holding the bottom leg up']},
   'hanging-oblique-raise':{
     name:'Hanging Oblique Raise', videoId:null,
     muscleGroups:{primary:['oblique_external','oblique_internal'],secondary:['rectus_abdominis_lower','hip_flexor']},
-    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'hotel_gym', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
     why:'Raising the knees to one side while hanging adds rotation and lateral flexion to the knee raise — loading the obliques through a long range under the same grip and shoulder-stability demand as other hanging ab work.',
     cues:['Dead hang from a bar, no swinging','Curl the knees up and toward one side, twisting at the waist','Squeeze the obliques at the top; control the return','Alternate sides evenly; keep the movement strict, not swung']},
 
@@ -1640,13 +1666,13 @@ const EXERCISE_BANK = {
     // bodyweight movement, not in place of it.
     muscleGroups:{primary:['calf','glute_medius','anterior_delt'],secondary:['quad','hip_flexor','glute_max']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
-    why:'Zero-equipment full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
+    why:'Full-body cardio — elevates heart rate through continuous total-body movement when no machine is available.',
     cues:['Land softly, knees soft on impact','Full arm extension overhead each rep','Steady rhythm — this is Zone 2, not a sprint','20+ min continuous, or interval with High Knees']},
   'high-knees':{
     name:'High Knees', videoId:null,
     muscleGroups:{primary:['quad','glute_max','hamstring'],secondary:['hip_flexor','calf']},
     emphasis:['lower_body','full_body'], equipment:'bodyweight', tier:'home', category:'cardio', oneRmFactor:null,
-    why:'Zero-equipment hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work with no equipment required.',
+    why:'Hip-flexor-driven cardio — the running-in-place pattern trains the same quad/glute/hamstring cycling action as treadmill or bike work.',
     cues:['Drive knees to hip height, quick cadence','Land on the balls of the feet','Pump the arms to maintain rhythm','Moderate, sustainable pace for Zone 2 duration']},
   'incline-treadmill':{
     name:'Incline Treadmill', videoId:null,
@@ -1694,7 +1720,7 @@ const EXERCISE_BANK = {
     // live request token with no tag behind it on entries missing this co-tag).
     muscleGroups:{primary:['quad_rectus_femoris','quad_vastus_lateralis','quad_vastus'],secondary:['glute_max','glute_medius']},
     emphasis:['quads','glutes','lower_body'], equipment:'bodyweight', tier:'home', category:'compound', oneRmFactor:null,
-    why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a zero-equipment single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
+    why:'Stepping down off a low box loads the standing leg while the knee travels further into flexion than a step-up allows, and that extra travel is the point rather than a side effect. For Tandem this is a single-leg quad builder that doubles as knee-health work for runners and hikers, at a tier where the library currently has no eccentric-emphasis single-leg option at all.',
     cues:['Stand on a 6-7 inch step with all the weight through the working leg','Reach the free leg out to the side and tap the heel down - do not push off it','Let the working knee travel forward; that range is what you are training','Slow and controlled on the way down; hold a wall or rail if balance is the limiter']},
   'band-row':{
     name:'Band Row', videoId:null,
@@ -1705,7 +1731,7 @@ const EXERCISE_BANK = {
   'mcgill-curl-up':{
     name:'McGill Curl-Up', videoId:null, unit:'sec', secs:10,
     muscleGroups:{primary:['rectus_abdominis'],secondary:['oblique_external','transverse_abdominis']},
-    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', oneRmFactor:null,
+    emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'authored-secs-uncited', oneRmFactor:null,
     why:'The third McGill Big 3 movement, and the one the bank is missing. Trains the anterior core to hold a braced trunk while the hands stay under the small of the back to preserve its natural inward curve, so the abs work hard without the repeated spinal flexion a sit-up demands. Side Plank and Bird Dog both already name the McGill Big 3 in their own rationale; this completes the set.',
     cues:['Lie on your back, one knee bent with that foot flat, the other leg straight','Slide both hands palm-down under the small of your back and keep its natural arch - do not press the back flat','Brace the abs, then lift head and shoulders as one rigid unit only an inch or two; chin does not tuck, neck does not crane','Hold ten seconds breathing normally, lower with control, and add repetitions rather than a longer hold as it gets easier']},
 };
@@ -3421,6 +3447,12 @@ function applyGoalVolume(program, goal, compoundRef) {
   out.forEach((day, di) => day.blocks.forEach((b, bi) => {
     if (b.cardio) return;
     b.exs.forEach((e, ei) => {
+      // D6 FILTER SITE (BUG-95 carve-out, 2026-10-13): core is excluded from goal volume on
+      // purpose AND is ungoverned by D10's rep bands. Those bands were written for LOADED
+      // resistance work; applying them to core would be an extrapolation with a citation
+      // costume (council, endorsed in review). Core reps are a flat DEFAULT_REPS (10) that is
+      // UNCITED - not a neutral default - pending Kerwin's per-movement ratification. Core SETS
+      // and core VOLUME are likewise ungoverned. See DOCTRINE.md "Core-block carve-out".
       if (!e || e.isCore || e.cardioOnly) return;
       const entry = byName[e.name];
       const prim = entry?.muscleGroups?.primary || [];
@@ -4049,10 +4081,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['15° forward hinge. Removes shoulder from the movement.','Full extension at bottom. Squeeze 1 full second.','Drop 30% on final set, continue to failure.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fb-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fb-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'McGill-approved anti-rotation movement. Forces the core to resist spinal extension while contralateral limbs move — exactly what the core does during every compound lift. Zero spinal shear.',
                cues:['Lie on back. Arms straight to ceiling, knees at 90° above hips.','Slowly lower opposite arm and leg toward floor. Lower back STAYS pressed to floor.','Return and switch. 10 per side = 1 set. Do not rush.']},
-              {id:'fb-mon-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fb-mon-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Targets the rectus abdominis through hip flexion rather than spinal flexion — loads the lower portion without compressing the lumbar discs. Zero neck strain.',
                cues:['Lie flat. Bring knees to 90°.','Curl hips off the floor using the abs — not momentum.','Lower slowly. 3-sec eccentric. Do not let feet touch ground between reps.']},
             ]},
@@ -4084,10 +4116,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang at bottom, 1-sec pause. Full rise at top, 1-sec pause.','No bouncing. Own every inch of the range.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fb-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fb-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Posterior chain core work pairs perfectly with hip hinge days. Erector spinae and multifidus are the core\'s "back wall" — undertrained in almost every ab program.',
                cues:['Brace abs before initiating. Neutral spine throughout.','Rise until body is straight — not hyperextended.','2-sec hold at top. 3-sec controlled lower.']},
-              {id:'fb-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'fb-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'McGill Big 3 staple — the only exercise that loads the lateral core (quadratus lumborum and obliques) without spinal compression. Anti-lateral flexion strength directly transfers to stability in every loaded carry and hinge movement.',
                cues:['Elbow under shoulder. Hips stacked. Body in one straight line.','Drive hips up — do not sag.','Hold 35 sec each side. Rest 30 sec between sides.']},
             ]},
@@ -4119,10 +4151,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbow pinned to side. No front delt drift.','Strict alternating — complete one before starting the other.','Full extension at bottom.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fb-thu-cc',   name:'Cable Crunch', badge:'core', sets:3, w:40, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fb-thu-cc',   name:'Cable Crunch', badge:'core', sets:3, w:40, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'The only weighted core flexion exercise with direct progressive overload capability. Cable provides constant tension through the full range — eliminates the slack point at the bottom that bodyweight crunches have. Primary rectus abdominis development.',
                cues:['Kneel facing cable. Rope attachment at forehead.','Crunch DOWN, not forward. Elbows toward knees.','Hold 1 sec at bottom. Slow return. Weight is secondary to feel.']},
-              {id:'fb-thu-bd',   name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fb-thu-bd',   name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'McGill Big 3 exercise — simultaneously trains lumbar extensors, glute max, and contralateral rotator coordination. Unique in that it builds core stability and erector strength simultaneously without any spinal compression.',
                cues:['On all fours. Hands under shoulders, knees under hips.','Extend opposite arm and leg. Back stays level — no rotation.','5-sec hold at full extension. 10 per side = 1 set.']},
             ]},
@@ -4151,10 +4183,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Pad just above knee on lower quad.','Full stretch, full rise, pause at both ends.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fb-fri-hkr',  name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fb-fri-hkr',  name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion with a loaded hanging position — one of the highest-activation exercises for the rectus abdominis and hip flexors. The shoulder girdle also works to maintain the hang. Decompresses the spine after a heavy squat session.',
                cues:['Hang from bar with full shoulder extension.','Raise knees to hip height or above — controlled.','Lower slowly. 3-sec eccentric. No swinging.']},
-              {id:'fb-fri-pl',   name:'Plank', badge:'core', sets:3, w:0, r:45, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'fb-fri-pl',   name:'Plank', badge:'core', sets:3, w:0, r:45, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Anti-extension baseline — a standard measure of core endurance. Closing the training week with a stability finisher reinforces the bracing pattern for weekend recovery.',
                cues:['Forearms under shoulders. Hips level — not sagging or piked.','Squeeze glutes and quads. Brace abs as if taking a punch.','Breathe. Do not hold breath. Full breaths throughout.']},
             ]},
@@ -4196,10 +4228,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['15° forward hinge.','Full extension, hard squeeze.','Drop set final set only.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bm-mon-cc',   name:'Cable Crunch', badge:'core', sets:3, w:50, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-mon-cc',   name:'Cable Crunch', badge:'core', sets:3, w:50, r:12, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Only weighted core exercise with direct progressive overload potential. Cable constant tension eliminates the slack at bottom that bodyweight crunches have. For hypertrophy, this is the ab equivalent of a curl — the rectus abdominis needs load to grow.',
                cues:['Kneel facing cable. Rope at forehead.','Crunch DOWN toward knees — elbows to thighs.','1-sec hold at bottom. Slow 3-sec return. Feel every inch.']},
-              {id:'bm-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Builds the transverse abdominis and deep stabilizers that no crunching exercise reaches. These muscles are the internal brace that protects the spine under heavy compound loads — critical on press days.',
                cues:['Lie on back. Arms to ceiling, knees 90° above hips.','Opposite arm + leg lower toward floor. Back FLAT throughout.','5-sec descent, slow return. 10 per side = 1 set.']},
             ]},
@@ -4231,10 +4263,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang at bottom, 1-sec pause. Full rise at top, 1-sec pause.','Alternate toe angles across sets for full development.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bm-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Posterior core on a posterior chain day — intentional pairing. The erector spinae and multifidus are as much "core" as the rectus abdominis. On RDL/hip thrust days they are already warm. Direct erector training creates the muscular symmetry that prevents the forward lean breakdown point in heavy compounds.',
                cues:['Neutral spine at start. Brace before moving.','Rise until body is in a straight line. Not hyperextended.','2-sec hold. 3-sec lower. Add a 25 lb plate to chest when 15 feels easy.']},
-              {id:'bm-tue-hlr',  name:'Hanging Leg Raise', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-tue-hlr',  name:'Hanging Leg Raise', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'The most progressive hip-flexion core exercise available. Full range from dead hang to legs parallel (or above) provides superior lower rectus and hip flexor stimulus over any ground-based alternative. Traction effect decompresses lumbar after heavy deadlifts.',
                cues:['Dead hang from bar. Shoulders depressed.','Raise legs straight (or slightly bent) to parallel or above.','3-sec lowering phase — slow negatives build the most here.']},
             ]},
@@ -4269,10 +4301,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbow pinned to side.','Strict alternating.','Full extension at bottom.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bm-thu-aw',   name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-thu-aw',   name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'The gold standard anti-extension exercise — higher rectus abdominis and oblique activation than almost any other movement. Forces the entire anterior chain to resist extension under full body-length leverage. Progressive: as core strengthens, range increases.',
                cues:['Start kneeling. Arms straight, wheel under shoulders.','Roll out slowly — lower back stays neutral the entire time.','Go only as far as you can without your back arching. Pull wheel back.']},
-              {id:'bm-thu-pp',   name:'Pallof Press', badge:'core', sets:3, w:30, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-thu-pp',   name:'Pallof Press', badge:'core', sets:3, w:30, r:12, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'The most effective anti-rotation exercise with loadable, progressive resistance. Cable pulls laterally while you resist — activating the obliques, transverse abdominis, and quadratus lumborum under measurable load. Directly transfers to rotational stability in every push and pull.',
                cues:['Stand sideways to cable at chest height. Hold handle at chest.','Press straight out. Hold 2 sec. Resist any rotation.','12 per side. Heavier than you think once you feel it.']},
             ]},
@@ -4304,10 +4336,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Pad above knee on lower quad.','Full stretch and rise. Pause at both ends.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bm-fri-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:45, compound:false, isCore:true, unit:'sec',
+              {id:'bm-fri-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core training — the one movement plane almost every program ignores. Quadratus lumborum and oblique stability directly transfer to hip stability under heavy single-leg loads like split squats (which you just did).',
                cues:['Elbow under shoulder. Body in a straight diagonal line.','Drive hips up. Hold 40 sec each side.','Progress: add hip dips (lower and raise) to make it dynamic.']},
-              {id:'bm-fri-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bm-fri-rc',   name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Targets lower rectus abdominis through hip flexion — the area most visible in body composition change. No neck involvement, no lumbar compression. At the end of a heavy lower day the core is already warm and ready for this direct work.',
                cues:['Lie flat. Knees at 90°.','Roll hips off floor using abs — not hip flexors.','3-sec lowering. Don\'t let feet touch ground between reps.']},
             ]},
@@ -4348,10 +4380,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbow pinned to side. No front delt swing.','Strict alternating. Full extension at bottom.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'tr-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-mon-db',   name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Foundational anti-rotation movement for the recomp athlete. Trains the deep core stabilizers (transverse abdominis, multifidus) that are responsible for protecting the spine during the explosive HIIT work that follows. Specific to the antagonist superset format — builds the stability base that makes heavy paired sets safer.',
                cues:['Lie on back. Arms to ceiling, knees 90° above hips.','Lower opposite arm + leg slowly. Back flat the entire time.','5-sec descent per limb. 10 per side = 1 set.']},
-              {id:'tr-mon-pp',   name:'Pallof Press', badge:'core', sets:3, w:25, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-mon-pp',   name:'Pallof Press', badge:'core', sets:3, w:25, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-rotation resistance training — the cable\'s lateral pull challenges the obliques and deep stabilizers to resist rotation under load. Directly relevant to the pressing and rowing supersets on this day: core anti-rotation strength is what allows you to transfer force cleanly.',
                cues:['Stand sideways to cable. Handle at chest.','Press straight out and hold 2 sec. No rotation.','12 per side. Heavier = more stable lifts everywhere.']},
             ]},
@@ -4380,10 +4412,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Hips pressed into pad throughout.','Full extension every rep — full stretch matters.','3-sec eccentric.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'tr-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-tue-be',   name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'On a heavy posterior chain day (RDL + hip thrust), the erectors and multifidus are already primed. Direct back extension work on this day accelerates their adaptation and creates the posterior core strength that prevents breakdown in heavy pulls. The most undertrained "ab" exercise in most programs.',
                cues:['Neutral spine at bottom. Brace abs.','Lift until body is straight — not beyond.','2-sec hold at top. Slow controlled lower.']},
-              {id:'tr-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'tr-tue-sp',   name:'Side Plank', badge:'core', sets:3, w:0, r:40, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral stability for the recomp athlete. The KB swings that follow demand anti-lateral core strength to prevent hip shift under load. Side plank directly trains this. McGill calls it the safest and most effective lateral core exercise available.',
                cues:['Elbow under shoulder. Stack hips. One line from head to feet.','40 sec each side.','Progress: add a hip dip movement to make it dynamic.']},
             ]},
@@ -4420,10 +4452,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['15° forward hinge.','Full extension, hard squeeze at bottom.','Drop 30% on last set, continue to failure.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'tr-thu-cc',   name:'Cable Crunch', badge:'core', sets:3, w:45, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-thu-cc',   name:'Cable Crunch', badge:'core', sets:3, w:45, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Loaded flexion on a pull-dominant day — the pulling muscles (lats, rhomboids) pull the spine into extension all session, making flexion work the intelligent counterbalance. Cable crunch\'s constant tension and progressive load makes it the only weighted core exercise that consistently builds visible ab muscle.',
                cues:['Kneel facing cable. Rope at forehead height.','Crunch DOWN — elbows toward knees.','1-sec hold. Slow return. The weight should be challenging at rep 10.']},
-              {id:'tr-thu-bd',   name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-thu-bd',   name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'McGill Big 3 closer — builds the erector and glute coordination chain in the most spine-safe position. On a high-volume upper day, this low-intensity movement actively promotes recovery while maintaining core neural drive.',
                cues:['All fours. Hands under shoulders, knees under hips.','Opposite arm + leg extended. Back level — no rotation.','5-sec hold. 10 per side = 1 set.']},
             ]},
@@ -4452,10 +4484,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang at bottom, 1-sec pause.','Full rise at top, 1-sec pause.','No bouncing. Own every inch of the range.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'tr-fri-aw',   name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-fri-aw',   name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Highest anti-extension activation of any core exercise. After a heavy leg press + hip thrust session, the anterior core is warm and conditioned — primed for high-intensity anti-extension work. This is the most demanding bodyweight ab exercise and the one that builds visible rectus abdominis best.',
                cues:['Kneel, wheel under shoulders.','Roll out slowly. Back stays neutral — do not let it arch.','Only go as far as you can maintain form. Pull back by squeezing abs.']},
-              {id:'tr-fri-hkr',  name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'tr-fri-hkr',  name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion decompresses the spine after the heavy lower compounds. The hanging position creates traction while the leg raise recruits lower rectus and hip flexors. Closing the training week with decompression work accelerates the weekend recovery window.',
                cues:['Hang from bar. Full shoulder extension.','Raise knees to hip height or above. Controlled.','3-sec lower. No swinging. If too easy, extend legs straight.']},
             ]},
@@ -4495,10 +4527,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Slight forward hinge.','Full extension, 1-sec squeeze.','Elbows pinned to sides.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'st-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'st-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-extension bracing is the same skill that keeps the trunk rigid under a heavy bar. Zero spinal shear.',
                cues:['Lower back pressed to floor throughout.','Opposite arm and leg lower slowly.','10 per side = 1 set.']},
-              {id:'st-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'st-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core stiffness transfers directly to staying rigid under maximal loads.',
                cues:['Elbow under shoulder, hips stacked.','Drive hips up — no sag.','35 sec each side.']},
             ]}
@@ -4523,10 +4555,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang at the bottom, 1-sec pause.','Full rise, 1-sec squeeze.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'st-be', name:'Back Extension', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'st-be', name:'Back Extension', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Erector endurance is the insurance policy on every heavy hinge.',
                cues:['Neutral spine throughout.','Rise to straight — never hyperextended.','2-sec hold at top.']},
-              {id:'st-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'st-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Loads the rectus through hip flexion with zero lumbar compression after a heavy hinge session.',
                cues:['Curl hips off the floor with the abs, not momentum.','3-sec lower.','Feet never touch down between reps.']},
             ]}
@@ -4551,10 +4583,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Pull to eye level, elbows high.','Thumbs point behind you at the finish.','Light and strict.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'st-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'st-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion under traction decompresses the spine and builds the grip endurance heavy pulling demands.',
                cues:['Full hang.','Knees to hip height, controlled.','3-sec lower, no swing.']},
-              {id:'st-db3', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'st-db3', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-extension bracing, second exposure of the week.',
                cues:['Lower back pressed to floor.','Slow contralateral reach.','10 per side = 1 set.']},
             ]}
@@ -4579,10 +4611,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full stretch at the bottom.','Full rise, 1-sec squeeze.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'st-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'st-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Highest anti-extension demand of any core movement — the trunk rigidity heavy squatting runs on.',
                cues:['Roll out slowly, back neutral.','Only as far as form holds.','Pull back with the abs.']},
-              {id:'st-sp4', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'st-sp4', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral stiffness, second exposure — closes the week.',
                cues:['Elbow under shoulder, hips stacked.','No sag.','35 sec each side.']},
             ]}
@@ -4611,10 +4643,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbows pinned.','Full extension, 1-sec squeeze.','Strict form.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mt-db', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mt-db', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Core control maintained with two quality sets.',
                cues:['Lower back pressed to floor.','Slow contralateral reach.','10 per side = 1 set.']},
-              {id:'mt-sp', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'mt-sp', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core stiffness held at maintenance dose.',
                cues:['Hips stacked, body straight.','No sag.','30 sec each side.']},
             ]}
@@ -4639,10 +4671,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full stretch, full rise.','1-sec pauses.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mt-be', name:'Back Extension', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mt-be', name:'Back Extension', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Erector endurance maintained alongside the hinge.',
                cues:['Neutral spine.','Rise to straight, never past.','2-sec hold.']},
-              {id:'mt-rc', name:'Reverse Crunch', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mt-rc', name:'Reverse Crunch', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Lower rectus at maintenance dose, zero lumbar compression.',
                cues:['Curl hips with the abs.','Slow lower.','No momentum.']},
             ]}
@@ -4667,10 +4699,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Pull to eye level.','Elbows high.','Strict and light.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mt-hkr', name:'Hanging Knee Raise', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mt-hkr', name:'Hanging Knee Raise', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Spinal decompression plus grip, maintenance dose.',
                cues:['Full hang.','Controlled raise.','3-sec lower.']},
-              {id:'mt-db3', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mt-db3', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Second core-control exposure of the week.',
                cues:['Back pressed to floor.','Slow reach.','10 per side = 1 set.']},
             ]}
@@ -4695,10 +4727,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full range.','1-sec pauses top and bottom.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mt-aw', name:'Ab Wheel Rollout', badge:'core', sets:2, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mt-aw', name:'Ab Wheel Rollout', badge:'core', sets:2, w:0, r:8, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-extension strength held with two hard sets.',
                cues:['Slow rollout, neutral back.','Range only as far as form holds.','Pull back with the abs.']},
-              {id:'mt-sp4', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'mt-sp4', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Closes the week — lateral stiffness at maintenance dose.',
                cues:['Hips stacked.','No sag.','30 sec each side.']},
             ]}
@@ -4735,10 +4767,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
      why:'Compound pull with neutral grip — different stimulus than cable row, no spine compression.',
      cues:['Hinge at hip. Drive elbow to hip. Chest tall throughout.']},
     {id:'sub-ipu',   name:'Incline Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'Zero-equipment push filler — hands elevated on a chair/counter reduces load versus a standard push-up, useful when the push-day pool is already exhausted.',
+     why:'Push filler — hands elevated on a chair/counter reduces load versus a standard push-up, useful when the push-day pool is already exhausted.',
      cues:['Hands on a stable elevated surface, body in a straight line.','Lower chest to the surface, press back up.']},
     {id:'sub-bpa',   name:'Band Pull-Apart',        badge:'isolation', tier:'home', sets:3, w:0, r:20, rest:30, compound:false,
-     why:'Zero-equipment (or light-band) rear-delt/upper-back filler — safe volume add when the pull-day pool is already exhausted.',
+     why:'Rear-delt/upper-back filler — safe volume add when the pull-day pool is already exhausted.',
      cues:['Arms straight, band or towel at chest height.','Pull apart squeezing shoulder blades together; control the return.']},
     // BUG-58: home tier only had 2 backfill candidates above, so 3/5/6-day
     // rotations (which cycle the small home pool faster than 2/4-day) ran out
@@ -4750,22 +4782,22 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // so no new muscle-group tag or oneRmFactor is being invented — spanning
     // push/pull/legs/glutes so a 2-short day has enough non-colliding options.
     {id:'sub-tir',   name:'Table Inverted Row',     badge:'compound',  tier:'home', sets:3, w:0, r:12, rest:60, compound:true,
-     why:'The only true zero-equipment pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row with no gym access required.',
+     why:'A bodyweight pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row.',
      cues:['Lie under a sturdy table, hands gripping the edge, body straight.','Pull chest toward the table edge, squeezing shoulder blades together.']},
     {id:'sub-dpu',   name:'Diamond Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Zero-equipment triceps mass work.',
+     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Direct triceps mass work.',
      cues:['Hands together under the chest forming a diamond.','Lower until the chest nearly touches the hands, elbows tucked; press to lockout.']},
     {id:'sub-bwsq',  name:'Bodyweight Squat',       badge:'compound',  tier:'home', sets:3, w:0, r:15, rest:60, compound:true,
-     why:'The zero-equipment squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available.',
+     why:'The bodyweight squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available.',
      cues:['Feet shoulder-width, sit hips back and down — knees track over toes.','Drive through the whole foot to stand; chest tall throughout.']},
     {id:'sub-slrdl', name:'Single-Leg Romanian Deadlift', badge:'compound', tier:'home', sets:3, w:0, r:12, rest:60, compound:true,
-     why:'The zero-equipment hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
+     why:'The bodyweight hip-hinge compound — balancing on one leg increases hamstring and glute demand to compensate for the lack of external load. Trains the same hip-extension pattern as the barbell RDL.',
      cues:['Stand tall, hinge forward while the free leg extends straight back.','Keep hips square; squeeze the glute and hamstring to return to standing.']},
     {id:'sub-glb',   name:'Glute Bridge',           badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
      why:'Identical mechanics to hip thrust but performed on the floor. Shorter ROM but identical glute squeeze at the top. The go-to glute exercise when no bench is available.',
      cues:['Supine on floor, feet flat and close to hips.','Drive through heels; lift hips until body is a plank; squeeze glutes hard at top.']},
     {id:'sub-ptr',   name:'Prone T-Raise',          badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'The T-raise targets the middle trapezius and posterior delt in a no-equipment setting — upper-back health filler distinct from the pull-day compounds.',
+     why:'The T-raise targets the middle trapezius and posterior delt — upper-back health filler distinct from the pull-day compounds.',
      cues:['Lie face down; arms straight out to the sides (T position), thumbs up.','Lift arms by squeezing shoulder blades; lower slowly with full range of motion.']},
   ];
 
@@ -5112,10 +5144,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['15° forward hinge.','Full extension at bottom. Squeeze 1 second.','Drop weight on final set, continue to failure.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fbf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fbf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-rotation movement that builds deep core stability without spinal shear.',
                cues:['Lie on back. Arms to ceiling, knees at 90°.','Lower opposite arm and leg. Lower back stays pressed to floor.','10 per side = 1 set.']},
-              {id:'fbf-mon-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'fbf-mon-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:30, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core stability. Quadratus lumborum and oblique strength.',
                cues:['Elbow under shoulder. Hips stacked. Drive hips up.','30 sec each side.']},
             ]},
@@ -5147,10 +5179,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Slight forward lean — loads glute med, not TFL.','Full range, hold at end.','Control the return.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fbf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fbf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Posterior chain core pairs with hip hinge day. Direct erector training reduces lower back injury risk.',
                cues:['Neutral spine. Brace abs before moving.','Rise until body is straight — not hyperextended.','2-sec hold. 3-sec lower.']},
-              {id:'fbf-tue-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fbf-tue-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Lower rectus abdominis through hip flexion. No neck strain, no lumbar compression.',
                cues:['Lie flat. Knees at 90°.','Curl hips off the floor using abs.','3-sec eccentric.']},
             ]},
@@ -5182,10 +5214,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbow pinned to side. Strict alternating.','Full extension at bottom.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fbf-thu-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fbf-thu-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Only weighted core exercise with progressive overload. Constant tension builds visible abs.',
                cues:['Kneel facing cable. Rope at forehead.','Crunch DOWN toward knees.','Hold 1 sec at bottom.']},
-              {id:'fbf-thu-bd', name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fbf-thu-bd', name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Builds lumbar extensors and glute coordination. No spinal compression.',
                cues:['On all fours. Extend opposite arm and leg.','Back stays level — no rotation.','5-sec hold. 10 per side = 1 set.']},
             ]},
@@ -5214,10 +5246,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Forward lean. Full range. Hold at end position. Control return.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'fbf-fri-pl', name:'Plank', badge:'core', sets:3, w:0, r:40, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'fbf-fri-pl', name:'Plank', badge:'core', sets:3, w:0, r:40, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Anti-extension baseline. Reinforces the bracing pattern for the training week close.',
                cues:['Forearms under shoulders. Hips level.','Squeeze glutes and quads. Breathe.']},
-              {id:'fbf-fri-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'fbf-fri-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion decompresses the spine after lower compounds.',
                cues:['Hang from bar. Full shoulder extension.','Raise knees to hip height. Controlled.','3-sec lower. No swinging.']},
             ]},
@@ -5256,10 +5288,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['15° lean. Full extension. Drop set on last set.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bmf-mon-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-mon-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:12, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'The only ab exercise with direct progressive overload.',
                cues:['Rope at forehead. Crunch DOWN toward knees.','1-sec hold. Slow return.']},
-              {id:'bmf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Builds transverse abdominis — the deep brace that protects the spine under load.',
                cues:['Lie on back. Arms to ceiling, knees 90°.','Lower opposite arm + leg. Back flat.','5-sec descent. 10 per side.']},
             ]},
@@ -5294,10 +5326,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang at bottom, pause. Full rise at top, pause.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bmf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Posterior core on a posterior chain day. Direct erector work prevents breakdown under load.',
                cues:['Neutral spine. Brace before moving.','Rise until body is straight.','2-sec hold. 3-sec lower.']},
-              {id:'bmf-tue-hlr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-tue-hlr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:10, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion decompresses lumbar after heavy deadlifts.',
                cues:['Dead hang. Raise knees to hip height or above.','3-sec lowering phase.']},
             ]},
@@ -5332,10 +5364,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbow pinned. Strict alternating. Full extension.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bmf-thu-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-thu-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Highest anti-extension activation. Full anterior chain under leverage.',
                cues:['Start kneeling. Arms straight, wheel under shoulders.','Roll out slowly — back stays neutral.','Pull back by squeezing abs.']},
-              {id:'bmf-thu-pp', name:'Pallof Press', badge:'core', sets:3, w:20, r:12, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-thu-pp', name:'Pallof Press', badge:'core', sets:3, w:20, r:12, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Most effective anti-rotation exercise with loadable resistance.',
                cues:['Stand sideways to cable. Press straight out, hold 2 sec.','12 per side.']},
             ]},
@@ -5367,10 +5399,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full stretch and rise. Pause at both ends.']},
             ]},
             {label:'Core Block · Rest 45 sec', exs:[
-              {id:'bmf-fri-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:45, compound:false, isCore:true, unit:'sec',
+              {id:'bmf-fri-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core training after heavy unilateral loads. Reinforces hip-stabilizer chain.',
                cues:['Elbow under shoulder. Drive hips up. 35 sec each side.']},
-              {id:'bmf-fri-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, unit:'reps',
+              {id:'bmf-fri-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:45, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Lower rectus through hip flexion. No neck involvement.',
                cues:['Roll hips off floor using abs.','3-sec lowering. Feet stay off ground between reps.']},
             ]},
@@ -5411,10 +5443,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Upper arm parallel to floor. Full extension, squeeze.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'trf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-mon-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Deep core stability. Trains the brace that makes heavy paired sets safer.',
                cues:['Arms to ceiling, knees 90°. Lower opposite arm + leg. Back flat.','5-sec descent. 10 per side.']},
-              {id:'trf-mon-pp', name:'Pallof Press', badge:'core', sets:3, w:20, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-mon-pp', name:'Pallof Press', badge:'core', sets:3, w:20, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-rotation under load — transfers to pressing and rowing stability.',
                cues:['Stand sideways to cable. Press straight out, hold 2 sec. 12 per side.']},
             ]},
@@ -5443,10 +5475,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Hips pressed into pad. Full extension every rep. 3-sec eccentric.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'trf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-tue-be', name:'Back Extension', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Posterior core on a heavy lower day. Direct erector work accelerates adaptation.',
                cues:['Neutral spine. Brace abs. Lift until body is straight. 2-sec hold.']},
-              {id:'trf-tue-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'trf-tue-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral stability for the recomp athlete. Anti-lateral core for HIIT.',
                cues:['Elbow under shoulder. Stack hips. 35 sec each side.']},
             ]},
@@ -5483,10 +5515,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['15° lean. Full extension. Drop 30% on last set.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'trf-thu-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-thu-cc', name:'Cable Crunch', badge:'core', sets:3, w:25, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Loaded flexion counterbalances the spinal extension from pulling movements.',
                cues:['Rope at forehead. Crunch DOWN — elbows toward knees.','1-sec hold. Slow return.']},
-              {id:'trf-thu-bd', name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-thu-bd', name:'Bird Dog', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Erector and glute coordination. Active recovery on high-volume upper day.',
                cues:['All fours. Opposite arm + leg extended. Back level. 5-sec hold. 10 per side.']},
             ]},
@@ -5515,10 +5547,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang at bottom. Full rise at top. Pause at both ends.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'trf-fri-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-fri-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Highest anti-extension activation. Anterior core is warm after lower compounds.',
                cues:['Kneel, wheel under shoulders. Roll out slowly — back stays neutral.','Pull back by squeezing abs.']},
-              {id:'trf-fri-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'trf-fri-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion decompresses spine after heavy lower work. Closes training week.',
                cues:['Hang from bar. Raise knees to hip height. 3-sec lower. No swinging.']},
             ]},
@@ -5555,10 +5587,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Slight forward hinge.','Full extension, 1-sec squeeze.','Elbows pinned.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'stf-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'stf-db', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-extension bracing — the same skill that keeps the trunk rigid under heavy load.',
                cues:['Lower back pressed to floor.','Slow contralateral reach.','10 per side = 1 set.']},
-              {id:'stf-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'stf-sp', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core stiffness transfers directly to bracing under maximal loads.',
                cues:['Elbow under shoulder, hips stacked.','No sag.','35 sec each side.']},
             ]}
@@ -5583,10 +5615,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full hang, 1-sec pause.','Full rise, 1-sec squeeze.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'stf-be', name:'Back Extension', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'stf-be', name:'Back Extension', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Erector endurance is the insurance policy on every heavy hinge.',
                cues:['Neutral spine.','Rise to straight, never past.','2-sec hold at top.']},
-              {id:'stf-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'stf-rc', name:'Reverse Crunch', badge:'core', sets:3, w:0, r:15, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Rectus work through hip flexion, zero lumbar compression after heavy hinging.',
                cues:['Curl hips with the abs.','3-sec lower.','No momentum.']},
             ]}
@@ -5611,10 +5643,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Pull to eye level, elbows high.','Thumbs behind you at the finish.','Light and strict.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'stf-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'stf-hkr', name:'Hanging Knee Raise', badge:'core', sets:3, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Hip flexion under traction decompresses the spine and builds pulling grip endurance.',
                cues:['Full hang.','Knees to hip height.','3-sec lower, no swing.']},
-              {id:'stf-db3', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'stf-db3', name:'Dead Bug', badge:'core', sets:3, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-extension bracing, second exposure of the week.',
                cues:['Back pressed to floor.','Slow reach.','10 per side = 1 set.']},
             ]}
@@ -5639,10 +5671,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full stretch.','Full rise, 1-sec squeeze.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'stf-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'stf-aw', name:'Ab Wheel Rollout', badge:'core', sets:3, w:0, r:8, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Highest anti-extension demand of any core movement — the trunk rigidity heavy squatting runs on.',
                cues:['Slow rollout, neutral back.','Only as far as form holds.','Pull back with the abs.']},
-              {id:'stf-sp4', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'stf-sp4', name:'Side Plank', badge:'core', sets:3, w:0, r:35, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral stiffness, second exposure — closes the week.',
                cues:['Hips stacked.','No sag.','35 sec each side.']},
             ]}
@@ -5671,10 +5703,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Elbows pinned.','Full extension.','Strict form.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mtf-db', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mtf-db', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Core control maintained with two quality sets.',
                cues:['Lower back pressed to floor.','Slow reach.','10 per side = 1 set.']},
-              {id:'mtf-sp', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'mtf-sp', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Lateral core stiffness held at maintenance dose.',
                cues:['Hips stacked.','No sag.','30 sec each side.']},
             ]}
@@ -5699,10 +5731,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full stretch, full rise.','1-sec pauses.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mtf-be', name:'Back Extension', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mtf-be', name:'Back Extension', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Erector endurance maintained alongside the hinge.',
                cues:['Neutral spine.','Rise to straight.','2-sec hold.']},
-              {id:'mtf-rc', name:'Reverse Crunch', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mtf-rc', name:'Reverse Crunch', badge:'core', sets:2, w:0, r:12, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Lower rectus at maintenance dose, zero lumbar compression.',
                cues:['Curl hips with the abs.','Slow lower.','No momentum.']},
             ]}
@@ -5727,10 +5759,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Pull to eye level.','Elbows high.','Strict and light.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mtf-hkr', name:'Hanging Knee Raise', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mtf-hkr', name:'Hanging Knee Raise', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Spinal decompression plus grip, maintenance dose.',
                cues:['Full hang.','Controlled raise.','3-sec lower.']},
-              {id:'mtf-db3', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mtf-db3', name:'Dead Bug', badge:'core', sets:2, w:0, r:10, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Second core-control exposure of the week.',
                cues:['Back pressed to floor.','Slow reach.','10 per side = 1 set.']},
             ]}
@@ -5755,10 +5787,10 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                cues:['Full range.','1-sec pauses.','No bouncing.']},
             ]},
             {label:'Core Block · Rest 30 sec', exs:[
-              {id:'mtf-aw', name:'Ab Wheel Rollout', badge:'core', sets:2, w:0, r:8, rest:30, compound:false, isCore:true, unit:'reps',
+              {id:'mtf-aw', name:'Ab Wheel Rollout', badge:'core', sets:2, w:0, r:8, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'reps',
                why:'Anti-extension strength held with two hard sets.',
                cues:['Slow rollout, neutral back.','Range only as far as form holds.','Pull back with the abs.']},
-              {id:'mtf-sp4', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, unit:'sec',
+              {id:'mtf-sp4', name:'Side Plank', badge:'core', sets:2, w:0, r:30, rest:30, compound:false, isCore:true, rxBasis:'legacy-static-uncited', unit:'sec',
                why:'Closes the week — lateral stiffness at maintenance dose.',
                cues:['Hips stacked.','No sag.','30 sec each side.']},
             ]}

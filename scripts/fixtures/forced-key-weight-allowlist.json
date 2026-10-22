@@ -1,0 +1,182 @@
+{
+  "_comment": "BUG-234 W1 allowlist: ratchet keys (scripts/fixtures/bug231-forced-stacks.json) whose token is one a contributing over-cap lift trains at weight < 1.0 (secondary, 0.5 credit). Each entry carries a category and a reason DERIVED from EXERCISE_BANK + the classifier, not authored. The gate fails on a NEW such key (W1) and on an entry that no longer reproduces (W2). Regenerate ONLY with `node scripts/forced-stack-classifier-audit.mjs --write-fixtures`; never hand-edit.",
+  "count": 44,
+  "entries": {
+    "build_muscle/2d/female/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "build_muscle/2d/female/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "build_muscle/2d/female/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "build_muscle/2d/female/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "build_muscle/2d/male/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "build_muscle/2d/male/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "build_muscle/2d/male/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "build_muscle/2d/male/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "fat_burn/2d/female/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "fat_burn/2d/female/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "fat_burn/2d/female/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "fat_burn/2d/female/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "fat_burn/2d/male/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "fat_burn/2d/male/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "fat_burn/2d/male/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "fat_burn/2d/male/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/2d/female/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/2d/female/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "maintenance/2d/female/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/2d/female/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/2d/male/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/2d/male/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "maintenance/2d/male/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/2d/male/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/3d/female/full_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/3d/female/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Hip Thrust; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/3d/male/full_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "maintenance/3d/male/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Hip Thrust; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "strength/2d/female/full_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/female/home — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Push-Up; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/female/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/female/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/male/full_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/male/home — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Push-Up; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/male/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "strength/2d/male/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it"
+    },
+    "transform/2d/female/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "transform/2d/female/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "transform/2d/female/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "transform/2d/female/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "transform/2d/male/full_gym — hamstring": {
+      "category": "first-token-masks-binding: lift is ALSO forced on a weight-1.0 token",
+      "reason": "key token trained at weight 0.5 by Barbell Hip Thrust; same lift(s) also forced on weight-1.0 token(s) glute_max; other lifts in this cell train the token at 1.0"
+    },
+    "transform/2d/male/home — glute_max": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bodyweight Squat; no weight-1.0 token is forced for it"
+    },
+    "transform/2d/male/hotel_gym — anterior_delt": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Alternating DB Bench Press, Alternating Incline DB Press; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    },
+    "transform/2d/male/hotel_gym — hamstring": {
+      "category": "secondary-only: lift is forced solely via a 0.5-credit token",
+      "reason": "key token trained at weight 0.5 by Bulgarian Split Squat; no weight-1.0 token is forced for it; other lifts in this cell train the token at 1.0"
+    }
+  }
+}

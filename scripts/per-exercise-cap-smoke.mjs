@@ -102,6 +102,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { combos, COMBO_COUNT } from './lib/persona-combos.mjs';
+import { makeWeightOf, classifyOverCap } from './lib/forced-classifier.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const code = readFileSync(join(root, 'programs.js'), 'utf8');
@@ -122,13 +123,8 @@ must(CAP === 6, `A3: PER_EXERCISE_SET_CEILING is ${CAP}; the cited range (ACSM 2
 
 // Weekly credit weight of `name` for token `t`, exactly as D6b/applyGoalVolume
 // score it: primary 1.0, secondary 0.5, anchored at '_' (D19).
-const byName = {};
-for (const e of Object.values(EXERCISE_BANK || {})) if (e && e.name) byName[e.name] = e;
-const weightOf = (name, t) => {
-  const g = byName[name]?.muscleGroups || {};
-  const hit = m => m === t || m.startsWith(t + '_');
-  return (g.primary || []).filter(hit).length + 0.5 * (g.secondary || []).filter(hit).length;
-};
+// (shared with scripts/forced-stack-classifier-audit.mjs, BUG-234 — see the lib header)
+const { weightOf } = makeWeightOf(EXERCISE_BANK);
 
 // ── A4/A5 ratchet (council Decision 5, 2026-10-06). The forced residue is a real
 // gap, not a pass: the week has too few slots training that muscle to reach MEV at
@@ -183,20 +179,10 @@ for (const c of combos()) {
     // Is this stack structurally forced? Forced iff SOME token this lift trains
     // has a weekly MEV that cannot be met with every top-weight slot in the week
     // pinned at the ceiling.
-    let why = null, whyToken = null;
-    for (const t of MAJOR_MUSCLE_GROUP_TOKENS) {
-      const myW = weightOf(e.name, t);
-      if (!myW || !landmark?.mev) continue;
-      const tier0 = Math.min(myW, 1);
-      const headroom = lifts
-        .filter(x => Math.min(weightOf(x.name, t), 1) === tier0)
-        .reduce((a, x) => a + CAP * Math.min(weightOf(x.name, t), 1), 0);
-      if (headroom < landmark.mev) {
-        whyToken = t;
-        why = `${t}: mev ${landmark.mev} > ${headroom} reachable at <=${CAP}/lift`;
-        break;
-      }
-    }
+    // The predicate lives in scripts/lib/forced-classifier.mjs so the BUG-234 auditor
+    // (scripts/forced-stack-classifier-audit.mjs) judges THIS function, not a copy.
+    const { token: whyToken, why } = classifyOverCap({
+      lift: e, lifts, landmark, tokens: MAJOR_MUSCLE_GROUP_TOKENS, cap: CAP, weightOf });
     if (why) forced.set(`${goal}/${days}d/${sex}/${tier} — ${whyToken}`, why);
     else spreadable.set(`${label} — ${e.sets}x ${e.name}`, 1);
   }

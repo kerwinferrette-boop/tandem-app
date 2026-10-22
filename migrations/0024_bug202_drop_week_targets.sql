@@ -1,0 +1,44 @@
+-- 0024_bug202_drop_week_targets.sql
+-- BUG-202 · drop personal_records.week_targets
+--
+-- HUMAN-ONLY. `apply_migration` is denied to agents (.claude/settings.json), and this
+-- touches personal_records — the 1RM / calibration store, inside the owner-only zone.
+-- Kerwin runs this. The code half (the writers, and the two gate assertions) shipped
+-- separately and FIRST, so the column is already inert when this lands.
+--
+-- WHY (unanimous llm-council verdict, 2026-10-13):
+--   docs/council/council-forks-2026-10-13-bug191-197-202.md
+-- week_targets held a jsonb map of per-week load targets, written by computeWeekTargets()
+-- and read by NOTHING — while scripts/calibration-upsert-smoke.mjs ASSERTED it, which is
+-- CLAUDE.md's named worse-than-no-gate case sitting in the repo.
+--
+-- The fork as filed was "wire it in, or retire it". Wiring it in would have been WORSE:
+-- getWeekTarget() -> weekFactor() already computes the same number live in the real
+-- prescription path, so the column was a frozen cache of a pure function whose inputs
+-- (cfg.goal, cfg.weeks, the 1RM) all move. Keeping it is a one-rule-two-homes silo.
+--
+-- WHAT IS BEING DISCARDED, measured rather than assumed (2026-10-13, live):
+--   81 personal_records rows; 81 non-null week_targets; 70 of those are the bare '{}'
+--   column default from migrations/calibration_v05.sql:8; only 11 hold computed data.
+--   Nothing reads any of it. No behaviour changes.
+--
+-- The stored-best invariant this column was once credited with protecting ("a genuinely
+-- higher historical PR is never regressed to a session estimate") is unaffected and is
+-- still asserted directly on best_estimated_1rm_lbs, which the live path does read.
+-- Mutation-tested 2026-10-13: regress that write and the surviving assertion fails.
+
+alter table public.personal_records
+  drop column if exists week_targets;
+
+-- POST-MIGRATION ASSERTIONS — run these, do not assume:
+--
+--   -- 1. the column is gone
+--   select count(*) from information_schema.columns
+--    where table_schema='public' and table_name='personal_records' and column_name='week_targets';
+--   -- expect 0
+--
+--   -- 2. nothing else was touched: row count and the 1RM data are intact
+--   select count(*) as rows, count(*) filter (where best_estimated_1rm_lbs is not null) as with_1rm,
+--          count(*) filter (where is_calibrated) as calibrated
+--     from public.personal_records;
+--   -- expect 81 / 81 / 6 as of 2026-10-13 (or higher if sessions have been logged since)

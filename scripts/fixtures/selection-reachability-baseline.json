@@ -1,0 +1,140 @@
+{
+  "_comment": "BUG-108 selection-reachability baseline: EXERCISE_BANK slugs that NO getProgram() output contains across the sweep in scripts/selection-reachability-smoke.mjs. Category + reason are DERIVED from the data (never authored). The gate fails if this set grows (S1) and if an entry here is now selected (S2) — it ratchets down only. Regenerate ONLY with `node scripts/selection-reachability-smoke.mjs --write-baseline`; never hand-edit.",
+  "sweep": "1050 persona combos x T=24 x weeks 1-24",
+  "bank": 184,
+  "count": 33,
+  "entries": {
+    "band-external-rotation": {
+      "category": "tier-ladder-outranked",
+      "reason": "1 selected peer(s) share a primary token and are available at every tier this entry is (e.g. band-pull-apart); tier home; primary external_rotator"
+    },
+    "band-front-raise": {
+      "category": "tier-ladder-outranked",
+      "reason": "1 selected peer(s) share a primary token and are available at every tier this entry is (e.g. jumping-jacks); tier home; primary anterior_delt"
+    },
+    "band-hammer-curl": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier home; primary brachialis/brachioradialis"
+    },
+    "band-shrug": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier home; primary upper_trap"
+    },
+    "band-straight-arm-pulldown": {
+      "category": "tier-ladder-outranked",
+      "reason": "2 selected peer(s) share a primary token and are available at every tier this entry is (e.g. band-row, table-inverted-row); tier home; primary lat_dorsi"
+    },
+    "cable-front-raise": {
+      "category": "tier-ladder-outranked",
+      "reason": "10 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-shoulder-press, arnold-press, barbell-ohp); tier full_gym; primary anterior_delt"
+    },
+    "cable-rope-hammer-curl": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier full_gym; primary brachialis/brachioradialis"
+    },
+    "cable-upright-row": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary lateral_delt/upper_trap; banned under: shoulder impingement, wrist pain"
+    },
+    "cross-body-hammer-curl": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier hotel_gym; primary brachialis/brachioradialis"
+    },
+    "db-front-raise": {
+      "category": "tier-ladder-outranked",
+      "reason": "5 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-shoulder-press, arnold-press, db-shoulder-press); tier hotel_gym; primary anterior_delt"
+    },
+    "db-pullover": {
+      "category": "tier-ladder-outranked",
+      "reason": "7 selected peer(s) share a primary token and are available at every tier this entry is (e.g. band-row, chest-supported-db-row, chin-up); tier hotel_gym; primary lat_dorsi"
+    },
+    "db-shrug": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier hotel_gym; primary upper_trap"
+    },
+    "decline-db-press": {
+      "category": "tier-ladder-outranked",
+      "reason": "6 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-bench-press, band-chest-fly, db-bench-press); tier hotel_gym; primary pec_major_sternal"
+    },
+    "dips": {
+      "category": "tier-ladder-outranked",
+      "reason": "6 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-bench-press, band-chest-fly, db-bench-press); tier hotel_gym; primary pec_major_sternal/tricep"
+    },
+    "hammer-curl": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier hotel_gym; primary brachialis/brachioradialis"
+    },
+    "landmine-press": {
+      "category": "tier-ladder-outranked",
+      "reason": "10 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-shoulder-press, arnold-press, barbell-ohp); tier full_gym; primary anterior_delt; banned under: shoulder impingement"
+    },
+    "leg-press": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary quad_rectus_femoris/quad_vastus_lateralis/quad_vastus"
+    },
+    "machine-chest-press": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary pec_major_sternal"
+    },
+    "machine-high-row": {
+      "category": "tier-ladder-outranked",
+      "reason": "14 selected peer(s) share a primary token and are available at every tier this entry is (e.g. assisted-pull-up, band-row, barbell-row); tier full_gym; primary lat_dorsi"
+    },
+    "neutral-grip-lat-pulldown": {
+      "category": "tier-ladder-outranked",
+      "reason": "14 selected peer(s) share a primary token and are available at every tier this entry is (e.g. assisted-pull-up, band-row, barbell-row); tier full_gym; primary lat_dorsi"
+    },
+    "reverse-curl": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier full_gym; primary brachioradialis/brachialis"
+    },
+    "seated-cable-row": {
+      "category": "tier-ladder-outranked",
+      "reason": "18 selected peer(s) share a primary token and are available at every tier this entry is (e.g. assisted-pull-up, band-pull-apart, band-row); tier full_gym; primary lat_dorsi/rhomboid"
+    },
+    "shrug-barbell": {
+      "category": "unclassified - BUG-108 residual",
+      "reason": "no selected peer shares a primary token at equal-or-lower tier; tier full_gym; primary upper_trap"
+    },
+    "single-arm-db-row": {
+      "category": "tier-ladder-outranked",
+      "reason": "10 selected peer(s) share a primary token and are available at every tier this entry is (e.g. band-pull-apart, band-row, chest-supported-db-row); tier hotel_gym; primary lat_dorsi/rhomboid"
+    },
+    "smith-machine-bench-press": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary pec_major_sternal"
+    },
+    "smith-machine-shoulder-press": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary anterior_delt/lateral_delt; banned under: shoulder impingement"
+    },
+    "smith-machine-squat": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary quad_rectus_femoris/quad_vastus_lateralis/quad_vastus_medialis/quad_vastus"
+    },
+    "squeeze-press": {
+      "category": "tier-ladder-outranked",
+      "reason": "6 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-bench-press, band-chest-fly, db-bench-press); tier hotel_gym; primary pec_major_sternal"
+    },
+    "stiff-leg-deadlift": {
+      "category": "tier-ladder-outranked",
+      "reason": "24 selected peer(s) share a primary token and are available at every tier this entry is (e.g. barbell-deadlift, barbell-hip-thrust, bird-dog); tier full_gym; primary hamstring/glute_max; banned under: lower back injury"
+    },
+    "straight-arm-pulldown": {
+      "category": "tier-ladder-outranked",
+      "reason": "14 selected peer(s) share a primary token and are available at every tier this entry is (e.g. assisted-pull-up, band-row, barbell-row); tier full_gym; primary lat_dorsi"
+    },
+    "sumo-rdl": {
+      "category": "tier-ladder-outranked",
+      "reason": "29 selected peer(s) share a primary token and are available at every tier this entry is (e.g. abductor-machine, banded-hip-abduction, barbell-deadlift); tier full_gym; primary glute_max/glute_medius/adductor; banned under: lower back injury, hip pain"
+    },
+    "t-bar-row": {
+      "category": "experience-gated",
+      "reason": "selected only when experience=beginner is supplied (no app call site passes experience — EPIC-10); tier full_gym; primary lat_dorsi/rhomboid/lower_trap"
+    },
+    "upright-row": {
+      "category": "tier-ladder-outranked",
+      "reason": "13 selected peer(s) share a primary token and are available at every tier this entry is (e.g. alternating-db-shoulder-press, arnold-press, band-lateral-raise); tier full_gym; primary lateral_delt/upper_trap; banned under: shoulder impingement, wrist pain"
+    }
+  }
+}
