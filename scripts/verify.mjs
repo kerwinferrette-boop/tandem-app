@@ -97,6 +97,7 @@ const CHECKS = [
   { name: 'BUG-108 selection reachability (getProgram() output swept over the persona matrix x weeks 1-24: the never-selected bank set may not grow, stale baseline entries fail)', run: () => execFileSync('node', [join(scriptsDir, 'selection-reachability-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'test port range (every random Playwright test port is in (10080, 32767]: Chromium refuses 10080 with ERR_UNSAFE_PORT, which made EPIC-63 red ~1 run in 400; static, no browser)', run: () => execFileSync('node', [join(scriptsDir, 'test-port-range-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-246 check floor (the suite may not silently shrink — registration count >= committed floor, every registered script present, names unique)', run: () => execFileSync('node', [join(scriptsDir, 'check-floor-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-230/BUG-16 finish-path set integrity (Playwright — a partial set write may not report success: the shortfall is marked, badged and recoverable, the lifted volume is never reduced, and the repair pass is idempotent)', run: () => execFileSync('node', [join(scriptsDir, 'finish-set-integrity-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 // ── BUG-246: the suite may not silently shrink ───────────────────────────

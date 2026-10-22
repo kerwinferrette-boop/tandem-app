@@ -24,6 +24,21 @@ const end = html.indexOf('async function manualSaveExercise(');
 if (start < 0 || end < 0) { console.log('FAIL  could not locate saveExerciseToCloud'); process.exit(1); }
 const fnSrc = html.slice(start, end);
 
+// BUG-230: saveExerciseToCloud's missing-only repair asks for a set's identity through
+// setIdentityKey(), which is declared at app top level — OUTSIDE the slice above, so the
+// extracted function alone throws ReferenceError in this sandbox. Extract the real
+// declaration rather than re-implementing the key here: two copies of a key shape drift,
+// and a drifted key turns a repair into a duplicate (the whole reason that helper has one
+// home). Fail CLOSED if it is ever renamed or moved, instead of silently testing a
+// function that no longer matches the app.
+const keyDecl = html.match(/^const setIdentityKey = .*$/m)?.[0];
+if (!keyDecl) {
+  console.error('FAIL  could not find the `const setIdentityKey = ...` declaration in tandem.html.\n' +
+    '      saveExerciseToCloud depends on it. If it was renamed or moved, update this extraction;\n' +
+    '      do not stub the key in this gate — it must stay a single home.');
+  process.exit(1);
+}
+
 let failures = 0;
 const check = (label, cond) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${label}`); if (!cond) failures++; };
 
@@ -48,7 +63,7 @@ async function run(id) {
     showToast: () => {}, console, Math, Set, parseFloat, parseInt,
   };
   vm.createContext(ctx);
-  vm.runInContext(fnSrc + '\nthis.__fn = saveExerciseToCloud;', ctx);
+  vm.runInContext(keyDecl + '\n' + fnSrc + '\nthis.__fn = saveExerciseToCloud;', ctx);
   await ctx.__fn(id);
   return { writes, sessionId: ctx.currentCloudSessionId };
 }

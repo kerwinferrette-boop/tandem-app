@@ -1,6 +1,6 @@
 {
   "_comment": "BUG-246 — the committed floor for the number of checks registered in scripts/verify.mjs. THE ONE HOME for this number: scripts/check-floor-smoke.mjs reads it, and so does the unconditional assertion in verify.mjs's own driver. Never lower it to make a run go green; that is the exact move this gate exists to stop. Raise it in the SAME commit that adds the new check(s).",
-  "floor": 56,
+  "floor": 57,
   "set_on": "2026-10-21",
-  "why": "On 2026-10-15 merge b6356bf discarded origin/main wholesale and deleted 9 of the 55 check registrations. npm run verify then printed 'ALL 46 CHECKS PASS', exit 0, with no objection: the suite had no idea how big it was supposed to be. 56 = the 55 restored by the BUG-245 merge plus this floor gate itself, parsed by scripts/check-floor-smoke.mjs (which counts arrow AND bare-function registrations; a grep for the name field agrees)."
+  "why": "On 2026-10-15 merge b6356bf discarded origin/main wholesale and deleted 9 of the 55 check registrations. npm run verify then printed 'ALL 46 CHECKS PASS', exit 0, with no objection: the suite had no idea how big it was supposed to be. 57 = the 55 restored by the BUG-245 merge, plus this floor gate itself, plus the BUG-230 finish-path set-integrity gate, parsed by scripts/check-floor-smoke.mjs (which counts arrow AND bare-function registrations; a grep for the name field agrees)."
 }

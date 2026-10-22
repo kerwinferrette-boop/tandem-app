@@ -5761,6 +5761,28 @@ const sessionPrCache = {}; // exerciseName → best est1rm seen this session; pr
 const cloudSetRowIds = {};
 const pendingSetInserts = {};
 
+// BUG-230 — ONE HOME for the identity of a stored set. `sets` is keyed in practice by
+// (session_id, exercise_name, set_number) — that is what migration 0017's unique index
+// forbids duplicating, and what saveExerciseToCloud()'s missing-only repair compares on.
+// finishSession()'s repair asks the same question, so it asks it through the same
+// function instead of re-inlining the `name + \0 + n` literal: two copies of a key
+// shape drift, and a drifted key turns a repair into a duplicate.
+const setIdentityKey = (exerciseName, setNumber) => `${exerciseName}\u0000${setNumber}`;
+
+// BUG-230 — logSet() fires its per-set insert as a fire-and-forget promise parked in
+// pendingSetInserts. finishSession() used to read `sets` without waiting for them, so a
+// Finish tapped right after the last rep could read an empty table while every insert was
+// still in flight, conclude the cloud had nothing, and fall back to the local total. Any
+// path that is about to REASON about what is in `sets` must drain them first.
+async function awaitPendingSetInserts() {
+  const inFlight = Object.values(pendingSetInserts);
+  if (!inFlight.length) return 0;
+  // Each insert owns its own catch; settle, never reject, so one failed set cannot
+  // abort the completion path that is trying to account for it.
+  await Promise.allSettled(inFlight);
+  return inFlight.length;
+}
+
 // Session notes: drafts on every keystroke so a reload/crash before Finish
 // doesn't lose it. currentSessionNotes() is the one read site — finishSession()
 // and saveExerciseToCloud() both call it instead of touching the DOM directly.
@@ -6199,8 +6221,8 @@ async function saveExerciseToCloud(id) {
     // A failed read must not become a blind insert — that would trade a missing set
     // for a duplicated one. Surface it instead; the sets are still safe locally.
     if (readErr) throw readErr;
-    const present = new Set((alreadyInCloud || []).map(r => r.exercise_name + '\u0000' + r.set_number));
-    const missing = setRows.filter(r => !present.has(r.exercise_name + '\u0000' + r.set_number));
+    const present = new Set((alreadyInCloud || []).map(r => setIdentityKey(r.exercise_name, r.set_number)));
+    const missing = setRows.filter(r => !present.has(setIdentityKey(r.exercise_name, r.set_number)));
 
     if (missing.length) {
       const { error: setsError } = await sb.from('sets').insert(missing);
@@ -6817,8 +6839,16 @@ function buildHistoryModal() {
     // the segment instead of rendering a non-value — same rule as D34's chip labels.
     const badge = [s.week != null ? 'Wk' + s.week : null, (s.goal || '').replace('_', ' ') || null]
       .filter(Boolean).join(' · ');
+    // BUG-230: finishSession() stamps setsUnsynced/volumeUnaccounted on this row when the
+    // cloud could not account for every logged set after its repair pass. This is the
+    // READER that makes that marker a pixel instead of a dead value: the sets still exist
+    // in `s.exercises` right here, which is exactly why the row must say so — it is the
+    // only remaining copy. No pictograph glyph (Kerwin 2026-09-30); plain words.
+    const unsynced = Number(s.setsUnsynced) > 0
+      ? `<span class="hist-badge" style="background:var(--red);color:#fff;" title="These sets are stored on this device only. Open the workout and tap Save on an exercise to retry the push.">${s.setsUnsynced} set${s.setsUnsynced === 1 ? '' : 's'} not synced${Number(s.volumeUnaccounted) > 0 ? ` · ${Number(s.volumeUnaccounted).toLocaleString()} lbs` : ''}</span>`
+      : '';
     return `<div class="hist-session">
-      <div class="hist-date"><span>${escNoteHtml(s.date || '')}</span>${badge ? `<span class="hist-badge">${escNoteHtml(badge)}</span>` : ''}</div>
+      <div class="hist-date"><span>${escNoteHtml(s.date || '')}</span>${badge ? `<span class="hist-badge">${escNoteHtml(badge)}</span>` : ''}${unsynced}</div>
       ${exEntries}
     </div>`;
   }).join('') + `<button class="clear-btn" onclick="clearHistory()">Clear All History</button>`;
@@ -7491,49 +7521,95 @@ function finishSession() {
       const todayDate = localDateStr(); // BUG-018/027: local day, not UTC
 
       try {
-        // 1. Get true volume from sets already written to DB
-        let { data: setRows } = await sb.from('sets')
-          .select('weight_lbs, reps')
-          .eq('session_id', resolvedId);
-        // C11 behavioral fix: never silently complete an empty session. If the
-        // cloud has 0 sets but local sets were logged, re-sync them from the
-        // history snapshot (same row shape as saveExerciseToCloud) first.
-        if (!setRows?.length && Object.keys(snapshotExercises).length) {
-          console.error('[C11] 0 cloud sets despite local sets logged — re-syncing', {
-            sessionId: resolvedId, localExercises: Object.keys(snapshotExercises).length });
-          const rescueRows = Object.entries(snapshotExercises)
-            .flatMap(([exId, sets]) => (sets || []).map(s => {
-              const w = parseFloat(s.w) || 0, r = parseInt(s.r) || 0;
-              return {
-                session_id: resolvedId,
-                user_id: currentUser.id,
-                // BUG-49: same defect as saveExerciseToCloud — `exId` is a slot id, and
-                // snapshotExercises is a shallow copy of sessionSetsMap, which is keyed by
-                // slot id. Each set still carries the resolved `name`.
-                exercise_name: s.name || exId,
-                set_number: s.set || 1,
-                weight_lbs: w,
-                reps: r,
-                // A snapshot written before RPE capture shipped has no `rpe` key at all;
-                // `?? null` is what keeps that an unrated set rather than an aborted rescue.
-                rpe: s.rpe ?? null,
-                // BUG-75: recompute — see saveExerciseToCloud. This path is the
-                // sharper one: a snapshot written by a build that predates est1rm
-                // carries no est1rm at all, so `s.est1rm || null` sent NULL, the
-                // rescue INSERT aborted, and the session completed with 0 sets —
-                // which is exactly the failure this rescue path exists to prevent.
-                estimated_1rm_lbs: w > 0 && r > 0 ? Math.round(calcRM(w, r)) : null
-              };
-            }))
-            .filter(s => s.weight_lbs > 0 && s.reps > 0);
-          if (rescueRows.length) {
-            const { error: rescueErr } = await sb.from('sets').insert(rescueRows);
-            if (rescueErr) console.error('[C11] set re-sync failed:', rescueErr);
-            else setRows = rescueRows;
-          }
+        // ── BUG-230: account for every logged set before claiming the volume ──────
+        // The defect this replaces: `totalVolume = dbVolume > 0 ? dbVolume : localVolume`
+        // behind a rescue that only fired on `!setRows.length`. Two holes, both measured
+        // by driving the real path in a browser (scripts/finish-set-integrity-smoke.mjs):
+        //   (a) cloud at 0 sets and the rescue INSERT refused -> dbVolume 0 -> the row was
+        //       stamped with the FULL local volume and the user was told
+        //       "Session saved ✓ — 13,240 lbs moved" against ZERO sets rows. That is the
+        //       exact prod shape the 2026-10-21 audit found 15 times (71,530 lbs).
+        //   (b) a PARTIAL loss never reached the rescue at all (the guard demanded an
+        //       EMPTY table), so the missing sets were silently accepted as complete.
+        // Now: drain the in-flight inserts, repair what is missing by identity, and if the
+        // cloud still cannot account for the session, say so instead of celebrating.
+        await awaitPendingSetInserts();
+
+        // What the user actually logged, in the wire shape `sets` stores.
+        // Same row shape and the same BUG-49/BUG-75 reasoning as saveExerciseToCloud:
+        // the resolved NAME (never the slot id), and est1rm RECOMPUTED rather than taken
+        // off the snapshot — a NULL there aborts the whole batch (BUG-75 mode A), which is
+        // how whole exercises went missing in the first place.
+        const expectedRows = Object.entries(snapshotExercises)
+          .flatMap(([exId, sets]) => (sets || []).map(s => {
+            const w = parseFloat(s.w) || 0, r = parseInt(s.r) || 0;
+            return {
+              session_id: resolvedId,
+              user_id: currentUser.id,
+              exercise_name: s.name || exId,
+              set_number: s.set || 1,
+              weight_lbs: w,
+              reps: r,
+              rpe: s.rpe ?? null,
+              estimated_1rm_lbs: w > 0 && r > 0 ? Math.round(calcRM(w, r)) : null
+            };
+          }))
+          .filter(s => s.weight_lbs > 0 && s.reps > 0);
+
+        const readSets = async () => {
+          const { data, error } = await sb.from('sets')
+            .select('exercise_name, set_number, weight_lbs, reps')
+            .eq('session_id', resolvedId);
+          // A failed READ is not evidence of an empty table. Treating it as one is what
+          // turned a transient error into a fabricated total; surface it instead.
+          if (error) throw error;
+          return data || [];
+        };
+        const missingFrom = (cloudRows) => {
+          const present = new Set(cloudRows.map(r => setIdentityKey(r.exercise_name, r.set_number)));
+          return expectedRows.filter(r => !present.has(setIdentityKey(r.exercise_name, r.set_number)));
+        };
+
+        let setRows = await readSets();
+        let missing = missingFrom(setRows);
+
+        // Repair pass — insert ONLY what is absent, so this is idempotent and can never
+        // manufacture the duplicate group migration 0017's unique index forbids. Covers
+        // the partial case the old `!setRows.length` guard could not see.
+        if (missing.length) {
+          console.error('[BUG-230] cloud is missing logged sets at finish — repairing', {
+            sessionId: resolvedId, missing: missing.length, expected: expectedRows.length });
+          const { error: repairErr } = await sb.from('sets').insert(missing);
+          if (repairErr) console.error('[BUG-230] set repair insert failed:', repairErr);
+          setRows = await readSets();
+          missing = missingFrom(setRows);
         }
-        const dbVolume = (setRows || []).reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
-        const totalVolume = dbVolume > 0 ? Math.round(dbVolume) : Math.round(localVolume);
+
+        const dbVolume = setRows.reduce((sum, s) => sum + (s.weight_lbs || 0) * (s.reps || 0), 0);
+        // The session's volume stays the LIFTED volume. Kerwin's standing call on the
+        // 2026-10-21 audit: total_volume_lbs is the trustworthy number and `sets` is the
+        // incomplete one, so this must never be reduced to match a short table — that
+        // would delete real training history to make an invariant look tidy. What changes
+        // is that an unaccounted-for session is now LOUD and RECOVERABLE instead of silent.
+        const totalVolume = Math.round(Math.max(dbVolume, localVolume));
+        const unaccounted = Math.max(0, Math.round(localVolume) - Math.round(dbVolume));
+        const setsUnsynced = missing.length;
+
+        // The local snapshot is the only remaining copy of an unsynced set, so mark the
+        // history row that holds it rather than leaving the loss to a console line. Read
+        // back by buildHistoryModal() as a visible badge — a marker nothing renders is a
+        // dead value, and a dead value asserted by a gate is worse than no gate at all.
+        if (setsUnsynced) {
+          try {
+            const allHist = LS.get('tandem_history') || [];
+            const row = allHist.find(h => h && h.id === hist[0].id);
+            if (row) {
+              row.setsUnsynced = setsUnsynced;
+              row.volumeUnaccounted = unaccounted;
+              LS.set('tandem_history', allHist);
+            }
+          } catch (markErr) { console.warn('[BUG-230] could not mark the unsynced session:', markErr); }
+        }
 
         // 2. Mark session complete
         const { error: wsError } = await sb.from('workout_sessions')
@@ -7568,7 +7644,14 @@ function finishSession() {
         // EPIC-13 Step 3: completion celebration card (volume, duration, PR count, streak)
         showSessionSummary(totalVolume, duration, prCount || 0, finalStreak);
 
-        showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
+        // BUG-230: a partial set write may not report success. The banner and the
+        // summary card above are about the WORKOUT, which did happen; this line is the
+        // only place that speaks to whether it was SAVED, so it has to tell the truth.
+        if (setsUnsynced) {
+          showToast(`Workout kept on this device \u2014 ${setsUnsynced} set${setsUnsynced === 1 ? '' : 's'} did not reach the cloud. Tap Save on an exercise to retry.`);
+        } else {
+          showToast(`Session saved \u2713 \u2014 ${totalVolume.toLocaleString()} lbs moved`);
+        }
       } catch(e) {
         console.error('Session finish sync error:', e);
         showToast(`Session saved locally \u2014 ${Math.round(localVolume).toLocaleString()} lbs moved`);
