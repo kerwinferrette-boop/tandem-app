@@ -1616,3 +1616,110 @@ I started `verify` → `personas` → `walkthrough` as a background chain "to ge
 **Enforced by:** judgment — not mechanically checkable (`verify` has no uncited-number check; it stayed 45/45 green with the claim live).
 
 **Open, not fixed (non-numeric or mechanical, left for a decision):** programs.js:447 "outperforms any isolation exercise", :1465 "2× the resistance" (arithmetic identity), :1655 "dramatically".
+
+## SC-45 — My mutation anchor matched the first of four identical strings, so the mutation tested unrelated code and I read the green as "this assertion has no teeth"
+
+**Date:** 2026-10-13 · **Found by:** disbelief at a single passing mutation, then `grep -n`.
+
+Mutation-testing the new real-client round-trip gate, four mutations were applied to
+`tandem.html` by string replacement. Three failed the expected assertions by name. The
+fourth — changing `pushExNote`'s `onConflict: 'user_id,exercise_name'` to a wrong target —
+**passed**, which would have meant the `on_conflict` assertion was decoration.
+
+It was not. `onConflict: 'user_id,exercise_name'` appears **four times** in the file
+(`:3344`, `:6006`, `:6732`, `:7914`). `str.replace(old, new, 1)` hit `:3344`, a calibration
+upsert the harness never exercises. The mutation landed in code under no test, the code
+under test was untouched, and the run was green for the most boring reason possible.
+Re-applied by line number at `:6732`, it failed both expected assertions immediately.
+
+**The mechanism, not the trait.** SC-38 says mutation-test every assertion individually.
+It does not say the mutation must be *verified to have landed where intended*, and a
+non-unique anchor makes those two different things. The failure mode is nasty because it
+is silent and inverted: a mutation that misses produces a PASS, which reads as "the
+assertion is worthless," so the honest response (delete the assertion) destroys a real
+guard. I came within one `grep` of deleting a check that catches a genuine live-only bug.
+
+> **THE RULE — SC-45.** A mutation is not applied until you have seen that it changed the
+> intended site. Before mutating by string match, `grep -c` the anchor: if it is not 1,
+> mutate by line number or extend the anchor until it is unique, and print the before/after
+> line. Treat an unexpected PASS under mutation as "the mutation may not have landed"
+> before "the assertion is toothless" — check which, every time. This is CLAUDE.md's
+> "confirm the code under test is the code you think it is" pointed at the mutation rather
+> than at the fix.
+
+**Enforced by:** judgment — not mechanically checkable. The operational tell: a mutation
+run that prints no before/after line for the site it claims to have changed is unproven.
+
+## SC-46 — I chained `verify | tail -1 && git push`, so the pipe's exit status gated the push and a red gate shipped
+
+On 2026-10-13 I ran `npm run verify 2>&1 | tail -1 && git push origin HEAD:main`. `verify`
+printed `1/47 CHECK(S) FAILED — DO NOT SHIP.` and the push went out anyway, because the `&&`
+tested `tail`'s exit status (0), not `verify`'s (1). The commit was docs-only and the red
+turned out to be a missing `npm install` for another session's new BUG-195 check (47/47 after
+install), so nothing broke — but the gate that exists to stop exactly this did not stop it,
+and I only noticed because I read the printed line.
+
+**The mechanism, not the trait.** A pipeline's exit status is its last command's, so piping a
+gate through `tail`/`head`/`grep` discards the gate's verdict. Without `pipefail`, "gate && ship"
+is not a gate.
+
+> **THE RULE — SC-46.** Never put a ship step behind a piped gate. Run the gate on its own
+> (redirect to a file, then `tail` the file), capture `$?` of the gate itself, and push only on
+> `0`. After a merge/rebase that brings in other sessions' commits, run `npm install` BEFORE
+> `verify` — a new check can need a dependency the old tree lacked (SC-01-adjacent: the tree
+> under test is not the tree you last tested).
+
+**Enforced by:** judgment — not mechanically checkable. Operational tell: any command line
+containing `verify … | … && git push`.
+
+## SC-47 — A scheduled cycle reported "nothing worked" without running a single story assertion, and parked 24 stories as "needs research"
+
+On 2026-10-13 a scheduled /loop cycle ran preflight and the gates, read the tracker counts
+(24 Untested, 3 Failing, 19 Needs Human), judged every open row "program-engine or
+forbidden-adjacent", changed nothing, and reported GOAL NOT MET. Kerwin's reply: "why would you
+fix & ship nothing? Test the 24 untested, triple check them, why are the 3 failing, are we sure
+the Needs Humans are needs human?" Running the assertions found 6 PASS, 3 diagnosed, 7 real
+failures, 5 not built, 3 stale, a stale "Failing" (BUG-76 was already Resolved), 7 of 19 Needs
+Human rows that were stale or closable, and one fixable bug that shipped the same day.
+
+**The mechanism, not the trait.** The cycle treated the CATALOG/TEST stages as satisfied by
+*reading the row's own Evidence field*, which is exactly what the loop prompt calls out as not
+a test ("TEST (baseline). Run each story's assertion against the current app"). A row's
+Evidence is a snapshot written by an earlier session and is the thing most likely to be stale
+(several here were: deleted functions, columns already dropped, a ruling already ratified).
+"Needs research" was also used as a stopping point for rows where the research had either been
+done or could be done in the same turn (`exhaust_before_parking`).
+
+> **THE RULE — SC-47.** A cycle that touches a story must RUN its assertion this cycle, against
+> current code, and report the result as PASS / FAIL / NOT-BUILT / STALE with the command it ran.
+> "Untested -> still Untested" is only a legitimate cycle outcome when the cycle shows the
+> assertions it ran and could not complete. Never carry a row's Evidence forward as the current
+> state. Independent read-only agents in parallel are the cheap way to do this for 20+ stories;
+> use them. Before parking anything as "needs research", run the research (WebSearch is
+> available — verify by trying) and state what was searched.
+
+**Enforced by:** judgment — not mechanically checkable. Operational tell: a Goal Record cycle
+entry that lists tracker counts but no per-story command or result.
+
+## SC-48 — Two test-harness mistakes: a deterministic stub under a retry loop, and `pkill -f` on a pattern my own shell contained
+
+(1) I fed a retry-loop function (a port picker that re-draws a restricted value) a stub that returned the
+same draw every call. When the draw hit the restricted value the function correctly re-drew forever; the run
+hung and I first read it as a slow browser. (2) I then ran `pkill -f <test-name>`; the pattern also matched the
+bash process running that command line, killing my own shell (exit 144), and the file edit queued in the same
+command never ran, so the broken stub survived one more run.
+
+**The mechanism, not the trait.** A test double under a retry/re-draw loop must be able to return a *different*
+value on retry, or "rejects a bad value" becomes "never terminates". And `pkill -f <pattern>` matches the full
+command line of every process, including the shell that carries the pattern as text.
+
+> **THE RULE — SC-48.** (a) When stubbing a random source under a retry loop, make the stub stateful (advance on
+> each call) and run the test under `timeout` so a bad stub fails instead of hanging. (b) Never `pkill -f` with a
+> pattern that appears in your own command; kill by PID from `pgrep` or use `timeout` on the child. (c) When a
+> multi-step command is killed midway, re-check that its earlier edit actually landed (`grep -c` the marker)
+> before re-running.
+
+**Enforced by:** judgment — not mechanically checkable. (No gate wraps a harness in `timeout`; `verify.mjs`
+would hang on a stub that never terminates.)
+
+**Recurrence of SC-48(b), 2026-10-14:** I ran `pkill -f weekday-render-smoke.mjs` in a command line that also contained that string; it matched my own shell (exit 144) and killed it, the very mistake SC-48(b) names. Rule unchanged: kill by PID from `pgrep` (excluding `$$`) or wrap the child in `timeout`. Enforced by: judgment — not mechanically checkable.
