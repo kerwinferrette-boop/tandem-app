@@ -88,5 +88,33 @@ const when = lifts3['Squat']?.[0]?.date;
 check('session_date parsed as local midnight (matches new Date("2026-09-20T00:00:00"))',
   when instanceof Date && when.getTime() === new Date('2026-09-20T00:00:00').getTime());
 
+// ── 7. BUG-144: buildHistoryModal() is a SECOND reader of the same two row shapes. A
+//        restored row has session_date and no `date`, so its header rendered blank (and
+//        literally "undefined" before the BUG-209 `|| ''` guard). Extract the LIVE
+//        function + the one display-date owner and assert the header carries a real date.
+function liveFn(name) {
+  const i = html.indexOf('function ' + name + '(');
+  if (i === -1) { console.error('could not find ' + name); process.exit(1); }
+  return html.slice(i, html.indexOf('\n}', i) + 2);
+}
+const listEl = { innerHTML: '' };
+const modalCtx = vm.createContext({
+  LS, Object, Number, Date, String,
+  document: { getElementById: () => listEl },
+  escNoteHtml: (x) => String(x),
+  historyExLabel: (id) => String(id),
+});
+vm.runInContext(`${liveFn('historyDisplayDate')}\n${liveFn('buildHistoryModal')}\nthis.buildHistoryModal = buildHistoryModal;`, modalCtx);
+LS.set('tandem_history', [finishSessionRow, restoredRow]);
+modalCtx.buildHistoryModal();
+check('History modal: finishSession-shaped row still shows its own date string',
+  listEl.innerHTML.includes('<span>Tue, Sep 23, 2026</span>'));
+check('History modal: restored row (session_date only) shows a real date, not blank/"undefined"',
+  listEl.innerHTML.includes('<span>Sun, Sep 20, 2026</span>') && !listEl.innerHTML.includes('undefined'));
+LS.set('tandem_history', [{ id: 'uuid-3' }]);
+modalCtx.buildHistoryModal();
+check('History modal: a row with neither field renders an empty header, never "undefined"',
+  !listEl.innerHTML.includes('undefined'));
+
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);
 process.exit(failures === 0 ? 0 : 1);

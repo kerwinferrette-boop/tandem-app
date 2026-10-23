@@ -6847,8 +6847,10 @@ function buildHistoryModal() {
     const unsynced = Number(s.setsUnsynced) > 0
       ? `<span class="hist-badge" style="background:var(--red);color:#fff;" title="These sets are stored on this device only. Open the workout and tap Save on an exercise to retry the push.">${s.setsUnsynced} set${s.setsUnsynced === 1 ? '' : 's'} not synced${Number(s.volumeUnaccounted) > 0 ? ` · ${Number(s.volumeUnaccounted).toLocaleString()} lbs` : ''}</span>`
       : '';
+    // BUG-144: a cloud-restored row carries session_date and no `date`; render it through
+    // historyDisplayDate() (the one format owner) at local midnight, never a blank header.
     return `<div class="hist-session">
-      <div class="hist-date"><span>${escNoteHtml(s.date || '')}</span>${badge ? `<span class="hist-badge">${escNoteHtml(badge)}</span>` : ''}${unsynced}</div>
+      <div class="hist-date"><span>${escNoteHtml(s.date || (s.session_date ? historyDisplayDate(new Date(String(s.session_date).slice(0, 10) + 'T00:00:00')) : ''))}</span>${badge ? `<span class="hist-badge">${escNoteHtml(badge)}</span>` : ''}${unsynced}</div>
       ${exEntries}
     </div>`;
   }).join('') + `<button class="clear-btn" onclick="clearHistory()">Clear All History</button>`;
