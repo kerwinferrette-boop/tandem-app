@@ -1775,3 +1775,35 @@ deletion. Choosing a parent that already contains one side's new work reclassifi
 
 **Enforced by:** judgment for the parent choice — not mechanically checkable. The deletion check IS mechanical
 and is the one to actually run: `git diff --name-status <restored-side> --cached` must show no `D` lines.
+
+## SC-51 — I built a gate from the task brief without reading the tracker row that had already ruled its mechanism the weaker half
+
+The 2026-10-21 brief specified BUG-246's fix directly: *"Add a check that asserts the registered check count is
+greater than or equal to a committed floor, so deleting registrations fails the run instead of passing it. This is
+BUG-246's fix."* I built exactly that, shipped it as `393ad10`, and never opened the BUG-246 row. The row's own body
+had already evaluated that exact mechanism and ruled it **secondary**: under *"THE REORDERING"* (2026-10-16,
+re-affirmed 10-17 and 10-18) it promotes a **commit-graph** merge-versus-both-parents assertion to PRIMARY, because a
+guard stored in the tree it guards cannot defend itself against a tree-level revert — and `b6356bf` was exactly such
+a revert, which deletes the floor fixture in the same stroke as the registrations it protects. The row says in
+as many words: *"do not skip the merge check as 'also in scope' when it is the load-bearing half."* An unattended
+sweep found this before I did and called the row PARTIAL. My commit body sells the floor as "the fix" and names only
+the fixture-lowering residual, not the tree-level-revert one it cannot survive.
+
+**The mechanism, not the trait.** I treated the brief's named mechanism as the specification and skipped the
+canonical source, because the brief *already sounded like* a decision that had been made — so there seemed to be
+nothing left to look up. That is the prime directive's plausibility-first failure with the plausible thing supplied
+by the requester instead of by my own memory, and it is harder to notice for exactly that reason. CLAUDE.md names
+Notion as the source of truth and says to consult it BEFORE reasoning or writing code; a brief is an instruction,
+not a substitute for the source. The correct output was a flagged conflict for Kerwin before any code, not a
+well-tested secondary guard presented as the whole fix. (Related to [[SC-49]]: there I got an assertion's direction
+wrong from first principles; here I got a gate's *mechanism* wrong by never checking what had already been decided.)
+
+> **THE RULE — SC-51.** Before building a fix for a tracker row, READ THAT ROW — its body, not only the brief or the
+> `Claude Code Prompt` field — and check whether it already contains a design ruling about the mechanism. A brief
+> naming a mechanism does not mean the mechanism was chosen against the source; it may predate or contradict it. If
+> the row's body and the brief disagree about which mechanism is load-bearing, that is a conflict to hand back
+> BEFORE writing code, not a choice to make silently. And when shipping a half, say in the commit body that it is a
+> half and name the half that is missing.
+
+**Enforced by:** judgment — not mechanically checkable. Nothing in the repo can see a Notion row, and `verify`
+cannot tell a secondary guard from a primary one. The only instrument is reading the row first.

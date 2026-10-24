@@ -183,7 +183,8 @@ assertion individually · SC-39 a masked finding is not a fixed one · SC-40 nev
 test with a HEAD-relative git revert · SC-45 verify a mutation LANDED before believing its result ·
 SC-49 an assertion that can only go green by deleting trustworthy data is the WRONG assertion, never
 the data · SC-50 a fabricated merge commit is parented on the merge BASE, and a restoration that
-deletes anything is not a restoration.
+deletes anything is not a restoration · SC-51 read the tracker ROW before building its fix — a brief
+naming a mechanism is not evidence the source chose that mechanism.
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 
