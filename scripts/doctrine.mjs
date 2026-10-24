@@ -46,7 +46,13 @@ import {
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const root = dirname(scriptsDir);
-const code = readFileSync(join(root, 'programs.js'), 'utf8');
+// BUG-233 loader override: scripts/d6b-mutation-smoke.mjs runs this gate against a MUTATED COPY
+// of the engine (never an edit to programs.js). The override can never yield a passing run: when
+// it is set the process banners loudly and exits 3 even if every invariant holds, so a stray env
+// var in CI or a shell can neither mask the real engine nor produce a green verdict.
+const ENGINE_OVERRIDE = process.env.TANDEM_DOCTRINE_PROGRAMS_JS || '';
+if (ENGINE_OVERRIDE) console.log(`!! ENGINE OVERRIDE ACTIVE: loading ${ENGINE_OVERRIDE} instead of programs.js — this run can never exit 0`);
+const code = readFileSync(ENGINE_OVERRIDE || join(root, 'programs.js'), 'utf8');
 const { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES: GOAL_PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey, PER_EXERCISE_SET_CEILING } = vm.runInNewContext(
   `(function(){ ${code}; return { getProgram, EXERCISE_BANK, getSingleDay, buildDynamicProgram, movementPatternOf, ONEOFF_FOCUSES, deloadWeeks, realizationWeek, primaryBlockStarts, PHASES, FOCUS_SLOTS, ONEOFF_CORE_GROUPS, ONEOFF_CARDIO_GROUPS, SUPERSET_CFG, progressionPct, ACCESSORY_PROGRESSION_RATIO, PROGRESSION_PCT_MIN, PROGRESSION_PCT_MAX, LOAD_STEP_LBS, PRESCRIPTION_STEP_LBS, roundToStep, seedWeight, SEED_WEIGHTS, SEED_BASE_LBS, bankEntryByName, materializeTemplate, computeMuscleWeeklyVolume, VOLUME_LANDMARKS, MAJOR_MUSCLE_GROUP_TOKENS, GOAL_VOLUME, SESSION_MUSCLE_CEILING, muscleCeilingKey, PER_EXERCISE_SET_CEILING }; })()`, {});
 
@@ -3150,4 +3156,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`\nAll active doctrine invariants hold. ✓`);
-process.exit(0);
+process.exit(ENGINE_OVERRIDE ? 3 : 0);
