@@ -46,6 +46,9 @@
 //       the pinned baseline (scripts/fixtures/classifier-contradictions-baseline.json, derived
 //       categories) — O1b: a baseline entry that stops reproducing fails (ratchet down);
 //       O1c: every entry carries a category and reason.
+//   C1/C2 classifier boundary cells on a synthetic bank: headroom == MEV is NOT forced (`<` not
+//       `<=`), and a weight-2 lift is one ceiling-slot (the Math.min(w,1) clamp in the reduce).
+//       Added after the BUG-234 verifier showed both mutants survived this gate and the cap smoke.
 //   O2  UNDECIDED <= the committed bound (0 today).
 //   O3  coverage: the oracle judged EVERY classifier-forced over-cap lift (no silent skip).
 //   W1  no ratchet key names a token some contributing lift trains at weight < 1.0, except
@@ -213,6 +216,34 @@ function unstack(lifts, L, landmark, holdBelowMev = false) {
   const b = unstack(fo, 0, lm);
   must(a.verdict === 'feasible', `O0: the oracle called a hand-built SPREADABLE week (${tok}: 3 lifts, one stacked at 10, MEV 10) ${a.verdict} — it cannot detect a false "forced"`);
   must(b.verdict === 'infeasible', `O0: the oracle called a hand-built FORCED week (${tok}: one lift, MEV 10 > 6) ${b.verdict} — it would never confirm anything`);
+}
+
+// ── C1/C2: boundary cells for the classifier's own arithmetic (BUG-234 verifier finding) ──
+// The sweep below only ever sees the headroom values the 1050 programs happen to produce, so two
+// mutations of the classifier survived both this gate and the cap smoke: `headroom < mev` -> `<=`
+// and dropping the Math.min(.,1) clamp inside the headroom reduce. A synthetic bank makes each
+// boundary reachable on purpose (the SC-38 lesson: the fixture must be able to reach the branch).
+{
+  const mk = (name, primary) => ({ name, muscleGroups: { primary, secondary: [] } });
+  const syn = makeWeightOf({
+    a: mk('SynA', ['zz']), b: mk('SynB', ['zz']),            // weight 1 on token zz
+    d: mk('SynD', ['zz', 'zz_x']),                           // weight 2 on zz (two anchored primary hits)
+  });
+  const cap = 6;
+  const run = (names, mev) => classifyOverCap({
+    lift: { name: names[0] }, lifts: names.map(n => ({ name: n })),
+    landmark: { mev }, tokens: ['zz'], cap, weightOf: syn.weightOf });
+  // C1: headroom exactly equals MEV (2 weight-1 lifts x 6 = 12, MEV 12) is REACHABLE, so not forced.
+  must(run(['SynA', 'SynB'], 12).forced === false,
+    'C1: classifier called headroom == MEV forced — the boundary is `headroom < mev`; `<=` would over-call forced');
+  must(run(['SynA', 'SynB'], 13).forced === true,
+    'C1: classifier missed headroom (12) < MEV (13) — a genuinely forced week must still be called forced');
+  // C2: a weight-2 lift counts as ONE credit tier-slot (min(w,1)): SynA(1)+SynD(2) -> 6+6 = 12, not 6+12.
+  // MEV 13 > 12 is forced; an unclamped reduce would read 18 and wrongly call it spreadable.
+  must(run(['SynA', 'SynD'], 13).forced === true,
+    'C2: classifier read a weight-2 lift as more than one ceiling-slot — the Math.min(weight,1) clamp in the headroom reduce is gone');
+  must(run(['SynA', 'SynD'], 12).forced === false,
+    'C2: classifier called SynA+SynD forced at MEV 12 — clamped headroom is 12, which meets it');
 }
 
 // ── sweep ─────────────────────────────────────────────────────────────────────────────
