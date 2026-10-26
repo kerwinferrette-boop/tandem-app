@@ -1807,3 +1807,29 @@ wrong from first principles; here I got a gate's *mechanism* wrong by never chec
 
 **Enforced by:** judgment — not mechanically checkable. Nothing in the repo can see a Notion row, and `verify`
 cannot tell a secondary guard from a primary one. The only instrument is reading the row first.
+
+## SC-52 — I framed a council question from a wrapper-layer hypothesis I had not measured to the pool level, and half of it was false
+
+On 2026-10-26 I convened an llm-council on BUG-165 with a premise I had inferred by reading `getProgram()`:
+mechanism B was "`pruneInjuries()` substitutes a second bench-family press after a shoulder prune", and
+mechanism A was "`ppl()` concatenates compounds with no pattern check, so a non-clashing pick should exist".
+Running the pools afterwards showed both were wrong. `pruneInjuries()` only deletes; it never substitutes. My
+"direct vs full" A/B called `buildDynamicProgram` with an empty injury string, so it looked like the wrapper
+introduced the clash; with the real injury argument the generator itself emits 200 of the 360 remaining clashing
+days (shoulder / lower-back users, where the injury filter bans every non-bench press and every non-squat lower
+compound, i.e. the already-disclosed bank-coverage gap, not a wrapper bug). For A, the combined Legs day draws
+3 compounds from a vocabulary of exactly 2 lower-body patterns (hinge, squat), so every candidate for the third
+slot clashes; a source-level fix is impossible without dropping a compound (a volume / D6b change). An edit that
+preferred the quad day's second compound moved 370 to 360 and was reverted.
+
+**The mechanism, not the trait.** I compared two calls whose argument lists differed in more than the one thing I
+was varying, and I never asked "does a non-clashing candidate exist in the pool?" before asking a council which
+fix level to use. The council's (a)-vs-(b) vote was therefore a vote on a mechanism that did not exist.
+
+> **THE RULE — SC-52.** Before framing a fork for a council or a fix, (1) make any A/B differ in exactly ONE
+> argument, and print both argument lists; (2) for a "pick a non-clashing alternative" fix, first count the
+> distinct patterns / candidates actually available to that slot. If candidates <= slots, the rule is
+> structurally unsatisfiable there and the fork is about the RULE, not the code.
+
+**Enforced by:** judgment — not mechanically checkable. Operational tell: a council brief that names a
+mechanism without a printed pool or a one-variable A/B behind it.
