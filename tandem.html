@@ -7812,8 +7812,12 @@ let logWindow = 'month';
 function setLogWindow(win) { logWindow = win; renderLogTab(); }
 function logWindowStart(win) {
   const now = new Date();
-  if (win === 'week') return new Date(now.getTime() - 7 * 864e5);
-  if (win === 'month') return new Date(now.getTime() - 30 * 864e5);
+  // BUG-145: local calendar-day boundaries built from Y/M/D components (JS normalizes
+  // d - N across month/year ends), never ms subtraction — a local day is 23h/25h on a DST
+  // date, so `now - N*864e5` lands an hour off the boundary (same rule as BUG-27's
+  // calendarDaysBetween()).
+  if (win === 'week') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  if (win === 'month') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
   if (win === 'ytd') return new Date(now.getFullYear(), 0, 1);
   const start = cfg?.startDate;
   const d = start ? new Date(start) : null;

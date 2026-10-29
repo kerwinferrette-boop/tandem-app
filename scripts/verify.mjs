@@ -66,6 +66,7 @@ const CHECKS = [
   { name: 'MOVEMENT_FAMILIES partition (R1-R7 — now wired via movementPatternOf(), BUG-151/D30)', run: () => execFileSync('node', [join(scriptsDir, 'movement-families-check.mjs')], { stdio: 'inherit' }) },
   { name: 'movement-pattern smoke (D30/BUG-151 — no same-pattern compound clash within one session)', run: () => execFileSync('node', [join(scriptsDir, 'movement-pattern-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-178 history-merge smoke (cloud history hydration merges, never overwrites past an empty-guard)', run: () => execFileSync('node', [join(scriptsDir, 'history-merge-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-145 log-window DST smoke (Log tab week/month cutoff is a local calendar-day boundary across spring-forward/fall-back; probes proven red)', run: () => execFileSync('node', [join(scriptsDir, 'logwindow-dst-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'auth scope smoke (per-account storage isolation, scoped session pointer, anonymous saves nothing)', run: () => execFileSync('node', [join(scriptsDir, 'auth-scope-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-173 muscle-tag vocabulary gate (bank ↔ DB vocabulary agreement; offline vs committed snapshot, live in CI)', run: () => execFileSync('node', [join(scriptsDir, 'muscle-tag-vocabulary-gate.mjs')], { stdio: 'inherit' }) },
   { name: 'bank↔seed freshness (committed seed SQL matches EXERCISE_BANK — does NOT prove it is applied)', run: () => execFileSync('node', [join(scriptsDir, 'bank-seed-freshness.mjs')], { stdio: 'inherit' }) },
