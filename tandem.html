@@ -8772,6 +8772,17 @@ function calendarDaysBetween(a, b) {
   return Math.round((utcNoon(b) - utcNoon(a)) / 86400000);
 }
 
+// ── daysAgoFrom() — BUG-249 DST fix (sibling of BUG-27 / BUG-145) ──
+// Whole LOCAL calendar days from `when` to `now`, for the dashboard PR tag's TODAY /
+// YESTERDAY / weekday / date ladder. It was an inline Math.floor((localMidnight - when) /
+// 86400000): a local day is 23h on a spring-forward date, so a session two calendar days
+// back floored to 1 and labelled itself YESTERDAY. Delegates to calendarDaysBetween()
+// (UTC-noon anchoring) so the label and the cadence/overdue math share ONE day-count rule.
+// `now` is a parameter so scripts/daysago-dst-smoke.mjs can sweep the LIVE function.
+function daysAgoFrom(when, now) {
+  return calendarDaysBetween(when, now);
+}
+
 // ── SCIENCE-BASED CADENCE ENGINE — BUG-030 fix ──
 // Derives weekly training schedules from exercise-science recovery principles
 // rather than a static (diffDays%7)+1 counter that ignores plan length and goal.
@@ -10602,7 +10613,7 @@ function renderLatestPR() {
   if (!best) { card.style.display = 'none'; return; }
   card.style.display = '';
   const when = new Date(best.date + 'T00:00:00');
-  const daysAgo = Math.floor((new Date().setHours(0, 0, 0, 0) - when.getTime()) / 86400000);
+  const daysAgo = daysAgoFrom(when, new Date());
   const whenLabel = daysAgo <= 0 ? 'TODAY'
     : daysAgo === 1 ? 'YESTERDAY'
     : daysAgo < 7 ? when.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
