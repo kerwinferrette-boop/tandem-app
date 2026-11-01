@@ -5126,8 +5126,12 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     ]);
   };
 
-  // 6-day: PPL ×2 — each muscle group trained 2×/week (frequency research). The
-  // two rotations share exercise selection by design (block-stable per doctrine
+  // 6-day: PPL ×2 — each muscle group is trained twice a week as a consequence of
+  // the split, NOT because frequency research mandates it: Schoenfeld, Grgic &
+  // Krieger 2019 (J Sports Sci; 25-study meta-analysis) found no
+  // significant hypertrophy effect of frequency when weekly volume is equated
+  // (BUG-163). The reasons for PPL ×2 are volume distribution across six days
+  // and D1 block stability. The two rotations share exercise selection by design (block-stable per doctrine
   // D1 — the same lifts twice a week is a feature, not churn); the two Legs days
   // differ (hinge vs quad). dedupeConsecutiveDays guards adjacent-day collisions;
   // the non-adjacent Push A/B (and Pull A/B) repeats are intended.
