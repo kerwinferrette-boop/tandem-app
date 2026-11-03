@@ -191,10 +191,13 @@ async function sweepViewport(browser, base, vp) {
   const steps = [];
   const snap = async (name) => {
     await page.waitForTimeout(350);
+    // Let images finish and freeze CSS animations/transitions, so two identical builds screenshot
+    // identically (runs 4 and 6 each flagged a different screen, 6.6% and 15.4%, with no UI change).
+    await page.evaluate(() => Promise.all([...document.images].filter(i => !i.complete).map(i => new Promise(r => { i.onload = i.onerror = r; setTimeout(r, 3000); })))).catch(() => {});
     // Named by screen, not by order: a failed step on one site must not shift every later file name
     // and break the baseline pairing (the second CI run did exactly that).
     const file = `${vp.name}-${name}.png`;
-    await page.screenshot({ path: path.join(OUT, file) });
+    await page.screenshot({ path: path.join(OUT, file), animations: 'disabled' });
     const findings = await page.evaluate(inspectScreen);
     screens.push({ name, file, findings });
   };
