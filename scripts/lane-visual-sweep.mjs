@@ -22,8 +22,8 @@
 //        - visible elements that spill past the right edge of the screen
 //        - clipped text (content wider than its own box with overflow hidden and no ellipsis)
 //        - broken images (loaded with zero natural width)
-//        - interactive controls that something else is drawn on top of (a fixed bar covering a
-//          button, a modal that does not cover what it should)
+//        - interactive controls a fixed bar still covers after scrolling them to mid-screen
+//          (i.e. the user cannot reach them at all)
 //        - tap targets under 32px in either dimension (advisory; Apple's guideline is 44pt)
 //   5. With --baseline <dir> (a previous run's output), computes a per-screen pixel diff and marks
 //      findings NEW when the baseline run did not have them. NEW findings and NEW errors are what
@@ -134,7 +134,17 @@ function inspectScreen() {
       if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)) {
         // Only report when the thing on top is not part of an open modal that is meant to cover it.
         const coverer = hit.closest('.tab-bar, .bottom-nav, [style*="position: fixed"], .fab, .bug-fab, header');
-        if (coverer && !coverer.contains(el)) out.push({ kind: 'covered-control', severity: 'P2', target: label(el), detail: `covered by ${label(coverer)}` });
+        if (coverer && !coverer.contains(el)) {
+          // Behind a fixed bar at THIS scroll position is normal: the user scrolls. It is a defect
+          // only if scrolling it to the middle of the screen still leaves it covered.
+          const sx = window.scrollX, sy = window.scrollY;
+          el.scrollIntoView({ block: 'center', inline: 'nearest' });
+          const r2 = el.getBoundingClientRect();
+          const hit2 = document.elementFromPoint(Math.min(Math.max(r2.left + r2.width / 2, 0), vw - 1), Math.min(Math.max(r2.top + r2.height / 2, 0), vh - 1));
+          const still = hit2 && hit2 !== el && !el.contains(hit2) && !hit2.contains(el) && hit2.closest('.tab-bar, .bottom-nav, [style*="position: fixed"], .fab, .bug-fab, header');
+          window.scrollTo(sx, sy);
+          if (still) out.push({ kind: 'unreachable-control', severity: 'P2', target: label(el), detail: `still covered by ${label(still)} after scrolling it to the middle of the screen` });
+        }
       }
     }
     if ((r.width < 32 || r.height < 32) && !el.matches('input[type="checkbox"], input[type="radio"]')) {
@@ -152,7 +162,7 @@ async function sweepViewport(browser, base, vp) {
   const errors = [];
   page.on('pageerror', e => errors.push({ kind: 'page-error', text: e.message }));
   page.on('console', m => { if (m.type() === 'error' && !/favicon|ERR_CONNECTION_RESET/.test(m.text())) errors.push({ kind: 'console-error', text: m.text().slice(0, 300) }); });
-  page.on('requestfailed', r => { if (!/supabase|favicon|fonts\.g/.test(r.url())) errors.push({ kind: 'request-failed', text: `${r.failure()?.errorText} ${r.url()}` }); });
+  page.on('requestfailed', r => { if (!/supabase|favicon|fonts\.g|netlify-cdp-loader|app\.netlify\.com\/cdp/.test(r.url())) errors.push({ kind: 'request-failed', text: `${r.failure()?.errorText} ${r.url()}` }); });
   await page.route('**/supabase.min.js', r => r.fulfill({ contentType: 'application/javascript', body: SUPABASE_STUB }));
   await page.route(/supabase\.co\//, r => r.abort()); // belt and braces: no real backend call can leave
   // Netlify injects its review drawer (a fixed toolbar plus promo videos) into DEPLOY PREVIEWS only.
