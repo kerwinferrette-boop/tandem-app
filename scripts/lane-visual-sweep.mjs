@@ -85,13 +85,18 @@ function startServer() {
 function inspectScreen() {
   const vw = window.innerWidth, vh = window.innerHeight;
   const out = [];
+  // checkVisibility() walks ANCESTORS too: a closed sheet whose parent overlay sits at opacity:0
+  // (the bug-report and QA sheets) is not on screen even though its own styles say it is. The
+  // first run of this sweep reported those as covered controls; that was the harness, not the app.
   const visible = el => {
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) return false;
+    if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) return false;
     return r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
   };
+  const interactable = el => { for (let p = el; p; p = p.parentElement) if (getComputedStyle(p).pointerEvents === 'none') return false; return true; };
   const label = el => {
     const id = el.id ? `#${el.id}` : '';
     const cls = (typeof el.className === 'string' && el.className.trim()) ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
@@ -120,7 +125,7 @@ function inspectScreen() {
   for (const img of document.images) {
     if (visible(img) && img.complete && img.naturalWidth === 0) out.push({ kind: 'broken-image', severity: 'P2', target: label(img), detail: img.currentSrc || img.src });
   }
-  const controls = all.filter(el => el.matches('button, a[href], input, select, textarea, [onclick], [role="button"]'));
+  const controls = all.filter(el => el.matches('button, a[href], input, select, textarea, [onclick], [role="button"]') && interactable(el));
   for (const el of controls) {
     const r = el.getBoundingClientRect();
     const cx = Math.min(Math.max(r.left + r.width / 2, 0), vw - 1), cy = Math.min(Math.max(r.top + r.height / 2, 0), vh - 1);
@@ -150,6 +155,11 @@ async function sweepViewport(browser, base, vp) {
   page.on('requestfailed', r => { if (!/supabase|favicon|fonts\.g/.test(r.url())) errors.push({ kind: 'request-failed', text: `${r.failure()?.errorText} ${r.url()}` }); });
   await page.route('**/supabase.min.js', r => r.fulfill({ contentType: 'application/javascript', body: SUPABASE_STUB }));
   await page.route(/supabase\.co\//, r => r.abort()); // belt and braces: no real backend call can leave
+  // Netlify injects its review drawer (a fixed toolbar plus promo videos) into DEPLOY PREVIEWS only.
+  // Production never has it, so leaving it in makes every preview screen "differ" and covers the tab
+  // bar. Blocked so preview and production are compared like for like.
+  await page.route(/netlify-cdp-loader|app\.netlify\.com\/cdp/, r => r.abort());
+  page.setDefaultTimeout(8000);
 
   const screens = [];
   const steps = [];
@@ -160,9 +170,17 @@ async function sweepViewport(browser, base, vp) {
     const findings = await page.evaluate(inspectScreen);
     screens.push({ name, file, findings });
   };
+  // A failed step keeps the reason Playwright gives (e.g. "<div ...> intercepts pointer events"),
+  // because "Timeout exceeded" alone tells nobody what is in the way.
   const step = async (name, fn) => {
     try { await fn(); steps.push({ name, ok: true }); return true; }
-    catch (e) { steps.push({ name, ok: false, error: e.message.split('\n')[0] }); return false; }
+    catch (e) {
+      const lines = e.message.split('\n').map(l => l.trim()).filter(Boolean);
+      const why = lines.find(l => /intercepts pointer events|not visible|not enabled|detached|outside of the viewport/.test(l));
+      steps.push({ name, ok: false, error: lines[0] + (why ? ` | ${why.slice(0, 220)}` : '') });
+      await page.screenshot({ path: path.join(OUT, `${vp.name}-FAILED-${name.replace(/[^a-z0-9]+/gi, '-').slice(0, 40)}.png`) }).catch(() => {});
+      return false;
+    }
   };
 
   await step('open app', async () => { await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 }); await page.waitForTimeout(800); });
@@ -202,6 +220,13 @@ async function sweepViewport(browser, base, vp) {
     await snap('dashboard');
     for (const tab of ['log', 'you', 'duel', 'home']) {
       if (await step(`tab: ${tab}`, async () => { await page.click(`.tab-btn[data-tab="${tab}"]`); await page.waitForTimeout(400); })) await snap(`tab-${tab}`);
+      else {
+        // Recover so one blocked tap does not hide every screen after it: close what is open and
+        // switch tabs the way the app's own handler does. The failure above is still reported.
+        await page.keyboard.press('Escape').catch(() => {});
+        await page.evaluate(t => { document.querySelectorAll('.open').forEach(o => o.classList.remove('open')); if (typeof goTab === 'function') goTab(t); }, tab).catch(() => {});
+        await page.waitForTimeout(400);
+      }
     }
     if (await step('START opens the workout chooser', async () => {
       await page.click('.tab-btn[data-tab="start"]'); await page.waitForTimeout(400);
