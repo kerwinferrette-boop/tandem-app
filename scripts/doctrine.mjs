@@ -2349,7 +2349,7 @@ const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e =>
 // now reads opts.recentExposure ({tag: hoursSinceTrained}, PRIMARY tags only — the
 // exact shape recentMuscleLoad() produces in tandem.html) and opts.recencyThreshold-
 // Hours (a plain number the CALLER resolves from RECOVERY_PARAMS[goal].sameGroup-
-// Hours — tandem.html:4977, BUG-30 — getSingleDay does not read RECOVERY_PARAMS
+// Hours — the `const RECOVERY_PARAMS` declaration in tandem.html, BUG-30 — getSingleDay does not read RECOVERY_PARAMS
 // itself, deliberately: that constant lives in tandem.html, and this engine also
 // runs standalone under this very gate's vm sandbox). When a slot's own group is
 // under threshold, its candidate pool WIDENS (never narrows) to the other muscle

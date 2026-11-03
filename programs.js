@@ -2079,7 +2079,9 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 //
 //  1. It never reached a user. The render layer resolves rest as
 //     `ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc)` —
-//     tandem.html:3516/3551 and the countdown at :3977. `ex.rest` is read
+//     the exercise-card render in renderTracker() (tandem.html, the
+//     data-rest attribute and the .rest-count display) and the countdown in
+//     startRest() (tandem.html, which reads card.dataset.rest). `ex.rest` is read
 //     NOWHERE in tandem.html. Every number this table produced was computed,
 //     carried through four transform passes, and discarded at the last step.
 //     It has been dead since EPIC-8a shipped.
