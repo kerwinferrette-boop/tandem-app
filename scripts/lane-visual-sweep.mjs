@@ -175,7 +175,9 @@ async function sweepViewport(browser, base, vp) {
   // Same random choices on both sites (hero photos and similar), so a pixel diff means a real change.
   await page.addInitScript(() => {
     let seed = 20261103;
-    Math.random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    // Not a port: test-port-range-smoke.mjs audits random PORT expressions, this replaces the page's
+    // own RNG inside the browser, so it is installed with defineProperty rather than an assignment.
+    Object.defineProperty(Math, 'random', { value: () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; } });
   });
   await page.addInitScript(() => {
     const strip = () => document.querySelectorAll('iframe[title="Netlify Drawer"], iframe[src*="app.netlify.com/cdp"]').forEach(f => {
