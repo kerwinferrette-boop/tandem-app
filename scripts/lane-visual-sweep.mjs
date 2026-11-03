@@ -329,8 +329,18 @@ async function main() {
     md.push(`Runtime errors: ${allErrors.length}${baseErrs ? ` (${newErrors.length} new vs baseline)` : ''}.`);
     for (const e of (baseErrs ? newErrors : allErrors).slice(0, 10)) md.push(`- ${e.vp} ${e.kind}: ${e.text}`);
     md.push(`Visual findings: ${allFindings.length}${baseKeys ? ` (${newBlocking.length} new P2 vs baseline)` : ''}.`);
+    // Grouped by (kind, element): one line per distinct problem with the screens it shows on,
+    // so a reader sees "this button is too small on 9 screens" once, not nine times.
     const show = baseKeys ? allFindings.filter(f => f.isNew) : allFindings;
-    for (const f of show.slice(0, 25)) md.push(`- ${f.severity} ${f.vp}/${f.screen} ${f.kind}: ${f.target || ''} ${f.detail}${f.count > 1 ? ` (x${f.count})` : ''}${f.isNew ? ' NEW' : ''}`);
+    const groups = new Map();
+    for (const f of show) {
+      const k = `${f.severity}|${f.kind}|${f.target || ''}`;
+      const g = groups.get(k) || { ...f, where: new Set() };
+      g.where.add(`${f.vp}/${f.screen}`); groups.set(k, g);
+    }
+    const ordered = [...groups.values()].sort((x, y) => x.severity.localeCompare(y.severity) || y.where.size - x.where.size);
+    for (const g of ordered.slice(0, 40)) md.push(`- ${g.severity} ${g.kind}: ${g.target || ''} ${g.detail} — on ${g.where.size} screen(s): ${[...g.where].slice(0, 6).join(', ')}${g.where.size > 6 ? ', …' : ''}${g.isNew ? ' NEW' : ''}`);
+    if (ordered.length > 40) md.push(`- …and ${ordered.length - 40} more distinct finding(s) in report.json`);
     if (diffs) {
       const changed = diffs.filter(d => d.changedPct === null || d.changedPct > 0.5);
       md.push(`Screens that changed vs baseline (>0.5% of pixels): ${changed.length} of ${diffs.length}.`);
