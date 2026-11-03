@@ -1296,10 +1296,12 @@ for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
 // truth). Secondary/synergist volume counts at 0.5 credit, primary at 1.0 — Kerwin's
 // ruling, 2026-09-14, live ("is that muscle not worked out just because it's
 // secondary?"), fractional credit externally corroborated (Renaissance
-// Periodization's own direct/indirect convention). Uses computeMuscleWeeklyVolume()
-// and resolveGoalVolume() (programs.js) — the SAME functions the generator itself
-// runs, not a parallel reference implementation, so this checks what actually
-// ships. Measured before promoting (2026-09-14): the flat pre-fix GOAL_VOLUME left
+// Periodization's own direct/indirect convention). Runs computeMuscleWeeklyVolume()
+// (programs.js) over getProgram()'s own output, and getProgram() itself runs
+// applyGoalVolume() — the per-muscle allocator (BUG-122/D33, a22a589) that replaced
+// resolveGoalVolume(), which no longer exists. Neither is a parallel reference
+// implementation, so this checks what actually ships. Historical: measured before
+// promoting (2026-09-14): the flat pre-fix GOAL_VOLUME left
 // 90/216 checks below MEV; resolveGoalVolume() (deriving sets-per-exercise from
 // each day-count's own COMPOUND-slot structure — isolation excluded so the
 // derivation stays invariant to D28's duration-based accessory pruning) plus a
