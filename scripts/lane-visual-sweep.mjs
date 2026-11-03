@@ -160,12 +160,23 @@ async function sweepViewport(browser, base, vp) {
   // bar. Blocked so preview and production are compared like for like.
   await page.route(/netlify-cdp-loader|app\.netlify\.com\/cdp/, r => r.abort());
   page.setDefaultTimeout(8000);
+  // The loader block alone is not enough: the drawer's iframe element is still inserted and still
+  // sits on top of the tab bar (second CI run). Remove it, and its body-level wrapper, as it appears.
+  await page.addInitScript(() => {
+    const strip = () => document.querySelectorAll('iframe[title="Netlify Drawer"], iframe[src*="app.netlify.com/cdp"]').forEach(f => {
+      let n = f; while (n.parentElement && n.parentElement !== document.body) n = n.parentElement;
+      (n.parentElement === document.body ? n : f).remove();
+    });
+    new MutationObserver(strip).observe(document, { childList: true, subtree: true });
+  });
 
   const screens = [];
   const steps = [];
   const snap = async (name) => {
     await page.waitForTimeout(350);
-    const file = `${vp.name}-${String(screens.length + 1).padStart(2, '0')}-${name}.png`;
+    // Named by screen, not by order: a failed step on one site must not shift every later file name
+    // and break the baseline pairing (the second CI run did exactly that).
+    const file = `${vp.name}-${name}.png`;
     await page.screenshot({ path: path.join(OUT, file) });
     const findings = await page.evaluate(inspectScreen);
     screens.push({ name, file, findings });
@@ -219,6 +230,10 @@ async function sweepViewport(browser, base, vp) {
   if (onboarded) {
     await snap('dashboard');
     for (const tab of ['log', 'you', 'duel', 'home']) {
+      // Close whatever the previous tab opened (the Duel tab opens a sheet for an unpaired guest),
+      // the way a user would: tap the dimmed area outside the sheet.
+      await page.evaluate(() => document.querySelectorAll('.modal-overlay.open').forEach(o => o.click())).catch(() => {});
+      await page.waitForTimeout(250);
       if (await step(`tab: ${tab}`, async () => { await page.click(`.tab-btn[data-tab="${tab}"]`); await page.waitForTimeout(400); })) await snap(`tab-${tab}`);
       else {
         // Recover so one blocked tap does not hide every screen after it: close what is open and
