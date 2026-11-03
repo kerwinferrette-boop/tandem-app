@@ -138,11 +138,11 @@ function inspectScreen() {
           // Behind a fixed bar at THIS scroll position is normal: the user scrolls. It is a defect
           // only if scrolling it to the middle of the screen still leaves it covered.
           const sx = window.scrollX, sy = window.scrollY;
-          el.scrollIntoView({ block: 'center', inline: 'nearest' });
+          el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); // the app sets html{scroll-behavior:smooth}; a smooth scroll would not have moved yet
           const r2 = el.getBoundingClientRect();
           const hit2 = document.elementFromPoint(Math.min(Math.max(r2.left + r2.width / 2, 0), vw - 1), Math.min(Math.max(r2.top + r2.height / 2, 0), vh - 1));
           const still = hit2 && hit2 !== el && !el.contains(hit2) && !hit2.contains(el) && hit2.closest('.tab-bar, .bottom-nav, [style*="position: fixed"], .fab, .bug-fab, header');
-          window.scrollTo(sx, sy);
+          window.scrollTo({ left: sx, top: sy, behavior: 'instant' });
           if (still) out.push({ kind: 'unreachable-control', severity: 'P2', target: label(el), detail: `still covered by ${label(still)} after scrolling it to the middle of the screen` });
         }
       }
@@ -172,6 +172,11 @@ async function sweepViewport(browser, base, vp) {
   page.setDefaultTimeout(8000);
   // The loader block alone is not enough: the drawer's iframe element is still inserted and still
   // sits on top of the tab bar (second CI run). Remove it, and its body-level wrapper, as it appears.
+  // Same random choices on both sites (hero photos and similar), so a pixel diff means a real change.
+  await page.addInitScript(() => {
+    let seed = 20261103;
+    Math.random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  });
   await page.addInitScript(() => {
     const strip = () => document.querySelectorAll('iframe[title="Netlify Drawer"], iframe[src*="app.netlify.com/cdp"]').forEach(f => {
       let n = f; while (n.parentElement && n.parentElement !== document.body) n = n.parentElement;
