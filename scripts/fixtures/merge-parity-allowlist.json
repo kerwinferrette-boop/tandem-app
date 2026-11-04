@@ -1,0 +1,13 @@
+{
+  "_comment": "BUG-246 PRIMARY mechanism — the two historical merges that dropped a path present in a parent. Measured 2026-11-03 over all 52 merge commits reachable from HEAD: these are the ONLY two. An entry here is a cited exception, never a way to quiet a new one. scripts/merge-parity-smoke.mjs fails if an entry stops being an offender (stale entry) or carries an empty reason, the same ratchet discipline as the BUG-218 fallback baseline and the BUG-234 contradiction set. Deleting this file does NOT buy a green run: the gate fails closed when it cannot read it.",
+  "allow": {
+    "b6356bf9c93b6c6d27c8d9299e2a71c52879a170": {
+      "paths_dropped": 19,
+      "reason": "THE incident this gate exists for. A -s ours-shaped merge whose tree is byte-identical to its first parent (fc5bb1c1a4bb3f4c3406550e974794652044f258 for both), discarding origin/main's 18 commits while recording them as merged. 19 files and 9 verify registrations lost; npm run verify then printed ALL 46 CHECKS PASS, exit 0. Tracked as BUG-245 and RESTORED by the three-way merge in 3286bb6 — so the paths are present at HEAD again, but this commit remains an offender in the graph forever and is pinned here rather than papered over. Had this gate existed at the merge base, it would have refused this commit when it landed."
+    },
+    "9b7f0ee4131a8897ba33e1bfad1e7eed6353a521": {
+      "paths_dropped": 1,
+      "reason": "Dropped docs/WAVE-STATE.md, a 125-line single campaign ledger, without naming it in the commit body (the body names two OTHER conflicts). Benign on investigation rather than by assumption: that file was deliberately RETIRED on 2026-09-15 — one day after this 2026-09-14 merge — in favour of the per-Epic docs/waves/<EPIC-ID>-WAVE-STATE.md convention, recorded at scripts/preflight.mjs:26 ('Kerwin, in-session: docs/WAVE-STATE.md itself was retired the same way') and .claude/skills/feature-loop/agents/plan.md:55. Checked at HEAD: every surviving reference to the path is retrospective prose in comments and self-corrections, and nothing reads it. Not a rename either — git --find-renames reports D, and both parents already carried the full docs/waves/ set."
+    }
+  }
+}

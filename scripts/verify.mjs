@@ -103,6 +103,7 @@ const CHECKS = [
   { name: 'BUG-230/BUG-16 finish-path set integrity (Playwright — a partial set write may not report success: the shortfall is marked, badged and recoverable, the lifted volume is never reduced, and the repair pass is idempotent)', run: () => execFileSync('node', [join(scriptsDir, 'finish-set-integrity-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-255 profile display-name affordance (Settings has an editable name input; handler upserts users.name, rejects empty, patches the cached leaderboard row; static, working tree; probe proven red pre-fix)', run: () => execFileSync('node', [join(scriptsDir, 'profile-name-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-233 D6b mutation record (the MEV floor gate fails when stacked allocation is broken, when the raise loop is disabled, and when the volume accounting is short a credit; documented survivors pinned)', run: () => execFileSync('node', [join(scriptsDir, 'd6b-mutation-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-246 merge parity (commit-graph — no merge may drop a path or a registered check script present in either parent; the PRIMARY mechanism the check floor is only the secondary half of)', run: () => execFileSync('node', [join(scriptsDir, 'merge-parity-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 // ── BUG-246: the suite may not silently shrink ───────────────────────────
