@@ -1296,10 +1296,12 @@ for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
 // truth). Secondary/synergist volume counts at 0.5 credit, primary at 1.0 — Kerwin's
 // ruling, 2026-09-14, live ("is that muscle not worked out just because it's
 // secondary?"), fractional credit externally corroborated (Renaissance
-// Periodization's own direct/indirect convention). Uses computeMuscleWeeklyVolume()
-// and resolveGoalVolume() (programs.js) — the SAME functions the generator itself
-// runs, not a parallel reference implementation, so this checks what actually
-// ships. Measured before promoting (2026-09-14): the flat pre-fix GOAL_VOLUME left
+// Periodization's own direct/indirect convention). Runs computeMuscleWeeklyVolume()
+// (programs.js) over getProgram()'s own output, and getProgram() itself runs
+// applyGoalVolume() — the per-muscle allocator (BUG-122/D33, a22a589) that replaced
+// resolveGoalVolume(), which no longer exists. Neither is a parallel reference
+// implementation, so this checks what actually ships. Historical: measured before
+// promoting (2026-09-14): the flat pre-fix GOAL_VOLUME left
 // 90/216 checks below MEV; resolveGoalVolume() (deriving sets-per-exercise from
 // each day-count's own COMPOUND-slot structure — isolation excluded so the
 // derivation stays invariant to D28's duration-based accessory pruning) plus a
@@ -2349,7 +2351,7 @@ const namesOf = (day) => (day?.blocks || []).flatMap(b => (b.exs || []).map(e =>
 // now reads opts.recentExposure ({tag: hoursSinceTrained}, PRIMARY tags only — the
 // exact shape recentMuscleLoad() produces in tandem.html) and opts.recencyThreshold-
 // Hours (a plain number the CALLER resolves from RECOVERY_PARAMS[goal].sameGroup-
-// Hours — tandem.html:4977, BUG-30 — getSingleDay does not read RECOVERY_PARAMS
+// Hours — the `const RECOVERY_PARAMS` declaration in tandem.html, BUG-30 — getSingleDay does not read RECOVERY_PARAMS
 // itself, deliberately: that constant lives in tandem.html, and this engine also
 // runs standalone under this very gate's vm sandbox). When a slot's own group is
 // under threshold, its candidate pool WIDENS (never narrows) to the other muscle

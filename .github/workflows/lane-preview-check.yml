@@ -1,0 +1,98 @@
+name: Lane Preview Check
+
+# The P1-P3 lane's verification step (added 2026-11-03, Kerwin: "whether things necessarily need a
+# human or if a device can verify or if it can be verified via code and Playwright").
+#
+# On every PR from a lane/** branch: wait until Netlify's deploy preview is serving THIS PR's head
+# commit (netlify.toml stamps $COMMIT_REF into index.html as programs.js?v=<sha>, so freshness is
+# checked, not assumed), then drive the preview AND production with scripts/lane-visual-sweep.mjs
+# and compare them. A NEW runtime error, a NEW P2 visual finding, or a broken flow step (guest
+# entry, onboarding, tabs, start, tracker, log a set, finish) fails the check. Screenshots of both
+# sites are uploaded as an artifact and the summary is posted on the PR.
+#
+# It never signs in and never writes to the database: supabase-js is stubbed inside the browser.
+# It cannot see iOS PWA behaviour, safe-area insets, real sync or HealthKit; the PR comment says so.
+#
+# Why GitHub Actions and not the cloud routine itself: the routine's container has no Chromium
+# (Playwright's browser download is blocked there), which is also why `npm run verify` shows its 5
+# Playwright checks red in that container while the same suite passes here.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Site to sweep (no baseline diff). Defaults to production.'
+        required: false
+        default: 'https://tandem-fitness-tracker.netlify.app'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: lane-preview-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'lane/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Wait for the deploy preview to serve this commit
+        if: github.event_name == 'pull_request'
+        env:
+          PREVIEW: https://deploy-preview-${{ github.event.pull_request.number }}--tandem-fitness-tracker.netlify.app/
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsSL "$PREVIEW" | grep -q "programs.js?v=$SHA"; then echo "preview is serving $SHA"; exit 0; fi
+            sleep 15
+          done
+          echo "Deploy preview never served $SHA after 15 minutes"; exit 1
+
+      - name: Sweep production (baseline)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: node scripts/lane-visual-sweep.mjs --url https://tandem-fitness-tracker.netlify.app/ --out lane-out/production --label production
+
+      - name: Sweep the deploy preview against production
+        id: preview
+        if: github.event_name == 'pull_request'
+        run: node scripts/lane-visual-sweep.mjs --url https://deploy-preview-${{ github.event.pull_request.number }}--tandem-fitness-tracker.netlify.app/ --out lane-out/preview --baseline lane-out/production --label preview
+
+      - name: Sweep a single site (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/lane-visual-sweep.mjs --url "${{ inputs.url }}" --out lane-out/manual --label manual
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lane-screens
+          path: lane-out/
+          retention-days: 14
+
+      - name: Post the summary on the PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "<!-- lane-preview-check -->"
+            if [ -f lane-out/preview/summary.md ]; then cat lane-out/preview/summary.md; else echo "The preview sweep did not produce a report."; fi
+            echo
+            echo "Screenshots of both sites: the lane-screens artifact on [this run]($RUN_URL)."
+          } > comment.md
+          gh pr comment "$PR" --repo "${{ github.repository }}" --body-file comment.md
