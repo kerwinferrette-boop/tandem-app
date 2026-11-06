@@ -2481,6 +2481,18 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <button class="modal-close" onclick="closeModal('profile')">✕</button>
     <div class="modal-title">Profile & Settings</div>
 
+    <!-- 0. Display name (BUG-255) — a NEW save path, separate from the cloud-sync name write -->
+    <div class="profile-section">
+      <span class="profile-section-label">Display Name</span>
+      <div class="profile-input-group">
+        <label class="profile-input-label" for="profileNameInput">Your name</label>
+        <input type="text" id="profileNameInput" class="modal-input" maxlength="40" autocomplete="nickname" placeholder="Your name">
+      </div>
+      <button class="profile-save-btn" onclick="saveProfileName()">Save Name</button>
+    </div>
+
+    <div class="profile-divider"></div>
+
     <!-- A. Program -->
     <div class="profile-section">
       <span class="profile-section-label">Program</span>
@@ -10974,6 +10986,10 @@ function openProfileModal() {
   document.querySelectorAll('#profileExpRow .profile-pill').forEach(b => {
     b.classList.toggle('active', b.dataset.exp === profileState.exp);
   });
+  // Display name (BUG-255): dashboardData.userTargets is the only in-memory holder of
+  // users.name (null until the first dashboard load) — fall back to the email local part.
+  const nameIn = document.getElementById('profileNameInput');
+  if (nameIn) nameIn.value = dashboardData.userTargets?.name || currentUser?.email?.split('@')[0] || '';
   // Body stats
   const w = document.getElementById('profileWeightInput');
   if (w) w.value = cfg.weight || '';
@@ -11077,6 +11093,26 @@ function saveProfileProgram() {
   syncToCloud();
   closeModal('profile');
   showToast('Program updated');
+}
+
+// BUG-255: users.name is NOT NULL, so empty/whitespace is rejected with no write.
+// 40 chars is a product choice (column is free text) — a human may want to change it.
+const PROFILE_NAME_MAX = 40;
+async function saveProfileName() {
+  const input = document.getElementById('profileNameInput');
+  const name = (input?.value || '').trim().slice(0, PROFILE_NAME_MAX);
+  if (!name) { showToast('Enter a name'); return; }
+  if (!currentUser) { showToast('Sign in to change your name'); return; }
+  const { error } = await sb.from('users').upsert({ id: currentUser.id, name }, { onConflict: 'id' });
+  if (error) { showToast('Could not save name'); return; }
+  if (dashboardData.userTargets) dashboardData.userTargets.name = name;
+  else dashboardData.userTargets = { name };
+  // Home scoreboard reads the cached leaderboard row FIRST — patch that one in-memory row.
+  const myLbRow = (dashboardData.leaderboard || []).find(r => r.user_id === currentUser.id);
+  if (myLbRow) myLbRow.name = name;
+  renderDashboard();
+  renderYouTab();
+  showToast('Name saved');
 }
 
 function saveProfileStats() {
