@@ -184,7 +184,9 @@ test with a HEAD-relative git revert · SC-45 verify a mutation LANDED before be
 SC-49 an assertion that can only go green by deleting trustworthy data is the WRONG assertion, never
 the data · SC-50 a fabricated merge commit is parented on the merge BASE, and a restoration that
 deletes anything is not a restoration · SC-51 read the tracker ROW before building its fix — a brief
-naming a mechanism is not evidence the source chose that mechanism.
+naming a mechanism is not evidence the source chose that mechanism · SC-53 a check that reads
+anything outside the repo's files must be tested in an environment that LACKS it (CI's clone is
+SHALLOW; local green proves nothing about it).
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 

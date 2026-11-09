@@ -1833,3 +1833,38 @@ fix level to use. The council's (a)-vs-(b) vote was therefore a vote on a mechan
 
 **Enforced by:** judgment — not mechanically checkable. Operational tell: a council brief that names a
 mechanism without a printed pool or a one-variable A/B behind it.
+
+## SC-53 — I verified a gate only in the environment I happened to be in, and it turned main red on its first CI run
+
+The BUG-246 merge-parity gate reads the COMMIT GRAPH — every merge against its parents' trees — which is
+the whole reason it is stronger than a file in the tree. I mutation-tested it eight ways, proved it red
+against the real `b6356bf`, ran `npm run verify` green, and pushed. `actions/checkout@v4` defaults to a
+**shallow clone** (`fetch-depth: 1`), which has no commit graph, so in CI the gate found zero merge
+commits and failed closed: `1/63 CHECK(S) FAILED — DO NOT SHIP`, on `main`, caused by the commit that
+added the gate. Every one of my eight mutations ran in a full clone, because that is what my checkout is
+(`git rev-parse --is-shallow-repository` → `false`). I never asked what CI's clone looks like.
+
+The gate's own fail-closed design was RIGHT and is why this was loud instead of silent — a skip would
+have left a check that exists only on machines with full history, which is the BUG-246 defect wearing a
+new coat. The defect was my verification, not the gate.
+
+**The mechanism, not the trait.** A check that reads something OUTSIDE the repo's files — the commit
+graph, installed dependencies, a browser, the network, the clock — has an environmental precondition,
+and local green only proves that precondition held *locally*. This was the THIRD environment divergence
+in one session: `@supabase/supabase-js` missing from a `node_modules` installed before the dependency
+existed; Playwright 1.56.1 unable to install chromium once `ubuntu-latest` became Ubuntu 26; and now a
+shallow clone with no history. Each was invisible until something ran somewhere else.
+
+> **THE RULE — SC-53.** Before registering a check that reads anything outside the repo's own files,
+> name its environmental precondition out loud and test the check in an environment that LACKS it. For
+> git history specifically: `git clone --depth 1 file://<repo>` reproduces CI's checkout in seconds, and
+> `git rev-parse --is-shallow-repository` is the one-line probe — a gate needing history must either get
+> `fetch-depth: 0` in the workflow (the fix taken here) or fail with a message naming that fix, never
+> skip. More generally: if a check would behave differently in a fresh clone, a shallow clone, or a
+> container without the browser installed, that difference IS the test case, and "it passed on my
+> machine" is not evidence about CI.
+
+**Enforced by:** partly mechanical. `scripts/merge-parity-smoke.mjs` now detects a shallow clone and
+fails with the exact remedy instead of a cryptic "zero merge commits", so the next person loses minutes
+rather than a red main. Choosing to test in a degraded environment at all is judgment — nothing can make
+you ask what CI's clone looks like.

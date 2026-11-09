@@ -15,7 +15,17 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     steps:
+      # fetch-depth: 0 is REQUIRED, not tidiness. actions/checkout defaults to a
+      # SHALLOW clone (depth 1), which has no commit graph — and verify's BUG-246
+      # merge-parity check reads the graph (every merge against its parents' trees)
+      # precisely because a file in the tree can be reverted and history cannot.
+      # On a shallow clone that check finds zero merge commits and FAILS CLOSED,
+      # which is what it should do rather than report a vacuous pass. Shipped on
+      # 2026-11-09 after exactly that: the gate was verified only in a full clone,
+      # went green locally, and turned main red on its first CI run.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

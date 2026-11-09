@@ -82,8 +82,23 @@ try {
   process.exit(1);
 }
 if (!merges.length) {
-  console.error('FAIL — zero merge commits reachable from HEAD. Either this is not the Tandem history or');
-  console.error('      the graph read lost its target. Failing closed rather than reporting a vacuous pass.');
+  // Distinguish the two causes, because the generic message cost a red main once.
+  // A SHALLOW clone (actions/checkout's default depth 1) has no commit graph at all,
+  // so this check cannot run — and must not pretend it did.
+  let shallow = false;
+  try { shallow = git('rev-parse', '--is-shallow-repository').trim() === 'true'; } catch { /* old git: leave false */ }
+  if (shallow) {
+    console.error('FAIL — this is a SHALLOW clone, so there is no commit graph to check.');
+    console.error('      This gate reads every merge against its parents\' trees; depth-1 history has none.');
+    console.error('      In CI: give the checkout step `with: { fetch-depth: 0 }` (done for');
+    console.error('      .github/workflows/doctrine.yml on 2026-11-09). Locally: `git fetch --unshallow`.');
+    console.error('      Failing closed deliberately — a skip here would make this gate exist only on');
+    console.error('      machines that happen to have full history, which is the BUG-246 defect again.');
+  } else {
+    console.error('FAIL — zero merge commits reachable from HEAD, and the clone is NOT shallow. Either this is');
+    console.error('      not the Tandem history or the graph read lost its target. Failing closed rather than');
+    console.error('      reporting a vacuous pass.');
+  }
   process.exit(1);
 }
 
