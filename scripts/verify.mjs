@@ -104,6 +104,7 @@ const CHECKS = [
   { name: 'BUG-255 profile display-name affordance (Settings has an editable name input; handler upserts users.name, rejects empty, patches the cached leaderboard row; static, working tree; probe proven red pre-fix)', run: () => execFileSync('node', [join(scriptsDir, 'profile-name-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-233 D6b mutation record (the MEV floor gate fails when stacked allocation is broken, when the raise loop is disabled, and when the volume accounting is short a credit; documented survivors pinned)', run: () => execFileSync('node', [join(scriptsDir, 'd6b-mutation-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-246 merge parity (commit-graph — no merge may drop a path or a registered check script present in either parent; the PRIMARY mechanism the check floor is only the secondary half of)', run: () => execFileSync('node', [join(scriptsDir, 'merge-parity-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-256 family default (the declared default press outranks spelling: flag/declaration consistency, one default per family, and Flat actually serves Kerwin\'s Day 1 compound slot in 12/12 weeks)', run: () => execFileSync('node', [join(scriptsDir, 'family-default-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 // ── BUG-246: the suite may not silently shrink ───────────────────────────

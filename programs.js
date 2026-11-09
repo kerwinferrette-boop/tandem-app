@@ -418,6 +418,12 @@ const EXERCISE_BANK = {
 
   // ── CHEST / HORIZONTAL PRESS ─────────────────────────
   'flat-barbell-press':{
+    // BUG-256 — this family's DEFAULT press when every cited rank ties. ENGINEERING_DEFAULT:
+    // cited to Kerwin's ruling of 2026-11-06 ("Flat as main press"), NOT to any study. The repo's
+    // sources were checked and are SILENT on flat-vs-decline, and the one plausible primary source
+    // could not be read from here. The full citation trail is at the rank's one call site,
+    // in bank()'s comparator — search BUG-256 there.
+    familyDefault:true,
     name:'Flat Barbell Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt','tricep']},
     emphasis:['chest','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:1.00,
@@ -1855,7 +1861,25 @@ const EXERCISE_BANK = {
 const MOVEMENT_FAMILIES = {
 
   // ── HORIZONTAL PUSH ──────────────────────────────────
+  // BUG-256 — `defaultVariant` is the family's DEFAULT PRESS/LIFT when every cited rank ties.
+  // TIER: ENGINEERING_DEFAULT. It carries NO science attribution and must never be given one.
+  // The repo's sources were checked for a flat-vs-decline basis and are SILENT: research-report
+  // (8).pdf has zero hits for flat bench / flat press / incline / sternal / clavicular / pectoral
+  // (its six 'bench press' hits are strength-standard benchmark tables, and both 'decline' hits are
+  // about HRV declining), and the Remmert PDF is image-only with no extractable text. Live research
+  // surfaced a plausible primary source (Rodríguez-Ridao et al. 2020, IJERPH, PMID 33049982 /
+  // PMC7579505 / DOI 10.3390/ijerph17197339) but it could not be READ from here — MDPI 403,
+  // PMC reCAPTCHA — and its abstract indicates it tested 0-60 degrees, inclines only, so it may not
+  // address decline at all. Citing it would be citing a paper nobody here opened.
+  // THE CITATION IS KERWIN'S RULING, 2026-11-06, answering which press should be primary:
+  // "Flat as main press". That is product direction, which CLAUDE.md reserves to him, so it is a
+  // sufficient basis for a default — and an insufficient basis for a SCIENCE claim, which is why
+  // this is tiered ENGINEERING_DEFAULT like D30 and not dressed up as a sourced rank.
+  // NOT POPULATED ELSEWHERE ON PURPOSE: every other family is left without a defaultVariant, so it
+  // falls through to the existing behaviour. Filling in 33 more would be inventing 33 product
+  // rulings nobody made.
   'bench-press':{ label:'Bench Press', pattern:'horizontal_push', canonicalLift:'Barbell Bench Press',
+    defaultVariant:'flat-barbell-press',
     variants:['flat-barbell-press','db-bench-press','incline-db-press','low-incline-barbell-press',
               'high-incline-barbell-press','decline-barbell-press','decline-db-press',
               'close-grip-barbell-press','machine-chest-press','alternating-db-bench-press',
@@ -2001,6 +2025,35 @@ const MOVEMENT_FAMILIES = {
   'kb-swing':{ label:'KB Swing', pattern:'hinge', canonicalLift:null,
     variants:['kb-swing']},
 };
+
+// BUG-256 — FAMILY-DEFAULT rank. Returns 0 for an entry that IS its movement family's declared
+// defaultVariant and 1 for one that is not, so the default sorts first. ONE HOME: both comparators
+// call this, neither re-derives it.
+//
+// WHERE IT SITS IN THE CHAIN, and this is the load-bearing part: immediately BEFORE the alphabetical
+// tiebreak and AFTER every cited rank (patternClash/D30, coverageCount/BUG-116, primaryMatchRank,
+// equipmentAvailabilityRank/BUG-108, freeWeightRank/ACSM 2009 PMID 19204579). A declared engineering
+// default must never outrank a cited one; it only replaces the one rank that had no justification at
+// all — `a.name.localeCompare(b.name)`, which is why Decline Barbell Press beat Flat Barbell Press in
+// every week 1-12 of Kerwin's own program and Flat was never prescribed.
+//
+// A family with no declared defaultVariant returns 0 for BOTH candidates, so this rank is a no-op
+// there and the existing behaviour is byte-identical. Only `bench-press` declares one today.
+// BUG-256 — FAMILY-DEFAULT rank, read from the ENTRY'S OWN FLAG and deliberately NOT from
+// MOVEMENT_FAMILIES. R7 (scripts/movement-families-check.mjs, BUG-151/D30) holds that
+// MOVEMENT_FAMILIES has exactly ONE reader, movementPatternOf(), because "the table was inert until
+// this exact reader landed; this rule now proves the read surface stays that narrow". A first version
+// of this rank read the families table directly and R7 correctly refused it. Weakening R7 to admit a
+// second reader would trade a proven-narrow read surface for convenience, so the flag lives on the
+// exercise instead — the object both comparators already hold.
+//
+// The cross-table consistency a family-owned version would have given for free — exactly one default
+// per family, and that default actually being a member of it — is asserted by
+// scripts/family-default-smoke.mjs, which may read both tables because a GATE is not app code.
+//
+// An earlier draft keyed on `e.slug`: 0 of 185 bank entries carry one (EXERCISE_BANK is KEYED by slug
+// but the entries do not CONTAIN it), so it returned 0 for every candidate — an inert rank that
+// `node --check` accepts and would have shipped looking wired. Found by probing the bank, not reading.
 
 // ═══════════════════════════════════════════════════════
 // INJURY-AWARE FILTERING
@@ -2619,6 +2672,11 @@ function getSingleDay(focus, opts = {}) {
       // Pre-D31 callers (varietyActive false — every existing caller/test) keep the
       // exact deterministic alpha tiebreak. Only a caller that opts into variety
       // gets a genuine tie (0) here, resolved below by rng, never by this function.
+      // BUG-256: no family-default rank here on purpose — this is getSingleDay's comparator and
+      // D31 makes one-off selection randomized WITHIN the legal pool; a fixed default would fight it.
+      // The rank lives in buildDynamicProgram's comparator below. Proven: with it wired HERE instead,
+      // the matrix reach detector reported its 3 lines DEAD across all 1050 combos, because the
+      // program generator never reaches this comparator.
       return varietyActive ? 0 : a.name.localeCompare(b.name);
     };
     const sorted = pool.sort(cmp);
@@ -2985,6 +3043,43 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         // freeWeightRank helper. ACSM 2009 (PMID 19204579); see its declaration.
         const fw = freeWeightRank(a) - freeWeightRank(b);
         if (fw !== 0) return fw;
+        // BUG-256 — A DECLARED FAMILY DEFAULT OUTRANKS A NON-DEFAULT, before spelling decides.
+        // The rank it replaces had no justification at all: `a.name.localeCompare(b.name)` meant
+        // Decline Barbell Press beat Flat Barbell Press on the letter D in every week 1-12 of Kerwin's
+        // own program, and Flat was never prescribed. Measured app-wide: reversing that tiebreak changed
+        // all 1050 programs and 22,610 of 32,410 exercise slots, so spelling was load-bearing.
+        //
+        // TIER: ENGINEERING_DEFAULT, never to be given a science attribution. The repo's sources were
+        // checked and are SILENT on flat-vs-decline: research-report (8).pdf has zero hits for flat
+        // bench / flat press / incline / sternal / clavicular / pectoral (its six 'bench press' hits are
+        // strength-standard benchmark tables; both 'decline' hits are about HRV declining), and the
+        // Remmert PDF is image-only with no extractable text. Live research surfaced a plausible primary
+        // source (Rodriguez-Ridao et al. 2020, IJERPH, PMID 33049982 / PMC7579505 / DOI
+        // 10.3390/ijerph17197339) that could NOT be read from here (MDPI 403, PMC reCAPTCHA) and whose
+        // abstract indicates 0-60 degrees, inclines only, so it may not address decline at all.
+        // THE CITATION IS KERWIN'S RULING of 2026-11-06, "Flat as main press" — product direction,
+        // which CLAUDE.md reserves to him. Sufficient for a default; insufficient for a science claim.
+        // Same posture as D30's ENGINEERING_DEFAULT.
+        //
+        // PLACEMENT is load-bearing: immediately before the alphabetical tiebreak and AFTER every cited
+        // rank (patternClash/D30, coverageCount/BUG-116, primaryMatchRank, equipmentAvailabilityRank/
+        // BUG-108, freeWeightRank/ACSM 2009 PMID 19204579). A declared default may never outrank a
+        // cited one.
+        //
+        // NOT SCOPED to family membership: scoping it would need a second reader of MOVEMENT_FAMILIES,
+        // which R7 forbids, and it is unnecessary because the pool reaching this rank is already
+        // filtered by primaryOnlyMatch, patternClash and the equipment tier. Verified by sweeping all
+        // 1050 combos with this rank on and off: Flat appears 420 times with it, 0 without, and in the
+        // Compound Block ONLY — no leakage into accessory, core or cardio blocks.
+        //
+        // INLINE rather than a helper: there is exactly ONE call site, so a named function bought no
+        // single-home-ness, and the matrix reach detector reported such a function unreached — a false
+        // negative of its per-function V8 instrumentation for a tiny hoisted function, since disabling
+        // the rank provably changes 420 combos. Inlining keeps these lines inside a comparator the
+        // detector already sees covered.
+        // No `a &&` / `b &&` guard: both are bank entries here, so that branch is unreachable and the
+        // matrix reach detector correctly counted it as a dead line. One expression, no dead branch.
+        if (a.familyDefault !== b.familyDefault) return a.familyDefault ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
   };
