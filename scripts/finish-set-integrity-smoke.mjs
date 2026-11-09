@@ -249,6 +249,62 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
            marker, badgeText, duplicated, setInsertAttempts, setInsertRejections };
 }
 
+// ── A8: un-logging a set must remove it from the volume snapshot ───────────
+// Why this belongs here and why it is about logSet() rather than finishSession().
+// logSet()'s un-log branch (correcting a mistype) deletes the Supabase row and
+// clears the DOM, but did NOT remove the set from sessionSetsMap — while
+// deleteSet() did, with the same one-line filter. Two paths, one rule, one of them
+// honest.
+//
+// That was harmless under the old `dbVolume > 0 ? dbVolume : localVolume`, because
+// the cloud sum won. The BUG-230 fix made it live TWICE OVER: Math.max(dbVolume,
+// localVolume) keeps the deleted set's volume, and the repair pass builds its
+// expected rows from the same snapshot, so it RE-INSERTS a set the user deliberately
+// removed.
+//
+// The assertion cannot live at the finish path: from there, a leftover in the
+// snapshot is indistinguishable from a genuinely lost set, and re-inserting a LOST
+// set is correct behaviour. Only the un-log site knows the difference. So this
+// drives the REAL logSet() in the REAL page — log a set, un-log it, and require the
+// snapshot to forget it.
+async function unlogScenario(browser) {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto(`http://localhost:${APP_PORT}/tandem.html`);
+  await page.waitForFunction(() => typeof setLSScope === 'function' && typeof sb !== 'undefined', { timeout: 20000 });
+
+  const r = await page.evaluate(async ([uid, jwt]) => {
+    setLSScope(uid);
+    currentUser = { id: uid };
+    try { await sb.auth.setSession({ access_token: jwt, refresh_token: 'r' }); } catch (e) {}
+    cfg = { goal: 'build_muscle', days: 4, weeks: 8, sex: 'M', experience: 'intermediate',
+            equipment: 'home_dumbbells', emphasis: 'balanced', weight: 200, targetWeight: 190,
+            programSource: 'generated', startDate: null };
+    LS.set('tandem_cfg', cfg); LS.set('tandem_week', 1); currentWeek = 1;
+    showView('tracker'); renderTracker();
+    Object.keys(sessionSetsMap).forEach(k => delete sessionSetsMap[k]);
+
+    // Find a real rendered set row: its button id is `${exId}-b0`.
+    const btn = document.querySelector('[id$="-b0"]');
+    if (!btn) return { error: 'no rendered set-row button found — the page did not render a day' };
+    const exId = btn.id.replace(/-b0$/, '');
+    const w = document.getElementById(`${exId}-w0`), rp = document.getElementById(`${exId}-r0`);
+    if (!w || !rp) return { error: `inputs missing for ${exId}` };
+    w.value = '100'; rp.value = '10';
+
+    logSet(exId, 0);                                  // LOG
+    const afterLog = (sessionSetsMap[exId] || []).length;
+    logSet(exId, 0);                                  // UN-LOG (the path under test)
+    const afterUnlog = (sessionSetsMap[exId] || []).length;
+    const stillThere = (sessionSetsMap[exId] || []).some(s => s.set === 1);
+    return { exId, afterLog, afterUnlog, stillThere };
+  }, [UID, USER_JWT]);
+
+  await ctx.close();
+  return { ...r, errs };
+}
+
 (async () => {
   await listen(api, API_PORT); await listen(app, APP_PORT);
   const browser = await chromium.launch();
@@ -297,6 +353,17 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
     check('[A7c] a fully repaired session is NOT marked and NOT badged',
       !r.marker.setsUnsynced && !/not synced/i.test(r.badgeText),
       `setsUnsynced=${r.marker.setsUnsynced} badges=${r.badgeText || '(none)'}`);
+
+    // ── A8: the un-log path must clean the snapshot ──
+    const u = await unlogScenario(browser);
+    console.log(`····  un-log: ${JSON.stringify(u)}`);
+    check('[A8] logging a set puts it in the volume snapshot', u.afterLog === 1,
+      `afterLog=${u.afterLog} (expected 1)${u.error ? ` | ${u.error}` : ''}`);
+    check('[A8b] UN-logging that set removes it from the snapshot, so its volume is not counted and the repair pass cannot resurrect it',
+      u.afterUnlog === 0 && u.stillThere === false,
+      `afterUnlog=${u.afterUnlog} (expected 0), set 1 still present=${u.stillThere} (expected false)` +
+      ` — a set left here is counted by Math.max(dbVolume, localVolume) AND re-inserted by the repair pass`);
+    check('[A8c] no uncaught page errors while driving logSet', (u.errs || []).length === 0, (u.errs || []).join(' | '));
 
     // ── A6: the happy path (a gate that just refuses to save is not a fix) ──
     const ok = await runScenario(browser, { label: 'nothing rejected', reject: false });

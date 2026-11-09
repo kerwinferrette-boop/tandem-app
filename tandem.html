@@ -5781,6 +5781,24 @@ const pendingSetInserts = {};
 // shape drift, and a drifted key turns a repair into a duplicate.
 const setIdentityKey = (exerciseName, setNumber) => `${exerciseName}\u0000${setNumber}`;
 
+// BUG-230 follow-up — ONE HOME for "this set no longer counts toward this session".
+// sessionSetsMap is what finishSession() snapshots into tandem_history and what
+// localVolume is summed from, so a set removed from the UI but left here is a set the
+// stored total still counts. A logged set goes away exactly two ways: logSet()'s
+// un-log branch (correcting a mistype) and deleteSet() (the per-set delete button).
+// deleteSet() filtered this map; the un-log branch did NOT — the same rule in two
+// homes, one of them honest.
+//
+// Why this matters MORE since the BUG-230 fix than before it: the old finish path used
+// `dbVolume > 0 ? dbVolume : localVolume`, so the cloud sum won and a stale entry here
+// was invisible. Now the lifted volume is kept (Math.max) AND the repair pass derives
+// its expected rows from this same map — so a stale entry is both counted in the
+// stored total and RE-INSERTED, resurrecting a set the user deliberately removed.
+// Guarded by [A8b] in scripts/finish-set-integrity-smoke.mjs, proven red before this.
+function forgetLoggedSet(id, i) {
+  if (sessionSetsMap[id]) sessionSetsMap[id] = sessionSetsMap[id].filter(s => s.set !== i + 1);
+}
+
 // BUG-230 — logSet() fires its per-set insert as a fire-and-forget promise parked in
 // pendingSetInserts. finishSession() used to read `sets` without waiting for them, so a
 // Finish tapped right after the last rep could read an empty table while every insert was
@@ -6075,6 +6093,9 @@ function logSet(id, i) {
     // cleared this local/DOM state — the row the fire-and-forget insert above
     // already wrote to Supabase `sets` was never deleted, orphaning it. Delete
     // it now.
+    // BUG-230 follow-up: and forget it locally too, through the one home — the
+    // cloud row going away is only half of "this set no longer counts".
+    forgetLoggedSet(id, i);
     deleteCloudSetRow(id, i);
   }
 
@@ -6132,7 +6153,7 @@ function deleteSet(id, i, btn) {
   if (!row) return;
   row.remove();
   if (loggedSetsMap[id]) loggedSetsMap[id].splice(i, 1);
-  if (sessionSetsMap[id]) sessionSetsMap[id] = sessionSetsMap[id].filter(s => s.set !== i + 1);
+  forgetLoggedSet(id, i);   // same rule as logSet()'s un-log branch — one home
   // BUG-16 Part A: same orphan-row fix as the un-log branch of logSet() —
   // removing a set locally must also delete the Supabase row it was synced to.
   deleteCloudSetRow(id, i);
