@@ -1,0 +1,198 @@
+{
+  "_what": "PRE-IMAGE for the BUG-230 total_volume_lbs recompute. Captured from live SELECTs on 2026-11-09 IMMEDIATELY BEFORE the write, per safety.destructive_write_audit_trail (BUG-125). This file is the ONLY record of the stored values the recompute overwrites.",
+  "_authorization": "Kerwin, attended session 2026-11-09, in writing: 'recompute & add the check then, please' and, after being shown the two-population evidence and advised to recompute only the 3 over-counting sessions, 'All 15 anyway'. The session's own standing brief had forbidden this recompute; his later direct instruction supersedes it. The concern was raised twice and reaffirmed twice.",
+  "_what_was_lost": "71530.0 lbs of stored session volume across 15 completed sessions. For the 12 rows classed lost_sets this number was, on the audit's reading, the TRUSTWORTHY figure and the sets table the incomplete one \u2014 so for those rows this file records real training history that the database no longer carries.",
+  "_classes": {
+    "lost_sets": "12 rows, gaps 1200-18770 lbs. Consistent with sets/exercises that never reached Supabase. Clearest case: 3c72379c (2026-06-11) stored 4150 against ONE set summing 1350.",
+    "over_count_sets_look_complete": "3 rows, gaps 180/240/360 lbs. All 13 exercises across these three sessions were verified complete and contiguous from set_number 1 with no holes and no truncation, so the sets table looks whole and the stored total over-counted. For these three the recompute is a CORRECTION, not a loss."
+  },
+  "_recovery": "If the June-August set detail is still in localStorage key tandem_history::<user_id> on the PHONE those workouts were logged on, the 12 lost_sets rows are repairable by re-inserting the absent (exercise_name, set_number) pairs with estimated_1rm_lbs RECOMPUTED (never the cached value - BUG-75 mode A aborts the batch). That check had not been run on the phone when this recompute was authorized.",
+  "_restore_sql": "To put these values back, run the statements in restore_sql below. They are exact and idempotent.",
+  "captured_at": "2026-11-09",
+  "total_gap_lbs": 71530.0,
+  "row_count": 15,
+  "rows": [
+    {
+      "id": "7743e179-b0fe-4e72-b18c-993097a28d7d",
+      "session_date": "2026-08-04",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 32840,
+      "computed": 14070,
+      "gap": 18770,
+      "nsets": 11,
+      "nex": 3,
+      "class": "lost_sets"
+    },
+    {
+      "id": "4b002d2b-a3f9-4f6a-bad6-e23ad38cba42",
+      "session_date": "2026-07-01",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 28680,
+      "computed": 13020,
+      "gap": 15660,
+      "nsets": 14,
+      "nex": 4,
+      "class": "lost_sets"
+    },
+    {
+      "id": "b43eea4b-fdcc-4ae5-b85a-1334c1fe83ae",
+      "session_date": "2026-07-11",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 27850,
+      "computed": 20050,
+      "gap": 7800,
+      "nsets": 30,
+      "nex": 9,
+      "class": "lost_sets"
+    },
+    {
+      "id": "5fb0970d-d1ac-4154-8b8f-af76402d289b",
+      "session_date": "2026-07-07",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 11160,
+      "computed": 4260,
+      "gap": 6900,
+      "nsets": 7,
+      "nex": 2,
+      "class": "lost_sets"
+    },
+    {
+      "id": "5fc6407f-293b-4fb4-8d78-1368f36f42a3",
+      "session_date": "2026-06-18",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 12380,
+      "computed": 7900.0,
+      "gap": 4480.0,
+      "nsets": 17,
+      "nex": 5,
+      "class": "lost_sets"
+    },
+    {
+      "id": "1b0a14ff-1e14-4a5a-b722-d94e63d68fff",
+      "session_date": "2026-06-16",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 26150,
+      "computed": 22650,
+      "gap": 3500,
+      "nsets": 14,
+      "nex": 4,
+      "class": "lost_sets"
+    },
+    {
+      "id": "b129581e-2dbb-483d-92ca-3e4b2227d3ed",
+      "session_date": "2026-06-24",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 21564,
+      "computed": 18684.0,
+      "gap": 2880.0,
+      "nsets": 17,
+      "nex": 5,
+      "class": "lost_sets"
+    },
+    {
+      "id": "3c72379c-20e8-4237-a601-187c162aa45d",
+      "session_date": "2026-06-11",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 4150,
+      "computed": 1350,
+      "gap": 2800,
+      "nsets": 1,
+      "nex": 1,
+      "class": "lost_sets"
+    },
+    {
+      "id": "41706950-fb81-4c48-95c2-09b0526bca5d",
+      "session_date": "2026-06-09",
+      "user_id": "3a6e34b7-d197-47b4-bedb-de49bbe552fb",
+      "stored_before": 10480,
+      "computed": 7840,
+      "gap": 2640,
+      "nsets": 20,
+      "nex": 6,
+      "class": "lost_sets"
+    },
+    {
+      "id": "d97cd343-253b-408d-8dc5-2e0b98e1c9f5",
+      "session_date": "2026-06-11",
+      "user_id": "e5074b4c-3808-4338-aeb7-b9db59d61f49",
+      "stored_before": 16925,
+      "computed": 14765,
+      "gap": 2160,
+      "nsets": 22,
+      "nex": 7,
+      "class": "lost_sets"
+    },
+    {
+      "id": "1294e6e3-ee98-41eb-a766-9ea9f0797e3d",
+      "session_date": "2026-06-21",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 14040,
+      "computed": 12080,
+      "gap": 1960,
+      "nsets": 20,
+      "nex": 6,
+      "class": "lost_sets"
+    },
+    {
+      "id": "59c74ba5-19cd-4ee4-9aeb-f1a109b85ac8",
+      "session_date": "2026-06-13",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 12740,
+      "computed": 11540,
+      "gap": 1200,
+      "nsets": 17,
+      "nex": 7,
+      "class": "lost_sets"
+    },
+    {
+      "id": "4639675b-d1cf-4983-ab05-452ccc6cb7c4",
+      "session_date": "2026-07-08",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 12000,
+      "computed": 11640,
+      "gap": 360,
+      "nsets": 11,
+      "nex": 3,
+      "class": "over_count_sets_look_complete"
+    },
+    {
+      "id": "c803ccdb-d143-45bb-8126-fc844faa3384",
+      "session_date": "2026-07-28",
+      "user_id": "e636007d-194f-4440-a2cc-9bc514957c64",
+      "stored_before": 5240,
+      "computed": 5000,
+      "gap": 240,
+      "nsets": 13,
+      "nex": 4,
+      "class": "over_count_sets_look_complete"
+    },
+    {
+      "id": "93dbf57c-9d25-4b46-baf9-0d372a876337",
+      "session_date": "2026-06-12",
+      "user_id": "39619377-4753-45ac-ac3c-7ff253345bbd",
+      "stored_before": 5720,
+      "computed": 5540,
+      "gap": 180,
+      "nsets": 19,
+      "nex": 6,
+      "class": "over_count_sets_look_complete"
+    }
+  ],
+  "restore_sql": [
+    "update public.workout_sessions set total_volume_lbs = 32840 where id = '7743e179-b0fe-4e72-b18c-993097a28d7d';",
+    "update public.workout_sessions set total_volume_lbs = 28680 where id = '4b002d2b-a3f9-4f6a-bad6-e23ad38cba42';",
+    "update public.workout_sessions set total_volume_lbs = 27850 where id = 'b43eea4b-fdcc-4ae5-b85a-1334c1fe83ae';",
+    "update public.workout_sessions set total_volume_lbs = 11160 where id = '5fb0970d-d1ac-4154-8b8f-af76402d289b';",
+    "update public.workout_sessions set total_volume_lbs = 12380 where id = '5fc6407f-293b-4fb4-8d78-1368f36f42a3';",
+    "update public.workout_sessions set total_volume_lbs = 26150 where id = '1b0a14ff-1e14-4a5a-b722-d94e63d68fff';",
+    "update public.workout_sessions set total_volume_lbs = 21564 where id = 'b129581e-2dbb-483d-92ca-3e4b2227d3ed';",
+    "update public.workout_sessions set total_volume_lbs = 4150 where id = '3c72379c-20e8-4237-a601-187c162aa45d';",
+    "update public.workout_sessions set total_volume_lbs = 10480 where id = '41706950-fb81-4c48-95c2-09b0526bca5d';",
+    "update public.workout_sessions set total_volume_lbs = 16925 where id = 'd97cd343-253b-408d-8dc5-2e0b98e1c9f5';",
+    "update public.workout_sessions set total_volume_lbs = 14040 where id = '1294e6e3-ee98-41eb-a766-9ea9f0797e3d';",
+    "update public.workout_sessions set total_volume_lbs = 12740 where id = '59c74ba5-19cd-4ee4-9aeb-f1a109b85ac8';",
+    "update public.workout_sessions set total_volume_lbs = 12000 where id = '4639675b-d1cf-4983-ab05-452ccc6cb7c4';",
+    "update public.workout_sessions set total_volume_lbs = 5240 where id = 'c803ccdb-d143-45bb-8126-fc844faa3384';",
+    "update public.workout_sessions set total_volume_lbs = 5720 where id = '93dbf57c-9d25-4b46-baf9-0d372a876337';"
+  ]
+}
