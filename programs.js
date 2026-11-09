@@ -240,6 +240,7 @@ function bankEntryByName(name) {
   return _seedBankByName[name] || null;
 }
 
+
 // seedWeight(entry, { sex, dbCap }) → starting lb for an untrained lifter, or 0 for
 // bodyweight/band. Matrix first, then the generic equipment floor scaled by the
 // exercise's own oneRmFactor.
@@ -424,6 +425,20 @@ const EXERCISE_BANK = {
     // could not be read from here. The full citation trail is at the rank's one call site,
     // in bank()'s comparator — search BUG-256 there.
     familyDefault:true,
+    // BUG-256 d4 — DISPLAY name ONLY. `name` below is the STORAGE IDENTITY and does not move.
+    // Every stored artefact is keyed by that exact string: sets.exercise_name, personal_records,
+    // lastsets, users.onboarding_estimates, and six name-keyed localStorage maps including D11's
+    // EARNED tandem_working1rm — a MEASUREMENT. A phone's localStorage cannot be reached or
+    // migrated from here, so renaming the identity would silently detach a real measured 1RM and
+    // revert it to a seed default. The string the USER reads moves; the string the APP stores
+    // does not. Ruled 4-1 by llm-council 2026-11-09:
+    //   docs/council/council-transcript-2026-11-09-bug256-rename-identity.md
+    // THE ONE HOME for the mapping is this field, read only through exDisplayName() — which
+    // lives in tandem.html beside cardStorageName(), because it is a RENDER-tier reader and
+    // the 1050-combo matrix reach detector correctly calls it dead code inside the engine.
+    // NEVER key anything on 'Bench Press' — not SEED_WEIGHTS, not a template, not a seed row.
+    // scripts/display-name-smoke.mjs fails if the display string ever reaches a storage path.
+    displayName:'Bench Press',
     name:'Flat Barbell Press', videoId:null,
     muscleGroups:{primary:['pec_major_sternal'],secondary:['anterior_delt','tricep']},
     emphasis:['chest','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:1.00,

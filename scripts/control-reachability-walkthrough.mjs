@@ -394,11 +394,20 @@ async function boot(page) {
         window.__swap = wt;
         const card = [...document.querySelectorAll('.ex-card[id^="ec-"]')]
           .find(c => (c.dataset.origName || '') === wt.orig);
-        return card ? document.getElementById('en-' + card.id.slice(3))?.textContent?.trim() : null;
+        if (!card) return null;
+        const id = card.id.slice(3);
+        // BUG-256 d4: the heading is a DISPLAY string and the identity is data-cur-name. Both are
+        // returned and both are asserted — comparing only the heading to a storage name passed
+        // here purely because this substitute has no displayName, so it was a latent false pass.
+        return {
+          cur: card.dataset.curName || null,
+          shown: document.getElementById('en-' + id)?.textContent?.trim(),
+          wantShown: typeof exDisplayName === 'function' ? exDisplayName(wt.sub) : wt.sub,
+        };
       }, swapOpen);
       check('[5c] the swap survives a PAGE RELOAD (fresh scope, storage only)',
-        afterReload === swapOpen.sub,
-        `after reload the card for "${swapOpen.orig}" shows ${JSON.stringify(afterReload)}`);
+        !!afterReload && afterReload.cur === swapOpen.sub && afterReload.shown === afterReload.wantShown,
+        `after reload the card for "${swapOpen.orig}" has identity ${JSON.stringify(afterReload && afterReload.cur)} (want ${JSON.stringify(swapOpen.sub)}) and shows ${JSON.stringify(afterReload && afterReload.shown)} (want ${JSON.stringify(afterReload && afterReload.wantShown)})`);
 
       const afterUndo = await page.evaluate(() => {
         const { orig } = window.__swap;
@@ -416,13 +425,15 @@ async function boot(page) {
         undo.click();
         renderTracker();
         return {
+          cur: card.dataset.curName || null,
           shown: document.getElementById('en-' + id)?.textContent?.trim(),
+          wantShown: typeof exDisplayName === 'function' ? exDisplayName(orig) : orig,
           stored: (LS.get('tandem_swaps') || {})[orig] ?? null,
         };
       });
       check('[5d] Undo is VISIBLE on the swapped card and restores the original (store entry deleted)',
-        afterUndo.shown === swapOpen.orig && afterUndo.stored === null,
-        `${afterUndo.err || ''} card shows ${JSON.stringify(afterUndo.shown)}, store entry ${JSON.stringify(afterUndo.stored)} — a stored no-op would shadow future legality changes`);
+        afterUndo.cur === swapOpen.orig && afterUndo.shown === afterUndo.wantShown && afterUndo.stored === null,
+        `${afterUndo.err || ''} card identity ${JSON.stringify(afterUndo.cur)} (want ${JSON.stringify(swapOpen.orig)}), shows ${JSON.stringify(afterUndo.shown)} (want ${JSON.stringify(afterUndo.wantShown)}), store entry ${JSON.stringify(afterUndo.stored)} — a stored no-op would shadow future legality changes`);
     } else {
       for (const l of ['[5b]', '[5c]', '[5d]']) check(`${l} (skipped — no swappable card)`, false);
     }

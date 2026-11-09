@@ -3432,7 +3432,7 @@ function getRecommendation(exId, compound, goal, exName, sex, repTarget, inputMo
     const g = canonicalGoal(goal);
     const goalLabels = { fat_burn: 'Fat Burn', build_muscle: 'Build', transform: 'Transform', strength: 'Strength', maintenance: 'Maintain' };
     const goalLabel = goalLabels[g] || g;
-    const displayName = exName || exId;
+    const displayName = exDisplayName(exName) || exId;
     const reason = tgt.source === 'calibrated'
       ? `${tgt.weight} lbs — ${Math.round(tgt.factor * 100)}% of your ${Math.round(oneRM)} lb ${displayName} 1RM, Week ${currentWeek} ${goalLabel}`
       : `${tgt.weight} lbs — ${Math.round(tgt.factor * 100)}% of your ${tgt.from} 1RM (moves as it moves)`;
@@ -4660,7 +4660,7 @@ function renderBaselineEstimates() {
   const sexKey = (selectedSex === 'female') ? 'female' : 'male';
   wrap.innerHTML = OB_ESTIMATE_LISTS[sexKey].map(name => `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);">
-      <div style="font-size:13px;color:var(--text);">${name}</div>
+      <div style="font-size:13px;color:var(--text);">${exDisplayName(name)}</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <input class="ob-input" type="number" inputmode="decimal" min="0" step="5" placeholder="—"
           data-est-name="${name}" value="${prior[name] || ''}"
@@ -5470,7 +5470,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
         <div class="block-label">${block.label}</div>
         <div class="cardio-block${cardioSkipped ? ' skipped' : ''}" id="cardio-${cardioKey}">
           <div class="cardio-head">
-            <div class="cardio-title">${ex.name}</div>
+            <div class="cardio-title">${exDisplayName(ex.name)}</div>
             <button class="rest-skip" onclick="toggleCardioSkip('${cardioKey}')">${cardioSkipped ? 'Add back' : 'Skip'}</button>
           </div>
           <div class="cardio-content">
@@ -5583,11 +5583,11 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
       const videoId = VIDEO_IDS[ex.name];
 
       html += `
-        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" data-orig-name="${escNoteKey(ex.userSwappedFrom || ex.name)}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
+        <div class="ex-card${ex.warning ? ' warn' : ''}" id="ec-${ex.id}" data-orig-name="${escNoteKey(ex.userSwappedFrom || ex.name)}" data-cur-name="${escNoteKey(ex.name)}"${ex.authoredRest ? ` data-rest="${ex.authoredRest}"` : ''} onclick="toggleExCard(this)">
           <div class="ex-header">
             <div class="ex-check"></div>
             <div class="ex-info">
-              <div class="ex-name"><span id="en-${ex.id}">${ex.name}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">est. 1RM ~${pr1rm}</span>` : ''}</div>
+              <div class="ex-name"><span id="en-${ex.id}">${exDisplayName(ex.name)}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">est. 1RM ~${pr1rm}</span>` : ''}</div>
               <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.repRange || ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${ex.authoredRest ?? phase.restAcc}s rest`
@@ -5597,7 +5597,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
               <div class="po-reason">${rec.reason}</div>
               ${ex.technique && TECHNIQUE_TIPS[ex.technique] ? `<div class="po-reason" style="color:var(--accent2);margin-top:3px;"><strong>${TECHNIQUE_TIPS[ex.technique].name}:</strong> ${TECHNIQUE_TIPS[ex.technique].tip}</div>` : ''}
               ${ex.substitutedFrom ? `<div class="po-reason" style="color:var(--amber);margin-top:3px;"><strong>Swapped:</strong> the program calls for ${ex.substitutedFrom}, which your equipment or injury profile rules out. This trains the same muscle.</div>` : ''}
-              <div class="po-reason swap-note" id="swapnote-${ex.id}" style="color:var(--amber);margin-top:3px;${ex.userSwappedFrom ? '' : 'display:none;'}">${ex.userSwappedFrom ? `<strong>Your swap:</strong> replaces ${ex.userSwappedFrom}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(ex.userSwappedFrom)}');applySwap('${ex.id}','${escNoteKey(ex.userSwappedFrom)}')">Undo</span>` : ''}</div>
+              <div class="po-reason swap-note" id="swapnote-${ex.id}" style="color:var(--amber);margin-top:3px;${ex.userSwappedFrom ? '' : 'display:none;'}">${ex.userSwappedFrom ? `<strong>Your swap:</strong> replaces ${exDisplayName(ex.userSwappedFrom)}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(ex.userSwappedFrom)}');applySwap('${ex.id}','${escNoteKey(ex.userSwappedFrom)}')">Undo</span>` : ''}</div>
             </div>
             <div class="ex-expand">▾</div>
           </div>
@@ -5637,7 +5637,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
             <div class="ex-cues-wrap" id="cueswrap-${ex.id}">${(ex.cues||[]).length ? `<div class="ex-cues">${ex.cues.map(c=>`<div class="ex-cue"><div class="cue-dot">→</div><div>${c}</div></div>`).join('')}</div>` : ''}</div>
             <div class="ex-video-wrap" id="vidwrap-${ex.id}">${videoId ? `
                 <button class="ex-video-btn" onclick="loadVideo('${ex.id}','${videoId}',this)">
-                  <span class="yt-icon">▶</span> Watch Tutorial — ${ex.name}
+                  <span class="yt-icon">▶</span> Watch Tutorial — ${exDisplayName(ex.name)}
                 </button>
                 <div class="ex-video-frame" id="vid-${ex.id}"></div>` : ''}</div>
           </div>
@@ -5949,8 +5949,7 @@ function logSet(id, i) {
     // C7: canonical PR key = exercise NAME (matches personal_records + survives
     // bank slot-id churn across rotation). Resolve from the card heading, same
     // as the Supabase set-insert path.
-    const prCardEl = document.getElementById('ec-' + id);
-    const prExName = prCardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
+    const prExName = cardStorageName(id);
     // C7/BUG-45: name-only baseline. A recycled slot-id's 1RM (another movement's
     // number) must not stand in as this exercise's prior PR — that could suppress
     // a real PR or seed a phantom one. prExName falls back to id only when the
@@ -6017,8 +6016,7 @@ function logSet(id, i) {
         try {
           const sessionUUID = await startOrResumeSession();
           // Human-readable name from DOM card heading
-          const cardEl = document.getElementById('ec-' + id);
-          const rawName = cardEl?.querySelector('.ex-name')?.childNodes[0]?.textContent?.trim() || id;
+          const rawName = cardStorageName(id);
           // Exercise category from day label (upper / lower / full_body / day key)
           const prog = getActiveProgram();
           const dayObj = prog?.find(d => d.key === currentDay);
@@ -6504,6 +6502,44 @@ function resolveUserSwap(ex) {
     userSwappedFrom: ex.name };
 }
 
+// exDisplayName(storedName) — THE one home for storage-identity -> what the user reads.
+// Lives HERE, not in programs.js beside the bank, because it is a RENDER-tier reader: the
+// 1050-combo matrix reach detector flagged it as dead on arrival inside the engine, and it was
+// right — no program-generation path calls it, only the UI does.
+// BUG-256 d4. An exercise's `name` is its storage key (see the flat-barbell-press entry for why
+// that cannot change), so a lift is renamed by giving its bank entry a `displayName` and reading
+// it HERE. Resolving from the bank by stored name rather than from the exercise object means it
+// works no matter how that object was materialized — program, one-off wizard, static template or
+// a history row read back out of Supabase.
+// Call this at RENDER seams only. Never on a value about to be written, compared, or looked up:
+// that is what would create the second identity this split exists to avoid.
+function exDisplayName(storedName) {
+  if (!storedName) return storedName;
+  // Guarded: scripts/c7-smoke.mjs vm-extracts a slice of this file, and an unguarded call to a
+  // programs.js global would throw there instead of falling back to the stored name.
+  const e = typeof bankEntryByName === "function" ? bankEntryByName(storedName) : null;
+  return (e && e.displayName) || storedName;
+}
+
+// cardStorageName(id) — THE one home for "which lift is this card CURRENTLY showing", as a
+// STORAGE identity. BUG-256 d4.
+//
+// Before the display/identity split, several paths read the card heading's text node for this,
+// because the heading happened to contain the storage name. Once a lift's displayed name can
+// differ from its stored name that is a silent identity swap, and two of those readers were on
+// WRITE paths: the Supabase `sets.exercise_name` / `personal_records` insert and the local
+// tandem_prs/lastsets key. A set logged on a renamed card would have been stored under the
+// DISPLAY string, detaching it from every row the user already had — the exact second identity
+// the council chose this design to avoid. Found by scripts/control-reachability-walkthrough.mjs
+// going red, not by reading the diff.
+//
+// Falls back to the slot id, matching the pre-existing `|| id` contract at those call sites.
+// It deliberately does NOT fall back to the heading text: that fallback is the bug.
+function cardStorageName(id) {
+  const card = document.getElementById('ec-' + id);
+  return (card && card.dataset && card.dataset.curName) || id;
+}
+
 function openSwapPicker(id) {
   const picker = document.getElementById('swap-' + id);
   const nameEl = document.getElementById('en-' + id);
@@ -6515,17 +6551,21 @@ function openSwapPicker(id) {
   // card's data-orig-name), not the currently displayed substitute — otherwise a
   // second swap would key the store off the wrong name and chain drift.
   const card = document.getElementById('ec-' + id);
-  const orig = card?.dataset?.origName || nameEl.textContent;
+  const curName = cardStorageName(id);
+  const orig = card?.dataset?.origName || curName;
+  // Compared against the STORAGE name, never the heading text: post-BUG-256-d4 the heading
+  // reads 'Bench Press' while the stored name is 'Flat Barbell Press', so a textContent
+  // comparison would report every such card as already-swapped and offer a bogus way back.
   const subs = getExerciseSubstitutes(orig, resolveEquipmentTier(), cfg.injuries, 5)
-    .filter(s => s.name !== nameEl.textContent);
+    .filter(s => s.name !== curName);
   // Already swapped? Offer the way back at the top.
-  if (orig !== nameEl.textContent) subs.unshift({ name: orig, _isOriginal: true });
+  if (orig !== curName) subs.unshift({ name: orig, _isOriginal: true });
   picker.innerHTML = subs.length
     // escNoteKey, NOT JSON.stringify: this string sits inside a double-quoted HTML
     // attribute, and JSON's double quotes TERMINATE the attribute mid-call — every
     // option's onclick parsed as `applySwap('<id>',` and threw on tap. Caught by the
     // browser walkthrough ([5b]), invisible to the vm smoke (it reads source, not DOM).
-    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}','${escNoteKey(s.name)}')">${s._isOriginal ? `↻ Back to ${s.name}` : s.name}</div>`).join('')
+    ? subs.map(s => `<div class="swap-opt" onclick="event.stopPropagation();applySwap('${id}','${escNoteKey(s.name)}')">${s._isOriginal ? `↻ Back to ${exDisplayName(s.name)}` : exDisplayName(s.name)}</div>`).join('')
     : `<div class="swap-empty">No substitutes available for your equipment tier.</div>`;
   picker.classList.add('open');
 }
@@ -6544,7 +6584,8 @@ function applySwap(id, newName) {
   // (see the _ex.id !== ex.id branch in buildDayHTML). Skipped when either exercise
   // has no oneRmFactor (bodyweight/band/timed movements) — weight isn't a meaningful
   // target there, so the set rows are left as-is rather than guessed at.
-  const oldEntry = nameEl ? Object.values(EXERCISE_BANK).find(e => e.name === nameEl.textContent) : null;
+  // The outgoing lift is identified by the card's storage register, not its heading text.
+  const oldEntry = Object.values(EXERCISE_BANK).find(e => e.name === cardStorageName(id)) || null;
   const ratio = (oldEntry?.oneRmFactor && entry.oneRmFactor) ? (entry.oneRmFactor / oldEntry.oneRmFactor) : null;
   if (ratio != null) {
     let i = 0, wInput;
@@ -6555,7 +6596,11 @@ function applySwap(id, newName) {
       i++;
     }
   }
-  if (nameEl) nameEl.textContent = entry.name;
+  if (nameEl) nameEl.textContent = exDisplayName(entry.name);
+  // Keep the storage register in step with the heading, or every write path after this swap
+  // would still name the lift this card was serving before it.
+  const swapCard = document.getElementById('ec-' + id);
+  if (swapCard) swapCard.dataset.curName = entry.name;
   if (badgeEl) {
     const badge = entry.category === 'compound' ? 'compound' : 'isolation';
     badgeEl.textContent = badge;
@@ -6570,7 +6615,7 @@ function applySwap(id, newName) {
   if (vidWrap) {
     const vId = VIDEO_IDS[entry.name];
     vidWrap.innerHTML = vId
-      ? `<button class="ex-video-btn" onclick="loadVideo('${id}','${vId}',this)"><span class="yt-icon">▶</span> Watch Tutorial — ${entry.name}</button><div class="ex-video-frame" id="vid-${id}"></div>`
+      ? `<button class="ex-video-btn" onclick="loadVideo('${id}','${vId}',this)"><span class="yt-icon">▶</span> Watch Tutorial — ${exDisplayName(entry.name)}</button><div class="ex-video-frame" id="vid-${id}"></div>`
       : '';
   }
   if (picker) { picker.classList.remove('open'); picker.innerHTML = ''; }
@@ -6585,11 +6630,11 @@ function applySwap(id, newName) {
   if (note) {
     if (!orig || entry.name === orig) { note.style.display = 'none'; note.innerHTML = ''; }
     else {
-      note.innerHTML = `<strong>Your swap:</strong> replaces ${orig}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(orig)}');applySwap('${id}','${escNoteKey(orig)}')">Undo</span>`;
+      note.innerHTML = `<strong>Your swap:</strong> replaces ${exDisplayName(orig)}. <span style="text-decoration:underline;cursor:pointer;" onclick="event.stopPropagation();clearExSwap('${escNoteKey(orig)}');applySwap('${id}','${escNoteKey(orig)}')">Undo</span>`;
       note.style.display = '';
     }
   }
-  showToast(orig && entry.name === orig ? `Back to ${entry.name}` : `Swapped to ${entry.name} — saved for future sessions`);
+  showToast(orig && entry.name === orig ? `Back to ${exDisplayName(entry.name)}` : `Swapped to ${exDisplayName(entry.name)} — saved for future sessions`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7215,7 +7260,9 @@ function renderStrengthTrend(matches) {
 }
 
 function openExerciseHistory(id, name) {
-  const displayName = name || id;
+  // BUG-256 d4: title is a RENDER seam, so it reads through exDisplayName. The lookup below
+  // keeps the raw stored `name` — that is the history key and must not be translated.
+  const displayName = exDisplayName(name) || id;
   const titleEl = document.getElementById('exhistoryTitle');
   if (titleEl) titleEl.textContent = displayName + ' — History';
   const subEl = document.getElementById('exhistorySub');
@@ -7922,7 +7969,7 @@ function renderLogTab() {
     return `<button class="log-card" onclick="openLogDetail(this.dataset.name)" data-name="${logEsc(c.name)}">
       <div class="tc-photo" data-hero="phase"></div><div class="tc-tint"></div><div class="log-scrim"></div>
       <div class="log-meta">${c.pts.length} session${c.pts.length > 1 ? 's' : ''}</div>
-      <h3>${logEsc(c.name)}</h3>
+      <h3>${logEsc(exDisplayName(c.name))}</h3>
       <div class="log-val">${Math.round(c.last.v)} <small>${unit}</small></div>
       ${logDeltaHtml(logDelta(c.pts))}
       <div class="log-spark">${spark}</div>
@@ -7936,7 +7983,7 @@ function openLogDetail(name) {
   const titleEl = document.getElementById('exhistoryTitle');
   const list = document.getElementById('exhistoryList');
   if (!titleEl || !list) return;
-  titleEl.textContent = name;
+  titleEl.textContent = exDisplayName(name);
   const subEl = document.getElementById('exhistorySub');
   if (subEl) subEl.style.display = 'none';
   const hi = Math.max(1, ...pts.map(p => p.v));
@@ -10654,7 +10701,7 @@ function renderLatestPR() {
   const tagEl = document.getElementById('dashPrTag');
   if (tagEl) tagEl.innerHTML = `${svgIcon('trophy')} NEW PR · ${whenLabel}`;
   const nameEl = document.getElementById('dashPrName');
-  if (nameEl) nameEl.textContent = best.name;
+  if (nameEl) nameEl.textContent = exDisplayName(best.name);
   const numEl = document.getElementById('dashPrNum');
   if (numEl) { numEl.innerHTML = ''; numEl.append(String(best.rm)); const s = document.createElement('small'); s.textContent = 'LBS E1RM'; numEl.append(s); }
 }
@@ -10794,7 +10841,7 @@ function renderDuelSheet() {
     prs.forEach(pr => {
       const row = document.createElement('div'); row.className = 'duel-pr';
       const who = pr.user_id === currentUser?.id ? 'You' : theirName;
-      const span = document.createElement('span'); span.textContent = `${who} · ${pr.exercise_name}`;
+      const span = document.createElement('span'); span.textContent = `${who} · ${exDisplayName(pr.exercise_name)}`;
       const b = document.createElement('b'); b.textContent = Math.round(pr.best_estimated_1rm_lbs ?? 0);
       row.append(span, b);
       prWrap.append(row);

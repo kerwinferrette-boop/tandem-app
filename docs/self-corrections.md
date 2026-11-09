@@ -1868,3 +1868,58 @@ shallow clone with no history. Each was invisible until something ran somewhere 
 fails with the exact remedy instead of a cryptic "zero merge commits", so the next person loses minutes
 rather than a red main. Choosing to test in a degraded environment at all is judgment — nothing can make
 you ask what CI's clone looks like.
+
+---
+
+## SC-54 — I split display from identity and missed that two WRITE paths recovered the identity by reading rendered text
+
+**What happened.** BUG-256 deliverable 4 renamed a lift's user-facing name while deliberately freezing
+its storage name (`Flat Barbell Press` stays the key; `Bench Press` is what the user reads). I mapped
+the render seams by grepping for interpolations of `ex.name`, wired each through a single resolver,
+wrote a gate with six assertions, mutation-tested every one of them individually, and had all six
+green — including a Playwright assertion that the real card renders "Bench Press" while its
+`data-orig-name` still says "Flat Barbell Press". I believed the change was proven.
+
+Then `scripts/control-reachability-walkthrough.mjs` went red on three swap assertions, and the cause
+was not any seam I had touched. Several paths recovered *which lift a card is currently showing* by
+reading the card heading's text node — `card.querySelector('.ex-name').childNodes[0].textContent` —
+because before the split the heading happened to contain the storage name. Two of those readers were
+on **write** paths: the Supabase `sets.exercise_name` / `personal_records` insert, and the local
+`tandem_prs` + `lastsets` key. A set logged on the renamed card would have been stored under
+`Bench Press`, detaching it from all 14 rows the user already had — creating exactly the second
+identity the council had chosen this design to avoid. A third reader made `openSwapPicker` compare a
+stored name against rendered text, so every such card reported itself as already-swapped.
+
+**The mechanism, not a trait.** My seam inventory was built by asking *"where is this value
+rendered?"* and I treated the answer as complete. The defect lived in the inverse question, which I
+never asked: *"where is this value read back OUT of the rendered DOM?"* Interpolating a value into
+HTML and parsing a value out of HTML are different grep shapes — `${ex.name}` versus
+`.textContent` — so a seam census built from one direction cannot see the other, however carefully it
+is done. Worse, the DOM read is invisible to a static gate that inspects the repo for the display
+string on storage paths (my own [N3]): the string never appears in the source at all, because it
+arrives at runtime from a text node. My [N6] browser assertion read the card's attributes and its
+heading, and it passed — it proved the card *renders* correctly, which is a different claim from
+nothing *reads the rendering back*.
+
+> **THE RULE — SC-54.** When you split one value into two (identity vs display, canonical vs alias,
+> stored vs computed), enumerate the readers in BOTH directions before writing any code: where the
+> value is written out, and where it is parsed back in. `grep` for `.textContent`, `.value`,
+> `.innerText`, `dataset.*` and `getAttribute` over the surfaces that show it, and treat every such
+> read as a seam. Any one of them on a write path is the dangerous kind, because it silently stores
+> the wrong half of the split and a repo-side gate cannot see it — the string is never in the source.
+> Then give the identity an EXPLICIT register (here `data-cur-name`, read through one function) so no
+> path ever has to infer identity from presentation. Rendered text is output, never a source of truth.
+
+**Enforced by:** mechanically, and specifically because this was found by a test rather than by review.
+`scripts/display-name-smoke.mjs` [N7] bans recovering an exercise identity from rendered text — it
+fails on `.ex-name … textContent`, on `getElementById('en-' + id) … textContent` read (not written),
+and on `nameEl.textContent` read, and it fails if `cardStorageName()` or the `data-cur-name` register
+disappears. All four were mutation-tested individually, including re-introducing the exact write-path
+read that caused this. What is NOT enforced is the habit of asking the inverse question on the *next*
+split, in some other file, about some other value — that is judgment, and [N7] only guards this one.
+
+**Also worth recording:** the browser walkthrough earned its cost here. Six static and
+semi-static assertions, every one mutation-tested, all green, and the defect was still live. The thing
+that caught it was driving the real controls in a real browser — which is what
+`CLAUDE.md`'s "verify at the surface the USER sees, not the layer you edited" has been saying all
+along, and which I had told myself I was already doing because my gate opened a browser at all.

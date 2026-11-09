@@ -186,7 +186,9 @@ the data · SC-50 a fabricated merge commit is parented on the merge BASE, and a
 deletes anything is not a restoration · SC-51 read the tracker ROW before building its fix — a brief
 naming a mechanism is not evidence the source chose that mechanism · SC-53 a check that reads
 anything outside the repo's files must be tested in an environment that LACKS it (CI's clone is
-SHALLOW; local green proves nothing about it).
+SHALLOW; local green proves nothing about it) · SC-54 when you split one value into two, enumerate
+the readers in BOTH directions — a value parsed back OUT of rendered text is a seam a repo-side gate
+can never see, and identity must have an explicit register, never be inferred from presentation.
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 
