@@ -188,6 +188,63 @@ try {
   else if (Object.values(counts).some(c => !Number.isInteger(c) || c < 1)) fail('history projection produced a non-positive session count');
   else ok(`projection resolved ${n} lift(s), all counts >= 1`);
 
+  // ── A5 · stored session volume ↔ its own sets rows (BUG-230) ──────────────
+  // The class A2 is structurally blind to. A2 asks only for
+  // `completed = true AND (total_volume_lbs IS NULL OR total_volume_lbs = 0)`,
+  // so a session carrying a large, healthy-looking, WRONG number passes it
+  // silently — and 15 of 25 completed sessions did exactly that for five
+  // months, 71,530 lbs unaccounted for, while the data layer reported green.
+  //
+  // This assertion belongs HERE and cannot live in `npm run verify`: verify
+  // cannot see Postgres (BUG-197's colour-picker column is the standing proof —
+  // "no reader" and "no column" look identical from inside the repo). The
+  // client-side half of this defect is guarded separately by
+  // scripts/finish-set-integrity-smoke.mjs; this is the data-side half.
+  //
+  // NO BASELINE AND NO ALLOWLIST, deliberately. The 15 damaged rows were
+  // repaired on 2026-11-09 (pre-image: docs/data-repairs/bug230-preimage-2026-11-09.json),
+  // so the table is clean and this can be a bare invariant. If it ever goes red
+  // it is a NEW occurrence — do not add a tolerance list to quiet it, because a
+  // ratchet here would hide exactly the drift it exists to catch.
+  //
+  // Tolerance is 1 lb, matching the client's Math.round() on the session total,
+  // not a fudge factor for lost sets.
+  console.log('\nA5 · stored session volume ↔ its own sets rows (BUG-230)');
+  const volSessions = await rest('workout_sessions?completed=eq.true&select=id,session_date,total_volume_lbs&limit=2000');
+  const volSets = await rest('sets?select=session_id,weight_lbs,reps&limit=100000');
+  const summed = {};
+  for (const st of volSets) {
+    summed[st.session_id] = (summed[st.session_id] || 0) + (Number(st.weight_lbs) || 0) * (Number(st.reps) || 0);
+  }
+  // Fail closed on a read that returned nothing: zero completed sessions means the
+  // query lost its target, not that the invariant holds (BUG-79's rule, applied here).
+  if (!volSessions.length) {
+    fail('zero completed sessions returned — this assertion proved nothing; treat as a failed read, not a pass');
+  } else {
+    const drifted = [];
+    let withSets = 0;
+    for (const w of volSessions) {
+      const computed = summed[w.id];
+      if (computed === undefined) continue;          // a completed session with no sets rows is A2/A8's business, not this check's
+      withSets++;
+      const stored = Number(w.total_volume_lbs) || 0;
+      const gap = stored - computed;
+      if (Math.abs(gap) > 1) drifted.push(`${w.session_date} ${w.id}: stored ${stored} vs sets ${computed} (${gap > 0 ? '+' : ''}${Math.round(gap)})`);
+    }
+    if (!withSets) {
+      fail('no completed session had any sets rows — the join produced nothing, so this proved nothing');
+    } else if (drifted.length) {
+      fail(`${drifted.length} of ${withSets} completed session(s) disagree with their own sets rows:`);
+      drifted.slice(0, 10).forEach(d => console.error(`      ${d}`));
+      if (drifted.length > 10) console.error(`      … ${drifted.length - 10} more`);
+      console.error('      A POSITIVE gap means sets did not land (do NOT just lower the total — check');
+      console.error('      localStorage tandem_history::<uid> on the logging device first; those sets may');
+      console.error('      be recoverable). A NEGATIVE gap means the total under-counts real work.');
+    } else {
+      ok(`all ${withSets} completed session(s) with sets agree with their own sets rows (within 1 lb)`);
+    }
+  }
+
 } catch (e) {
   fail(`gate threw: ${e.message}`);
 } finally {
