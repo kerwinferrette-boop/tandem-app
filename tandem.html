@@ -5418,7 +5418,18 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
     // name-only when named — a recycled slot-id can hold another movement's 1RM.
     const _rm = e && (e.name ? prescriptionOneRM(e.name, _dayWorking[e.name]?.rm, _dayPrs[e.name]) : _dayPrs[e.id]);
     if (!_rm) return;
-    dayCompound1RMs[e.name] = _rm;
+    // BUG-257: MAX-GUARDED, not a bare assignment. When a bank name EXACTLY EQUALS a
+    // COMPOUND_PATTERNS canonical key ('Hip Thrust', 'Romanian Deadlift' today) this line
+    // and the canonical loop below write the SAME slot, and a bare `= _rm` discarded the
+    // cross-variant maximum the loop had already accumulated — so the derived accessory's
+    // load depended on the order the day's exercises happened to be processed (measured:
+    // Hip Abduction Machine 70 lb vs 120 lb; Leg Curl 85 lb vs 125 lb). Math.max is not a
+    // new rule: it makes this builder agree with the OTHER builder of this same map
+    // (the compound1RMs loop ~line 3414), which registers canonical keys only, via
+    // Math.max, and was therefore already order-independent. Two builders of one map
+    // disagreeing is the silo "one rule, one home" is about; this closes it in the
+    // direction of the builder that was already correct.
+    dayCompound1RMs[e.name] = Math.max(dayCompound1RMs[e.name] || 0, _rm);
     // C7: also register under the canonical pattern key so ACCESSORY_FACTORS
     // derivation matches variant names. Max wins if multiple variants match.
     for (const [canon, rx] of Object.entries(COMPOUND_PATTERNS)) {

@@ -1923,3 +1923,36 @@ semi-static assertions, every one mutation-tested, all green, and the defect was
 that caught it was driving the real controls in a real browser — which is what
 `CLAUDE.md`'s "verify at the surface the USER sees, not the layer you edited" has been saying all
 along, and which I had told myself I was already doing because my gate opened a browser at all.
+
+---
+
+## SC-55 — I read an empty result from a filter that had silently failed to match, and reported it as "CI has not started"
+
+**What happened (2026-11-10).** After `303de37` landed on main I polled for its CI runs with
+`gh run list --commit 303de37`. That returns an empty list for a SHORT sha — the flag wants the full
+40-character one — so my poller sat for twenty minutes, reported `TIMED OUT`, and I told Kerwin no
+workflow runs had appeared. Both workflows had in fact started within seconds and had already
+finished green. `gh run list --branch main` showed them immediately.
+
+**The mechanism, not the trait.** An empty result from a FILTERED query has two
+indistinguishable causes: the thing does not exist, or the filter did not match it. I treated the
+first as established when only the disjunction was. This repo already names the same shape about
+exercise lookups — *"a lookup miss is not an error"* — and about a column that did not exist
+(BUG-197: "no reader" and "no column" look identical from inside the repo). I had the rule and
+applied it to the app's data while exempting my own tooling.
+
+> **THE RULE — SC-55.** Before reporting that a filtered query found nothing, prove the FILTER
+> works. Run it once with a filter value you know matches (or drop the filter and confirm the
+> population is non-empty); only then is an empty result evidence of absence. A polling loop whose
+> success condition is "rows appear" must FIRST establish that it can see rows at all, otherwise
+> its timeout measures the query, not the world.
+
+**Applied here, concretely:** the loop should have begun by listing runs on the branch unfiltered,
+confirming it could see the previous commit's runs, and only then narrowing. One extra call before
+twenty minutes of waiting.
+
+**Enforced by:** judgment — not mechanically checkable. No gate can know which of my shell
+filters is load-bearing. What IS worth carrying forward is the narrower habit: prefer
+`gh run list --branch <b>` and match the commit in the output, over `--commit <sha>` as a filter,
+because the former fails loudly (wrong branch = visibly wrong rows) and the latter fails silently
+(wrong sha format = zero rows, exit 0).

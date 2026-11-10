@@ -106,6 +106,7 @@ const CHECKS = [
   { name: 'BUG-246 merge parity (commit-graph — no merge may drop a path or a registered check script present in either parent; the PRIMARY mechanism the check floor is only the secondary half of)', run: () => execFileSync('node', [join(scriptsDir, 'merge-parity-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-256 family default (the declared default press outranks spelling: flag/declaration consistency, one default per family, and Flat actually serves Kerwin\'s Day 1 compound slot in 12/12 weeks)', run: () => execFileSync('node', [join(scriptsDir, 'family-default-smoke.mjs')], { stdio: 'inherit' }) },
   { name: 'BUG-256 d4 display/identity split (a lift\'s DISPLAY name may move, its STORAGE identity may not: resolver behaviour, no display string on any storage path, every render seam resolves, and a real browser card renders "Bench Press" while its data-orig-name is still "Flat Barbell Press")', run: () => execFileSync('node', [join(scriptsDir, 'display-name-smoke.mjs')], { stdio: 'inherit' }) },
+  { name: 'BUG-257 accessory-derivation order independence (a bank name equal to a COMPOUND_PATTERNS canonical key may not let the day-1RM accumulator discard the cross-variant max: one canonical value and one prescribed accessory load across 14 orderings, the collision set pinned, and the two builders of that map in agreement)', run: () => execFileSync('node', [join(scriptsDir, 'accessory-derivation-order-smoke.mjs')], { stdio: 'inherit' }) },
 ];
 
 // ── BUG-246: the suite may not silently shrink ───────────────────────────

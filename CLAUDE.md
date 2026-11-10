@@ -188,7 +188,7 @@ naming a mechanism is not evidence the source chose that mechanism · SC-53 a ch
 anything outside the repo's files must be tested in an environment that LACKS it (CI's clone is
 SHALLOW; local green proves nothing about it) · SC-54 when you split one value into two, enumerate
 the readers in BOTH directions — a value parsed back OUT of rendered text is a seam a repo-side gate
-can never see, and identity must have an explicit register, never be inferred from presentation.
+can never see, and identity must have an explicit register, never be inferred from presentation · SC-55 prove a FILTER matches before reporting that a filtered query found nothing — an empty result from a broken filter is indistinguishable from absence.
 
 ## Where the code lives — ask, never guess (added 2026-09-29, Kerwin)
 
