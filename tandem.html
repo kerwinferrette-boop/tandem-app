@@ -9954,7 +9954,7 @@ function isProgramHistoryRow(h) {
 // cfg.startDate is a calendar DATE — it cannot see a same-day program switch, so a
 // session logged under the OLD program earlier the same day the user adopts/creates/
 // builds a new one was, before this, indistinguishable from a session under the NEW
-// one (BUG-96's own date-only guard had this same blind spot). Refined with
+// one (the earlier date-only new-program guard (commit 12c87203) had this same blind spot). Refined with
 // cfg.startEpoch (a real Date.now() instant, set alongside cfg.startDate at every
 // program-start write — see adoptTemplate/createCustomTemplate/buildProgram/
 // finalizeLibraryOnboarding) wherever the row itself carries an equally real instant:
@@ -10089,7 +10089,7 @@ function getOverdueDays() {
   for (let i = 1; i < tSlots.length; i++) minGap = Math.min(minGap, tSlots[i] - tSlots[i - 1]);
   const allowed = minGap + 1; // one extra grace day
   const hist = LS.get('tandem_history') || [];
-  // BUG-96: sessions from BEFORE this program started are not this program's history.
+  // False-overdue-on-new-program guard (commit 12c87203): sessions from BEFORE this program started are not this program's history.
   // Without this guard, building a new program while the last old-program session was
   // more than `allowed` days ago flagged the user overdue on day zero of a brand-new
   // plan — the second half of Kerwin's 2026-08-05 report ("I just built a new program
