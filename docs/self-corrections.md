@@ -1956,3 +1956,36 @@ filters is load-bearing. What IS worth carrying forward is the narrower habit: p
 `gh run list --branch <b>` and match the commit in the output, over `--commit <sha>` as a filter,
 because the former fails loudly (wrong branch = visibly wrong rows) and the latter fails silently
 (wrong sha format = zero rows, exit 0).
+
+---
+
+## SC-56 — my CI poller's error path fell through to its success path, so a failed query looked like a finished answer
+
+**What happened (2026-11-10, ~20 minutes after SC-55).** Having fixed the `--commit` filter, I
+wrote a poller whose loop was `if [ "$res" != "WAIT" ]; then print; exit 0; fi`. One `gh` call
+returned an empty body, the Python that parsed it raised `JSONDecodeError`, `$res` came back EMPTY —
+which is not the string `WAIT` — so the loop took its SUCCESS branch, printed nothing, and exited
+**0**. The harness reported the task completed. Both workflows were in fact still running and later
+passed. Had I not re-checked by hand I would have reported a non-result as a result.
+
+**The mechanism, not the trait.** The loop had three possible states — *not yet*, *done*, *the query
+broke* — and only two branches. Anything that was not literally `WAIT` was treated as `done`. An
+error is not a value; a sentinel-based loop that compares against the *waiting* sentinel rather than
+*validating the success shape* is fail-OPEN by construction, and fail-open code reports success
+loudest exactly when it knows least.
+
+> **THE RULE — SC-56.** A polling or retry loop must FAIL CLOSED. Branch on a positively
+> validated success shape ("parsed N>=2 rows, all `completed`"), never on "not the waiting
+> sentinel". A command substitution that captured a crash, a timeout, or an empty body must land in
+> the keep-waiting branch, not the done branch — and the loop must exit NON-ZERO when it stops
+> without a validated answer.
+
+**The part worth sitting with:** I added `[O7]`, an explicit fail-closed canary, to
+`scripts/accessory-derivation-order-smoke.mjs` **in this same session**, precisely so its assertions
+could not pass vacuously on an empty slice. I applied the discipline to the gate I was shipping and
+not to the shell loop I was reporting from. The rule is not "write canaries in gates"; it is that
+anything whose output I will repeat to Kerwin needs one.
+
+**Enforced by:** judgment — not mechanically checkable. Nothing lints my shell. The concrete habit:
+when a loop's result is produced by a parser, make the parser the gate — have it exit non-zero on
+bad input and check `$?`, rather than string-comparing its stdout.
