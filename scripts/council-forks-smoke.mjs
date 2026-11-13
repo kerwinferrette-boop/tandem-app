@@ -91,12 +91,44 @@ check(`[197-d] every reader resolves through it (found ${readers} call sites, ne
   'the definition, the boot accent and the Settings swatch state — if one re-derives locally the rule has two homes again');
 check('[197-e] the picker writes cfg.themeColor and syncs it',
   /cfg\.themeColor\s*=\s*hex/.test(code) && /function applyColorTheme[\s\S]{0,900}?syncToCloud\(/.test(code),
-  'the pick must reach users.theme_color — the column the duel, the dashboard and the takeover read');
-// applyColorTakeover is the owner's aesthetic call; this gate must not be read as blessing a
-// change to it, so it asserts only that it is still THERE and untouched by this fix.
-check('[197-f] applyColorTakeover() is still present and still reads theme_color',
-  /function applyColorTakeover\s*\(/.test(code) && /function applyColorTakeover[\s\S]{0,600}?theme_color/.test(code),
-  'the leader-colour mechanic was deliberately NOT changed — that is Kerwin\'s design call, filed not shipped');
+  'the pick must reach users.theme_color — the column the duel, the dashboard and the owner accent read');
+// [197-f] USED TO assert the opposite: that applyColorTakeover() was still present and
+// untouched, because the leader-colour mechanic was Kerwin's call, filed not shipped. He made
+// the call on 2026-11-13 looking at the live 0-100 screen — "scope it to the duel" — so this
+// now guards the ruling he gave instead of the hold it replaced. See BUG-259 below.
+check('[197-f] the leader-colour takeover is gone, mechanism and all',
+  !/function applyColorTakeover\s*\(/.test(live) && !/applyColorTakeover\s*\(\)/.test(live),
+  'the whole-app repaint in the LEADER\'s colour is back — the partner\'s colour belongs to the duel surfaces only');
+
+// ══════════════ BUG-259 — the accent is the OWNER'S colour; the duel owns the partner's ══════════════
+// Kerwin's design call, 2026-11-13, on the fork BUG-197 filed and left open. The failure he
+// reported: at 0-100 the app repainted entirely in the leader's colour, so BOTH people's
+// surfaces came out one colour and his own never rendered anywhere.
+
+check('[259-a] applyOwnerAccent() exists and is the accent painter',
+  /function applyOwnerAccent\s*\(/.test(code),
+  'the replacement is gone — something must still repaint after syncFromCloud() hydrates cfg');
+
+const ownerFn = code.slice(code.indexOf('function applyOwnerAccent('),
+  code.indexOf('\n}', code.indexOf('function applyOwnerAccent(')) + 2);
+check('[259-b] it resolves through userThemeColor(), the one home',
+  /userThemeColor\(\)/.test(ownerFn),
+  'it re-derives the colour instead of asking the owner — that is a second home for the rule');
+// This is the assertion that catches the takeover creeping back in under a new name.
+check('[259-c] it cannot see the scoreboard at all',
+  !/leaderboard|partnerTargets|total_points|winner/i.test(ownerFn),
+  `the accent painter reads competition state again:\n${ownerFn}`);
+
+// And the duel surfaces must KEEP both colours — scoping the takeover must not have taken
+// the partner's colour out of the one place it belongs.
+const sliceOf = (name) => code.slice(code.indexOf(`function ${name}(`),
+  code.indexOf('\nfunction ', code.indexOf(`function ${name}(`) + 1));
+for (const fn of ['renderDashboard', 'renderDuelSheet']) {
+  const body = sliceOf(fn);
+  check(`[259-e] ${fn}() still reads BOTH colours`,
+    /userTargets\?\.theme_color|ut\?\.theme_color/.test(body) && /partnerTargets\?\.theme_color/.test(body),
+    `${fn} no longer renders one of the two colours — "scoped to the duel" means the duel still SHOWS both`);
+}
 
 // ══════════════ BEHAVIOURAL — run the real functions, do not just match on them ══════════════
 // Static checks above prove the shapes. These prove the behaviour, which is the difference
@@ -120,8 +152,8 @@ function run({ cfgThemeColor, legacyPick }) {
     __painted: null, __synced: false, __store: store,
   };
   vm.createContext(ctx);
-  new vm.Script([grab('userThemeColor'), grab('applyColorTheme'),
-    'this.__api = { userThemeColor, applyColorTheme };'].join('\n')).runInContext(ctx);
+  new vm.Script([grab('userThemeColor'), grab('applyColorTheme'), grab('applyOwnerAccent'),
+    'this.__api = { userThemeColor, applyColorTheme, applyOwnerAccent };'].join('\n')).runInContext(ctx);
   return ctx;
 }
 
@@ -150,7 +182,21 @@ check('[197-k] it paints immediately too (no reload needed)', c.__painted === '#
 check('[197-l] and it does NOT write the old local home', c.__store['tandem_profile']?.colorTheme === undefined,
   `tandem_profile = ${JSON.stringify(c.__store['tandem_profile'])} — the second home is back`);
 
+// Behavioural: the partner is 100 points ahead and the accent must STILL be the owner's.
+// This is the exact live state Kerwin reported from (kerwinferrette 0, Dani 100).
+const d = run({ cfgThemeColor: '#1B5E38' });
+d.dashboardData = {
+  leaderboard: [{ user_id: 'u1', total_points: 0 }, { user_id: 'u2', total_points: 100 }],
+  userTargets: { theme_color: '#1B5E38' },
+  partnerTargets: { theme_color: '#e8547a' },
+};
+d.__painted = null;
+d.__api.applyOwnerAccent();
+check('[259-d] losing 0-100 still paints the OWNER\'s colour app-wide',
+  d.__painted === '#1B5E38',
+  `painted ${d.__painted} — expected #1B5E38. If this is #e8547a the takeover is back`);
+
 console.log(failures === 0
-  ? '\ncouncil-forks-smoke: PASS — BUG-191 deleted at the mechanism, BUG-197 has one home'
+  ? '\ncouncil-forks-smoke: PASS — BUG-191 deleted at the mechanism, BUG-197 has one home, BUG-259 scoped to the duel'
   : `\ncouncil-forks-smoke: ${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

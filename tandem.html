@@ -10251,15 +10251,36 @@ async function loadWeightTrend(uid) {
   return weights.length ? weights.reduce((sum, w) => sum + w, 0) / weights.length : null;
 }
 
-function applyColorTakeover() {
-  const myRow = dashboardData.leaderboard.find(r => r.user_id === currentUser?.id);
-  const theirRow = dashboardData.leaderboard.find(r => r.user_id !== currentUser?.id);
-  const myPts = myRow?.total_points ?? 0;
-  const theirPts = theirRow?.total_points ?? 0;
-  const winnerColor = myPts >= theirPts
-    ? (dashboardData.userTargets?.theme_color || '#18C26A')
-    : (dashboardData.partnerTargets?.theme_color || '#18C26A');
-  applyAccentColor(winnerColor);
+// BUG-259 — the app wears the SIGNED-IN USER'S colour, never the week leader's.
+// Kerwin's design call, 2026-11-13, taken on the fork the BUG-197 council filed and
+// deliberately left open (see userThemeColor()'s header). His words: "scope it to the duel".
+//
+// WHAT THE LEADER-COLOUR TAKEOVER DID: applyAccentColor() rewrites --accent, --accent2,
+// --accent-deep, --accent-dim and --accent-glow at the document root AND reassigns the
+// semantic --green/--green-dim/--teal/--teal-dim to the same hue. Feeding it the LEADER's
+// colour therefore repainted every accent call site in this file plus every green-means-good
+// surface (.sync-dot.synced{background:var(--green)}) in the other person's colour. At a
+// lopsided score the loser's colour had nowhere left to render AT ALL — their score is
+// var(--muted2) by design and they own no winning day dots — so both people's surfaces came
+// out one colour and the app read as having no owner. Reported from the live app at 0-100.
+//
+// "SCOPED TO THE DUEL" MEANS EXACTLY THIS: the two duel surfaces already paint both people's
+// colours inline from their own rows and are deliberately untouched here — renderDashboard()'s
+// scoreboard (bar fill, both scores, day dots, incl. the 50/50 'both' split) and
+// renderDuelSheet(). They remain the ONLY place the partner's colour appears.
+//
+// WHY THIS STILL HAS TO RUN rather than just being deleted: boot paints the accent at the
+// applyAccentColor(userThemeColor()) call below, which happens BEFORE syncFromCloud() rebuilds
+// cfg.themeColor from the users row. On a device with no local cfg yet, the boot paint uses the
+// default and nothing repaints afterwards — the takeover was masking that. Verified by running,
+// not by reading.
+//
+// The colour resolves through userThemeColor(), the one home (BUG-197). It is NOT re-derived
+// from dashboardData.userTargets here: cfgFromUserRow() already rebuilds cfg.themeColor from
+// that same users.theme_color row, so reading the row again would be a second home for a rule
+// that has one.
+function applyOwnerAccent() {
+  applyAccentColor(userThemeColor());
 }
 
 async function loadDashboard() {
@@ -10358,7 +10379,7 @@ async function loadDashboard() {
   } catch(e) {
     console.warn('Dashboard load error:', e);
   } finally {
-    applyColorTakeover();
+    applyOwnerAccent();
     renderDashboard();
     renderYouTab(); // Wave 4: the You tab renders from the same dashboardData state
     if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
@@ -10375,7 +10396,7 @@ async function refreshDashboard() {
       .select('*').eq('user_id', currentUser.id).eq('snapshot_date', today).maybeSingle();
     dashboardData.health = snap || null;
     dashboardData.weightTrend7d = await loadWeightTrend(currentUser.id); // EPIC-6
-    applyColorTakeover();
+    applyOwnerAccent();
     renderDashboard();
     showToast(snap ? 'Health data refreshed ✓' : 'No new data yet');
   } catch(e) {
@@ -11278,7 +11299,7 @@ function applyAccentColor(hex) {
 // BUG-197 — ONE HOME for "what colour is this user", and this function is the only reader.
 // Council verdict, unanimous 2026-10-13: docs/council/council-forks-2026-10-13-bug191-197-202.md.
 // `users.theme_color` owns it. It is the only home that syncs, the only one BOTH partners read
-// (the duel and dashboard read it for each of them), and the only one applyColorTakeover()
+// (the duel and dashboard read it for each of them), and the only one applyOwnerAccent()
 // consults. cfg.themeColor is its in-memory/localStorage mirror, written by onboarding and
 // rebuilt from the row by cfgFromUserRow().
 // `profile.colorTheme` was a SECOND, local-only home the Settings picker wrote instead. It is
@@ -11290,9 +11311,12 @@ function applyAccentColor(hex) {
 // every colour pick fired a PostgREST write that failed with 42703 and was swallowed in
 // silence (supabase-js resolves with {error}; the call was unawaited and uncaught). That write
 // is gone. No migration is needed because there is no column to drop.
-// NOT TOUCHED, deliberately: applyColorTakeover() (the whole app wears the leader's colour).
-// The council split on whether that should be scoped to the duel or extended app-wide, and
-// under `design_changes_hold` that is Kerwin's aesthetic call, not an agent's. It is filed.
+// RESOLVED 2026-11-13 (BUG-259), was: "NOT TOUCHED, deliberately: applyColorTakeover() (the
+// whole app wears the leader's colour). The council split on whether that should be scoped to
+// the duel or extended app-wide, and under `design_changes_hold` that is Kerwin's aesthetic
+// call, not an agent's. It is filed." Kerwin made the call on the live 0-100 screen: scope it
+// to the duel. applyColorTakeover() is now applyOwnerAccent() (:10282) and paints the
+// SIGNED-IN USER's colour; the partner's colour appears only on the two duel surfaces.
 function userThemeColor() {
   if (typeof cfg !== 'undefined' && cfg && cfg.themeColor) return cfg.themeColor;
   const legacy = (LS.get('tandem_profile') || {}).colorTheme;   // pre-BUG-197 picks
