@@ -123,7 +123,9 @@ if (sosSrc) {
   rawStore['tandem_active_session_id'] = 'sess-1';   // resume path, local draft empty
   // BUG-261: the resume path now filters out skipped/abandoned rows through isVoidSessionType().
   const voidSrc = (code.match(/const VOID_SESSION_TYPES = [^\n]*\nfunction isVoidSessionType[^\n]*/) || [''])[0];
-  await new vm.Script(voidSrc + '\n' + sosSrc + '\nthis.__p = startOrResumeSession();').runInContext(ctx);
+  // BUG-264: ...and never into a row from before the current program.
+  const oldSrc = ['function isBeforeProgramStart(', 'function isFromBeforeCurrentProgram('].map(m => { const i = code.indexOf(m); return i === -1 ? '' : code.slice(i, code.indexOf('\n}', i) + 2); }).join('\n');
+  await new vm.Script(voidSrc + '\n' + oldSrc + '\n' + sosSrc + '\nthis.__p = startOrResumeSession();').runInContext(ctx);
   await ctx.__p;
   check('[C1] resume with empty local draft seeds the LS draft from the cloud row',
     store['tandem_session_notes_draft'] === 'felt strong, shoulder ok',
