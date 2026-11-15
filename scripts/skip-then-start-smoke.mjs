@@ -53,6 +53,7 @@ const src = [
   grab('isProgramHistoryRow', /function isProgramHistoryRow\([\s\S]*?\n\}/),
   grab('isVoidHistoryRow', /function isVoidHistoryRow\([\s\S]*?\n\}/),
   grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/),
+  grab('isFromBeforeCurrentProgram', /function isFromBeforeCurrentProgram\([\s\S]*?\n\}/),
   grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/),
   grab('programQueuePosition', /function programQueuePosition\(\) \{[\s\S]*?\n\}/),
   grab('deriveProgramWeek', /function deriveProgramWeek\(\) \{[\s\S]*?\n\}/),
