@@ -5839,12 +5839,23 @@ async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
   const storedId = LSraw.get('tandem_active_session_id');
   if (storedId) {
-    const { data } = await sb.from('workout_sessions')
+    const { data, error: lookupError } = await sb.from('workout_sessions')
       .select('id, notes')
       .eq('id', storedId)
       .eq('user_id', currentUser.id)
       .eq('completed', false)
       .maybeSingle();
+    // BUG-260: a lookup ERROR is "unknown", not "no such session". Treating it as stale
+    // deleted the pointer to a VALID open session and minted a second empty row, orphaning
+    // the first and any sets on it. Keep the stored id and let the caller retry/surface it.
+    // Council (2026-11-15): a DETERMINISTIC client error — 22P02 invalid_text_representation, i.e. a
+    // malformed (non-uuid) stored id — can never succeed on retry, so it is stale by construction and
+    // keeps the old self-heal below. Everything else (network, 5xx, RLS 42501, auth) is unknown: fail closed.
+    const staleByConstruction = lookupError && lookupError.code === '22P02';
+    if (lookupError && !staleByConstruction) {
+      console.warn('[BUG-260] resume lookup failed — keeping stored session id, not minting', lookupError);
+      throw lookupError;
+    }
     if (data?.id) {
       if (!LSraw.get('tandem_session_start_time')) {
         LSraw.set('tandem_session_start_time', String(Date.now()));
