@@ -123,10 +123,14 @@ check('[259-c] it cannot see the scoreboard at all',
 // the partner's colour out of the one place it belongs.
 const sliceOf = (name) => code.slice(code.indexOf(`function ${name}(`),
   code.indexOf('\nfunction ', code.indexOf(`function ${name}(`) + 1));
+// BUG-265 moved the two-colour read into ONE helper, duelSideColors(), that both surfaces
+// call; the check follows the read there instead of accepting a renderer that reads neither.
+const readsBoth = (src) => /userTargets\?\.theme_color|ut\?\.theme_color/.test(src) && /partnerTargets\?\.theme_color/.test(src);
+const colorsHelper = sliceOf('duelSideColors');
 for (const fn of ['renderDashboard', 'renderDuelSheet']) {
   const body = sliceOf(fn);
   check(`[259-e] ${fn}() still reads BOTH colours`,
-    /userTargets\?\.theme_color|ut\?\.theme_color/.test(body) && /partnerTargets\?\.theme_color/.test(body),
+    readsBoth(body) || (/duelSideColors\(\)/.test(body) && readsBoth(colorsHelper)),
     `${fn} no longer renders one of the two colours — "scoped to the duel" means the duel still SHOWS both`);
 }
 

@@ -10529,11 +10529,13 @@ async function loadDashboard() {
     if (userRow?.partner_id) {
       const pid = userRow.partner_id;
 
-      // 3a. Leaderboard rows (do NOT select theme_color — it's broken in the view)
+      // 3a. Leaderboard rows. theme_color comes from users (3b), and the streak from the
+      // streaks rows above through liveStreak() (BUG-265): the view's current_streak is the
+      // raw last-credited value, so it is not selected and nothing can render it stale.
       // avg_steps added Wave 3: the duel sheet shows the steps component's input; the
       // steps POINTS themselves are never recomputed client-side (the view owns that rule).
       const { data: lb } = await sb.from('competition_leaderboard')
-        .select('user_id, name, sessions_completed, prs_earned, avg_steps, current_streak, total_points')
+        .select('user_id, name, sessions_completed, prs_earned, avg_steps, total_points')
         .in('user_id', [uid, pid]);
       dashboardData.leaderboard = lb || [];
 
@@ -10617,6 +10619,35 @@ async function refreshDashboard() {
   if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
 }
 
+// ── BUG-265: the duel's two colours and its streak, one home for both duel surfaces ──
+// Kerwin 2026-11-15, on the Home duel card showing Dani's pink against a grey bar: "This
+// also was supposed to be our 2 colors battling it out, not pink & grey?" Both renderers
+// greyed the LOSER's points ('var(--muted2)') and painted the whole bar in the leader's
+// colour, so the trailing partner's colour vanished. Each side now always wears its own
+// users.theme_color, and the bar is a two-colour split sized by each side's share.
+// If both partners picked the same colour, the partner side falls back to grey so the
+// split stays readable: two identical colours cannot "battle it out".
+function duelSideColors() {
+  const mine = dashboardData.userTargets?.theme_color || '#18C26A';
+  let theirs = dashboardData.partnerTargets?.theme_color || '#888888';
+  if (String(theirs).toLowerCase() === String(mine).toLowerCase()) theirs = '#888888';
+  return { mine, theirs };
+}
+// My share of the bar, left to right, in my colour; the rest in theirs. 50/50 at 0-0.
+function duelBarBackground(myPts, theirPts, colors) {
+  const total = (myPts || 0) + (theirPts || 0);
+  const pct = total > 0 ? Math.round(((myPts || 0) / total) * 1000) / 10 : 50;
+  return `linear-gradient(90deg, ${colors.mine} 0 ${pct}%, ${colors.theirs} ${pct}% 100%)`;
+}
+// Kerwin 2026-11-15: "Still reads how like I didn't log a workout, then also says that I
+// did". The duel showed Sessions 0 beside a "2 day" streak: the view's current_streak is
+// the RAW streaks.current_streak_days, frozen at the last credited day (his was Nov 5).
+// liveStreak() is the one rule for "is that streak still alive" (local date, see its
+// comment), so the duel reads streaks through it, never the view's raw column.
+function duelStreak(userId) {
+  return liveStreak(dashboardData.streakRows?.[userId]);
+}
+
 function renderDashboard() {
   const h = dashboardData.health;
   const ut = dashboardData.userTargets;
@@ -10673,8 +10704,9 @@ function renderDashboard() {
   const hasPartner = dashboardData.partnerTargets != null;
   const iWin = myPts >= theirPts;
 
-  const myColor = ut?.theme_color || '#18C26A';
-  const theirColor = dashboardData.partnerTargets?.theme_color || '#888888';
+  const duelColors = duelSideColors(); // BUG-265: both sides in their own colour
+  const myColor = duelColors.mine;
+  const theirColor = duelColors.theirs;
 
   const myNameEl = document.getElementById('dashCompMyName');
   const theirNameEl = document.getElementById('dashCompTheirName');
@@ -10696,13 +10728,11 @@ function renderDashboard() {
   } else {
     setPts(myPtsEl, myPts);
     setPts(theirPtsEl, theirPts);
-    if (myPtsEl) myPtsEl.style.color = iWin ? myColor : 'var(--muted2)';
-    if (theirPtsEl) theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)';
-    const total = myPts + theirPts;
-    const barPct = total > 0 ? (iWin ? myPts / total : theirPts / total) * 100 : 50;
+    if (myPtsEl) myPtsEl.style.color = myColor;
+    if (theirPtsEl) theirPtsEl.style.color = theirColor;
     if (barFill) {
-      barFill.style.width = barPct + '%';
-      barFill.style.background = iWin ? myColor : theirColor;
+      barFill.style.width = '100%';
+      barFill.style.background = duelBarBackground(myPts, theirPts, duelColors);
     }
     if (noteEl) {
       noteEl.innerHTML = '';
@@ -10995,8 +11025,9 @@ function renderDuelSheet() {
   if (emptyEl) emptyEl.style.display = 'none';
 
   const theirName = theirRow.name || dashboardData.partnerTargets?.name || 'Partner';
-  const myColor = dashboardData.userTargets?.theme_color || '#18C26A';
-  const theirColor = dashboardData.partnerTargets?.theme_color || '#888888';
+  const duelColors = duelSideColors(); // BUG-265: same two colours as the Home card
+  const myColor = duelColors.mine;
+  const theirColor = duelColors.theirs;
   const myPts = myRow.total_points ?? 0;
   const theirPts = theirRow.total_points ?? 0;
   const iWin = myPts >= theirPts;
@@ -11008,8 +11039,8 @@ function renderDuelSheet() {
   if (theirNameEl) theirNameEl.textContent = theirName;
   const myPtsEl = document.getElementById('duelMyPts');
   const theirPtsEl = document.getElementById('duelTheirPts');
-  if (myPtsEl) { myPtsEl.textContent = myPts; myPtsEl.style.color = iWin ? myColor : 'var(--muted2)'; }
-  if (theirPtsEl) { theirPtsEl.textContent = theirPts; theirPtsEl.style.color = !iWin ? theirColor : 'var(--muted2)'; }
+  if (myPtsEl) { myPtsEl.textContent = myPts; myPtsEl.style.color = myColor; }
+  if (theirPtsEl) { theirPtsEl.textContent = theirPts; theirPtsEl.style.color = theirColor; }
   const leadEl = document.getElementById('duelLead');
   if (leadEl) {
     leadEl.textContent = myPts === theirPts ? 'EVEN'
@@ -11027,7 +11058,7 @@ function renderDuelSheet() {
       sessionPts, prPts,
       stepsAvg: row.avg_steps ?? 0,
       stepsPts: (row.total_points ?? 0) - sessionPts - prPts,
-      streak: row.current_streak ?? 0,
+      streak: duelStreak(row.user_id), // BUG-265: live streak, never the view's raw column
     };
   };
   const mine = srcOf(myRow), theirs = srcOf(theirRow);
