@@ -5885,7 +5885,7 @@ async function startOrResumeSession() {
   const storedId = LSraw.get('tandem_active_session_id');
   if (storedId) {
     const { data: _resumeRow, error: lookupError } = await sb.from('workout_sessions')
-      .select('id, notes, session_type')
+      .select('id, notes, session_type, session_date')
       .eq('id', storedId)
       .eq('user_id', currentUser.id)
       .eq('completed', false)
@@ -5902,7 +5902,10 @@ async function startOrResumeSession() {
       throw lookupError;
     }
     // BUG-261: a skipped or abandoned row is closed, not open — never resume a workout into it.
-    const data = _resumeRow && !isVoidSessionType(_resumeRow.session_type) ? _resumeRow : null;
+    // BUG-264: nor into a row from before the current program — new sets would be filed
+    // under an old date, and an old workout must not become part of the current program.
+    const data = _resumeRow && !isVoidSessionType(_resumeRow.session_type)
+      && !isFromBeforeCurrentProgram(_resumeRow) ? _resumeRow : null;
     if (data?.id) {
       if (!LSraw.get('tandem_session_start_time')) {
         LSraw.set('tandem_session_start_time', String(Date.now()));
@@ -10108,6 +10111,28 @@ function isBeforeProgramStart(h, d, start) {
   return false;
 }
 
+// ── isFromBeforeCurrentProgram() — BUG-264, Kerwin's ruling of 2026-11-15 ──
+// Verbatim: "It should log in my history, but not move where I'm at" / "Make that the
+// rule for old workouts that get saved across the app" / "Not just one offs" / "And
+// should go across Dani, myself, & anyone else who wants to use the app".
+// A workout dated before the user's CURRENT program start — of any session type, saved
+// or credited by any path (a late Finish, the server's 6-hour auto-finish, a sync, a
+// hand repair) — stays in history, streak, PRs and volume, and never moves the program
+// position. The test itself lives in isBeforeProgramStart() (one home); this is its
+// adapter for a raw row, reading the program start from THIS user's own cfg — nothing is
+// keyed to any account. Readers: completedSessionCount(), programQueuePosition() and
+// getOverdueDays() (which call isBeforeProgramStart directly on parsed history), and,
+// through this function, the two pointer caches and the resume path.
+// Guarded by scripts/old-workout-position-smoke.mjs.
+function isFromBeforeCurrentProgram(row) {
+  const start = cfg?.startDate ? new Date(cfg.startDate + 'T00:00:00') : null;
+  const raw = row?.session_date || row?.date;
+  if (!start || isNaN(start) || !raw) return false;
+  const d = row.session_date ? new Date(String(row.session_date).slice(0, 10) + 'T00:00:00') : new Date(raw);
+  if (isNaN(d)) return false;
+  return isBeforeProgramStart(row, d, start);
+}
+
 // Completed sessions on/after the program start. The single counter both the week
 // and the day-queue derive from, so they can never disagree about where he is.
 // A session the user did not finish is not volume and does not advance anything —
@@ -10382,7 +10407,8 @@ async function syncFromCloud() {
     // so idx === -1 and the pointer would never advance at all. The one-off would shadow
     // the real session and the same workout would be served again tomorrow.
     const lastDone = sessions?.find(s => s.completed && s.session_date
-      && s.session_type !== ONEOFF_SESSION_TYPE);
+      && s.session_type !== ONEOFF_SESSION_TYPE
+      && !isFromBeforeCurrentProgram(s)); // BUG-264: an old workout never moves the pointer
     if (lastDone) {
       const today = localDateStr(); // BUG-018/027: local day, not UTC
       if (lastDone.session_date <= today) {
@@ -11694,7 +11720,7 @@ function refreshAvatarPreview(){
           .order('session_date', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (lastSession) {
+        if (lastSession && !isFromBeforeCurrentProgram(lastSession)) { // BUG-264
           const today = localDateStr(); // BUG-93/R2: local day, not UTC
           if (lastSession.session_date <= today) {
             const prog = getActiveProgram();
