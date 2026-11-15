@@ -73,6 +73,12 @@ const EXISTING = {
   'Flat Barbell Press': rm(155, 8),    // trigger-equal
   'Barbell Back Squat': 400,           // genuinely higher historical PR — must not regress
 };
+// BUG-263: the stored lift behind each EXISTING best. personal_records.achieved_* are NOT NULL.
+const EXISTING_LIFT = {
+  'Barbell Row':        { achieved_weight_lbs: 135, achieved_reps: 10, achieved_date: '2026-09-20' },
+  'Flat Barbell Press': { achieved_weight_lbs: 155, achieved_reps: 8,  achieved_date: '2026-09-20' },
+  'Barbell Back Squat': { achieved_weight_lbs: 335, achieved_reps: 6,  achieved_date: '2026-06-01' },
+};
 
 function makeCtx() {
   const captured = { upserts: [], userUpdates: [] };
@@ -93,7 +99,7 @@ function makeCtx() {
           if (this._t === 'sets') return Promise.resolve({ data: SESSION_SETS }).then(res);
           if (this._t === 'personal_records') {
             return Promise.resolve({
-              data: Object.entries(EXISTING).map(([exercise_name, v]) => ({ exercise_name, best_estimated_1rm_lbs: v }))
+              data: Object.entries(EXISTING).map(([exercise_name, v]) => ({ exercise_name, best_estimated_1rm_lbs: v, ...EXISTING_LIFT[exercise_name] }))
             }).then(res);
           }
           return Promise.resolve({ data: null }).then(res);
@@ -105,6 +111,7 @@ function makeCtx() {
   const ctx = {
     sb, console,
     cfg: { goal: 'build_muscle', weeks: 8 },
+    localDateStr: () => '2026-11-15',
     Math, Object, Promise, Number, parseFloat, parseInt,
   };
   vm.createContext(ctx);
@@ -129,6 +136,14 @@ check('trigger-equal exercise IS written (the case the old filter silently dropp
       !!byName['Barbell Row'] && byName['Barbell Row'].best_estimated_1rm_lbs === rm(135, 10));
 check('a genuinely higher historical PR is NOT regressed (400 stays 400)',
       !!byName['Barbell Back Squat'] && byName['Barbell Back Squat'].best_estimated_1rm_lbs === 400);
+// BUG-263: an upsert is checked as an INSERT first, so a row missing a NOT NULL column
+// 400s (23502) and NOTHING lands — which is what happened to every calibration write in prod.
+const NOT_NULL = ['user_id', 'exercise_name', 'best_estimated_1rm_lbs', 'achieved_weight_lbs', 'achieved_reps', 'achieved_date'];
+check('BUG-263: every row carries every NOT NULL personal_records column (an upsert is an INSERT first)',
+      rows.length > 0 && rows.every(r => NOT_NULL.every(k => r[k] != null)));
+check('BUG-263: a kept historical best keeps the lift that earned it (335 x 6 on 2026-06-01), not this session\'s',
+      !!byName['Barbell Back Squat'] && byName['Barbell Back Squat'].achieved_weight_lbs === 335
+      && byName['Barbell Back Squat'].achieved_reps === 6 && byName['Barbell Back Squat'].achieved_date === '2026-06-01');
 check('users.calibration_complete is still marked', captured.userUpdates.some(u => u.patch?.calibration_complete === true));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -119,6 +119,8 @@ const voidTypesSrc = grab('VOID_SESSION_TYPES', /const VOID_SESSION_TYPES = [^\n
 const ivhrSrc = grab('isVoidHistoryRow', /function isVoidHistoryRow\([\s\S]*?\n\}/);
 const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/);
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
+// BUG-262: the queue position (week + day) now replays skips through programQueuePosition().
+const pqpSrc = [grab('programQueuePosition', /function programQueuePosition\(\) \{[\s\S]*?\n\}/)].join('\n');
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
 const twinSrc = grab('_historyIsMidnightTwin', /const HISTORY_TWIN_MAX_MS[\s\S]*?function _historyIsMidnightTwin\([\s\S]*?\n\}/);
 const hdkSrc = grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/);
@@ -137,7 +139,7 @@ const exLabelSrc = grab('historyExLabel', /function historyExLabel\([\s\S]*?\n\}
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, voidTypesSrc, ldsSrc, ibpsSrc, iphrSrc, ivhrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc,
+  vm.runInContext([oneoffSrc, voidTypesSrc, ldsSrc, ibpsSrc, iphrSrc, ivhrSrc, cscSrc, pqpSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc,
     twinSrc, dedupSrc, hddSrc, exFromSetsSrc, rowFromCloudSrc, exLabelSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {

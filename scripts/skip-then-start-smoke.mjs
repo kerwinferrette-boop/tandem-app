@@ -26,6 +26,8 @@
  *   [H2] an open cloud twin hydrated mid-workout cannot uncount the finished local row.
  *   [H3] a cloud row the server completed later (auto-finish / hand repair) PROMOTES the
  *        stale local completed:false copy, and the queue advances.
+ *   [Q1]-[Q6] BUG-262: Skip ahead forfeits the slot it skipped (and only that one): the queue
+ *        and week move on, a stale or duplicate skip moves nothing, a skip is never volume.
  *   [M1] migrations/0026 frees the slot for 'skipped' and still exempts one-offs.
  *   [M2] migrations/0027 sweeps from the LAST SET, closes zero-set rows without credit,
  *        excludes one-offs and skips, revokes client EXECUTE, and is scheduled.
@@ -52,6 +54,8 @@ const src = [
   grab('isVoidHistoryRow', /function isVoidHistoryRow\([\s\S]*?\n\}/),
   grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/),
   grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/),
+  grab('programQueuePosition', /function programQueuePosition\(\) \{[\s\S]*?\n\}/),
+  grab('deriveProgramWeek', /function deriveProgramWeek\(\) \{[\s\S]*?\n\}/),
   grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/),
   grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/),
   grab('_historyRowKey', /function _historyRowKey\([\s\S]*?\n\}/),
@@ -211,6 +215,28 @@ const skipRow = (d) => ({ user_id: UID, session_date: d, day_type: 'day2', compl
     ctx.LS.set('tandem_history', merged);
     check('[H3]', before === 'day2' && ctx.nextProgramDayKey() === 'day3',
       `a server-side completion reaches the queue (before=${before}, after=${ctx.nextProgramDayKey()})`);
+  }
+
+  { // [Q1]-[Q6] BUG-262: "Skip ahead" forfeits the served slot
+    const ctx = ctxFor(null);
+    const run = (days, hist) => { ctx.cfg.days = days; ctx.LS.set('tandem_history', hist);
+      return { next: ctx.nextProgramDayKey(), week: ctx.deriveProgramWeek(), done: ctx.completedSessionCount() }; };
+    const done = (date, day, id) => ({ id, session_date: date, day, exercises: { a: [{ set: 1, w: 100, r: 5 }] } });
+    const skip = (date, day, id) => ({ id, session_date: date, day, completed: false, skipped: true, exercises: {} });
+    let r = run(4, [done('2026-11-01', 'day1', 1000), skip('2026-11-02', 'day2', 2000)]);
+    check('[Q1]', r.next === 'day3' && r.done === 1, `skipping the served day moves the queue on (next=${r.next}, completed=${r.done})`);
+    r = run(5, [done('2026-11-04', 'day1', 1000), done('2026-11-05', 'day2', 2000), skip('2026-11-15', 'day2', 3000)]);
+    const stale = r.next;
+    r = run(5, [done('2026-11-04', 'day1', 1000), done('2026-11-05', 'day2', 2000), skip('2026-11-15', 'day2', 3000), done('2026-11-15', 'day3', 4000)]);
+    check('[Q2]', stale === 'day3' && r.next === 'day4', `a skip of an already-done day forfeits nothing (Kerwin's 2026-11-15 case: before day3=${stale}, after=${r.next})`);
+    r = run(4, [done('2026-11-01', 'day1', 1000), skip('2026-11-02', 'day2', 2000),
+      { id: 'cloud-skip', session_date: '2026-11-02', day_type: 'day2', day: 'day2', completed: false, session_type: 'skipped', created_at: '2026-11-02T18:00:00Z' }]);
+    check('[Q3]', r.next === 'day3', `a duplicate skip row moves the queue once (next=${r.next})`);
+    check('[Q4]', r.done === 1, `a skip never counts as a completed session (completed=${r.done})`);
+    r = run(4, [done('2026-11-01', 'day1', 1), done('2026-11-02', 'day2', 2), done('2026-11-03', 'day3', 3), skip('2026-11-04', 'day4', 4)]);
+    check('[Q5]', r.next === 'day1' && r.week === 2, `skipping the week's last workout starts the next week (next=${r.next}, week=${r.week})`);
+    r = run(4, [done('2026-11-01', 'day1', 1)]);
+    check('[Q6]', r.next === 'day2', `a missed day with no skip is still delayed, not dropped (next=${r.next})`);
   }
 
   { // [M1] [M2]
