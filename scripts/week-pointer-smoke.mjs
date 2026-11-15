@@ -55,6 +55,7 @@ function run({ stored, days, weeks, completed, currentWeek }) {
     LS: { get: (k) => store[k], set: (k, v) => { store[k] = v; } },
     cfg: days == null ? {} : { days, weeks },
     completedSessionCount: () => completed,
+    programQueuePosition: () => completed, // BUG-262: the week derives from the queue position
     renderTracker: () => {},
     currentWeek,
   };

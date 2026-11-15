@@ -62,6 +62,8 @@ const gwsSrc = grab('getWeekSchedule', /function getWeekSchedule\(\) \{[\s\S]*?\
 const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/);
 const iphrSrc = grab('isProgramHistoryRow', /function isProgramHistoryRow\([\s\S]*?\n\}/);
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
+// BUG-262: the queue position (week + day) now replays skips through programQueuePosition().
+const pqpSrc = [grab('VOID_SESSION_TYPES', /const VOID_SESSION_TYPES = [^\n]*\nfunction isVoidSessionType[^\n]*/), grab('isVoidHistoryRow', /function isVoidHistoryRow\([\s\S]*?\n\}/), grab('programQueuePosition', /function programQueuePosition\(\) \{[\s\S]*?\n\}/)].join('\n');
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
 const gpdnSrc = grab('getProgramDayNumber', /function getProgramDayNumber\(\) \{[\s\S]*?\n\}/);
 const gpdlSrc = grab('getProgramDayLabel', /function getProgramDayLabel\(\) \{[\s\S]*?\n\}/);
@@ -96,7 +98,7 @@ function buildContext() {
   vm.createContext(ctx);
   vm.runInContext(fixedDateSrc, ctx);
   vm.runInContext(
-    [oneoffSrc, recovSrc, mgflSrc, cpdSrc, cwcSrc, localDateStrSrc, cdbSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, gwsSrc, gpdnSrc, gpdlSrc,
+    [oneoffSrc, recovSrc, mgflSrc, cpdSrc, cwcSrc, localDateStrSrc, cdbSrc, ibpsSrc, iphrSrc, cscSrc, pqpSrc, npdkSrc, gwsSrc, gpdnSrc, gpdlSrc,
      'this.Date = FixedDate;',
      'this.ONEOFF_SESSION_TYPE = ONEOFF_SESSION_TYPE;',
      'this.nextProgramDayKey = nextProgramDayKey; this.getProgramDayNumber = getProgramDayNumber; this.getProgramDayLabel = getProgramDayLabel;',
