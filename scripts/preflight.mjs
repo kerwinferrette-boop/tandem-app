@@ -174,7 +174,12 @@ checked('git ls-remote --heads origin', `${remoteBranches.length} remote branch(
 // branch whose tip sha differed from main's — 23 of 25 — which is precisely the kind
 // of alarm a reader learns to scroll past. A check nobody reads is the protocol
 // failure this script exists to fix, wearing a different hat.
-const merged = [], unmerged = [], unfetched = [];
+// BUG-241: a third bucket. A branch AHEAD of main whose tree is byte-identical to main's
+// carries no content at all (an empty commit, a restore-then-revert, a merge that resolved to
+// main's tree). Reporting it as "real unmerged work" is a false alarm on the one check whose
+// value is that nobody scrolls past it. Tree equality is the ONLY test, never a subject line.
+const merged = [], unmerged = [], treeIdentical = [], unfetched = [];
+const mainTree = git('rev-parse', 'origin/main^{tree}');
 for (const line of (remote ? remote.split('\n').filter(Boolean) : [])) {
   const [sha, ref] = line.split('\t');
   const name = ref.replace('refs/heads/', '');
@@ -188,9 +193,15 @@ for (const line of (remote ? remote.split('\n').filter(Boolean) : [])) {
       return true;
     } catch { return false; }
   })();
-  (isAncestor ? merged : unmerged).push({ sha, name });
+  if (isAncestor) { merged.push({ sha, name }); continue; }
+  const tree = git('rev-parse', `${sha}^{tree}`);
+  if (tree && mainTree && tree === mainTree) treeIdentical.push({ sha, name, tree });
+  else unmerged.push({ sha, name });
 }
-checked('  ↳ branch triage', `${merged.length} merged · ${unmerged.length} UNMERGED · ${unfetched.length} unfetched`);
+checked('  ↳ branch triage', `${merged.length} merged · ${unmerged.length} UNMERGED · ${treeIdentical.length} tree-identical · ${unfetched.length} unfetched`);
+for (const b of treeIdentical) {
+  checked('  ↳ tree-identical to main (no content, informational)', `${b.sha.slice(0, 7)}  ${b.name}  tree ${b.tree.slice(0, 7)}`);
+}
 if (unmerged.length) {
   const SHOW = process.argv.includes('--branches') ? unmerged.length : 5;
   flag(`${unmerged.length} remote branch(es) carry commits NOT on main — real unmerged work:\n` +
