@@ -1721,6 +1721,9 @@ try {
   for (const [fn, why] of [
     ['completedSessionCount', 'the week counter and day queue would count a one-off as an extra program day ("it should not count as an extra day")'],
     ['getOverdueDays', 'an extra arm day would reset the clock that says the PRESCRIBED session is late ("overdue should ignore one-offs")'],
+    // BUG-262: since skips forfeit their slot, the week and day queue derive from this
+    // replay, not from completedSessionCount() directly — so it is a position consumer too.
+    ['programQueuePosition', 'a one-off would occupy a program slot in the queue the week and day derive from'],
   ]) {
     // Lazy to the first brace in column 0, which for a top-level function is its own
     // closing brace. The cap is generous because both bodies carry long provenance

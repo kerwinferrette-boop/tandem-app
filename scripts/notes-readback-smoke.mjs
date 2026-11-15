@@ -121,7 +121,9 @@ if (sosSrc) {
   };
   vm.createContext(ctx);
   rawStore['tandem_active_session_id'] = 'sess-1';   // resume path, local draft empty
-  await new vm.Script(sosSrc + '\nthis.__p = startOrResumeSession();').runInContext(ctx);
+  // BUG-261: the resume path now filters out skipped/abandoned rows through isVoidSessionType().
+  const voidSrc = (code.match(/const VOID_SESSION_TYPES = [^\n]*\nfunction isVoidSessionType[^\n]*/) || [''])[0];
+  await new vm.Script(voidSrc + '\n' + sosSrc + '\nthis.__p = startOrResumeSession();').runInContext(ctx);
   await ctx.__p;
   check('[C1] resume with empty local draft seeds the LS draft from the cloud row',
     store['tandem_session_notes_draft'] === 'felt strong, shoulder ok',

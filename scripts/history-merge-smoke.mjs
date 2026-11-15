@@ -114,8 +114,13 @@ const grab = (name, re) => { const m = html.match(re); if (!m) throw new Error(`
 const oneoffSrc = grab('ONEOFF_SESSION_TYPE', /const ONEOFF_SESSION_TYPE = '[^']*';/);
 const ldsSrc = grab('localDateStr', /function localDateStr\([\s\S]*?\n\}/);
 const iphrSrc = grab('isProgramHistoryRow', /function isProgramHistoryRow\([\s\S]*?\n\}/);
+// BUG-261: _historyRowKey()/dedupe/the midnight-twin test now read the void-row predicate.
+const voidTypesSrc = grab('VOID_SESSION_TYPES', /const VOID_SESSION_TYPES = [^\n]*\nfunction isVoidSessionType[^\n]*/);
+const ivhrSrc = grab('isVoidHistoryRow', /function isVoidHistoryRow\([\s\S]*?\n\}/);
 const ibpsSrc = grab('isBeforeProgramStart', /function isBeforeProgramStart\([\s\S]*?\n\}/);
 const cscSrc = grab('completedSessionCount', /function completedSessionCount\(\) \{[\s\S]*?\n\}/);
+// BUG-262: the queue position (week + day) now replays skips through programQueuePosition().
+const pqpSrc = [grab('programQueuePosition', /function programQueuePosition\(\) \{[\s\S]*?\n\}/)].join('\n');
 const npdkSrc = grab('nextProgramDayKey', /function nextProgramDayKey\(\) \{[\s\S]*?\n\}/);
 const twinSrc = grab('_historyIsMidnightTwin', /const HISTORY_TWIN_MAX_MS[\s\S]*?function _historyIsMidnightTwin\([\s\S]*?\n\}/);
 const hdkSrc = grab('_historyDateKey', /function _historyDateKey\([\s\S]*?\n\}/);
@@ -134,7 +139,7 @@ const exLabelSrc = grab('historyExLabel', /function historyExLabel\([\s\S]*?\n\}
 function buildContext() {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext([oneoffSrc, ldsSrc, ibpsSrc, iphrSrc, cscSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc,
+  vm.runInContext([oneoffSrc, voidTypesSrc, ldsSrc, ibpsSrc, iphrSrc, ivhrSrc, cscSrc, pqpSrc, npdkSrc, hdkSrc, hrkSrc, hskSrc,
     twinSrc, dedupSrc, hddSrc, exFromSetsSrc, rowFromCloudSrc, exLabelSrc, mergeSrc].join('\n'), ctx);
   const store = { tandem_history: [] };
   ctx.LS = {

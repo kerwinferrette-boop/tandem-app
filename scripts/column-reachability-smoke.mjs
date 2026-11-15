@@ -62,14 +62,17 @@ import fs from 'fs';
 // SERVER_SIDE: verified 2026-09-30 against pg_proc/pg_policy on project
 // zsvktcvqmppsshtpeljt. These are real reads; the gate simply cannot see them.
 const SERVER_SIDE = {
-  'personal_records.achieved_reps':        'trigger sets_apply_1rm_and_pr',
-  'personal_records.achieved_weight_lbs':  'trigger sets_apply_1rm_and_pr',
+  // `personal_records.achieved_reps` / `achieved_weight_lbs` sat here (trigger
+  // sets_apply_1rm_and_pr). Removed 2026-11-15: BUG-263's calibration write reads them
+  // CLIENT-side to keep the lift that earned a stored best. The trigger read is still real.
   // `sets.estimated_1rm_lbs` sat here (trigger sets_apply_1rm_and_pr). Removed
   // 2026-09-30: BUG-209's history restore reads it CLIENT-side now, so the gate can
   // see the read itself and the exemption no longer reproduces. The trigger read was
   // real and still is — the entry is simply no longer needed.
   'workout_sessions.backdated':            'trigger streak_recompute (streak exclusion)',
-  'workout_sessions.total_volume_lbs':     'trigger streak_recompute',
+  // `workout_sessions.total_volume_lbs` sat here (trigger streak_recompute). Removed
+  // 2026-11-15: BUG-261's history merge reads it CLIENT-side when a server-side
+  // completion promotes a stale local row. The trigger read is still real.
   'workout_templates.author_id':           'RLS: templates_select/write, blocks_*, days_*, exs_*',
 };
 // KNOWN_OPEN: genuine chain breaks, each with its tracker row. Removing an entry

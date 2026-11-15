@@ -2917,6 +2917,16 @@ const S = { restTimers:{}, swTimers:{}, swRun:{}, swSec:{}, logged:{}, sessionSe
 // because five separate paths now test it and a literal that merely happens to match
 // today is the silo CLAUDE.md's "one rule, one home" is about.
 const ONEOFF_SESSION_TYPE = 'oneoff';
+// BUG-261 (Kerwin, 2026-11-15, verbatim: "A skipped day should not count as a workout that
+// day. It should count as me skipping it"). Two session_type values mark a row that is NOT
+// a program attempt: 'skipped' (skipAhead(), BUG-56) and 'abandoned' (a session opened but
+// never logged into, closed by the server's 6-hour auto-finish, migrations/0027). Neither
+// may occupy the day's program slot (migrations/0026 drops them from the partial unique
+// index), be resumed into by Start, or pair with a real workout in local history — that
+// pairing is what let a skip's completed:false overwrite the real session it shared a key
+// with. ONE home for the list: every reader below tests through isVoidSessionType().
+const VOID_SESSION_TYPES = ['skipped', 'abandoned'];
+function isVoidSessionType(t) { return VOID_SESSION_TYPES.includes(t); }
 
 
 // ═══════════════════════════════════════════════════════
@@ -3309,22 +3319,29 @@ async function computeCalibration1RMs(sessionUUID, userId) {
 
   // Best Epley 1RM per exercise — same calcRM(w,r) as set-logging path
   const best1RMs = {};
+  const bestSet = {}; // BUG-263: the set that produced each best — the row's NOT NULL achieved_* fields
   for (const s of sessionSets) {
     if (!s.exercise_name || !s.weight_lbs || !s.reps) continue;
     const est = Math.round(calcRM(s.weight_lbs, s.reps)); // D12: calcRM selects the formula by rep range
-    if (!best1RMs[s.exercise_name] || est > best1RMs[s.exercise_name])
+    if (!best1RMs[s.exercise_name] || est > best1RMs[s.exercise_name]) {
       best1RMs[s.exercise_name] = est;
+      bestSet[s.exercise_name] = { w: s.weight_lbs, r: s.reps };
+    }
   }
   const exNames = Object.keys(best1RMs);
   if (!exNames.length) return;
 
   // Fetch existing personal_records — preserve higher-of logic
   const { data: existingPRs } = await sb.from('personal_records')
-    .select('exercise_name, best_estimated_1rm_lbs')
+    .select('exercise_name, best_estimated_1rm_lbs, achieved_weight_lbs, achieved_reps, achieved_date')
     .eq('user_id', userId)
     .in('exercise_name', exNames);
   const existingMap = {};
-  (existingPRs || []).forEach(p => { existingMap[p.exercise_name] = p.best_estimated_1rm_lbs || 0; });
+  const existingRow = {};
+  (existingPRs || []).forEach(p => {
+    existingMap[p.exercise_name] = p.best_estimated_1rm_lbs || 0;
+    existingRow[p.exercise_name] = p;
+  });
 
   // BUG-57: upsert EVERY exercise in the calibration session.
   // The old gate was `.filter(name => best1RMs[name] > (existingMap[name] || 0))` and it
@@ -3346,10 +3363,21 @@ async function computeCalibration1RMs(sessionUUID, userId) {
   const rows = exNames
     .map(name => {
       const best = Math.max(best1RMs[name], existingMap[name] || 0);
+      // BUG-263: personal_records.achieved_weight_lbs / achieved_reps / achieved_date are
+      // NOT NULL, and an upsert is checked as an INSERT first — a row without them 400'd
+      // (23502) for EVERY exercise, so this write never landed (prod 2026-09-24: 6 of 51 PR
+      // rows calibrated). The achieved_* fields must describe the lift that set `best`:
+      // the stored row when it is still the best, this session's best set when it beats it.
+      const kept = existingRow[name];
+      const keepStored = kept && (existingMap[name] || 0) >= best1RMs[name]
+        && kept.achieved_weight_lbs != null && kept.achieved_reps != null && kept.achieved_date;
       return {
         user_id: userId,
         exercise_name: name,
         best_estimated_1rm_lbs: best,
+        achieved_weight_lbs: keepStored ? kept.achieved_weight_lbs : bestSet[name].w,
+        achieved_reps: keepStored ? kept.achieved_reps : bestSet[name].r,
+        achieved_date: keepStored ? kept.achieved_date : localDateStr(),
         is_calibrated: true,
         calibration_session_id: sessionUUID,
       };
@@ -5217,7 +5245,7 @@ async function startWorkoutTimer() {
     }
   } catch (e) {
     console.warn('startWorkoutTimer failed:', e);
-    showToast('Could not start session — try again');
+    showToast(e?.userMessage || 'Could not start session — try again');
   }
   renderSessionTimer();
 }
@@ -5842,8 +5870,8 @@ async function startOrResumeSession() {
   if (!currentUser) throw new Error('Not signed in');
   const storedId = LSraw.get('tandem_active_session_id');
   if (storedId) {
-    const { data, error: lookupError } = await sb.from('workout_sessions')
-      .select('id, notes')
+    const { data: _resumeRow, error: lookupError } = await sb.from('workout_sessions')
+      .select('id, notes, session_type')
       .eq('id', storedId)
       .eq('user_id', currentUser.id)
       .eq('completed', false)
@@ -5859,6 +5887,8 @@ async function startOrResumeSession() {
       console.warn('[BUG-260] resume lookup failed — keeping stored session id, not minting', lookupError);
       throw lookupError;
     }
+    // BUG-261: a skipped or abandoned row is closed, not open — never resume a workout into it.
+    const data = _resumeRow && !isVoidSessionType(_resumeRow.session_type) ? _resumeRow : null;
     if (data?.id) {
       if (!LSraw.get('tandem_session_start_time')) {
         LSraw.set('tandem_session_start_time', String(Date.now()));
@@ -5895,6 +5925,20 @@ async function startOrResumeSession() {
     phase_name: phase?.name || null,
     completed: false
   }).select('id').single();
+  // BUG-261: 23505 = the one-program-row-per-day index already holds a row for today.
+  // Before this, the error went straight to "Could not start session — try again", and
+  // trying again could never work. Resolve it by finding that row instead of guessing.
+  if (error && error.code === '23505') {
+    const reusedId = await claimTodaysProgramRow(today);
+    LSraw.set('tandem_active_session_id', reusedId);
+    if (!LSraw.get('tandem_session_start_time')) {
+      LSraw.set('tandem_session_start_time', String(Date.now()));
+    }
+    if (!LSraw.get('tandem_c11_first_session_id')) {
+      LSraw.set('tandem_c11_first_session_id', reusedId);
+    }
+    return reusedId;
+  }
   if (error) throw error;
   LSraw.set('tandem_active_session_id', newSession.id);
   if (!LSraw.get('tandem_session_start_time')) {
@@ -5905,6 +5949,49 @@ async function startOrResumeSession() {
     LSraw.set('tandem_c11_first_session_id', newSession.id);
   }
   return newSession.id;
+}
+
+// ── claimTodaysProgramRow() — BUG-261 ──
+// Start's insert hit the one-program-row-per-day index (23505), so a row for today already
+// exists. Decide from that row, never by guessing:
+//   - an OPEN real session (another device, or a cleared local pointer) -> resume into it;
+//   - an 'abandoned' row (opened, never logged into, closed by the server's 6-hour sweep,
+//     migrations/0027) holds no sets, so reopening it loses nothing -> reopen and resume;
+//   - only a 'skipped' row -> the database still runs the pre-0026 index, where a skip
+//     wrongly holds the slot. Kerwin's ruling keeps the skip on record, so it is NOT
+//     converted: say exactly why Start cannot proceed;
+//   - a COMPLETED session -> today's program workout is already done; say so.
+// Every thrown error carries userMessage, which startWorkoutTimer() shows instead of the
+// generic "try again" that could never succeed here.
+async function claimTodaysProgramRow(today) {
+  const fail = (msg, cause) => { const e = new Error(msg); e.userMessage = msg; e.cause = cause; return e; };
+  const { data: rows, error } = await sb.from('workout_sessions')
+    .select('id, completed, session_type, created_at')
+    .eq('user_id', currentUser.id)
+    .eq('session_date', today)
+    .neq('session_type', ONEOFF_SESSION_TYPE)
+    .order('created_at', { ascending: false });
+  if (error) throw error; // unknown, not absent (BUG-260's rule): never mint on a failed read
+  const list = rows || [];
+  const open = list.find(r => !r.completed && !isVoidSessionType(r.session_type));
+  if (open) return open.id;
+  const abandoned = list.find(r => !r.completed && r.session_type === 'abandoned');
+  if (abandoned) {
+    const { error: reopenErr } = await sb.from('workout_sessions')
+      .update({ session_type: 'strength' })
+      .eq('id', abandoned.id)
+      .eq('user_id', currentUser.id)
+      .eq('session_type', 'abandoned');
+    if (reopenErr) throw reopenErr;
+    return abandoned.id;
+  }
+  if (list.some(r => r.completed)) {
+    throw fail("Today's program workout is already finished.");
+  }
+  if (list.some(r => r.session_type === 'skipped')) {
+    throw fail("Today's skip is still holding the workout slot. The database fix hasn't been applied yet.");
+  }
+  throw fail('Could not start session — try again');
 }
 
 function onSetInput(id, i) {
@@ -6015,7 +6102,6 @@ function logSet(id, i) {
       wEl.classList.add('pr'); rEl.classList.add('pr');
       showToast(`${svgIcon('trophy')} PR — ${prExName} · ${est1rm} lbs`);
       document.getElementById('ec-' + id)?.classList.add('pr-beat');
-      syncPRs(); // background sync on PR beat
     } else {
       btn.classList.add('logged');
       wEl.classList.add('done'); rEl.classList.add('done');
@@ -7371,10 +7457,9 @@ function skipAhead() {
   });
   if (hist.length > 100) hist.pop();
   LS.set('tandem_history', hist);
-  // Advance the queue by one slot without crediting a completed session.
-  const perWeek = Number(cfg?.days) || 1;
-  const skips = Number(LS.get('tandem_skips') || 0) + 1;
-  LS.set('tandem_skips', skips);
+  // The queue advances past this slot because programQueuePosition() (BUG-262) reads the
+  // skipped:true row just written — not through a counter. The tandem_skips counter that
+  // sat here was written and read by nothing, which is why the skip never moved the queue.
   closeModal('skip');
   renderTracker();
   showToast('Workout skipped — next session moved up');
@@ -8240,8 +8325,8 @@ async function syncToCloud() {
   try {
     const uid = currentUser.id;
     // Sessions are created/completed in real-time by startOrResumeSession() and finishSession() — do not upsert here
-    // PRs
-    await syncPRs();
+    // PRs: no client push (BUG-263). personal_records is written by the sets trigger
+    // sets_apply_1rm_and_pr on every set insert, and by logSet()'s full-row PR upsert.
     // Last sets
     const lastsets = LS.get('tandem_lastsets') || {};
     const lsRows = Object.entries(lastsets).map(([exercise_id, data]) =>
@@ -8304,20 +8389,15 @@ async function syncToCloud() {
   }
 }
 
-async function syncPRs() {
-  if (!currentUser) return;
-  const prs = LS.get('tandem_prs') || {};
-  // C7: keys are canonical exercise NAMES. Skip legacy slot-id-shaped keys
-  // (all-lowercase hyphenated, no space — e.g. 'day1-c0', 'tr-incdb') so
-  // junk ids never pollute personal_records.exercise_name.
-  const isLegacyIdKey = k => /^[a-z0-9]+(-[a-z0-9]+)+$/.test(k) && !k.includes(' ');
-  const prRows = Object.entries(prs).filter(([k]) => !isLegacyIdKey(k))
-    .map(([exercise_name, best_estimated_1rm_lbs]) =>
-    ({ user_id: currentUser.id, exercise_name, best_estimated_1rm_lbs, updated_at: new Date().toISOString() }));
-  if (!prRows.length) return;
-  const { error } = await sb.from('personal_records').upsert(prRows, { onConflict: 'user_id,exercise_name' });
-  if (error) console.warn('PR sync error:', error);
-}
+// syncPRs() — DELETED, BUG-263 (2026-11-15). It upserted every local PR as
+// {user_id, exercise_name, best_estimated_1rm_lbs, updated_at}. personal_records'
+// achieved_weight_lbs / achieved_reps / achieved_date are NOT NULL, and PostgREST's upsert is
+// an INSERT ... ON CONFLICT, which checks NOT NULL first — so every call 400'd (23502),
+// verified in prod edge logs 2026-11-06 and 2026-11-15, on every set. It was also the wrong
+// owner had it worked: it overwrote the stored best with the device's number, which can be
+// LOWER (a fresh device, a cleared cache). The sets trigger sets_apply_1rm_and_pr already
+// keeps personal_records current from the sets themselves, higher-wins, with the lift that
+// earned it — one rule, one home. Guarded by scripts/pr-write-notnull-smoke.mjs.
 
 // BUG-8 fix: buildIdentityAvatar() (the SVG renderer, via profileState) reads gender/
 // skinTone/bodyType/hair ONLY from LS 'tandem_profile' — it never sees Supabase directly.
@@ -8395,7 +8475,9 @@ function _historyRowKey(row) {
     // session_type) and its cloud twin ('strength') produced different keys, so every
     // synced workout was counted TWICE on merge. Normalising through the owner is the
     // same one-rule-one-home move the rest of this file already makes.
-    return 'k:' + day + '|' + (row.day_type ?? row.day ?? '') + '|' + (isProgramHistoryRow(row) ? 'prog' : 'oneoff');
+    // BUG-261: 'void' (skipped/abandoned) is its own kind — see isVoidHistoryRow().
+    const kind = !isProgramHistoryRow(row) ? 'oneoff' : isVoidHistoryRow(row) ? 'void' : 'prog';
+    return 'k:' + day + '|' + (row.day_type ?? row.day ?? '') + '|' + kind;
   }
   return (row && row.id != null) ? 'id:' + row.id : null;
 }
@@ -8503,6 +8585,7 @@ const HISTORY_TWIN_MAX_MS = 12 * 3600 * 1000;
 function _historyIsMidnightTwin(local, cloud) {
   if (!local || !cloud || typeof local.id !== 'number' || typeof cloud.id === 'number') return false;
   if (!isProgramHistoryRow(local) || !isProgramHistoryRow(cloud)) return false;
+  if (isVoidHistoryRow(local) !== isVoidHistoryRow(cloud)) return false; // BUG-261: a skip is never a workout's twin
   if ((local.day_type ?? local.day ?? '') !== (cloud.day_type ?? cloud.day ?? '')) return false;
   const ld = _historyDateKey(local), cd = _historyDateKey(cloud);
   if (!ld || !cd) return false;
@@ -8539,7 +8622,13 @@ function dedupeLocalHistory(hist) {
     // total_volume_lbs, which the History modal and the Log tab read.
     const keep = (prev && prev.exercises) ? prev : (row && row.exercises) ? row : prev;
     const drop = keep === prev ? row : prev;
-    out[at] = { ...drop, ...keep }; // keeper wins; the twin only fills fields it lacks
+    const merged = { ...drop, ...keep }; // keeper wins; the twin only fills fields it lacks
+    // BUG-261: "fills fields it lacks" included `completed`. A Finish()-written row has no
+    // completed field (absent = counted), so an incomplete twin's completed:false — the open
+    // cloud row hydrated mid-workout — filled in and silently uncounted a finished session.
+    // Done wins: if either copy counts, the merged session counts.
+    if (prev?.completed !== false || row?.completed !== false) merged.completed = true;
+    out[at] = merged;
   }
   // Midnight-crossing twins: drop the CLOUD row and keep the local one — but ONLY for a
   // local row that has no exact-key partner. A local row that already absorbed its own
@@ -8584,6 +8673,15 @@ function mergeCloudSessionsIntoHistory(existingLocal, cloudSessions, cloudSetsBy
         if (local.date == null && s.date != null) local.date = s.date;
         if (local.week == null && s.week != null) local.week = s.week;
         if (local.goal == null && s.goal != null) local.goal = s.goal;
+        // BUG-261: completion is the one field the cloud may PROMOTE. A row hydrated while
+        // the session was still open (completed:false) stayed false forever once the server
+        // finished it — by the 6-hour auto-finish (migrations/0027) or a hand repair — so the
+        // queue re-served a workout the database already credited. Never demoted: a local
+        // finish the cloud has not heard of yet stays counted.
+        if (local.completed === false && s.completed === true) {
+          local.completed = true;
+          if (s.total_volume_lbs != null) local.total_volume_lbs = s.total_volume_lbs;
+        }
       }
       continue;
     }
@@ -9964,6 +10062,16 @@ function isProgramHistoryRow(h) {
   return !!h && h.session_type !== ONEOFF_SESSION_TYPE;
 }
 
+// BUG-261: a skip (local rows carry skipped:true, cloud rows session_type 'skipped') or an
+// abandoned session is a program-ROW but not a program ATTEMPT. It never counts (both are
+// completed:false), and it must never share a history key with a real workout on the same
+// day and day key — dedupeLocalHistory() unions twins, and a skip's completed:false would
+// fill into the real session's row and uncount it. The cloud index (migrations/0026) and
+// this key now agree: a void row does not occupy the day's program slot.
+function isVoidHistoryRow(h) {
+  return !!h && (h.skipped === true || isVoidSessionType(h.session_type));
+}
+
 // ── isBeforeProgramStart() — BUG-93/R5, one rule one home ──
 // cfg.startDate is a calendar DATE — it cannot see a same-day program switch, so a
 // session logged under the OLD program earlier the same day the user adopts/creates/
@@ -10007,11 +10115,57 @@ function completedSessionCount() {
   return done;
 }
 
+// ── programQueuePosition() — BUG-262. How many program SLOTS are used up. ──
+// Kerwin's BUG-95 ruling (2026-08-17) gave "Skip ahead" a promise the modal still makes:
+// "Forfeit this one and move to the next session. It won't come back around." Nothing
+// kept it: the queue was completedSessionCount() alone, skipAhead()'s tandem_skips counter
+// was read by nothing, so the skipped workout was served again — the reorderWeek() shape
+// (BUG-191), a toast asserting a move that never happened. Kerwin, 2026-11-15, on that
+// finding: "Fix all those things".
+//
+// A slot is used up by a completed session, or by a skip OF THE WORKOUT THE QUEUE WAS
+// SERVING at that moment. The second condition is what makes this a replay rather than
+// completed + skips: a skip of a day that was already done (Kerwin's 2026-11-15 skip of
+// day2, which the phone re-served only because Nov 5's finish never reached the server)
+// forfeits nothing and must not push him past a workout he has not seen. Replaying in
+// order also makes a duplicate skip row harmless: once the first one moves the queue,
+// the second no longer matches the served day. A MISSED day is untouched — it is still
+// delayed, never dropped (BUG-93) — and skips still never count as volume, PRs, streak
+// or overdue: those read completedSessionCount()/getOverdueDays(), not this.
+// Same row filters as completedSessionCount() (one-offs and pre-program rows excluded),
+// through the same owners.
+function programQueuePosition() {
+  const perWeek = Number(cfg?.days);
+  if (!perWeek || perWeek < 1) return completedSessionCount();
+  const start = cfg?.startDate ? new Date(cfg.startDate + 'T00:00:00') : null;
+  const events = [];
+  for (const h of (LS.get('tandem_history') || [])) {
+    if (!isProgramHistoryRow(h)) continue;
+    const raw = h.session_date || h.date;
+    if (!raw) continue;
+    const d = h.session_date ? new Date(raw + 'T00:00:00') : new Date(raw);
+    if (isNaN(d)) continue;
+    if (isBeforeProgramStart(h, d, start)) continue;
+    const isSkip = h.skipped === true || h.session_type === 'skipped';
+    const done = h.completed !== false && !isVoidHistoryRow(h);
+    if (!done && !isSkip) continue;
+    const at = typeof h.id === 'number' ? h.id : (Date.parse(h.created_at) || 0);
+    events.push({ day: localDateStr(d), at, done, dayKey: h.day_type ?? h.day ?? null });
+  }
+  events.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : a.at - b.at);
+  let pos = 0;
+  for (const e of events) {
+    if (e.done) pos++;
+    else if (e.dayKey === 'day' + ((pos % perWeek) + 1)) pos++; // forfeited the served slot
+  }
+  return pos;
+}
+
 function deriveProgramWeek() {
   const perWeek = Number(cfg?.days);
   if (!perWeek || perWeek < 1) return null;
   const cap = Number(cfg.weeks) || 12;
-  return Math.max(1, Math.min(cap, Math.floor(completedSessionCount() / perWeek) + 1));
+  return Math.max(1, Math.min(cap, Math.floor(programQueuePosition() / perWeek) + 1));
 }
 
 // ── nextProgramDayKey() — BUG-93. A missed workout is DELAYED, not skipped. ──
@@ -10038,7 +10192,7 @@ function deriveProgramWeek() {
 function nextProgramDayKey() {
   const perWeek = Number(cfg?.days);
   if (!perWeek || perWeek < 1) return null;
-  return 'day' + ((completedSessionCount() % perWeek) + 1);
+  return 'day' + ((programQueuePosition() % perWeek) + 1); // BUG-262: skips forfeit their slot
 }
 
 // Stored week, advanced to the calendar week when the calendar is ahead. Never rewinds.
@@ -10086,7 +10240,7 @@ function getProgramDayLabel() {
   const isRest = dayKey === 'rest';
   const perWeek = Number(cfg?.days);
   if (!perWeek || perWeek < 1) return { isRest, dayKey, num: null, denom: null };
-  const num = (completedSessionCount() % perWeek) + 1;
+  const num = (programQueuePosition() % perWeek) + 1;
   return { isRest, dayKey, num, denom: perWeek };
 }
 
