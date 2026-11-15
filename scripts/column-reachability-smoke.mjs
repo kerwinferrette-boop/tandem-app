@@ -69,7 +69,9 @@ const SERVER_SIDE = {
   // see the read itself and the exemption no longer reproduces. The trigger read was
   // real and still is — the entry is simply no longer needed.
   'workout_sessions.backdated':            'trigger streak_recompute (streak exclusion)',
-  'workout_sessions.total_volume_lbs':     'trigger streak_recompute',
+  // `workout_sessions.total_volume_lbs` sat here (trigger streak_recompute). Removed
+  // 2026-11-15: BUG-261's history merge reads it CLIENT-side when a server-side
+  // completion promotes a stale local row. The trigger read is still real.
   'workout_templates.author_id':           'RLS: templates_select/write, blocks_*, days_*, exs_*',
 };
 // KNOWN_OPEN: genuine chain breaks, each with its tracker row. Removing an entry
