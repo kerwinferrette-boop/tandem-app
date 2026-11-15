@@ -434,9 +434,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .set-btn.logged{background:var(--green-dim);border-color:color-mix(in srgb,var(--accent2) 40%,transparent);color:var(--green);}
 .set-btn.pr-set{background:var(--amber-dim);border-color:rgba(255,176,32,.4);color:var(--amber);}
 .set-actions{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 8px;}
-.set-act{flex:1;padding:7px;
+.set-act{flex:1 1 auto;padding:8px 12px;min-height:44px;
   font-size:12px;
-  cursor:pointer;transition:all .15s;text-align:center;}
+  cursor:pointer;transition:all .15s;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;}
 .set-act:hover{border-color:var(--accent);color:var(--accent);}
 .set-act.blue:hover{border-color:var(--blue);color:var(--blue);}
 .set-act.green{color:var(--green);border-color:color-mix(in srgb,var(--accent2) 30%,transparent);}
