@@ -867,14 +867,16 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
    "fixed bottom bar vs. mobile browser chrome" case — see web.dev's own
    viewport-units guidance ("a good example of using the svh unit would be to
    define the height of a fixed bottom bar") and the same env()-based pattern
-   documented for Safari 15's bottom tab bars. Second `bottom` declaration
-   wins where env() is supported; the first is the fallback for browsers that
-   don't support it — same value (0) as today when the inset is 0, so this
-   does not change the bar's resting position on any device without a bottom
-   safe-area inset. */
-.bottom-nav{position:fixed;bottom:0;bottom:env(safe-area-inset-bottom,0);left:0;right:0;background:rgba(7,7,11,.96);
+   documented for Safari 15's bottom tab bars.
+   BUG-182 (2026-11-15): the inset now GROWS the bar's bottom padding instead of
+   lifting the bar with a second `bottom` declaration. Lifting it would leave bare
+   page under the bar and let the home indicator cover the buttons the day
+   viewport-fit=cover lands; padding is the idiom .tab-bar, .sum-body and the
+   content offsets already use. Identical to before wherever the inset is 0,
+   which is every device today (there is no viewport-fit=cover meta). */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(7,7,11,.96);
   backdrop-filter:blur(20px);border-top:1px solid var(--border);
-  display:flex;padding:9px 14px 22px;gap:7px;z-index:300;max-width:580px;margin:0 auto;}
+  display:flex;padding:9px 14px calc(22px + env(safe-area-inset-bottom,0px));gap:7px;z-index:300;max-width:580px;margin:0 auto;}
 /* Wave 6: bigger tap targets; Finish is the one solid-accent action down here */
 .bnav-btn{flex:1;padding:12px 6px;border-radius:13px;border:1px solid var(--border2);background:var(--s1);
   color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;
