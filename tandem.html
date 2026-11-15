@@ -3649,6 +3649,9 @@ function getActiveProgram() {
           // author's. Omitting these gave an adopted program the male defaults.
           sex: cfg.sex,
           maxDb: resolveMaxDb(),
+          // BUG-201: the advanced compound RPE cue is experience-driven on the
+          // generated path; without this an adopted program coached everyone alike.
+          experience: cfg.experience,
         });
         if (Array.isArray(p) && p.length) return p;
       }
