@@ -3611,6 +3611,20 @@ function selectorTierFromCfg() {
   if (!cfg.equipment) return null;
   return Object.keys(EQ_TIER_TO_CFG).find(k => EQ_TIER_TO_CFG[k] === cfg.equipment) || null;
 }
+// BUG-132: which selector tier the setup card SHOWS. Derived from the engine's own
+// answer, resolveEquipmentTier(), never from raw sessionStorage: a stale session
+// override (BUG-118) that the engine ignores must not still be painted on the card.
+// The session's pick is shown only when it is the bank tier the engine resolved;
+// otherwise the durable cfg's selector tier if it maps there; otherwise the first
+// selector tier that does. Display-only and lossy, like selectorTierFromCfg().
+function selectorTierForDisplay() {
+  const bankTier = resolveEquipmentTier();
+  const sess = sessionStorage.getItem('eq_tier');
+  if (sess && EQ_TIER_TO_BANK[sess] === bankTier) return sess;
+  const fromCfg = selectorTierFromCfg();
+  if (fromCfg && EQ_TIER_TO_BANK[fromCfg] === bankTier) return fromCfg;
+  return Object.keys(EQ_TIER_TO_BANK).find(k => EQ_TIER_TO_BANK[k] === bankTier) || 'full_gym';
+}
 // Dumbbell weight cap for hotel/small-DB tiers (0/NaN = uncapped).
 function resolveMaxDb() {
   // BUG-192: the session override wins (it is this tab's explicit choice), but
@@ -5356,26 +5370,27 @@ function renderTracker() {
   renderSessionTimer();
   updateProgress();
 
-  // Mirrors resolveEquipmentTier()'s own source priority (session → cfg →
-  // full_gym) — this block previously read sessionStorage alone, so the
-  // setup card visually reverted to "Full Gym" on a fresh session even
-  // though the engine was already correctly building the durable tier's
-  // workout from cfg.equipment.
-  const _eTier = sessionStorage.getItem('eq_tier') || selectorTierFromCfg();
+  // BUG-132: the setup card shows the tier the ENGINE resolved and is repainted on
+  // every restore, full_gym included. It used to read raw sessionStorage, so after
+  // a durable equipment change a stale override (BUG-118) painted one tier while
+  // the workout was built from another; and the full_gym early-out left whatever
+  // label was last rendered standing.
+  // BUG-132-LABEL-BLOCK-START
+  const _eTier = selectorTierForDisplay();
   const _eDb   = resolveMaxDb();   // BUG-192: was raw sessionStorage, so a reload showed a blank cap
-  if (_eTier && _eTier !== 'full_gym') {
-    document.querySelectorAll('.eq-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.tier === _eTier);
-    });
-    if (EQ_NEEDS_DB.includes(_eTier)) {
-      document.getElementById('eqDbRow').classList.add('show');
-      const dbInput = document.getElementById('eqDbWeight');
-      if (dbInput && _eDb) dbInput.value = _eDb;
-    }
-    document.getElementById('setupStatus').textContent = EQ_LABELS[_eTier] || _eTier;
-    document.getElementById('eqActiveLabel').textContent =
-      `Active: ${EQ_LABELS[_eTier]}${_eDb ? ` · ${_eDb} lbs max` : ''}`;
+  document.querySelectorAll('.eq-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tier === _eTier);
+  });
+  document.getElementById('eqDbRow').classList.toggle('show', EQ_NEEDS_DB.includes(_eTier));
+  if (EQ_NEEDS_DB.includes(_eTier)) {
+    const dbInput = document.getElementById('eqDbWeight');
+    if (dbInput && _eDb) dbInput.value = _eDb;
   }
+  document.getElementById('setupStatus').textContent = EQ_LABELS[_eTier] || _eTier;
+  // Same convention as applySetupSelection(): no "Active:" line for full_gym.
+  document.getElementById('eqActiveLabel').textContent = _eTier === 'full_gym'
+    ? '' : `Active: ${EQ_LABELS[_eTier]}${_eDb ? ` · ${_eDb} lbs max` : ''}`;
+  // BUG-132-LABEL-BLOCK-END
 }
 
 // Build day tabs + workout views from the engine. Self-contained so a live
