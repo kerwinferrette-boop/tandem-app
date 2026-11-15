@@ -2176,6 +2176,10 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 // flagging (flagDropSet) and the advanced RPE coaching cue, both of which are
 // annotations rather than prescriptions.
 // ═══════════════════════════════════════════════════════
+// ONE owner for the advanced compound cue's wording. Read by the generated engine
+// (makeEx) and the authored path (materializeTemplate) — BUG-201: the authored path
+// never received experience, so an advanced user on an adopted program got no cue.
+const ADVANCED_RPE_CUE = 'Advanced tier: push to RPE 8-9 on working sets.';
 function normalizeExperience(experience) {
   return (experience === 'beginner' || experience === 'advanced') ? experience : 'intermediate';
 }
@@ -3208,7 +3212,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // EPIC-8a: advanced tier appends a coaching-cue STRING to compound lifts
     // only (no RPE calculation/storage — annotation only).
     const cues = (exp === 'advanced' && entry.category === 'compound')
-      ? [...(entry.cues || []), 'Advanced tier: push to RPE 8-9 on working sets.']
+      ? [...(entry.cues || []), ADVANCED_RPE_CUE]
       : (entry.cues || []);
     return {
       id: idSuffix,
@@ -4120,6 +4124,10 @@ function materializeTemplate(tpl, week, opts) {
   const tier = (opts && opts.tier) || 'full_gym';
   const injuries = (opts && opts.injuries) || '';
   const injuryBlocked = makeInjuryBlocked(injuries);
+  // BUG-201: experience is an ANNOTATION input here, same as the generated engine —
+  // the advanced compound cue only. Drop-sets stay off on purpose (see the 2026-07-31
+  // note above). Omitted experience normalizes to intermediate: no cue, author verbatim.
+  const exp = normalizeExperience(opts && opts.experience);
 
   const days = (block.days || []).slice().sort((a, b) => a.day_order - b.day_order).map((d, di) => {
     const exs = (d.exercises || []).slice().sort((a, b) => a.ex_order - b.ex_order).map(ex => {
@@ -4146,7 +4154,8 @@ function materializeTemplate(tpl, week, opts) {
         rest: ex.rest, authoredRest: ex.rest,
         compound, isCore: ex.role === 'core', role: ex.role,
         unit: bank.unit || 'reps', equipment: bank.equipment || null,
-        why: bank.why || '', cues: bank.cues || [],
+        why: bank.why || '',
+        cues: (exp === 'advanced' && compound) ? [...(bank.cues || []), ADVANCED_RPE_CUE] : (bank.cues || []),
         // Technique lands only if BOTH the exercise carries it AND this week of
         // the block schedules it (weeks 4/8/12 run clean by authoring rule).
         technique: blockTech && ex.technique ? ex.technique : null,

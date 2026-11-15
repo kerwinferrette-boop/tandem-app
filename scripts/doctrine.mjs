@@ -2243,7 +2243,7 @@ let d18Checked = 0;
   // Filed as BUG-88 (Notion Bug & QA Log, 2026-08-16) and CLOSED same day (Cycle 55,
   // exercise-science-research pass): added band-curl, band-hammer-curl,
   // band-straight-arm-pulldown, band-shrug to EXERCISE_BANK (programs.js) — sourced,
-  // cited entries (Aboodarda et al. 2019 SAGE Open Medicine band-modality equivalence;
+  // cited entries (Silva Lopes JS et al., SAGE Open Medicine 2019, DOI 10.1177/2050312119831116 band-modality equivalence, corrected under BUG-175 from a mislabeled "Aboodarda et al. 2019" byline;
   // Washif et al. 2022 MDPI straight-arm-pulldown lat EMG; hammer-curl brachioradialis
   // EMG corroboration — full citations in each entry's code comment). All four D18
   // gaps this allowlist covered are now genuinely closed, not just widened around, so
