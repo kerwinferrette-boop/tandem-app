@@ -16,6 +16,9 @@
 // and asserts neither shape is silently dropped for a date reason, and that a restored
 // row (no exercises map) contributes zero points rather than a fabricated zero-value one.
 //
+// BUG-149 (section 8) extends this guard rather than adding a second one: the All time window
+// is the all-lifts index, one-offs and pre-program sessions included.
+//
 // Run: node scripts/logtab-shape-smoke.mjs
 
 import { readFileSync } from 'node:fs';
@@ -115,6 +118,48 @@ LS.set('tandem_history', [{ id: 'uuid-3' }]);
 modalCtx.buildHistoryModal();
 check('History modal: a row with neither field renders an empty header, never "undefined"',
   !listEl.innerHTML.includes('undefined'));
+
+// ── 8. BUG-149 (Kerwin 2026-11-15, "C"): the All time window is the all-lifts index — every
+//        exercise ever logged, one-offs and pre-program sessions included. Run the LIVE
+//        renderLogTab() + logWindowStart() against a fake DOM with a program row, a one-off and
+//        a row from before the program started, and read what it renders.
+const grid = { innerHTML: '' };
+const chips = [];
+const markup = html.match(/<div class="log-filters" id="logFilters">([\s\S]*?)<\/div>/);
+check('BUG-149: the Log tab has an "All time" window chip calling setLogWindow(\'all\')',
+  !!markup && /data-win="all"[^>]*onclick="setLogWindow\('all'\)"/.test(markup[1]));
+const renderCtx = vm.createContext({
+  LS, Object, Number, Math, Date, isNaN, String,
+  cfg: { startDate: '2026-10-01' },
+  EXERCISE_BANK: {},
+  exDisplayName: (n) => n,
+  applyHeroImages: () => {},
+  document: { getElementById: (id) => (id === 'logGrid' ? grid : null), querySelectorAll: () => chips },
+});
+vm.runInContext([buildLiftSeriesSrc, liveFn('logDelta'), liveFn('logDeltaHtml'), liveFn('logWindowStart'),
+  liveFn('renderLogTab'), html.match(/const logEsc = [^\n]+/)[0],
+  'let logWindow = "month";', 'this.show = (w) => { logWindow = w; renderLogTab(); };'].join('\n'), renderCtx);
+const today = new Date();
+const daysAgo = (n) => new Date(today.getFullYear(), today.getMonth(), today.getDate() - n).toString();
+LS.set('tandem_history', [
+  { id: 'p', date: daysAgo(2), session_type: 'program', exercises: { a: [{ name: 'Bench Press', w: 135, r: 8, est1rm: 168 }] } },
+  { id: 'o', date: daysAgo(5), session_type: 'oneoff', exercises: { a: [{ name: 'Goblet Squat', w: 50, r: 10, est1rm: 66 }] } },
+  { id: 'old', date: new Date('2026-06-01T12:00:00').toString(), exercises: { a: [{ name: 'Deadlift', w: 225, r: 5, est1rm: 253 }] } },
+  { id: 's', date: daysAgo(1), skipped: true, exercises: { a: [{ name: 'Skipped Lift', w: 100, r: 5 }] } },
+]);
+renderCtx.show('all');
+const allHtml = grid.innerHTML;
+check('BUG-149: All time lists the program lift', allHtml.includes('data-name="Bench Press"'));
+check('BUG-149: All time lists the one-off lift (no isProgramHistoryRow filter)', allHtml.includes('data-name="Goblet Squat"'));
+check('BUG-149: All time lists the pre-program lift (no isBeforeProgramStart filter)', allHtml.includes('data-name="Deadlift"'));
+check('BUG-149: a skipped session is still not a lift', !allHtml.includes('Skipped Lift'));
+check('BUG-149: each card names the last day it was logged', (allHtml.match(/ · last /g) || []).length === 3);
+check('BUG-149: each card still opens the per-lift series', (allHtml.match(/onclick="openLogDetail\(this\.dataset\.name\)"/g) || []).length === 3);
+renderCtx.show('program');
+check('BUG-149: the This program window still leaves out the pre-program lift', !grid.innerHTML.includes('data-name="Deadlift"'));
+check('BUG-149: the Log readers never apply the program-progress filters',
+  !/isProgramHistoryRow|isBeforeProgramStart/.test((buildLiftSeriesSrc + liveFn('renderLogTab') + liveFn('logWindowStart'))
+    .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')));
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);
 process.exit(failures === 0 ? 0 : 1);

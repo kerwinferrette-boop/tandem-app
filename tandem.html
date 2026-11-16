@@ -1955,6 +1955,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <button class="log-chip" data-win="month" onclick="setLogWindow('month')">Past month</button>
       <button class="log-chip" data-win="ytd" onclick="setLogWindow('ytd')">YTD</button>
       <button class="log-chip" data-win="program" onclick="setLogWindow('program')">This program</button>
+      <button class="log-chip" data-win="all" onclick="setLogWindow('all')">All time</button>
     </div>
     <div id="logGrid"></div>
   </div>
@@ -2598,6 +2599,17 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         </div>
       </div>
       <button class="profile-save-btn" onclick="saveProfileNutrition()">Save Nutrition</button>
+    </div>
+
+    <div class="profile-divider"></div>
+
+    <!-- C2. Rest days (BUG-160): display-only suggestion on a rest day, on by default -->
+    <div class="profile-section">
+      <span class="profile-section-label">Rest Days</span>
+      <div class="profile-pill-row" id="profileRestDayRow">
+        <button class="profile-pill" data-restday="suggest" onclick="setRestDaySuggestion(true)">Show a suggestion</button>
+        <button class="profile-pill" data-restday="blank" onclick="setRestDaySuggestion(false)">Leave blank</button>
+      </div>
     </div>
 
     <div class="profile-divider"></div>
@@ -8029,6 +8041,12 @@ function logWindowStart(win) {
   if (win === 'week') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
   if (win === 'month') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
   if (win === 'ytd') return new Date(now.getFullYear(), 0, 1);
+  // BUG-149 (Kerwin 2026-11-15, "C"): "every lift I've ever done in tandem, regardless of
+  // program". buildLiftSeries() already reads the UNFILTERED history (it never applies
+  // isProgramHistoryRow/isBeforeProgramStart, which exist to count program progress), so
+  // one-offs and pre-program sessions are in; this window just stops cutting by date.
+  // Colour and filter BY PROGRAM are not built: workout_sessions has no program id.
+  if (win === 'all') return new Date(0);
   const start = cfg?.startDate;
   const d = start ? new Date(start) : null;
   return d && !isNaN(d) ? d : new Date(0);
@@ -8096,9 +8114,12 @@ function renderLogTab() {
     const hi = Math.max(...c.pts.map(p => p.v)) || 1;
     const spark = c.pts.slice(-12).map(p => `<i class="${p.pr ? 'pr' : ''}" style="height:${Math.max(12, Math.round(p.v / hi * 100))}%"></i>`).join('');
     const unit = c.last.kind === 'lbs' ? 'lbs e1RM' : c.last.kind;
+    // BUG-149: the index line names the last day the lift was logged, so the All time view
+    // reads as a list of every lift at a glance; the card still opens the per-lift series.
+    const lastDay = c.last.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     return `<button class="log-card" onclick="openLogDetail(this.dataset.name)" data-name="${logEsc(c.name)}">
       <div class="tc-photo" data-hero="phase"></div><div class="tc-tint"></div><div class="log-scrim"></div>
-      <div class="log-meta">${c.pts.length} session${c.pts.length > 1 ? 's' : ''}</div>
+      <div class="log-meta">${c.pts.length} session${c.pts.length > 1 ? 's' : ''} · last ${logEsc(lastDay)}</div>
       <h3>${logEsc(exDisplayName(c.name))}</h3>
       <div class="log-val">${Math.round(c.last.v)} <small>${unit}</small></div>
       ${logDeltaHtml(logDelta(c.pts))}
@@ -8764,9 +8785,11 @@ function cfgFromUserRow(u, prev) {
     // before 0023, or in a tab that has not synced yet, has a local value and a
     // null column, and dropping it would re-open the defect on that one load.
     maxDb: u.max_db ?? keep.maxDb ?? null,
-    // ── LOCAL-ONLY: no users column backs these two, so carry them or they die
+    // ── LOCAL-ONLY: no users column backs these, so carry them or they die
     startEpoch: keep.startEpoch ?? null,
     revertedAt: keep.revertedAt ?? null,
+    // BUG-160: device-local Settings choice (no users column); unset/null counts as on
+    restDaySuggestion: keep.restDaySuggestion ?? null,
     goal: canonicalGoal(u.program_goal), // old accounts may still carry legacy 'burn_fat'
     days: u.program_days_per_week,
     weeks: u.program_weeks || 12,
@@ -10824,6 +10847,34 @@ function renderDashRhythm() {
   document.getElementById('dashRhythmStrip').innerHTML = r.segsHtml;
 }
 
+// ── BUG-160 (Kerwin 2026-11-15, "C, but build A"): a rest day can show a light
+// suggestion instead of a blank. A Settings choice (Profile → Rest Days) turns it on or
+// off; it is ON by default (cfg.restDaySuggestion unset counts as on). DISPLAY ONLY:
+// this writes nothing, logs nothing and credits nothing, so scoring and the skip rule are
+// untouched. Content is limited to what Kerwin named on 2026-09-24 (a walk — "Hey, just
+// take a 30-minute walk" is his line — stretching, mobility, yoga); no new volume or
+// intensity number. The onboarding secondary goal picks which line shows: improve_mobility
+// gets the mobility line, anything else the walk. cfg.restDaySuggestion has no users
+// column, so it is local to the device and carried across a cloud rebuild in
+// cfgFromUserRow. Guard: scripts/rest-day-suggestion-smoke.mjs.
+const REST_DAY_SUGGESTIONS = {
+  walk: 'Suggestion: take a 30-minute walk.',
+  mobility: 'Suggestion: some easy stretching, mobility work or yoga.',
+};
+function restDaySuggestionText(c) {
+  if (!c || c.restDaySuggestion === false) return null;
+  return c.secondary_goal === 'improve_mobility' ? REST_DAY_SUGGESTIONS.mobility : REST_DAY_SUGGESTIONS.walk;
+}
+function setRestDaySuggestion(on) {
+  cfg.restDaySuggestion = !!on;
+  LS.set('tandem_cfg', cfg);
+  document.querySelectorAll('#profileRestDayRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.restday === (on ? 'suggest' : 'blank'));
+  });
+  renderDashHero();
+  showToast(on ? 'Rest days will show a suggestion' : 'Rest days stay blank');
+}
+
 // ── Wave 2: hero card — today's session from the same schedule plumbing the
 // tracker uses (getWeekSchedule/getProgramDayNumber; one rule, one home). ──
 function renderDashHero() {
@@ -10853,7 +10904,10 @@ function renderDashHero() {
   if (dayKey === 'rest') {
     metaEl.textContent = daySlot ? `REST DAY · ${daySlot}` : 'REST DAY';
     titleEl.textContent = 'Rest & Recover';
-    subEl.textContent = 'Recovery day on your plan — log a one-off or journal from here.';
+    const restTip = restDaySuggestionText(cfg);
+    subEl.textContent = restTip
+      ? `${restTip} Optional, nothing to log.`
+      : 'Recovery day on your plan — log a one-off or journal from here.';
     if (ctaEl) ctaEl.textContent = 'Open workouts →';
     return;
   }
@@ -11327,6 +11381,10 @@ function openProfileModal() {
   // Experience
   document.querySelectorAll('#profileExpRow .profile-pill').forEach(b => {
     b.classList.toggle('active', b.dataset.exp === profileState.exp);
+  });
+  // Rest days (BUG-160): unset counts as on
+  document.querySelectorAll('#profileRestDayRow .profile-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.restday === (cfg.restDaySuggestion === false ? 'blank' : 'suggest'));
   });
   // Display name (BUG-255): dashboardData.userTargets is the only in-memory holder of
   // users.name (null until the first dashboard load) — fall back to the email local part.
