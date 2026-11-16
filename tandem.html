@@ -1955,6 +1955,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <button class="log-chip" data-win="month" onclick="setLogWindow('month')">Past month</button>
       <button class="log-chip" data-win="ytd" onclick="setLogWindow('ytd')">YTD</button>
       <button class="log-chip" data-win="program" onclick="setLogWindow('program')">This program</button>
+      <button class="log-chip" data-win="all" onclick="setLogWindow('all')">All time</button>
     </div>
     <div id="logGrid"></div>
   </div>
@@ -8040,6 +8041,12 @@ function logWindowStart(win) {
   if (win === 'week') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
   if (win === 'month') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
   if (win === 'ytd') return new Date(now.getFullYear(), 0, 1);
+  // BUG-149 (Kerwin 2026-11-15, "C"): "every lift I've ever done in tandem, regardless of
+  // program". buildLiftSeries() already reads the UNFILTERED history (it never applies
+  // isProgramHistoryRow/isBeforeProgramStart, which exist to count program progress), so
+  // one-offs and pre-program sessions are in; this window just stops cutting by date.
+  // Colour and filter BY PROGRAM are not built: workout_sessions has no program id.
+  if (win === 'all') return new Date(0);
   const start = cfg?.startDate;
   const d = start ? new Date(start) : null;
   return d && !isNaN(d) ? d : new Date(0);
@@ -8107,9 +8114,12 @@ function renderLogTab() {
     const hi = Math.max(...c.pts.map(p => p.v)) || 1;
     const spark = c.pts.slice(-12).map(p => `<i class="${p.pr ? 'pr' : ''}" style="height:${Math.max(12, Math.round(p.v / hi * 100))}%"></i>`).join('');
     const unit = c.last.kind === 'lbs' ? 'lbs e1RM' : c.last.kind;
+    // BUG-149: the index line names the last day the lift was logged, so the All time view
+    // reads as a list of every lift at a glance; the card still opens the per-lift series.
+    const lastDay = c.last.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     return `<button class="log-card" onclick="openLogDetail(this.dataset.name)" data-name="${logEsc(c.name)}">
       <div class="tc-photo" data-hero="phase"></div><div class="tc-tint"></div><div class="log-scrim"></div>
-      <div class="log-meta">${c.pts.length} session${c.pts.length > 1 ? 's' : ''}</div>
+      <div class="log-meta">${c.pts.length} session${c.pts.length > 1 ? 's' : ''} · last ${logEsc(lastDay)}</div>
       <h3>${logEsc(exDisplayName(c.name))}</h3>
       <div class="log-val">${Math.round(c.last.v)} <small>${unit}</small></div>
       ${logDeltaHtml(logDelta(c.pts))}
