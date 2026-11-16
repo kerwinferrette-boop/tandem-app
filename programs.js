@@ -2180,6 +2180,22 @@ function getExerciseSubstitutes(exName, tier, injuries, limit) {
 // (makeEx) and the authored path (materializeTemplate) — BUG-201: the authored path
 // never received experience, so an advanced user on an adopted program got no cue.
 const ADVANCED_RPE_CUE = 'Advanced tier: push to RPE 8-9 on working sets.';
+// BUG-44 (Kerwin 2026-11-15, option "A & C"): Chin-Up, Pull-Up and Dips load the lifter's
+// whole bodyweight with no external load to reduce, so the generator never prescribes them to
+// a beginner. buildDynamicProgram's bank() swaps each one, in place, for the first entry in
+// its list below that the lifter's tier allows: Lat Pulldown or Assisted Pull-Up at full_gym,
+// Band Lat Pulldown below it (measured 2026-11-16: only hotel_gym ever selected Chin-Up or
+// Pull-Up). No bodyweight input and no rep math: bodyweight-relative scaling stays with
+// EPIC-34 (option C), which replaces this rule. Dips has an empty list on purpose: the bank
+// holds no assisted or band compound dip (Bench Dip and Tricep Dip Machine are isolation
+// lifts), no entry is invented, and Dips was never selected on HEAD anyway, so a beginner
+// slot that would have drawn it takes the next lift in that slot's ranking instead.
+// Guard: scripts/beginner-regression-smoke.mjs.
+const BEGINNER_REGRESSIONS = {
+  'Chin-Up': ['Lat Pulldown', 'Assisted Pull-Up', 'Band Lat Pulldown'],
+  'Pull-Up': ['Lat Pulldown', 'Assisted Pull-Up', 'Band Lat Pulldown'],
+  'Dips':    [],
+};
 function normalizeExperience(experience) {
   return (experience === 'beginner' || experience === 'advanced') ? experience : 'intermediate';
 }
@@ -3031,7 +3047,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // outranks raw loading capacity, which is what Kerwin's council-verdict ask
     // ("synergies... properly attributed") means at the single-slot level.
     const coverageCount = (e) => groups.filter(g => primaryOnlyMatch(e, [g])).length;
-    return pool.sort((a, b) => {
+    const sorted = pool.sort((a, b) => {
         // D30 (BUG-151) — rule-identical to select()'s copy above, via the
         // SHARED patternClash helper. MEASURED placement — see select()'s copy
         // above for the full "why above coverageCount" reasoning (running the
@@ -3101,6 +3117,20 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         if (a.familyDefault !== b.familyDefault) return a.familyDefault ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
+    // BUG-44 — a beginner's pool swaps each full-bodyweight pull or dip, IN PLACE, for the
+    // first regression this tier can do (see BEGINNER_REGRESSIONS). In place matters: pick()
+    // indexes the pool by its rotation block, so the pool keeps its length and order and the
+    // slot keeps its movement; a regression may then appear twice in the pool, which is
+    // harmless because one slot takes one entry. With no regression available the lift is
+    // dropped (Dips today) and that slot takes the next entry in its ranking.
+    if (exp !== 'beginner') return sorted;
+    const fits = (e) => e && tierOk(e) && e.category === cat && !excl.includes(e.name) && !injuryBlocked(e.name);
+    return sorted.flatMap(e => {
+      const alts = BEGINNER_REGRESSIONS[e.name];
+      if (!alts) return [e];
+      const alt = alts.map(n => bankEntryByName(n)).find(fits);
+      return alt ? [alt] : [];
+    });
   };
 
   // emphasis tag → bank emphasis tag
