@@ -2018,3 +2018,49 @@ audit that was checking for it.
 **Enforced by:** judgment — not mechanically checkable in general. For Muscle Emphasis specifically
 it becomes checkable the day the engine gives emphasis a defined effect: that change must ship with
 a gate asserting the per-muscle weekly-set delta, not a diff of the program object.
+
+## SC-60 — I corrected one stale comment by replacing it with a claim I had not traced, and my sibling sweep was keyed on one spelling
+
+**What happened (2026-11-17, scheduled loop).** A ledger row asked for a comment-only correction: the
+block above `exSwapsAll()` in `tandem.html` said the swap cloud half was "INERT until
+migrations/0024_b1_exercise_swaps.sql is applied", and the migration had been applied 2026-10-07. I
+replaced it with "a swap made offline stays local, and the next hydrateSwapsFromCloud() pushes any
+local entry newer than the cloud's", having read `hydrateSwapsFromCloud()` and seen the push branch.
+Two things were wrong, and neither was caught by me:
+
+1. **The new sentence was true of the function and false of the app.** The independent verifier
+   traced the callers: `hydrateSwapsFromCloud()` is called only from `restoreFromCloud()` (a manual
+   button) and `syncFromCloud()` (the no-local-cfg boot branch), so a returning user's everyday boot
+   never runs it. It also found `pushExSwap()`'s undo DELETE discards its result, so an offline undo
+   is resurrected. My comment would have told the next reader the cloud catches up. It does not.
+2. **My sibling sweep missed the twin 60 lines below.** I grepped `migrations/00[0-9][0-9]`. The
+   header of `hydrateSwapsFromCloud()` says "until 0024 is applied" with no path, the verify
+   registration says "fails soft until 0024 applied", and `swap-cloud-smoke.mjs` narrates the apply
+   as a future step. Four of five council advisors found the twin by reading the file.
+
+**The mechanism, not the trait.** (1) I verified the sentence at the layer I had open (the function
+body) and wrote it at the layer a reader acts on (the app's behaviour). That is SC-59's
+"reachable is not works" and CLAUDE.md's "wired is not working", committed inside a comment whose
+whole purpose was to stop a comment misleading people. (2) I searched for the string the ONE reported
+instance used, so the search could only ever find instances spelled like the one I already had.
+
+> **THE RULE — SC-60.** A sentence in a comment that says what the code DOES is a behavioural claim
+> and gets the same proof as code: name the caller that reaches it, or do not write it. When
+> correcting a stale claim, state only what was measured this session and delete the rest, even if
+> the result is a shorter and less reassuring comment. And sweep for siblings by the CLAIM, not the
+> spelling: search the subject's every name (the file path, the bare number, the table, the
+> feature word) across the app AND the scripts that describe it, before calling an instance fixed.
+
+**Enforced by:** judgment — not mechanically checkable in general. Left deliberately unenforced and
+reported instead: a gate that fails when a comment says "until <migration> is applied" while that
+migration's header says APPLIED would catch this class, but it would fire today on the
+`migrations/0018` note inside the duel/scoring block (forbidden scope for the loop). That one is in
+the 2026-11-17 Goal Record entry for Kerwin.
+
+**A third instance, same session, while writing this entry.** The first draft of the paragraph above
+also said the verify check-name string could not be renamed because `merge-parity-smoke.mjs` R2
+compares check names across merge parents. I had read R2's header ("no check name registered in any
+parent...") and not its implementation, which is keyed on the registered script BASENAME precisely so
+that rewording a label is safe (the comment above `const REG` says so). The second verifier read the
+code and corrected it; the string was then renamed in the same commit. Same mechanism as (1): a
+claim about behaviour taken from a description of the code rather than from the code.

@@ -14,6 +14,8 @@
  * real round-trip is verified against Postgres — never apply 0024 alone (the
  * dead `exercise_notes` table precedent: a table nobody writes to gets dropped
  * as evidence the feature is dead).
+ * DONE: 0024 was applied 2026-10-07 (see the migration's own header) — the
+ * sequence above is the history of how the slice shipped, not a pending step.
  *
  * The design mirrors the notes cloud half (pushExNote/wipeCloudNotes/
  * hydrateNotesFromCloud) deliberately — same keying decision (NAME, not slot id),
@@ -39,8 +41,10 @@
  *   [E] wipeCloudSwaps deletes by user_id and clearHistory() calls it —
  *       otherwise the next hydrate resurrects every swap "Clear all history"
  *       claimed to remove (BUG-91 / wipeCloudNotes precedent)
- *   [F] BOTH cloud paths call the reconciler: restoreFromCloud (fresh device)
- *       and syncFromCloud (returning session) — a correct reconciler no caller
+ *   [F] BOTH cloud paths call the reconciler: restoreFromCloud (the manual
+ *       Restore button) and syncFromCloud (the no-local-cfg branch: a fresh
+ *       device or first sign-in; a returning session WITH a saved cfg reaches
+ *       neither — filed 2026-11-17, "SYNC/SWAP") — a correct reconciler no caller
  *       reaches has shipped nothing ("wired is not working")
  *   [G] a row pulled from the cloud lands in the EXACT local shape resolveUserSwap
  *       reads ({ to, at }) — cloud sync that writes a shape the render seam

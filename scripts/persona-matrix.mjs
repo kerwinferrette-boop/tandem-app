@@ -30,6 +30,7 @@ const { getProgram, EXERCISE_BANK, makeInjuryBlocked } = vm.runInNewContext(
 // ── Test matrix (shared — see scripts/lib/persona-combos.mjs) ──
 import {
   GOALS, DAY_COUNTS, SEXES, TIERS, INJURY_PROFILES, TIER_ORDER, combos,
+  EXPERIENCES, DURATIONS, experienceDurationCombos,
 } from './lib/persona-combos.mjs';
 
 // Name → tier lookup from the raw bank, for the equipment-tier-safety rule.
@@ -136,7 +137,10 @@ function checkR10(days) {
 // ── Run the matrix ────────────────────────────────────────
 const results = [];
 
-for (const { combo, goal, days, sex, tier, injury, args } of combos()) {
+// BUG-141: the same rules run over the experience x duration sweep as well as the base
+// matrix — the generator branches on both (see persona-combos.mjs's scope note).
+const SWEEPS = [...combos(), ...experienceDurationCombos()];
+for (const { combo, goal, days, sex, tier, injury, args } of SWEEPS) {
   let program;
   try {
     program = getProgram(...args);
@@ -172,7 +176,9 @@ for (const row of results) {
   if (row.r10.length) r10Fails.push(row);
 }
 
-console.log(`\nPersona/SKU matrix: ${total} combos (${GOALS.length} goals × ${DAY_COUNTS.length} day-counts × ${SEXES.length} sexes × ${TIERS.length} tiers × ${INJURY_PROFILES.length} injury profiles)\n`);
+const base = GOALS.length * DAY_COUNTS.length * SEXES.length * TIERS.length * INJURY_PROFILES.length;
+console.log(`\nPersona/SKU matrix: ${total} programs — ${base} base combos (${GOALS.length} goals × ${DAY_COUNTS.length} day-counts × ${SEXES.length} sexes × ${TIERS.length} tiers × ${INJURY_PROFILES.length} injury profiles), plus the same ${base} × ${EXPERIENCES.length} experience values × ${DURATIONS.length} durations (BUG-141)\n`);
+if (total !== base * (1 + EXPERIENCES.length * DURATIONS.length)) { console.log(`Sweep size ${total} is not the expected ${base * (1 + EXPERIENCES.length * DURATIONS.length)} — the matrix shrank.`); errored++; }
 console.log(`Errors (generator threw / bad output): ${errored}`);
 console.log(`R6 (missing core block):       ${r6Fails.length} combos`);
 console.log(`R7 (missing cardio block):     ${r7Fails.length} combos`);

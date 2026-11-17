@@ -77,6 +77,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   color:var(--muted2);cursor:pointer;transition:all .15s;}
 .nav-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 .nav-pill.teal.active{background:var(--teal-dim);border-color:color-mix(in srgb,var(--teal) 40%,transparent);color:var(--teal);}
+/* BUG-251: one tap-target floor for the shared control classes (44 x 44 CSS px, Apple HIG 44pt),
+   so every current and future control of these classes inherits it. Two shapes:
+   - grown: the painted box is at least 44 x 44. The Log chips and tracker tools sit in overflow-x:auto
+     rows, which clip an overlay on both axes, so they must grow; the rest have room in their row.
+   - hit-slop: the header pills keep their painted size (growing them makes the sticky header taller
+     on every screen) and get a transparent overlay of at least 44 x 44 centred on the pill.
+   Guarded by scripts/tap-target-floor-smoke.mjs. */
+.log-chip,.tool-btn,.wn-reset,.rest-skip,.sw-btn,.ex-note-swap{min-height:44px;min-width:44px;}
+.ex-note-swap{display:flex;align-items:center;}
+.nav-pill{position:relative;}
+.nav-pill::after{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%);}
 
 /* ═══════════════════════════════
    VIEWS
@@ -6692,9 +6703,16 @@ function loadVideo(exId, ytId, btn) {
 // sees the substitute automatically. Gate: scripts/swap-persistence-smoke.mjs.
 // B4: the cloud half below (pushExSwap / wipeCloudSwaps / hydrateSwapsFromCloud)
 // mirrors the notes cloud half one-for-one — gate: scripts/swap-cloud-smoke.mjs.
-// It is wired but INERT until migrations/0024_b1_exercise_swaps.sql is applied
-// (apply_migration is human-only — Kerwin applies, then the round-trip is
-// verified against real Postgres; every cloud call here fails soft until then).
+// It is LIVE: migrations/0024_b1_exercise_swaps.sql was applied 2026-10-07 (the
+// migration's own header records the post-apply assertions run against real
+// Postgres). Every cloud call here still fails soft — nothing throws. That is NOT
+// the same as "the cloud catches up": reconciliation happens only inside
+// hydrateSwapsFromCloud(), whose two callers are restoreFromCloud() (the manual
+// Restore button) and syncFromCloud() (the no-local-cfg branch, at boot or sign-in), so a
+// returning user's everyday boot never runs it; and pushExSwap()'s undo DELETE
+// does not check its result, so an undo made offline leaves the cloud row behind.
+// Both are filed, not fixed here: Bug & QA Log row "SYNC/SWAP", filed 2026-11-17,
+// which Notion numbered BUG-262 (NOT the BUG-262 that commit 255783a's subject names).
 function exSwapsAll() { return LS.get('tandem_swaps') || {}; }
 function exSwapFor(origName) {
   const e = exSwapsAll()[origName];
@@ -6752,10 +6770,11 @@ async function wipeCloudSwaps() {
 // hydrateNotesFromCloud (whose header explains why one owner, not two inline
 // blocks). TWO-WAY, newest-wins by `updated_at`; a swap present in the cloud but
 // absent locally is taken, NOT treated as a local undo, because a real undo
-// already deleted its row in pushExSwap(). No pending-timer guard: swaps have no
+// already deleted its row in pushExSwap() — when that DELETE succeeded; it is
+// not checked, see the B4 header above exSwapsAll(). No pending-timer guard: swaps have no
 // debounce, so there is never an in-flight local edit to protect. Never throws —
-// an offline load must still render whatever the cache holds, and until 0024 is
-// applied the select fails soft here on every load, leaving local state intact.
+// an offline load must still render whatever the cache holds, and a failed select
+// (offline or denied) fails soft here, leaving local state intact.
 async function hydrateSwapsFromCloud(uid) {
   if (!uid || typeof sb === 'undefined' || !sb) return { pulled: 0, pushed: 0 };
   try {

@@ -84,6 +84,16 @@ function startServer() {
 // Runs inside the page. Returns objective findings for what is on screen right now.
 function inspectScreen() {
   const vw = window.innerWidth, vh = window.innerHeight;
+  // The tappable span of a control along one axis through its centre, in CSS px: the box, plus
+  // however far past each edge (up to 22px) elementFromPoint still lands on the control.
+  function hitExtent(el, r, axis) {
+    const on = (x, y) => { const h = document.elementFromPoint(x, y); return !!h && (h === el || el.contains(h)); };
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let lo = 0, hi = 0;
+    for (let d = 1; d <= 22; d++) { const x = axis === 'x' ? r.left - d : cx, y = axis === 'y' ? r.top - d : cy; if (x < 0 || y < 0 || !on(x, y)) break; lo = d; }
+    for (let d = 1; d <= 22; d++) { const x = axis === 'x' ? r.right - 1 + d : cx, y = axis === 'y' ? r.bottom - 1 + d : cy; if (x >= vw || y >= vh || !on(x, y)) break; hi = d; }
+    return (axis === 'x' ? r.width : r.height) + lo + hi;
+  }
   const out = [];
   // checkVisibility() walks ANCESTORS too: a closed sheet whose parent overlay sits at opacity:0
   // (the bug-report and QA sheets) is not on screen even though its own styles say it is. The
@@ -147,8 +157,20 @@ function inspectScreen() {
         }
       }
     }
-    if ((r.width < 32 || r.height < 32) && !el.matches('input[type="checkbox"], input[type="radio"]')) {
-      out.push({ kind: 'small-tap-target', severity: 'P3', target: label(el), detail: `${Math.round(r.width)}x${Math.round(r.height)}px (guideline 44)` });
+    // BUG-251: a control may keep a small painted box and take taps on a transparent ::after
+    // overlay (hit-slop). Count the overlay only where the browser actually routes a tap there:
+    // hitExtent() walks outward from the box with elementFromPoint and stops at the first point
+    // that does not land on this control. A pseudo-element that is declared but clipped, covered
+    // or pointer-events:none therefore adds nothing.
+    let tw = r.width, th = r.height;
+    const after = getComputedStyle(el, '::after');
+    if ((r.width < 32 || r.height < 32) && after.content !== 'none' && after.position === 'absolute' && after.pointerEvents !== 'none'
+        && r.top >= 0 && r.bottom <= vh && r.left >= 0 && r.right <= vw) {
+      tw = hitExtent(el, r, 'x'); th = hitExtent(el, r, 'y');
+    }
+    if ((tw < 32 || th < 32) && !el.matches('input[type="checkbox"], input[type="radio"]')) {
+      const slop = (tw !== r.width || th !== r.height) ? `, tappable ${Math.round(tw)}x${Math.round(th)}px` : '';
+      out.push({ kind: 'small-tap-target', severity: 'P3', target: label(el), detail: `${Math.round(r.width)}x${Math.round(r.height)}px${slop} (guideline 44)` });
     }
   }
   // De-duplicate identical rows (repeated cards produce the same finding many times).
