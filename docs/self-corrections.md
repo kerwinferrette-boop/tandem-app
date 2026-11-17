@@ -2064,3 +2064,26 @@ parent...") and not its implementation, which is keyed on the registered script 
 that rewording a label is safe (the comment above `const REG` says so). The second verifier read the
 code and corrected it; the string was then renamed in the same commit. Same mechanism as (1): a
 claim about behaviour taken from a description of the code rather than from the code.
+
+## SC-61 — I told Kerwin he had declined a prompt he never saw, because a tool returned "declined"
+
+**What happened (2026-11-17).** Kerwin said "apply 0029". `mcp__supabase__execute_sql` returned
+`{"status":"declined","message":"SQL execution was declined."}` and I reported "You declined the SQL run
+when the permission prompt came up". He replied "never got a prompt." The decline came from the
+connector's own confirmation for destructive statements (the migration's `drop trigger if exists`),
+which never reached his screen and auto-declined; `.claude/settings.json` ALLOWS that tool. The same DDL
+without the no-op drop then ran through the second Supabase connector
+(`mcp__237ecc72-…__execute_sql`) and every post-apply assertion passed.
+
+**The mechanism, not the trait.** I mapped a tool's status word onto a human action without checking
+which layer produced it. "Declined" from a tool is a fact about the tool; whether a person decided
+anything is a separate question with its own evidence (did a prompt render? do the permission rules
+allow the call?).
+
+> **THE RULE — SC-61.** Never attribute a refusal, denial or decline to the user unless the evidence
+> says they made it. When a tool returns declined/denied, first check the permission rules
+> (`.claude/settings*.json`) and whether a prompt could have been shown; report it as "the tool
+> refused", say which layer, and offer the route around it — never "you declined".
+
+**Enforced by:** judgment — not mechanically checkable. Recorded for the specific connector in the
+auto-memory note `supabase-connector-silent-decline.md`.

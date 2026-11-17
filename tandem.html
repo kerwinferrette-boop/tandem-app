@@ -1371,30 +1371,35 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <div class="ob-card-title">What's Your Goal?</div>
         <div class="ob-card-sub">This shapes your entire program — reps, rest, progressions, everything.</div>
         <div class="goal-grid">
+          <!-- Goal-card chips (verified 2026-11-17 against programs.js PHASES, tandem.html PROGRESSION, SUPERSET_CFG):
+     reps = PHASES[goal] rep range across the 4 phases; rest = PHASES restComp (the primary-lift rest);
+     %1RM = PROGRESSION[goal] range. Removed: "Wave Loading", "MRT Circuits", "Flexible Schedule" (no engine
+     behaviour), "Heavy Compounds" on Build Muscle (67-80% is not heavy). Not shown: the realization week
+     (3 reps at 90%) every goal ends on. Zone 2 on Burn Fat is conditional for men (D32). Change a phase, change these. -->
           <div class="goal-card" style="--gc:var(--red);--gd:color-mix(in srgb,var(--red) 8%,transparent);--gb:color-mix(in srgb,var(--red) 35%,transparent);" onclick="selectGoal('fat_burn',this)">
             <div class="tc-photo" data-hero="goal:fat_burn"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
             <div class="goal-card-top"><div class="goal-name">Burn Fat</div></div>
-            <div class="goal-tags"><span class="goal-tag">Higher Reps</span><span class="goal-tag">Shorter Rest</span><span class="goal-tag">Zone 2 Cardio</span><span class="goal-tag">Compound Circuits</span></div>
+            <div class="goal-tags"><span class="goal-tag">12–15 Reps</span><span class="goal-tag">60–75 sec Rest</span><span class="goal-tag">Zone 2 Cardio</span><span class="goal-tag">Circuit Supersets</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--orange);--gd:color-mix(in srgb,var(--orange) 10%,transparent);--gb:color-mix(in srgb,var(--orange) 40%,transparent);" onclick="selectGoal('build_muscle',this)">
             <div class="tc-photo" data-hero="goal:build_muscle"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
             <div class="goal-card-top"><div class="goal-name">Build Muscle</div></div>
-            <div class="goal-tags"><span class="goal-tag">6–12 Reps</span><span class="goal-tag">2 min Rest</span><span class="goal-tag">Heavy Compounds</span><span class="goal-tag">Wave Loading</span></div>
+            <div class="goal-tags"><span class="goal-tag">6–12 Reps</span><span class="goal-tag">2–2.5 min Rest</span><span class="goal-tag">67–80% 1RM</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--teal);--gd:color-mix(in srgb,var(--teal) 8%,transparent);--gb:color-mix(in srgb,var(--teal) 35%,transparent);" onclick="selectGoal('transform',this)">
             <div class="tc-photo" data-hero="goal:transform"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
             <div class="goal-card-top"><div class="goal-name">Transform</div></div>
-            <div class="goal-tags"><span class="goal-tag">8–15 Reps</span><span class="goal-tag">90 sec Rest</span><span class="goal-tag">MRT Circuits</span><span class="goal-tag">Hybrid Cardio</span></div>
+            <div class="goal-tags"><span class="goal-tag">8–12 Reps</span><span class="goal-tag">90–120 sec Rest</span><span class="goal-tag">Antagonist Supersets</span><span class="goal-tag">Zone 2 Cardio</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--orange);--gd:color-mix(in srgb,var(--orange) 8%,transparent);--gb:color-mix(in srgb,var(--orange) 35%,transparent);" onclick="selectGoal('strength',this)">
             <div class="tc-photo" data-hero="goal:strength"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
             <div class="goal-card-top"><div class="goal-name">Strength</div></div>
-            <div class="goal-tags"><span class="goal-tag">1–5 Reps</span><span class="goal-tag">3–5 min Rest</span><span class="goal-tag">85–100% 1RM</span><span class="goal-tag">Heavy Compounds</span></div>
+            <div class="goal-tags"><span class="goal-tag">2–5 Reps</span><span class="goal-tag">3–5 min Rest</span><span class="goal-tag">85–95% 1RM</span><span class="goal-tag">Heavy Compounds</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--green);--gd:color-mix(in srgb,var(--green) 8%,transparent);--gb:color-mix(in srgb,var(--green) 35%,transparent);" onclick="selectGoal('maintenance',this)">
             <div class="tc-photo" data-hero="goal:maintenance"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
             <div class="goal-card-top"><div class="goal-name">Maintain</div></div>
-            <div class="goal-tags"><span class="goal-tag">6–10 Reps</span><span class="goal-tag">60–120 sec Rest</span><span class="goal-tag">Capped Volume</span><span class="goal-tag">Flexible Schedule</span></div>
+            <div class="goal-tags"><span class="goal-tag">6–10 Reps</span><span class="goal-tag">2 min Rest</span><span class="goal-tag">Capped Volume</span></div>
           </div>
         </div>
       </div>
@@ -4866,7 +4871,10 @@ function renderBaselineEstimates() {
   wrap.querySelectorAll('input[data-est-name]').forEach(inp => {
     if (inp.value) prior[inp.dataset.estName] = inp.value;
   });
-  const sexKey = (selectedSex === 'female') ? 'female' : 'male';
+  // isFemaleSex() (programs.js) is the one sex normalizer. This line used to compare against
+  // 'female' alone, but onboarding stores 'F' (selectSex('F')), so every woman was shown the
+  // men's baseline list (Back Squat, Flat Barbell Press, Barbell Row, RDL, Overhead Press).
+  const sexKey = isFemaleSex(selectedSex) ? 'female' : 'male';
   wrap.innerHTML = OB_ESTIMATE_LISTS[sexKey].map(name => `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);">
       <div style="font-size:13px;color:var(--text);">${exDisplayName(name)}</div>

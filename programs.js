@@ -2950,14 +2950,14 @@ const SHORT_SESSION_MAX_MINUTES = 45; // UNSOURCED engineering default — see D
 // scripts/program-snapshot.mjs` after this change (see commit body).
 const ACC_PHASE_WEEKS = 3;
 const ACC1_PHASE_WEEKS = 6;
-function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs) {
+function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs, opts) {
   const exp = normalizeExperience(experience);
   // Short session ⇒ drop the isolation block's 3rd slot (acc3), same mechanism
   // EPIC-8a already proved for beginner tier. `undefined`/`null`/non-finite stays
   // false, so every existing caller (none of which passes durationMinutes today)
   // is byte-identical to pre-Slice-1 behavior — regression-safe by construction.
   const isShortSession = Number.isFinite(durationMinutes) && durationMinutes < SHORT_SESSION_MAX_MINUTES;
-  const isFemale = (sex === 'F' || String(sex||'').toLowerCase()==='f' || String(sex||'').toLowerCase()==='female');
+  const isFemale = isFemaleSex(sex);
   const dbCap = (Number.isFinite(maxDb) && maxDb > 0) ? maxDb : Infinity;
   // D32 (EPIC-8c, programs.js's one home for the cardio-finisher rule — see getProgram's
   // weightDeltaLbs comment for the citation). Men's fat_burn Zone 2 is OPTIONAL (skipped)
@@ -3379,7 +3379,10 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   // (5.5 of 10) in four goals and added a lift above 6 sets in Strength. A 2-day emphasis
   // therefore still only filters candidate pools, as before — said plainly, it is close to a
   // no-op there, and that is an open gap, not a decision that 2-day users need no emphasis.
-  const emphasisProgram = (days >= 3 && EMPHASIS_PROGRAM[emphasis]) || null;
+  // opts.noEmphasisRewrite: getProgram()'s floor guard asks for the pool-filter-only build
+  // (the pre-2026-11-17 behaviour, and what 2-day programs get) to compare against — see
+  // EMPHASIS FLOOR GUARD in getProgram.
+  const emphasisProgram = (days >= 3 && !(opts && opts.noEmphasisRewrite) && EMPHASIS_PROGRAM[emphasis]) || null;
   const dayTemplates = TEMPLATES.map(t => (!emphasisProgram || emphasisProgram.own.includes(t.key)) ? t
     // The day's LABEL is left alone on purpose: muscleGroupFromLabel() parses label text for
     // recovery-gap logic (BUG-73, BUG-114). The rationale line is display-only, so the honest
@@ -3959,6 +3962,17 @@ const MAJOR_MUSCLE_GROUP_TOKENS = [...new Set(
 // directly — ONE function, consumed by D6b's assertion AND (per "one rule, one
 // home") the Synergy-Aware Exercise Selection Epic's Phase 1 ledger, not two
 // competing implementations.
+// emphasisCostsDoctrine(emphasised, balanced, goal) — true when the emphasised build leaves a
+// major muscle below the goal's weekly MEV that the balanced build meets (D6b), or carries
+// more lifts above PER_EXERCISE_SET_CEILING than it (D35). Read by getProgram's EMPHASIS FLOOR GUARD.
+function emphasisCostsDoctrine(a, b, goal) {
+  const lm = VOLUME_LANDMARKS[goal] || VOLUME_LANDMARKS.build_muscle;
+  const below = (p) => { const g = {}; for (const [k, v] of Object.entries(computeMuscleWeeklyVolume(p, EXERCISE_BANK))) { const key = muscleCeilingKey(k); g[key] = (g[key] || 0) + v; }
+    return new Set(Object.keys(g).filter(k => MAJOR_MUSCLE_GROUP_TOKENS.includes(k) && g[k] < lm.mev)); };
+  const over = (p) => p.flatMap(d => (d.blocks || []).filter(x => !x.cardio).flatMap(x => x.exs || [])).filter(e => e.sets > PER_EXERCISE_SET_CEILING).length;
+  const bb = below(b);
+  return [...below(a)].some(k => !bb.has(k)) || over(a) > over(b);
+}
 function computeMuscleWeeklyVolume(days, bank) {
   const byName = {};
   for (const e of Object.values(bank || {})) if (e && e.name) byName[e.name] = e;
@@ -4334,7 +4348,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   const tier  = equipment || 'full_gym';
   const focus = emphasis  || 'balanced';
 
-  const isFemale = (sex === 'F' || String(sex || '').toLowerCase() === 'f' || String(sex || '').toLowerCase() === 'female');
+  const isFemale = isFemaleSex(sex);
   const fat = goal === 'fat_burn';
   const muscle = goal === 'build_muscle';
   const transform = goal === 'transform';
@@ -6124,7 +6138,8 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram. This block lives here, after the build2/ppl/build5 const
   // helpers above are initialized — calling them from the top of getProgram hit
   // their temporal dead zone (TDZ).
-  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs);
+  const buildFinal = (opts, em = focus) => {
+  const generated = buildDynamicProgram(goal, days, weeks, sex, tier, em, injuries, maxDb, rotation, experience, liftHistory, durationMinutes, weightDeltaLbs, opts);
   if (generated) {
     // EPIC-8a: applied AFTER the 2/3/5-day wrappers + injury prune, on the
     // final day array — the wrappers recombine exercises from multiple base
@@ -6142,11 +6157,33 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
     // D28 × D33: a short session keeps the full-length session's compound sets.
     let compoundRef = null;
     if (Number.isFinite(durationMinutes) && durationMinutes < SHORT_SESSION_MAX_MINUTES) {
-      const full = buildDynamicProgram(goal, days, weeks, sex, tier, focus, injuries, maxDb, rotation, experience, liftHistory, null, weightDeltaLbs);
+      const full = buildDynamicProgram(goal, days, weeks, sex, tier, em, injuries, maxDb, rotation, experience, liftHistory, null, weightDeltaLbs, opts);
       if (full) compoundRef = compoundSetsOf(applyGoalVolume(wrap(full), goal));
     }
     return flagAdvanced(applyDeload(applySupersets(applyGoalVolume(wrap(generated), goal, compoundRef), goal), rotation, weeks));
   }
+  return null;
+  };
+  // EMPHASIS FLOOR GUARD — BUG-270 (2026-11-17, handoff step 4). The emphasis rewrite (EMPHASIS_PROGRAM in
+  // buildDynamicProgram) was measured only on full gym / intermediate / 60 min / no injury.
+  // Swept across the other axes it broke two cited rules: a major muscle newly below its weekly
+  // MEV floor (D6b) for beginners (38 of 200 programs) and 30-minute sessions (96 of 200), and
+  // extra lifts above PER_EXERCISE_SET_CEILING (D35's spread-don't-stack) on beginner, home,
+  // 30-minute and lower-back-injury programs. An ENGINEERING_DEFAULT may not cost a SCIENCE_DEFAULT,
+  // so the program is measured against the BALANCED build and steps back until it costs nothing:
+  // full emphasis -> pool-filter-only emphasis (what 2-day programs get) -> balanced. The second
+  // step exists because the older pool filter alone also stacked (Back Heavy on shoulder-injury
+  // and 30-minute programs, 18 cells). One check, here at the seam, binds every goal, day-count,
+  // tier, experience, duration and injury at once. Guarded by scripts/emphasis-program-smoke.mjs.
+  const emphasized = buildFinal(null);
+  if (emphasized && focus !== 'balanced') {
+    const balanced = buildFinal(null, 'balanced');
+    if (balanced && emphasisCostsDoctrine(emphasized, balanced, goal)) {
+      const plain = days >= 3 ? buildFinal({ noEmphasisRewrite: true }) : null;
+      return (plain && !emphasisCostsDoctrine(plain, balanced, goal)) ? plain : balanced;
+    }
+  }
+  if (emphasized) return emphasized;
 
   // ── Silent emergency fallback ──────────────────────────────────────────────
   // The generator should never return null in normal use. If it does (bank gap,

@@ -75,6 +75,31 @@ for (const em of Object.keys(AREA)) {
     shareBy[em].before.push(a0 / totalSets(base)); shareBy[em].after.push(a1 / totalSets(p)); shareBy[em].gain.push(a1 - a0);
   }
 }
+// [E5] (2026-11-17, handoff step 4) — the axes the first sweep never measured. Swept before the
+// EMPHASIS FLOOR GUARD existed, the rewrite left a major muscle newly below its weekly floor in 38
+// beginner and 96 thirty-minute programs, and added lifts above 6 sets on beginner (94), home (52),
+// 30-minute (26), lower-back (74) and shoulder-injury (16) programs. D6b and D35 are asserted here
+// on every axis; whether the area still GAINS sets is reported, not asserted, because the guard's
+// fallback (pool-filter-only emphasis) can legitimately gain nothing.
+const AXES = {
+  'home tier': { tier: 'home' }, 'hotel tier': { tier: 'hotel_gym' }, beginner: { exp: 'beginner' }, advanced: { exp: 'advanced' },
+  '30-min session': { dur: 30 }, 'injury: knee': { inj: 'knee pain' }, 'injury: lower back': { inj: 'lower back injury' },
+  'injury: shoulder': { inj: 'shoulder impingement' }, 'injury: elbow': { inj: 'tennis elbow' }, 'injury: wrist': { inj: 'wrist pain' }, 'injury: hip': { inj: 'hip pain' },
+};
+const axisReport = [];
+for (const [axis, a] of Object.entries(AXES)) {
+  const runA = (goal, days, sex, em) => gp(goal, days, 12, sex, a.tier || 'full_gym', em, a.inj || null, null, null, a.exp || 'intermediate', null, a.dur || 60, 185, 175) || [];
+  let n = 0, noGain = 0;
+  for (const em of Object.keys(AREA)) for (const goal of GOALS) for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
+    const base = runA(goal, days, sex, 'balanced'), p = runA(goal, days, sex, em); n++;
+    const tag = `${axis} ${em} ${goal}/${days}d/${sex}`;
+    const b0 = belowFloor(base, goal), newBelow = belowFloor(p, goal).filter(k => !b0.includes(k));
+    if (newBelow.length) fails.push(`[E5] ${tag}: newly below the weekly floor — ${newBelow.join(', ')}`);
+    if (over6(p) > over6(base)) fails.push(`[E5] ${tag}: lifts above 6 sets ${over6(base)} -> ${over6(p)}`);
+    if (!(areaSets(p, AREA[em]) > areaSets(base, AREA[em]))) noGain++;
+  }
+  axisReport.push(`${axis}: ${n - noGain}/${n} gain`);
+}
 if (fails.length) {
   const tally = {}; for (const f of fails) { const k = f.slice(0, 4); tally[k] = (tally[k] || 0) + 1; }
   console.error(`emphasis-program-smoke: ${fails.length} FAILURE(S) — ` + Object.entries(tally).map(([k, n]) => `${k} x${n}`).join(', '));
@@ -86,3 +111,4 @@ console.log(`emphasis-program-smoke: OK — ${programs} programs (5 emphases x 5
 for (const [em, s] of Object.entries(shareBy)) { const g = [...s.gain].sort((a, b) => a - b); console.log(`  not asserted — ${em}: ${pct(s.before)}% -> ${pct(s.after)}% of weekly sets (lowest ${Math.round(Math.min(...s.after) * 100)}%); +${g[0]} to +${g[g.length - 1]} sets a week, median +${g[Math.floor(g.length / 2)]}`); }
 let noop = 0, two = 0; for (const em of Object.keys(AREA)) for (const goal of GOALS) { two++; if (areaSets(run(goal, 2, 'male', em), AREA[em]) <= areaSets(run(goal, 2, 'male', 'balanced'), AREA[em])) noop++; }
 console.log(`  not asserted — 2-day programs: ${noop} of ${two} emphasis x goal cells gain no sets for the area (emphasis program not applied at 2 days)`);
+console.log(`  [E5] asserted on every axis: no floor newly missed, no extra lift above 6 sets. Not asserted — programs where the area gains sets: ${axisReport.join(' · ')} (weeks other than 1 still unmeasured)`);
