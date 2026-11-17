@@ -3266,6 +3266,29 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     };
   };
 
+  // SECOND-EXPOSURE (2026-11-17, audit) — why the two upper days each carry an `acc4`.
+  // MEASURED before this change, 5 goals x 5 day-counts x 2 sexes, week 1, intermediate, full gym:
+  // chest was trained as a primary mover ONE day a week at 2, 3, 4 and 5 days in every goal, and
+  // lats one day a week at 3, 4 and 5. applyGoalVolume() must still reach the weekly MEV floor
+  // (D6b), so with one chest day it had nowhere to put the sets except the same lift: Bench
+  // Press at 6 sets, the D35 per-exercise ceiling, on a week-1 intermediate Build Muscle program.
+  // SHOULD: D35 — a volume floor is met by SPREADING across exercises, never by stacking one
+  //   lift; research-report (8).pdf Section 1 — higher frequency "distributes this volume across
+  //   more sessions, reducing per-session fatigue while maintaining weekly stimulus" [4]; Notion
+  //   Programming Architecture Reference Part 2 — "Upper body can handle 2x/week frequency".
+  // COULD: (a) repurpose acc3 instead of adding a slot — measured WORSE: lifts above 6 sets went
+  //   24 -> 40, because it removed a delt exposure the volume pass then had to stack elsewhere;
+  //   (b) a lat ISOLATION on Day 1 — measured no effect: the bank has 3 lat isolations and none
+  //   survived the slot's filters, so lats stayed at once a week; (c) rebuild the 4-day week as
+  //   Push / Pull / Legs / Full (the Notion men's example) — not done here: it moves lower body to
+  //   one dedicated day and rewrites every wrapper (ppl/build5/build2/build6) in one change.
+  // DID: Day 1 gains a lat compound, Day 3 gains a pec isolation. Measured after: chest and lats
+  //   are each trained 2 days a week at 3, 4 and 5 days; Build Muscle 4-day Bench Press 6 -> 4
+  //   sets; lifts at exactly 6 sets 38 -> 22 of the matrix. Upper days go from 7 to 8 exercises at
+  //   about the same total sets (26 -> 27), because the volume pass now spreads instead of stacks.
+  // NOT fixed, said plainly: 2-day programs still stack (chest once a week, up to 10 sets on one
+  //   lift), hamstrings are still once a week at 2 and 3 days, and the count of lifts ABOVE 6
+  //   sets is unchanged at 24. Those need their own change.
   // Day templates: each defines what to populate
   const TEMPLATES = [
     { key:'day1', label:'Day 1 · Upper Push', color:'var(--red)',
@@ -3276,6 +3299,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['pec_major','pec'],                          cat:'isolation'},
         {role:'acc2',      groups:['tricep'],                                   cat:'isolation'},
         {role:'acc3',      groups:['posterior_delt','lateral_delt'],            cat:'isolation'},
+        {role:'acc4',      groups:['lat_dorsi'],                                cat:'compound'},   // second weekly back exposure — see SECOND-EXPOSURE note above TEMPLATES
       ], cardioGroups:['full_body','glute_max'] },
     { key:'day2', label:'Day 2 · Lower Hinge', color:'var(--amber)',
       rationale:'Hip hinge pattern — glutes, hamstrings, posterior chain. Calf and hip abductor accessories.',
@@ -3294,6 +3318,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         {role:'acc1',      groups:['bicep'],                                    cat:'isolation'},
         {role:'acc2',      groups:['posterior_delt','rhomboid'],                cat:'isolation'},
         {role:'acc3',      groups:['lateral_delt'],                             cat:'isolation'},
+        {role:'acc4',      groups:['pec_major','pec'],                          cat:'isolation'},  // second weekly chest exposure
       ], cardioGroups:['lat_dorsi','quad','glute_max'] },
     { key:'day4', label:'Day 4 · Lower Quad', color:'var(--purple,#a78bfa)',
       rationale:'Squat pattern emphasis — quads, glutes. Isolation finishers for quad and glute medius.',
@@ -3350,7 +3375,8 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
   };
 
   try {
-    const result = TEMPLATES.map(tmpl => {
+    const SECOND_EXPOSURE_ROLE = 'acc4';
+    const dayPicks = TEMPLATES.map(tmpl => {
       const exs = {};
       // D30 (BUG-151) — patterns already claimed by a compound pick earlier in
       // THIS SESSION (one template day). Deliberately reset per tmpl, not
@@ -3363,6 +3389,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       // cannot see across that merge, only within one tmpl's own slots.
       const usedPatterns = new Set();
       tmpl.slots.forEach(s => {
+        if (s.role === SECOND_EXPOSURE_ROLE) return; // filled in pass 2, below
         // EPIC-8a: beginner tier drops the Accessory Block's 3rd exercise slot
         // (2 accessories instead of 3) — skip selection entirely so acc3's
         // exercise stays available (excl:[...used]) for other days.
@@ -3389,6 +3416,25 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
           }
         }
       });
+      return { exs, usedPatterns };
+    });
+    // Pass 2 — second-exposure slots, only AFTER every day's own lifts are chosen. Picking
+    // them in day order (the first draft) let Day 1's extra back lift take the row Day 3's
+    // PRIMARY slot would have chosen, and because accessories rotate, Day 3's primary then
+    // changed mid-block: D15 went red on every 2-day program. A borrowed exposure never gets
+    // to displace or destabilise the lifts that own a day.
+    const gainsSecondExposure = !(exp === 'beginner' || isShortSession);
+    TEMPLATES.forEach((tmpl, ti) => {
+      const { exs, usedPatterns } = dayPicks[ti];
+      // Beginner and short sessions already SHED a slot (EPIC-8a / D28); they do not gain one.
+      tmpl.slots.filter(s => gainsSecondExposure && s.role === SECOND_EXPOSURE_ROLE).forEach(s => {
+        const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
+        const chosen = pick(cands, s, tmpl);
+        if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
+      });
+    });
+    const result = TEMPLATES.map((tmpl, ti) => {
+      const { exs } = dayPicks[ti];
       // GEN-fix: if every group-matched cardio candidate is excluded, allow
       // reuse rather than silently dropping the finisher (cardio repeats
       // across days are fine — Zone 2 is a modality, not a lift).
@@ -3432,6 +3478,15 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
       const blocks = [];
       if (compExs.length) blocks.push({label:'Compound Block', exs:compExs});
+      // The second-exposure lift gets its OWN block, directly after the Compound Block. It
+      // was first appended to the Accessory Block, which broke three things the gates caught:
+      // a compound row landed after isolations (validate:programs R3, multi-joint before
+      // single-joint), applySupersets() paired a heavy row with a lateral raise, and a short
+      // session's accessory count fell by two instead of D28's one. In its own block none of
+      // those rules is touched: the Compound Block (D15), the Accessory Block (D28) and the
+      // superset pairs are exactly what they were.
+      const balExs = exs[SECOND_EXPOSURE_ROLE] ? [makeEx(exs[SECOND_EXPOSURE_ROLE], tmpl.key+'-b0', {sets:3})] : [];
+      if (balExs.length) blocks.push({label:'Balance Block', exs:balExs});
       if (accExs.length)  blocks.push({label:'Accessory Block', exs:accExs});
       if (coreExs.length) blocks.push({label:'Core Block', exs:coreExs});
       if (cardioEx && !skipFatBurnCardio) blocks.push({label:'Zone 2 · 22 min', cardio:true, exs:[
@@ -5108,7 +5163,12 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // would silently grab a different muscle's lift. Static fallback days carry no
   // role ids — positional there, exactly as before.
   const accOf = (day, n) => {
-    const exs = day?.blocks?.[1]?.exs || [];
+    // By LABEL first: generated upper days now carry a Balance Block between the Compound and
+    // Accessory blocks, so "the block at index 1" stopped meaning "the accessories" (measured:
+    // the 2-day week silently lost an accessory and stacked a 7th set on Barbell Row instead).
+    // Static fallback days label their blocks differently and keep the positional lookup.
+    const blk = day?.blocks?.find(b => b.label === 'Accessory Block') || day?.blocks?.find((b, i) => i === 1 && b.label !== 'Balance Block');
+    const exs = blk?.exs || [];
     return exs.some(e => /-a\d$/.test(e?.id || '')) ? exs.find(e => (e?.id || '').endsWith('-a' + n)) : exs[n];
   };
   // 3-day versions: compress to Push/Pull/Legs

@@ -38,7 +38,7 @@ const fails = [];
 const T = 24;
 const names = (day) => (day.blocks || []).flatMap(b => (b.exs || []).map(e => e.name));
 
-let programs = 0, beginnerHits = 0, twinHits = 0, twinDays = 0, regressedOk = 0;
+let programs = 0, beginnerHits = 0, twinHits = 0, twinDays = 0, regressedOk = 0, absentSlot = 0;
 const firstFail = [];
 for (const c of combos()) {
   for (let w = 1; w <= T; w++) {
@@ -53,9 +53,20 @@ for (const c of combos()) {
       const bn = names(d);
       const bad = bn.filter(n => TARGETS.includes(n));
       if (bad.length) { beginnerHits++; if (firstFail.length < 5) firstFail.push(`B1 ${c.combo} wk${w} day${di + 1}: ${bad.join(', ')}`); }
-      const tw = I[di] ? names(I[di]) : [];
+      const twEx = I[di] ? (I[di].blocks || []).flatMap(b => b.exs || []) : [];
+      const tw = twEx.map(e => e.name);
+      const begIds = new Set((d.blocks || []).flatMap(b => (b.exs || []).map(e => e.id)));
       for (const t of ['Chin-Up', 'Pull-Up']) {
         if (!tw.includes(t)) continue;
+        // 2026-11-17: B3 is a claim about SLOTS ("every slot whose intermediate twin had ..."),
+        // and it used to be checked per DAY. That was equivalent while both tiers had the same
+        // slots. The second-exposure slot (programs.js SECOND_EXPOSURE_ROLE, id suffix '-b0')
+        // exists for intermediate/advanced only — beginners shed a slot, they do not gain one —
+        // so a Pull-Up there has no beginner slot to regress INTO. Only that one slot is
+        // exempt, only when the beginner day truly lacks it, and it is counted and printed.
+        // B1 is untouched: a beginner day still may not contain Chin-Up, Pull-Up or Dips at all.
+        const twinSlots = twEx.filter(e => e.name === t);
+        if (twinSlots.every(e => /-b0$/.test(String(e.id)) && !begIds.has(e.id))) { absentSlot++; continue; }
         twinHits++; twinDays++;
         const alts = (BEGINNER_REGRESSIONS && BEGINNER_REGRESSIONS[t]) || [];
         if (alts.some(n => bn.includes(n))) regressedOk++;
@@ -94,4 +105,4 @@ if (fails.length) {
   console.error(`FAIL beginner-regression-smoke (${programs} beginner/intermediate program pairs)`);
   process.exit(1);
 }
-console.log(`✓ ${programs} beginner programs prescribe no Chin-Up, Pull-Up or Dips; all ${twinDays} slots where the intermediate twin had Chin-Up or Pull-Up hold a listed regression; the regression table is honest`);
+console.log(`✓ ${programs} beginner programs prescribe no Chin-Up, Pull-Up or Dips; all ${twinDays} slots where the intermediate twin had Chin-Up or Pull-Up hold a listed regression (${absentSlot} twin day(s) had one only in the second-exposure slot beginners do not have); the regression table is honest`);
