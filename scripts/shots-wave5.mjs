@@ -58,7 +58,7 @@ async function onboardToDashboard(page) {
   await page.fill('#ob-weeks', '12');
   await page.click('.day-dot[onclick*="selectDays(4"]');
   await page.click('#obNextBtn'); await page.waitForTimeout(150);
-  await page.click("[onclick*=\"selectWorkoutTime('morning'\"]");
+  // Preferred Workout Time removed 2026-11-17 (Kerwin) - step 3 has no required field now.
   await page.click('#obNextBtn'); await page.waitForTimeout(150);
   for (let i = 0; i < 3; i++) {
     const on = await page.evaluate(() => document.getElementById('view-onboard')?.classList.contains('active'));

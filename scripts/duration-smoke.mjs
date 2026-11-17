@@ -31,7 +31,7 @@ const code = readFileSync(join(root, 'programs.js'), 'utf8');
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(code, ctx);
-const { getProgram } = ctx;
+const { getProgram, estimateSessionMinutes } = ctx;
 
 const failures = [];
 let checked = 0;
@@ -60,10 +60,15 @@ for (const goal of ['build_muscle', 'transform', 'fat_burn']) {
   if (JSON.stringify(explicitUndefined) !== JSON.stringify(explicitNull)) {
     failures.push(`${goal}: durationMinutes=null differs from undefined — both must mean "no preference stated"`);
   }
-  const long = getProgram(...BASE_ARGS(goal, 60));
+  // 2026-11-17 (Kerwin: "Trim to fit") replaced EPIC-8b's ">=60 min keeps the full structure":
+  // the program is trimmed while its longest day's estimate exceeds the chosen length. So the
+  // regression-safety clause is now: a length the untrimmed program ALREADY fits leaves it
+  // byte-identical to the no-preference baseline (no trim when none is needed).
+  const fits = Math.max(...explicitUndefined.map(d => estimateSessionMinutes(d, goal)));
+  const long = getProgram(...BASE_ARGS(goal, Math.max(fits, 45)));
   checked++;
   if (JSON.stringify(explicitUndefined) !== JSON.stringify(long)) {
-    failures.push(`${goal}: durationMinutes=60 (>=60min, "keep full structure") must match the no-preference baseline`);
+    failures.push(`${goal}: durationMinutes=${Math.max(fits, 45)} (the untrimmed program already fits it) must match the no-preference baseline`);
   }
 }
 

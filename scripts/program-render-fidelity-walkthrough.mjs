@@ -146,7 +146,7 @@ async function buildProgram(page, goal, T) {
   await page.click('#obNextBtn');
   // Step 3 Training Preferences
   await page.click('[onclick*="selectEquipment(\'full_gym\'"]');
-  await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
+  // Preferred Workout Time removed 2026-11-17 (Kerwin) - step 3 has no required field now.
   await page.click('#obNextBtn');
   // Remaining ungated steps
   for (let i = 0; i < 4; i++) {

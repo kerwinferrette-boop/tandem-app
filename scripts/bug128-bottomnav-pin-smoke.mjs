@@ -92,7 +92,7 @@ async function reachTracker(page) {
   await page.click('#obNextBtn');
   await page.waitForTimeout(150);
 
-  await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
+  // Preferred Workout Time removed 2026-11-17 (Kerwin) - step 3 has no required field now.
   await page.click('#obNextBtn');
   await page.waitForTimeout(150);
 

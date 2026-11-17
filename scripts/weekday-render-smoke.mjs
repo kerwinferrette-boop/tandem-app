@@ -111,7 +111,7 @@ async function buildProgram(page) {
   // [D1] read the start-date picker the user sees on the schedule step, before Build touches it
   const pickerValue = await page.inputValue('#ob-start-date');
   await page.click('#obNextBtn');
-  await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
+  // Preferred Workout Time removed 2026-11-17 (Kerwin) - step 3 has no required field now.
   await page.click('#obNextBtn');
   for (let i = 0; i < 4; i++) {
     if (await page.isVisible('.ob-build-btn').catch(() => false)) break;

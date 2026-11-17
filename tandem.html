@@ -1598,22 +1598,6 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           </div>
         </div>
 
-        <!-- Preferred Workout Time -->
-        <div class="ob-section">
-          <span class="ob-label">Preferred Workout Time</span>
-          <div class="ob-toggle-row three">
-            <div class="ob-toggle" onclick="selectWorkoutTime('morning',this)">
-              <div class="ob-toggle-label">Morning</div>
-            </div>
-            <div class="ob-toggle" onclick="selectWorkoutTime('lunch',this)">
-              <div class="ob-toggle-label">Lunch</div>
-            </div>
-            <div class="ob-toggle" onclick="selectWorkoutTime('evening',this)">
-              <div class="ob-toggle-label">Evening</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Injuries -->
         <div class="ob-section">
           <span class="ob-label">Injuries or Limitations <span style="font-weight:300;color:var(--muted);">(optional)</span></span>
@@ -2638,9 +2622,8 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <div class="profile-input-group">
           <label class="profile-input-label">Sex</label>
           <div class="profile-pill-row" id="profileSexRow" style="margin-top:2px;">
-            <button class="profile-pill" data-sex="male" onclick="selectAvatarPill('sex','male')">M</button>
-            <button class="profile-pill" data-sex="female" onclick="selectAvatarPill('sex','female')">F</button>
-            <button class="profile-pill" data-sex="other" onclick="selectAvatarPill('sex','other')">X</button>
+            <button class="profile-pill" data-sex="M" onclick="selectAvatarPill('sex','M')">M</button>
+            <button class="profile-pill" data-sex="F" onclick="selectAvatarPill('sex','F')">F</button>
           </div>
         </div>
       </div>
@@ -4100,7 +4083,7 @@ function renderLibSummary() {
 // Field-population shape mirrors buildProgram()'s cfg assembly. Only fields
 // confirmed (by reading materializeTemplate/buildDynamicProgram in programs.js)
 // to affect an AUTHORED program's output are asked here — Emphasis, Session
-// Length, Preferred Workout Time, and Secondary Goal are confirmed inert for
+// Length, and Secondary Goal are confirmed inert for
 // the library path and set to null rather than asked-and-ignored. Equipment
 // is asked nowhere in onboarding as of EPIC-18 Slice 1 (Today's Setup owns it).
 async function finalizeLibraryOnboarding(btn) {
@@ -4129,7 +4112,6 @@ async function finalizeLibraryOnboarding(btn) {
     experience: selectedExperience,
     emphasis: null,
     workout_duration_minutes: null,
-    preferred_workout_time: null,
     injuries: document.getElementById('ob-lib-injuries').value.trim() || null,
     secondary_goal: null,
     program_goal: tpl.code_goal_mapping,
@@ -4806,7 +4788,6 @@ let selectedSex = null;
 let selectedExperience = null;
 let selectedEmphasis = 'balanced';
 let selectedDuration = 60;
-let selectedWorkoutTime = null;
 let selectedSecondaryGoal = null;
 let selectedThemeColor = '#1B5E38';
 
@@ -4964,7 +4945,8 @@ function obCanAdvance() {
       // FIX BUG 3: require explicit day selection — selectedDays init is 4 but we now init it null
       return wks >= 4 && wks <= 24 && !!selectedDays;
     }
-    case 3: return !!selectedWorkoutTime;
+    // case 3 used to require Preferred Workout Time, which nothing read (removed 2026-11-17,
+    // Kerwin). Session length defaults to 60 and every other field on the card is optional.
     default: return true;
   }
 }
@@ -5027,16 +5009,6 @@ function selectEmphasis(val, el) {
 
 function selectDuration(val, el) {
   selectedDuration = val;
-  document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
-    if (t.closest('.ob-section') === el.closest('.ob-section'))
-      t.classList.remove('selected');
-  });
-  el.classList.add('selected');
-  obUpdateNextState();
-}
-
-function selectWorkoutTime(val, el) {
-  selectedWorkoutTime = val;
   document.querySelectorAll('#ob-card-3 .ob-toggle').forEach(t => {
     if (t.closest('.ob-section') === el.closest('.ob-section'))
       t.classList.remove('selected');
@@ -5141,7 +5113,6 @@ function populateReview() {
   const age = document.getElementById('ob-age').value || '—';
   const weeks = document.getElementById('ob-weeks').value || '12';
 
-  const timeMap = { morning: 'Morning', lunch: 'Lunch', evening: 'Evening' };
   const secGoalMap = { run_5k: 'Run a 5K', '10k_steps': '10K Steps/Day', improve_mobility: 'Mobility', none: 'None' };
 
   document.getElementById('reviewGrid').innerHTML = `
@@ -5184,10 +5155,6 @@ function populateReview() {
     <div class="review-item">
       <div class="review-item-label">Session Length</div>
       <div class="review-item-value">${selectedDuration} min</div>
-    </div>
-    <div class="review-item">
-      <div class="review-item-label">Workout Time</div>
-      <div class="review-item-value">${timeMap[selectedWorkoutTime] || '—'}</div>
     </div>
     <div class="review-item">
       <div class="review-item-label">Secondary Goal</div>
@@ -5239,7 +5206,6 @@ function buildProgram() {
     // default active button.
     emphasis: selectedEmphasis || 'balanced',
     workout_duration_minutes: selectedDuration,
-    preferred_workout_time: selectedWorkoutTime,
     injuries: document.getElementById('ob-injuries').value.trim() || null,
     secondary_goal: selectedSecondaryGoal === 'none' ? null : selectedSecondaryGoal,
     program_goal: selectedGoal,
@@ -5266,7 +5232,6 @@ function resetProgram() {
   selectedSex = null;
   selectedExperience = null;
   selectedDuration = 60;
-  selectedWorkoutTime = null;
   selectedSecondaryGoal = null;
   selectedThemeColor = '#1B5E38';
   // Path Gate / library mini-flow state — a prior library excursion must not
@@ -5706,7 +5671,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
       <div class="dh-top">
         <div class="dh-title">${escHtml(day.label)}</div>
         <div class="dh-chips">
-          ${plannedSessionMinutes() ? `<div class="dh-chip hi">${plannedSessionMinutes()} min</div>` : ''}
+          ${plannedSessionMinutes(day, phase) ? `<div class="dh-chip hi">${plannedSessionMinutes(day, phase)} min</div>` : ''}
           <div class="dh-chip">${effectiveReps(phase, currentWeek, cfg.weeks)} reps</div>
         </div>
       </div>
@@ -8615,7 +8580,6 @@ async function syncToCloud() {
         max_db: cfg.maxDb || null,
         muscle_emphasis: cfg.emphasis || 'balanced',
         workout_duration_minutes: cfg.workout_duration_minutes || null,
-        preferred_workout_time: cfg.preferred_workout_time || null,
         injuries: cfg.injuries || null,
         secondary_goal: cfg.secondary_goal || null,
         // EPIC-9 Step A: optional onboarding lift estimates (jsonb, name→lbs)
@@ -9009,7 +8973,6 @@ function cfgFromUserRow(u, prev) {
     equipment: u.equipment || null,
     emphasis: u.muscle_emphasis || 'balanced',
     workout_duration_minutes: u.workout_duration_minutes || null,
-    preferred_workout_time: u.preferred_workout_time || null,
     injuries: u.injuries || null,
     secondary_goal: u.secondary_goal || null,
     weight: u.current_weight_lbs,
@@ -10911,14 +10874,22 @@ function renderDashboard() {
   const streakValEl = document.getElementById('dashStreakVal');
   if (streakValEl) streakValEl.textContent = dashboardData.streak != null ? `${dashboardData.streak} day${dashboardData.streak === 1 ? '' : 's'}` : '—';
 
+  // Steps target (Kerwin 2026-11-17: secondary goals "make them read"). A user who chose
+  // "10K Steps/Day" gets 10,000 as THEIR goal — labelled as theirs, not as a health threshold:
+  // the evidence plateaus at ~8-10K for adults under 60 (Paluch et al. 2022, Lancet Public
+  // Health; docs/research-2026-11-17-5k-steps.md). Otherwise the device's own goal, else 8000
+  // (uncited fallback, inside Paluch's range).
+  const stepsTarget = (hh) => (cfg && cfg.secondary_goal === '10k_steps') ? 10000 : (hh?.steps_goal ?? 8000);
   // Vitals — 4 accent-only rings (ruling 2; nutrition detail + body comp → You tab, Wave 4).
   // dashboardData.health/weightTrend7d still load in full so Wave 4 renders from the same state.
   const ringDefs = [
-    { cardId: 'dashRingSteps',   valId: 'dashRingStepsVal',   val: h?.steps,                 target: h?.steps_goal ?? 8000,             fmt: v => v != null ? (v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString()) : '—' },
+    { cardId: 'dashRingSteps',   valId: 'dashRingStepsVal',   val: h?.steps,                 target: stepsTarget(h),             fmt: v => v != null ? (v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString()) : '—' },
     { cardId: 'dashRingSleep',   valId: 'dashRingSleepVal',   val: h?.sleep_total_hours,     target: h?.sleep_goal_hours ?? 8,          fmt: v => v != null ? (+v).toFixed(1) + 'h' : '—' },
     { cardId: 'dashRingCal',     valId: 'dashRingCalVal',     val: h?.active_calories_kcal,  target: h?.active_calories_goal ?? 500,    fmt: v => v != null ? Math.round(v).toLocaleString() : '—' },
     { cardId: 'dashRingProtein', valId: 'dashRingProteinVal', val: h?.dietary_protein_g,     target: ut?.daily_protein_target_g ?? 150, fmt: v => v != null ? Math.round(v)+'g' : '—' },
   ];
+  const stepsLbl = document.querySelector('#dashRingSteps .dash-ring-label');
+  if (stepsLbl) stepsLbl.textContent = (cfg && cfg.secondary_goal === '10k_steps') ? 'Steps · your 10K goal' : 'Steps';
   ringDefs.forEach(r => {
     const card = document.getElementById(r.cardId);
     if (!card) return;
@@ -11095,7 +11066,20 @@ function setRestDaySuggestion(on) {
 // Returns null when the user never stated a length; callers then show NO time, never a
 // guess. Nothing here derives a duration from the prescription itself — that would need
 // per-set timing the sources do not give (open gap, flagged, not invented).
-function plannedSessionMinutes() {
+// Session minutes shown on Home and the day header — the ONE home for that figure.
+// 2026-11-17 (Kerwin: "Trim to fit"): it is the ESTIMATE of the day as prescribed
+// (programs.js estimateSessionMinutes, Schoenfeld 2019 time model, the current phase's rest),
+// not the length the user chose. The engine now trims toward the chosen length, but the cited
+// volume floors can stop the trim, so the choice is not a promise. Falls back to the chosen
+// length only when there is no day to measure.
+function plannedSessionMinutes(day, phase) {
+  if (day && typeof estimateSessionMinutes === 'function') {
+    const goal = (typeof cfg !== 'undefined' && cfg && cfg.goal) || 'build_muscle';
+    let ph = phase;
+    if (!ph && typeof getPhase === 'function') { try { ph = getPhase(currentWeek, goal, cfg.weeks); } catch (e) { ph = null; } }
+    const est = estimateSessionMinutes(day, canonicalGoal(goal), ph || undefined);
+    if (Number.isFinite(est) && est > 0) return est;
+  }
   const m = Number(typeof cfg !== 'undefined' && cfg ? cfg.workout_duration_minutes : 0);
   return Number.isFinite(m) && m > 0 ? m : null;
 }
@@ -11148,7 +11132,7 @@ function renderDashHero() {
     if (b.cardio) return;
     (b.exs || []).forEach(ex => { if (!ex) return; total++; if (!ex.isCore) lifts.push(ex); });
   });
-  const mins = plannedSessionMinutes();
+  const mins = plannedSessionMinutes(day);
   subEl.textContent = total
     ? `${total} exercise${total === 1 ? '' : 's'}${mins ? ` · about ${mins} min` : ''}`
     : '';
@@ -11584,7 +11568,7 @@ function openProfileModal() {
   // Populate from cfg
   profileState.goal = cfg.goal || selectedGoal;
   profileState.days = cfg.days || selectedDays || 4;
-  profileState.sex = cfg.sex || selectedSex;
+  profileState.sex = canonicalSex(cfg.sex || selectedSex);
   profileState.exp = cfg.experience || selectedExperience;
   const profile = LS.get('tandem_profile') || {};
   profileState.gender = profile.gender || null;
@@ -11714,7 +11698,7 @@ function saveProfileProgram() {
   const newWeek = parseInt(document.getElementById('profileWeekInput')?.value) || currentWeek;
   const changed = newGoal !== cfg.goal || newDays !== cfg.days;
   cfg.goal = newGoal; cfg.days = newDays;
-  cfg.sex = profileState.sex || cfg.sex;
+  cfg.sex = canonicalSex(profileState.sex) || canonicalSex(cfg.sex);
   cfg.experience = profileState.exp || cfg.experience;
   selectedGoal = cfg.goal; selectedDays = cfg.days;
   selectedSex = cfg.sex; selectedExperience = cfg.experience;
@@ -11920,7 +11904,7 @@ function buildIdentityAvatar(p, size){
   const hair   = '#22232b';
   const garment= '#2c2d36';
   const accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#18C26A').trim() || '#18C26A';
-  const gender = p.gender || (p.sex==='female'?'female':p.sex==='male'?'male':'male');
+  const gender = p.gender || (isFemaleSex(p.sex)?'female':'male');
   const body   = p.bodyType || 'athletic';
   const hairStyle = p.hair || (gender==='female' ? 'long' : 'short');
   const sw = body==='stocky' ? 41 : body==='lean' ? 31 : 36;          // shoulder half-width

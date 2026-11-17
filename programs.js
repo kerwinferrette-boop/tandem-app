@@ -226,6 +226,14 @@ function isFemaleSex(sex) {
   return s === 'f' || s === 'female';
 }
 
+// canonicalSex — the stored form, 'F' | 'M' | null. Onboarding and users.sex use F/M; the profile
+// pills used male/female and an 'X' (other) option until 2026-11-17, when Kerwin ruled sex is M/F
+// only ("Make it M/F"). Anything else (legacy 'other', blank) is null: unset, so the user picks.
+function canonicalSex(sex) {
+  const s = String(sex == null ? '' : sex).toLowerCase();
+  return (s === 'f' || s === 'female') ? 'F' : (s === 'm' || s === 'male') ? 'M' : null;
+}
+
 // Lazy name index. EXERCISE_BANK is keyed by slug; every caller that has only a
 // display name (tandem.html's getWeekTarget) needs the entry to read equipment
 // and oneRmFactor off it, and a second hand-maintained name table is exactly what
@@ -3434,6 +3442,40 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
   try {
     const SECOND_EXPOSURE_ROLE = 'acc4';
+    // TRIM TO FIT (2026-11-17, Kerwin: "Trim to fit"). D28's ONE drop generalised to N: the
+    // order is D28's — the accessory that trains no major group first, then the remaining
+    // isolation accessories (minor-group before major-group, later slots before earlier), the
+    // second-exposure isolation last. Compounds are never dropped (D28 / D3). baseDrops is the
+    // pre-existing beginner / short-session drop, byte-identical when extraAccessoryDrops is 0.
+    // getProgram()'s TRIM TO FIT loop chooses extraAccessoryDrops and owns the floor checks.
+    const isMajorGroup = (g) => MAJOR_MUSCLE_GROUP_TOKENS.some(t => g === t || g.startsWith(t + '_'));
+    const accessoryDropOrder = (slots) => {
+      const first = droppableAccessory(slots);
+      const iso = slots.filter(x => /^acc\d$/.test(x.role) && x.role !== SECOND_EXPOSURE_ROLE && x.role !== first && x.cat === 'isolation').reverse();
+      const minor = iso.filter(x => !(x.groups || []).some(isMajorGroup));
+      const major = iso.filter(x => (x.groups || []).some(isMajorGroup));
+      const tail = slots.filter(x => x.role === SECOND_EXPOSURE_ROLE && x.cat === 'isolation');
+      const order = [first, ...minor.map(x => x.role), ...major.map(x => x.role), ...tail.map(x => x.role)].filter(Boolean);
+      // An emphasis-borrowed slot is what the user CHOSE the program to be built around (measured:
+      // in plain D28 order a 60-minute trim dropped the borrowed acc1/acc2 and the emphasised area
+      // gained nothing), so droppedRoles() keeps borrowed slots out of every trim drop.
+      const borrowed = new Set(slots.filter(x => x.borrowed).map(x => x.role));
+      return { first: order[0], rest: [...order.slice(1).filter(r => !borrowed.has(r)), ...order.slice(1).filter(r => borrowed.has(r))] };
+    };
+    const baseDrops = (exp === 'beginner' || isShortSession) ? 1 : 0;
+    const extraDrops = (opts && Number.isFinite(opts.extraAccessoryDrops)) ? Math.max(0, opts.extraAccessoryDrops) : 0;
+    // baseDrops keeps D28's own pick (byte-identical to before). Trim drops beyond it come from
+    // the rest of the order with borrowed slots last; when there is no base drop, D28's pick is
+    // still first UNLESS it is a borrowed slot, which then moves to the back with the others.
+    const droppedRoles = (slots) => {
+      const { first, rest } = accessoryDropOrder(slots);
+      const isBorrowed = (r) => slots.some(x => x.role === r && x.borrowed);
+      // Trim drops never touch a borrowed slot: measured, once a day's own accessories ran out the
+      // trim took the borrowed ones and the emphasised area gained nothing (strength Upper Body).
+      const own = [first, ...rest].filter(r => r && !isBorrowed(r));
+      const seq = baseDrops ? [first, ...own.filter(r => r !== first)] : own;
+      return new Set(seq.filter(Boolean).slice(0, baseDrops + extraDrops));
+    };
     const dayPicks = dayTemplates.map(tmpl => {
       const exs = {};
       // D30 (BUG-151) — patterns already claimed by a compound pick earlier in
@@ -3462,7 +3504,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         // group (arms, calves) — not blindly acc3, which on upper/pull days is the
         // delt slot and left lateral delts under MEV (BUG-122 D6d, 88 cells). acc3
         // only when every accessory trains a major group.
-        if ((exp === 'beginner' || isShortSession) && s.role === droppableAccessory(tmpl.slots)) return;
+        if (droppedRoles(tmpl.slots).has(s.role)) return;
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
         const chosen = pick(cands, s, tmpl);
         if (chosen) {
@@ -3489,14 +3531,14 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       // Front Squat. A day's own lifts are settled before anything is lent to another day.
       // The beginner / short-session drop (EPIC-8a, D28) applies to a borrowed slot exactly
       // as it would have in pass 1.
-      const dropped = (exp === 'beginner' || isShortSession) ? droppableAccessory(tmpl.slots) : null;
-      tmpl.slots.filter(s => s.borrowed && s.role !== dropped).forEach(s => {
+      const dropped = droppedRoles(tmpl.slots);
+      tmpl.slots.filter(s => s.borrowed && !dropped.has(s.role)).forEach(s => {
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
         const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; if (chosen.category === 'compound') { const pat = movementPatternOf(chosen); if (pat) usedPatterns.add(pat); } }
       });
       // Beginner and short sessions already SHED a slot (EPIC-8a / D28); they do not gain one.
-      tmpl.slots.filter(s => gainsSecondExposure && s.role === SECOND_EXPOSURE_ROLE).forEach(s => {
+      tmpl.slots.filter(s => gainsSecondExposure && s.role === SECOND_EXPOSURE_ROLE && !dropped.has(s.role)).forEach(s => {
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
         const chosen = pick(cands, s, tmpl);
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
@@ -3962,10 +4004,43 @@ const MAJOR_MUSCLE_GROUP_TOKENS = [...new Set(
 // directly — ONE function, consumed by D6b's assertion AND (per "one rule, one
 // home") the Synergy-Aware Exercise Selection Epic's Phase 1 ledger, not two
 // competing implementations.
-// emphasisCostsDoctrine(emphasised, balanced, goal) — true when the emphasised build leaves a
-// major muscle below the goal's weekly MEV that the balanced build meets (D6b), or carries
-// more lifts above PER_EXERCISE_SET_CEILING than it (D35). Read by getProgram's EMPHASIS FLOOR GUARD.
-function emphasisCostsDoctrine(a, b, goal) {
+// costsFloorOrSpread(candidate, reference, goal) — true when the candidate build leaves a major
+// muscle below the goal's weekly MEV that the reference meets (D6b), or carries more lifts above
+// PER_EXERCISE_SET_CEILING than it (D35). Read by getProgram's EMPHASIS FLOOR GUARD and TRIM TO FIT.
+// SESSION TIME ESTIMATE — the one home (2026-11-17). Schoenfeld et al. 2019, Med Sci Sports
+// Exerc (PMC6303131, read in full): 1 s concentric : 2 s eccentric = 3 s per rep, ~120 s between
+// exercises; the sets x (reps x 3 s) + rest model reproduces their measured 13/40/68-min
+// sessions within ~3 min (docs/research-2026-11-17-session-length-zone2-d32.md). Rest between
+// sets: ex.authoredRest (supersets), else the phase's restComp / restAcc. A superset round is
+// both lifts' work plus ONE rest. Cardio counts its own duration in minutes. `phase` defaults
+// to the goal's SLOWEST phase (max rest, max reps), so a program fitted with it fits every phase.
+const SECONDS_PER_REP = 3;              // Schoenfeld 2019 — one study; flagged as its only source
+const SECONDS_BETWEEN_EXERCISES = 120;  // Schoenfeld 2019 protocol
+function slowestPhase(goal) {
+  const ph = PHASES[goal] || PHASES.build_muscle;
+  return { restComp: Math.max(...ph.map(p => p.restComp)), restAcc: Math.max(...ph.map(p => p.restAcc)),
+    reps: Math.max(...ph.flatMap(p => String(p.reps).split('·').map(Number))) };
+}
+function estimateSessionMinutes(day, goal, phase) {
+  const ph = phase || slowestPhase(goal);
+  const defReps = Number(ph.reps) || Math.max(...String(ph.reps || '10').split('·').map(Number));
+  const work = (e) => (e.sets || 0) * (Number(e.r) || defReps) * SECONDS_PER_REP;
+  const rest = (e) => e.authoredRest ?? (e.compound ? ph.restComp : ph.restAcc);
+  let sec = 0, items = 0;
+  for (const b of (day && day.blocks) || []) {
+    const exs = (b.exs || []).filter(Boolean);
+    if (!exs.length) continue;
+    if (b.cardio) { for (const e of exs) { sec += (Number(e.duration) || 0) * 60; items++; } continue; }
+    if (b.superset) {
+      const rounds = Math.max(...exs.map(e => e.sets || 0));
+      sec += exs.reduce((n, e) => n + work(e), 0) + Math.max(0, rounds - 1) * Math.max(...exs.map(rest));
+      items++; continue;
+    }
+    for (const e of exs) { sec += work(e) + Math.max(0, (e.sets || 0) - 1) * rest(e); items++; }
+  }
+  return Math.round((sec + Math.max(0, items - 1) * SECONDS_BETWEEN_EXERCISES) / 60);
+}
+function costsFloorOrSpread(a, b, goal) {
   const lm = VOLUME_LANDMARKS[goal] || VOLUME_LANDMARKS.build_muscle;
   const below = (p) => { const g = {}; for (const [k, v] of Object.entries(computeMuscleWeeklyVolume(p, EXERCISE_BANK))) { const key = muscleCeilingKey(k); g[key] = (g[key] || 0) + v; }
     return new Set(Object.keys(g).filter(k => MAJOR_MUSCLE_GROUP_TOKENS.includes(k) && g[k] < lm.mev)); };
@@ -6175,15 +6250,55 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // step exists because the older pool filter alone also stacked (Back Heavy on shoulder-injury
   // and 30-minute programs, 18 cells). One check, here at the seam, binds every goal, day-count,
   // tier, experience, duration and injury at once. Guarded by scripts/emphasis-program-smoke.mjs.
-  const emphasized = buildFinal(null);
-  if (emphasized && focus !== 'balanced') {
-    const balanced = buildFinal(null, 'balanced');
-    if (balanced && emphasisCostsDoctrine(emphasized, balanced, goal)) {
-      const plain = days >= 3 ? buildFinal({ noEmphasisRewrite: true }) : null;
-      return (plain && !emphasisCostsDoctrine(plain, balanced, goal)) ? plain : balanced;
+  // withGuard(extra) -> { p, level }: level 2 = full emphasis, 1 = pool-filter-only, 0 = balanced.
+  const withGuard = (extra) => {
+    const o = extra ? { extraAccessoryDrops: extra } : null;
+    const emphasized = buildFinal(o);
+    if (emphasized && focus !== 'balanced') {
+      const balanced = buildFinal(o, 'balanced');
+      if (balanced && costsFloorOrSpread(emphasized, balanced, goal)) {
+        const plain = days >= 3 ? buildFinal({ ...(o || {}), noEmphasisRewrite: true }) : null;
+        return (plain && !costsFloorOrSpread(plain, balanced, goal)) ? { p: plain, level: 1 } : { p: balanced, level: 0 };
+      }
     }
+    return { p: emphasized, level: 2 };
+  };
+  // TRIM TO FIT (2026-11-17, Kerwin: "Trim to fit"). Measured before: 45/60/90-minute choices
+  // produced the identical program, and a 60-minute Build Muscle day estimated ~72-85 minutes
+  // (estimateSessionMinutes). Now: while the LONGEST day's estimate (slowest phase) exceeds the
+  // chosen length, drop one more isolation accessory per day in D28's order — kept only if it
+  // costs no D6b floor and adds no D35 stack versus the untrimmed build. The cited floors win
+  // over the clock: when they stop the trim, the program stays over the chosen length and
+  // Home shows the estimate, not the choice. The Zone 2 finisher is NOT trimmed — its length
+  // (22 min) is itself an open, uncited question; that is the next lever, and Kerwin's call.
+  // An emphasis is the user's explicit choice too: a trim that would cost it (the guard falling
+  // back to a lower level than the untrimmed build reached) is refused, exactly like a floor.
+  // Measured: Glute Focus 3-day untrimmed is 102 min vs balanced 89; without this the 60-minute
+  // trim "fit" by quietly reverting to balanced.
+  const ut = withGuard(0), untrimmed = ut.p;
+  if (untrimmed && Number.isFinite(durationMinutes) && durationMinutes > 0) {
+    const longest = (p) => Math.max(...p.map(d => estimateSessionMinutes(d, goal)));
+    let best = untrimmed;
+    for (let k = 1; k <= 4 && longest(best) > durationMinutes; k++) {
+      const c = withGuard(k), cand = c.p;
+      if (!cand || c.level < ut.level || costsFloorOrSpread(cand, untrimmed, goal) || longest(cand) >= longest(best)) break;
+      best = cand;
+    }
+    // A short session (< SHORT_SESSION_MAX_MINUTES) takes D28/D33's own path (one slot shed,
+    // full-length compound sets kept), and the volume pass can then give back more time than the
+    // 45-minute trim saves: measured, 30-minute builds estimated LONGER than 45-minute ones in 37
+    // cells. So a short session also tries the trimmed build at the cutoff and keeps whichever is
+    // shorter, under the same floor/stack check. Both follow D28's order (isolation first).
+    if (durationMinutes < SHORT_SESSION_MAX_MINUTES) {
+      const alt = getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb, rotation, experience, liftHistory, SHORT_SESSION_MAX_MINUTES, weight, targetWeight);
+      // alt runs its own guard; for an emphasis, accept it only if it still beats balanced on the
+      // area (it kept the emphasis) — compared by the same floor/stack test against untrimmed.
+      if (alt && longest(alt) < longest(best) && !costsFloorOrSpread(alt, untrimmed, goal)
+          && (focus === 'balanced' || ut.level === 0 || JSON.stringify(alt) !== JSON.stringify(buildFinal({ extraAccessoryDrops: 0 }, 'balanced')))) best = alt;
+    }
+    return best;
   }
-  if (emphasized) return emphasized;
+  if (untrimmed) return untrimmed;
 
   // ── Silent emergency fallback ──────────────────────────────────────────────
   // The generator should never return null in normal use. If it does (bank gap,

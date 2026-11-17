@@ -23,7 +23,6 @@ const files = (process.env.SEX_SMOKE_FILES || 'tandem.html,programs.js').split('
 const ALLOW = [
   ['programs.js', "return s === 'f' || s === 'female';", 'isFemaleSex() itself — the one normalizer'],
   ['tandem.html', "return (s === 'f' || s === 'female') ? 'female' : 'male';", 'heroSexKey(): lower-cases first, accepts both spellings (photo choice only)'],
-  ['tandem.html', "p.sex==='female'?'female':p.sex==='male'?'male':'male'", 'avatar drawing reads profileState, whose values are always female/male/other'],
 ];
 const rx = /\b\w*sex\w*\s*(?:===|!==|==|!=)\s*['"](?:f|m|female|male)['"]|['"](?:f|m|female|male)['"]\s*(?:===|!==|==|!=)\s*\w*sex\w*\b/i;
 

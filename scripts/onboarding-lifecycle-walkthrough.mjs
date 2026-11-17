@@ -107,10 +107,10 @@ const STEP_SPECS = [
     // order-dependence check the other steps already carry.
     step: 3, label: 'Training Preferences',
     fillForward: async page => {
-      await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
+      // Preferred Workout Time removed 2026-11-17 (Kerwin) - step 3 has no required field now.
     },
     fillReverse: async page => {
-      await page.click('[onclick*="selectWorkoutTime(\'morning\'"]');
+      // Preferred Workout Time removed 2026-11-17 (Kerwin) - step 3 has no required field now.
     },
   },
 ];

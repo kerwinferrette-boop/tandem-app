@@ -62,7 +62,7 @@ const cfgFromUserRow = ctx.__fn;
 const row = {
   program_goal: 'burn_fat', program_days_per_week: 5, program_weeks: 8, sex: 'F',
   fitness_level: 'advanced', equipment: 'hotel_small', muscle_emphasis: 'glute_focused',
-  workout_duration_minutes: 30, preferred_workout_time: 'morning',
+  workout_duration_minutes: 30,
   injuries: 'left knee, achilles', secondary_goal: 'run_5k',
   current_weight_lbs: 150, goal_weight_lbs: 140, height_inches: 66, age: 31,
   program_start_date: '2026-09-01', theme_color: '#FF6B35',
@@ -74,7 +74,7 @@ const got = cfgFromUserRow(row);
 const expect = {
   goal: 'fat_burn', days: 5, weeks: 8, sex: 'F', experience: 'advanced',
   equipment: 'hotel_small', emphasis: 'glute_focused', workout_duration_minutes: 30,
-  preferred_workout_time: 'morning', injuries: 'left knee, achilles',
+  injuries: 'left knee, achilles',
   secondary_goal: 'run_5k', weight: 150, targetWeight: 140, goalWeight: 140,
   heightIn: 66, height: 66, age: 31, startDate: '2026-09-01', themeColor: '#FF6B35',
   programSource: 'library',

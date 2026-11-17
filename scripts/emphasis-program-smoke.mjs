@@ -57,7 +57,11 @@ const areaSets = (p, toks) => lifts(p).filter(e => inArea(e, toks)).reduce((n, e
 const totalSets = (p) => lifts(p).reduce((n, e) => n + (e.sets || 0), 0);
 const belowFloor = (p, goal) => { const g = {}; for (const [k, v] of Object.entries(cv(p, bank))) { const key = mk(k); g[key] = (g[key] || 0) + v; } return Object.keys(g).filter(k => MAJ.includes(k) && g[k] < VL[goal].mev); };
 const over6 = (p) => p.flatMap(d => (d.blocks || []).filter(b => !b.cardio).flatMap(b => b.exs || [])).filter(e => e.sets > 6).length;
-const run = (goal, days, sex, em) => gp(goal, days, 12, sex, 'full_gym', em, null, null, null, 'intermediate', null, 60, 185, 175) || [];
+// No session length (null): since 2026-11-17 a chosen length TRIMS the program (getProgram TRIM TO
+// FIT), and a balanced and an emphasised build can be trimmed to different depths, so comparing them
+// at 60 min would measure the trim, not the emphasis. trim-to-fit-smoke.mjs owns trimming,
+// emphasis included. The 30-min axis below still runs at 30 (D28's own short-session path).
+const run = (goal, days, sex, em) => gp(goal, days, 12, sex, 'full_gym', em, null, null, null, 'intermediate', null, null, 185, 175) || [];
 
 const fails = []; const shareBy = {}; let programs = 0;
 for (const em of Object.keys(AREA)) {
@@ -88,7 +92,7 @@ const AXES = {
 };
 const axisReport = [];
 for (const [axis, a] of Object.entries(AXES)) {
-  const runA = (goal, days, sex, em) => gp(goal, days, 12, sex, a.tier || 'full_gym', em, a.inj || null, null, null, a.exp || 'intermediate', null, a.dur || 60, 185, 175) || [];
+  const runA = (goal, days, sex, em) => gp(goal, days, 12, sex, a.tier || 'full_gym', em, a.inj || null, null, null, a.exp || 'intermediate', null, a.dur || null, 185, 175) || [];
   let n = 0, noGain = 0;
   for (const em of Object.keys(AREA)) for (const goal of GOALS) for (const days of [3, 4, 5, 6]) for (const sex of ['male', 'female']) {
     const base = runA(goal, days, sex, 'balanced'), p = runA(goal, days, sex, em); n++;
