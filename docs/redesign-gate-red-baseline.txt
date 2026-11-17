@@ -1,0 +1,61 @@
+FAIL  [A] tandem.html — zero text-transform:uppercase (found 46)
+     tandem.html:69  font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     tandem.html:98  text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:6px;}
+     tandem.html:116  text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
+     tandem.html:139  text-transform:uppercase;color:var(--muted2);}
+     tandem.html:172  text-transform:uppercase;color:var(--muted2);}
+     tandem.html:186  text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+     tandem.html:227  .pb-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform
+     tandem.html:232  .pb-week-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transf
+     tandem.html:282  letter-spacing:.07em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transitio
+     tandem.html:295  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition
+FAIL  [B] tandem.html — no positive letter-spacing >= 0.04em outside allowlist (found 71)
+     tandem.html:63  (0.1em)  .logo-text{font-family:var(--font-display);font-size:22px;letter-spacing:.1em;
+     tandem.html:69  (0.08em)  font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     tandem.html:87  (0.06em)  .ob-title{font-family:var(--font-display);font-size:42px;letter-spacing:.06em;
+     tandem.html:97  (0.14em)  .ob-step-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
+     tandem.html:111  (0.04em)  .ob-card-title{font-family:var(--font-display);font-size:28px;letter-spacing:.04em;color:#
+     tandem.html:115  (0.16em)  .ob-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;
+     tandem.html:128  (0.04em)  .goal-name{font-family:var(--font-display);font-size:20px;letter-spacing:.04em;color:var(-
+     tandem.html:133  (0.06em)  background:var(--s2);border:1px solid var(--border);color:var(--muted2);letter-spacing:.06
+     tandem.html:138  (0.12em)  .ob-field-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;
+     tandem.html:159  (0.04em)  .wg-gap{font-family:var(--font-display);font-size:28px;letter-spacing:.04em;line-height:1;
+FAIL  [C] tandem.html — every mono use attributable to keep-mono allowlist (found 108 unattributed)
+     tandem.html:69  font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     tandem.html:97  .ob-step-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
+     tandem.html:115  .ob-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;
+     tandem.html:132  .goal-tag{font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:4px;
+     tandem.html:138  .ob-field-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;
+     tandem.html:141  color:var(--text);font-family:var(--font-mono);font-size:20px;font-weight:600;
+     tandem.html:147  color:var(--text);font-family:var(--font-mono);font-size:15px;font-weight:600;
+     tandem.html:160  .wg-pace{font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-top:3px;}
+     tandem.html:171  .ob-toggle-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+     tandem.html:185  .review-item-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
+     tandem.html:227  .pb-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform
+     tandem.html:232  .pb-week-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transf
+     tandem.html:239  .wn-label{flex:1;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(-
+     tandem.html:240  .wn-reset{font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;
+     tandem.html:258  color:var(--text);font-family:var(--font-mono);font-size:14px;letter-spacing:.03em;}
+FAIL  [C] tandem.html — mono total pinned at 36 (found 121)
+FAIL  [D] tandem.html — no hardcoded multi-word ALL-CAPS copy (found 11 lines)
+     tandem.html:1537  [YOUR COLOR]  <span class="ob-label">YOUR COLOR</span>
+     tandem.html:1555  [WHAT CAN YOU LIFT FOR]  <span class="ob-label">WHAT CAN YOU LIFT FOR 8–10 REPS?</span>
+     tandem.html:2168  [WORKOUT LOGGED]  <div class="sum-eyebrow"><i></i>WORKOUT LOGGED</div>
+     tandem.html:2347  [YOUR PROGRAM]  <div class="tc-meta"><span class="tc-dot"></span>YOUR PROGRAM</div>
+     tandem.html:2366  [MANUAL LOG]  <div class="tc-meta">MANUAL LOG</div>
+     tandem.html:8726  [ALL OF IT]  full_body: { eyebrow: 'ALL OF IT',    title: 'Full Body' },
+     tandem.html:8740  [HIGH REP | SHORT REST]  { key: 'fat_burn',     eyebrow: 'HIGH REP · SHORT REST', title: 'Feel the Burn' },
+     tandem.html:8741  [MIXED REP]  { key: 'transform',    eyebrow: 'SUPERSETS · MIXED REP', title: 'Tone' },
+     tandem.html:8742  [TIERED SETS]  { key: 'build_muscle', eyebrow: 'TIERED SETS · HEAVY',   title: 'Gains Season' },
+     tandem.html:10217  [REST DAY | REST DAY]  metaEl.textContent = daySlot ? `REST DAY · ${daySlot}` : 'REST DAY';
+     tandem.html:10338  [NEW PR]  if (tagEl) tagEl.innerHTML = `${svgIcon('trophy')} NEW PR · ${whenLabel}`;
+PASS  [A] programs.js — zero text-transform:uppercase (found 0)
+PASS  [B] programs.js — no positive letter-spacing >= 0.04em outside allowlist (found 0)
+PASS  [C] programs.js — every mono use attributable to keep-mono allowlist (found 0 unattributed)
+PASS  [C] programs.js — mono total pinned at 0 (found 0)
+FAIL  [D] programs.js — no hardcoded multi-word ALL-CAPS copy (found 3 lines)
+     programs.js:1674  [LEAN BACK]  cues:['Drive order: LEGS → LEAN BACK → ARMS; reverse on recovery','Drive hard through the 
+     programs.js:3755  [REALIZATION WEEK]  ? `REALIZATION WEEK — this is what the last block built. Fewer sets, but push for a real t
+     programs.js:3756  [DELOAD WEEK]  : `DELOAD WEEK — volume cut ~50%, load held. Recovery is the training stimulus this week; 
+
+6 check(s) FAILED — old design language present. Restyle at the token/class level, or add an allowlist entry IN THIS SCRIPT with a one-line reason (and update the pinned mono total deliberately), never silently.

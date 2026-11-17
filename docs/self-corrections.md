@@ -1989,3 +1989,32 @@ anything whose output I will repeat to Kerwin needs one.
 **Enforced by:** judgment — not mechanically checkable. Nothing lints my shell. The concrete habit:
 when a loop's result is produced by a parser, make the parser the gate — have it exit non-zero on
 bad input and check `$?`, rather than string-comparing its stdout.
+
+## SC-59 — I called a control "wired" because the program's JSON changed, without measuring the thing the control promises
+
+(Numbered 59, not 57: SC-57 and SC-58 are named in CLAUDE.md on Kerwin's main checkout but are not
+on `origin/main` as of `e713db0`; taking 57 here would collide when that work lands.)
+
+**What happened (2026-11-17).** Kerwin asked whether the onboarding and profile controls feed the
+engine. I ran `getProgram()` with each setting varied across 5 goals x 5 day-counts and compared
+`JSON.stringify(program)` to the baseline. I reported Muscle Emphasis "Upper Body / Back Heavy /
+Glute Focus: 23-25 of 25 — Work." Measured properly an hour later (weekly sets grouped by the
+bank's own emphasis tags, plus exercises swapped by name): Upper Body shifts **zero** sets and
+swaps **zero** exercises; Back Heavy and Glute Focus swap **one** exercise a week and move 3-5 sets.
+The JSON differed on fields that are not the program a person trains. The verdict I gave him was
+wrong in the direction that matters: I told him three dead-ish controls were alive.
+
+**The mechanism, not the trait.** My probe asked "does any byte of the output depend on this
+input?" The question he asked was "does this button do what its label says?" Byte-difference is a
+reachability test. It can prove a control is DEAD (0 of 25) and can never prove it WORKS, and I
+read it in both directions. This is the "wired is not working" rule in CLAUDE.md, committed by the
+audit that was checking for it.
+
+> **THE RULE — SC-59.** A control is verified by measuring the QUANTITY ITS LABEL PROMISES, in that
+> quantity's own unit, against the baseline — sets per muscle for an emphasis, minutes or exercise
+> count for a session length, banned movements for an injury. "The output differs" may be reported
+> only as "reachable", never as "works". Report the measured delta, not a verdict word.
+
+**Enforced by:** judgment — not mechanically checkable in general. For Muscle Emphasis specifically
+it becomes checkable the day the engine gives emphasis a defined effect: that change must ship with
+a gate asserting the per-muscle weekly-set delta, not a diff of the program object.

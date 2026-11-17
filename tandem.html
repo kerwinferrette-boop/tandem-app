@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Tandem — Your Training Partner</title>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{
-  /* base — quiet near-mono */
-  --bg:#07070b;--s1:#101017;--s2:#17171f;--s3:#1f1f29;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  /* base — warm near-mono (2026-10-05 warm/modern pass: the cool blue-blacks
+     #07070b..#1f1f29 became warm espresso neutrals; same lightness ramp) */
+  --bg:#0E0C0A;--s1:#171310;--s2:#1E1915;--s3:#272019;
+  --border:rgba(255,244,230,0.08);--border2:rgba(255,244,230,0.14);
   /* signature green (intensified) */
   --accent:#18C26A;--accent2:#3FE08C;--accent-deep:#0E7A45;
   --accent-dim:rgba(24,194,106,0.12);--accent-glow:rgba(24,194,106,0.25);
@@ -30,15 +31,21 @@
   --amber:#FFB020;--amber-dim:rgba(255,176,32,0.10);
   --teal:#3FE08C;--teal-dim:rgba(63,224,140,0.10);
   --orange:#fb923c;
-  --text:#F2F2F5;--muted:#6B6B7A;--muted2:#9A9AAC;
-  /* type */
-  --font-display:'Archivo',sans-serif;--font-body:'Inter',sans-serif;
+  --text:#F6F1EA;--muted:#80776C;--muted2:#A89E92;
+  /* type — Bricolage Grotesque display + Plus Jakarta Sans body; mono is for
+     genuinely tabular numbers ONLY (set inputs, timers, plate math, OTP, hex) */
+  --font-display:'Bricolage Grotesque',sans-serif;--font-body:'Plus Jakarta Sans',sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
   /* type scale + duotone tint (Wave 0 tokens — one home for the numbers every screen reuses) */
-  --t-hero:32px;--t-h1:28px;--t-h2:22px;--t-eyebrow:10px;--tint-opacity:.42;
-  /* unified radius + elevation */
-  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
-  --e1:0 1px 2px rgba(0,0,0,0.4);--e2:0 8px 24px rgba(0,0,0,0.5);
+  --t-hero:32px;--t-h1:28px;--t-h2:22px;--t-eyebrow:12px;--tint-opacity:.42;
+  /* negative display tracking for large headings (modern-type convention; the
+     old wide positive tracking is banned by scripts/design-coverage-smoke.mjs) */
+  --track-tight:-.015em;
+  /* unified radius + elevation — softened in the warm/modern pass */
+  --r-sm:10px;--r-md:14px;--r-lg:18px;--r-xl:24px;
+  --e1:0 1px 2px rgba(10,6,3,0.4);--e2:0 12px 32px rgba(10,6,3,0.45);
+  /* motion */
+  --ease:cubic-bezier(.32,.72,0,1);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
@@ -54,19 +61,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 ═══════════════════════════════ */
 .top-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;
   border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;
-  background:rgba(7,7,11,0.95);backdrop-filter:blur(24px);}
+  background:rgba(14,12,10,0.95);backdrop-filter:blur(24px);}
 
 /* TANDEM LOGO — Ti mark */
 .tandem-logo{display:flex;align-items:center;gap:10px;cursor:pointer;}
 .logo-mark{position:relative;width:36px;height:36px;flex-shrink:0;}
 .logo-mark svg{width:36px;height:36px;}
-.logo-text{font-family:var(--font-display);font-size:22px;letter-spacing:.1em;
+.logo-text{font-family:var(--font-display);font-size:22px;letter-spacing:.02em;
   background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 
 .nav-right{display:flex;gap:5px;align-items:center;}
 .nav-pill{padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:transparent;
-  font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  font-family:var(--font-body);font-size:10px;
   color:var(--muted2);cursor:pointer;transition:all .15s;}
 .nav-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 .nav-pill.teal.active{background:var(--teal-dim);border-color:color-mix(in srgb,var(--teal) 40%,transparent);color:var(--teal);}
@@ -84,18 +91,23 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .onboard-wrap{padding:0;min-height:100vh;display:flex;flex-direction:column;}
 .ob-logo{text-align:center;padding:32px 18px 24px;}
 .ob-logo-big svg{width:64px;height:64px;display:block;margin:0 auto 12px;}
-.ob-title{font-family:var(--font-display);font-size:42px;letter-spacing:.06em;
+.ob-title{font-family:var(--font-display);font-size:42px;
   background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
 .ob-sub{font-size:13px;color:var(--muted2);margin-top:8px;font-weight:300;line-height:1.6;}
+/* The logo and photo banner introduce the app once. From step 2 on they repeated above
+   every step and pushed the step's own content ~560px down a phone screen. */
+.onboard-wrap:has(.ob-card.active:not(#ob-card-0)) .ob-logo,
+.onboard-wrap:has(.ob-card.active:not(#ob-card-0)) > .hero-band{display:none;}
+.onboard-wrap:has(.ob-card.active:not(#ob-card-0)){padding-top:26px;}
 
 /* Step indicator */
 .ob-steps{display:flex;align-items:center;justify-content:center;gap:6px;padding:0 18px 20px;}
 .ob-step-dot{width:24px;height:4px;border-radius:2px;background:var(--s3);transition:all .3s;}
 .ob-step-dot.done{background:var(--accent);}
 .ob-step-dot.active{background:var(--accent2);width:36px;}
-.ob-step-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:6px;}
+.ob-step-label{font-family:var(--font-body);font-size:9px;
+  color:var(--muted);text-align:center;padding-bottom:6px;}
 
 /* Cards container */
 .ob-cards{flex:1;overflow:hidden;position:relative;}
@@ -108,69 +120,89 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    mutually exclusive, added for the onboarding fork. */
 .ob-screen-hidden{display:none !important;}
 
-.ob-card-title{font-family:var(--font-display);font-size:28px;letter-spacing:.04em;color:#fff;margin-bottom:4px;}
+.ob-card-title{font-family:var(--font-display);font-size:28px;color:#fff;margin-bottom:4px;}
 .ob-card-sub{font-size:12px;color:var(--muted2);font-weight:300;line-height:1.6;margin-bottom:20px;}
 
 .ob-section{margin-bottom:20px;}
-.ob-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
+.ob-label{font-family:var(--font-body);font-size:10px;
+  color:var(--accent);margin-bottom:10px;display:block;}
 
 /* Goal selector */
 .goal-grid{display:grid;grid-template-columns:1fr;gap:8px;}
-.goal-card{padding:16px;background:var(--s1);border:1px solid var(--border2);border-radius:13px;
-  cursor:pointer;transition:all .18s;position:relative;overflow:hidden;}
-.goal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:var(--gc,var(--accent));opacity:0;transition:opacity .2s;}
-.goal-card:hover::before,.goal-card.selected::before{opacity:1;}
-.goal-card.selected{background:var(--gd,var(--accent-dim));border-color:var(--gb,color-mix(in srgb,var(--accent) 40%,transparent));}
-.goal-card-top{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
-.goal-icon{font-size:22px;flex-shrink:0;}
-.goal-name{font-family:var(--font-display);font-size:20px;letter-spacing:.04em;color:var(--text);}
-.goal-card.selected .goal-name{color:var(--gc,var(--accent));}
-.goal-desc{font-size:12px;color:var(--muted2);line-height:1.6;font-weight:300;}
-.goal-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
-.goal-tag{font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:4px;
-  background:var(--s2);border:1px solid var(--border);color:var(--muted2);letter-spacing:.06em;}
+.goal-card{position:relative;isolation:isolate;overflow:hidden;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  min-height:138px;padding:18px 14px;border:1px solid var(--border2);border-radius:var(--r-xl);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.4);
+  transition:transform .13s ease,box-shadow .13s ease,border-color .13s ease;}
+.goal-card:active{transform:scale(.976);}
+.goal-card .tc-photo,.ob-toggle .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);
+  background-size:cover;background-position:center 28%;filter:grayscale(1) contrast(1.08) brightness(.75);}
+.goal-card .tc-tint,.ob-toggle .tc-tint{position:absolute;inset:0;z-index:-2;}
+.goal-card .tc-scrim,.ob-toggle .tc-scrim{position:absolute;inset:0;z-index:-1;
+  background:radial-gradient(120% 76% at 50% 50%,rgba(14,12,10,.36) 0%,rgba(14,12,10,.76) 56%,rgba(14,12,10,.94) 100%);}
+/* Unselected cards sit back (no tint, dimmer photo); the chosen one takes the user's
+   accent the way .tc-card.primary does. Selection is never colour alone: border + glow. */
+.goal-card:not(.selected){--tint-opacity:0;}
+.goal-card.selected{border-color:var(--accent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 1px var(--accent-glow),0 8px 22px rgba(0,0,0,.4);}
+.goal-card-top{display:flex;flex-direction:column;align-items:center;}
+.goal-name{font-family:var(--font-display);font-weight:700;font-size:28px;letter-spacing:-.02em;color:#fff;}
+.goal-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
+.goal-tag{font-family:var(--font-body);font-size:11px;font-weight:500;padding:4px 10px;border-radius:99px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);backdrop-filter:blur(8px);}
 
 /* Number inputs */
 .ob-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .ob-field{display:flex;flex-direction:column;gap:6px;}
-.ob-field-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--muted2);}
+.ob-field-label{font-family:var(--font-body);font-size:10px;
+  color:var(--muted2);}
 .ob-input{background:var(--s1);border:1px solid var(--border2);border-radius:10px;
   color:var(--text);font-family:var(--font-mono);font-size:20px;font-weight:600;
   padding:12px 14px;text-align:center;outline:none;-webkit-appearance:none;width:100%;
   transition:border-color .15s;}
 .ob-input:focus{border-color:var(--accent);}
 .ob-input::placeholder{color:var(--muted);font-size:14px;}
+/* Sign out: a quiet pill, the same shape as every other action in the sheet. It is not a
+   destructive action (nothing is lost), so it does not get the red danger block. */
+.clear-btn.signout-btn{border-radius:99px;background:transparent;border:1px solid var(--border2);
+  color:var(--muted2);font-family:var(--font-body);font-size:14px;font-weight:600;padding:14px 16px;}
+.clear-btn.signout-btn:active{transform:scale(.985);}
+/* Free-text fields are prose, not numbers: body font, left-aligned. The mono face stays
+   on the numeric inputs it was allowlisted for. */
+.ob-input[type="text"]{font-family:var(--font-body);font-size:15px;text-align:left;padding-left:14px;padding-right:14px;}
 .ob-select{background:var(--s1);border:1px solid var(--border2);border-radius:10px;
-  color:var(--text);font-family:var(--font-mono);font-size:15px;font-weight:600;
+  color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:600;
   padding:12px 14px;outline:none;width:100%;transition:border-color .15s;cursor:pointer;
   -webkit-appearance:none;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23585878' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center;}
 .ob-select:focus{border-color:var(--accent);}
-.ob-select option{background:#0d0d16;}
+.ob-select option{background:#171310;}
 
 /* Weight gap display */
 .weight-gap{margin-top:10px;padding:12px 14px;background:var(--s2);border-radius:10px;
   border:1px solid var(--border);display:none;}
 .weight-gap.visible{display:block;}
-.wg-gap{font-family:var(--font-display);font-size:28px;letter-spacing:.04em;line-height:1;}
-.wg-pace{font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-top:3px;}
+.wg-gap{font-family:var(--font-display);font-size:28px;line-height:1;}
+.wg-pace{font-family:var(--font-body);font-size:11px;color:var(--muted2);margin-top:3px;}
 
 /* Sex / experience toggle */
 .ob-toggle-row{display:grid;gap:8px;}
 .ob-toggle-row.two{grid-template-columns:1fr 1fr;}
 .ob-toggle-row.three{grid-template-columns:1fr 1fr 1fr;}
-.ob-toggle{padding:12px 10px;background:var(--s1);border:1px solid var(--border2);border-radius:10px;
-  cursor:pointer;transition:all .18s;text-align:center;}
-.ob-toggle:hover{border-color:var(--border2);}
-.ob-toggle.selected{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
-.ob-toggle-icon{font-size:18px;margin-bottom:4px;}
-.ob-toggle-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--muted2);}
-.ob-toggle.selected .ob-toggle-label{color:var(--accent2);}
+.ob-toggle{position:relative;isolation:isolate;overflow:hidden;cursor:pointer;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:64px;
+  padding:12px 10px;background:var(--s1);border:1px solid var(--border2);border-radius:var(--r-lg);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 16px rgba(0,0,0,.32);
+  transition:transform .13s ease,box-shadow .13s ease,border-color .13s ease;}
+.ob-toggle:active{transform:scale(.976);}
+.ob-toggle:has(.tc-photo){min-height:108px;}
+.ob-toggle:not(.selected){--tint-opacity:0;}
+.ob-toggle.selected{background:var(--accent-dim);border-color:var(--accent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 1px var(--accent-glow),0 6px 16px rgba(0,0,0,.32);}
+.ob-toggle-label{font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:-.005em;
+  color:rgba(255,255,255,.82);}
+.ob-toggle.selected .ob-toggle-label{color:#fff;}
 
 /* Days selector */
 .days-row{display:flex;gap:7px;}
@@ -182,8 +214,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* Review card */
 .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
 .review-item{padding:12px 14px;background:var(--s1);border:1px solid var(--border);border-radius:10px;}
-.review-item-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.review-item-label{font-family:var(--font-body);font-size:9px;
+  color:var(--muted);margin-bottom:4px;}
 .review-item-value{font-family:var(--font-display);font-size:18px;color:var(--text);letter-spacing:.03em;line-height:1.2;}
 .review-item.span2{grid-column:1/-1;}
 .review-item .goal-accent{color:var(--gc,var(--accent2));}
@@ -224,20 +256,20 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,transparent) 0%,var(--s1) 70%);
   border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
 .pb-left{flex:1;min-width:0;}
-.pb-eyebrow{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:4px;}
+.pb-eyebrow{font-family:var(--font-body);font-size:9px;color:var(--accent);margin-bottom:4px;}
 .pb-name{font-family:var(--font-display);font-size:22px;color:#fff;line-height:1;}
 .pb-intent{font-size:11px;color:var(--muted2);margin-top:3px;font-weight:300;}
 .pb-right{flex-shrink:0;text-align:right;}
 .pb-week-num{font-family:var(--font-display);font-size:42px;color:var(--accent);line-height:1;}
-.pb-week-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
-.pb-reps{font-family:var(--font-mono);font-size:12px;color:var(--accent2);margin-top:4px;}
+.pb-week-label{font-family:var(--font-body);font-size:9px;color:var(--muted);}
+.pb-reps{font-family:var(--font-body);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent2);margin-top:4px;}
 
 .week-nav{display:flex;align-items:center;gap:8px;padding:8px 16px 0;}
 .wn-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:var(--s1);
   color:var(--muted2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .wn-btn:hover{border-color:var(--accent);color:var(--accent);}
-.wn-label{flex:1;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.08em;}
-.wn-reset{font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;
+.wn-label{flex:1;text-align:center;font-family:var(--font-body);font-size:10px;color:var(--muted2);}
+.wn-reset{font-family:var(--font-body);font-size:10px;color:var(--muted);cursor:pointer;
   padding:8px 13px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);}
 
 /* ═══════════════════════════════
@@ -269,7 +301,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .session-prog{padding:8px 16px 0;}
 .prog-track{height:3px;background:var(--s2);border-radius:2px;overflow:hidden;margin-bottom:4px;}
 .prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent) 0%,var(--green) 100%);transition:width .4s ease;}
-.prog-text{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.07em;}
+.prog-text{display:flex;justify-content:space-between;font-family:var(--font-body);font-size:10px;color:var(--muted);}
 
 /* ═══════════════════════════════
    TOOLS ROW
@@ -278,8 +310,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tools-row::-webkit-scrollbar{display:none;}
 /* Wave 6: pill chips — same language as the Log tab's .log-chip */
 .tool-btn{flex-shrink:0;padding:8px 14px;border-radius:999px;border:1px solid var(--border2);
-  background:var(--s1);font-family:var(--font-mono);font-size:10px;
-  letter-spacing:.07em;text-transform:uppercase;color:var(--muted2);cursor:pointer;transition:all .15s;}
+  background:var(--s1);font-family:var(--font-body);font-size:10px;
+  color:var(--muted2);cursor:pointer;transition:all .15s;}
 .tool-btn:hover,.tool-btn.on{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent);}
 
 /* ═══════════════════════════════
@@ -291,8 +323,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .day-tabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 16px 0;}
 .day-tabs::-webkit-scrollbar{display:none;}
 .day-tab{flex-shrink:0;padding:8px 14px;border-radius:999px;border:1px solid var(--border2);
-  background:var(--s1);font-family:var(--font-mono);font-size:10px;
-  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .15s;}
+  background:var(--s1);font-family:var(--font-body);font-size:10px;
+  color:var(--muted);cursor:pointer;transition:all .15s;}
 .day-tab.active{background:var(--accent);border-color:transparent;color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 
 /* ═══════════════════════════════
@@ -305,13 +337,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .dh-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
 .dh-title{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.01em;color:#fff;line-height:1;}
 .dh-chips{display:flex;gap:5px;flex-wrap:wrap;}
-.dh-chip{font-family:var(--font-mono);font-size:9px;padding:3px 9px;border-radius:5px;
-  background:var(--s2);border:1px solid var(--border);color:var(--muted2);text-transform:uppercase;}
+.dh-chip{font-family:var(--font-body);font-size:9px;padding:3px 9px;border-radius:5px;
+  background:var(--s2);border:1px solid var(--border);color:var(--muted2);}
 .dh-chip.hi{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 28%,transparent);color:var(--accent);}
 .dh-rationale{font-size:12px;color:var(--muted2);line-height:1.65;font-weight:300;}
 
 /* ── BLOCK LABEL ── */
-.block-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+.block-label{font-family:var(--font-body);font-size:9px;
   color:var(--accent);margin:14px 0 7px;display:flex;align-items:center;gap:8px;}
 .block-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 30%,transparent),transparent);}
 .block-coach-tip{font-size:11px;color:var(--muted2);line-height:1.5;margin:-2px 0 10px;font-weight:300;}
@@ -328,7 +360,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .ex-card.completed .ex-check{background:var(--green);border-color:var(--green);color:#000;}
 .ex-info{flex:1;min-width:0;}
 .ex-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px;line-height:1.3;}
-.ex-badge{display:inline-block;font-family:var(--font-mono);font-size:9px;padding:1px 6px;
+.ex-badge{display:inline-block;font-family:var(--font-body);font-size:9px;padding:1px 6px;
   border-radius:3px;margin-left:5px;vertical-align:middle;}
 .badge-compound{background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);}
 .badge-isolation{background:color-mix(in srgb,var(--accent2) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--green);}
@@ -338,14 +370,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ── EQUIPMENT SETUP CARD ── */
 .setup-card{margin:12px 16px 0;background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
 .setup-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;}
-.setup-toggle-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
-.setup-toggle-status{font-family:var(--font-mono);font-size:10px;color:var(--accent2);flex:1;text-align:right;margin-right:8px;}
+.setup-toggle-label{font-family:var(--font-body);font-size:10px;color:var(--muted2);}
+.setup-toggle-status{font-family:var(--font-body);font-size:10px;color:var(--accent2);flex:1;text-align:right;margin-right:8px;}
 .setup-toggle-arrow{color:var(--muted);font-size:12px;transition:transform .2s;flex-shrink:0;}
 .setup-card.open .setup-toggle-arrow{transform:rotate(180deg);}
 .setup-body{display:none;padding:0 14px 12px;border-top:1px solid var(--border);}
 .setup-card.open .setup-body{display:block;}
 .eq-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.eq-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+.eq-btn{font-family:var(--font-body);font-size:9px;
   padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--s2);
   color:var(--muted2);cursor:pointer;transition:all .15s;}
 .eq-btn.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
@@ -357,20 +389,20 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   -webkit-appearance:none;}
 .eq-db-input:focus{border-color:var(--accent);}
 .eq-set-btn{background:var(--accent);color:#000;border:none;border-radius:7px;padding:7px 14px;
-  font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.08em;cursor:pointer;}
+  font-family:var(--font-body);font-size:10px;font-weight:700;cursor:pointer;}
 .eq-active-label{font-size:11px;color:var(--muted);}
-.eq-alt-note{font-size:10px;color:var(--red);font-family:var(--font-mono);margin-top:3px;line-height:1.45;}
+.eq-alt-note{font-size:10px;color:var(--red);font-family:var(--font-body);margin-top:3px;line-height:1.45;}
 
 /* ★ PO CHIP — key feature */
 .po-chip{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 8px;
-  border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:600;}
+  border-radius:5px;font-family:var(--font-body);font-size:11px;font-weight:600;}
 .po-chip.up{background:color-mix(in srgb,var(--accent2) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent2) 28%,transparent);color:var(--green);}
 .po-chip.same{background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);color:var(--accent);}
 .po-chip.down{background:var(--red-dim);border:1px solid color-mix(in srgb,var(--red) 24%,transparent);color:var(--red);}
 .po-chip.new{background:rgba(154,154,172,.1);border:1px solid rgba(154,154,172,.22);color:var(--blue);}
-.po-reason{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--font-mono);}
+.po-reason{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--font-body);}
 
-.ex-1rm-tag{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;
+.ex-1rm-tag{font-family:var(--font-body);font-size:9px;padding:2px 6px;border-radius:4px;
   background:var(--amber-dim);border:1px solid rgba(255,176,32,.22);color:var(--amber);
   margin-left:5px;vertical-align:middle;cursor:pointer;}
 .ex-expand{color:var(--muted);font-size:13px;transition:transform .2s;flex-shrink:0;margin-top:2px;}
@@ -386,44 +418,47 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
    track lists must be identical by construction — written twice they drift, and the
    header silently starts naming the wrong column. Single custom property instead.
    Columns: set# · weight · reps · volume · RPE · log · delete */
-.set-logger{padding:0 12px;display:none;--set-grid:24px 1fr 1fr 38px 40px 26px 22px;}
+/* Set logger (rebuilt 2026-11-17): weight and reps are the two things you type, so they
+   get the room. Per-set volume is still computed and stored; it is no longer a column. */
+.set-logger{padding:0 14px;display:none;--set-grid:26px 1fr 1fr 52px 44px 20px;}
 .ex-card.open .set-logger{display:block;}
-.set-hdr{display:grid;grid-template-columns:var(--set-grid);gap:5px;
-  padding:0 2px 5px;border-bottom:1px solid var(--border);margin-bottom:6px;}
-.set-hdr-cell{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--muted);text-align:center;}
-.set-row{display:grid;grid-template-columns:var(--set-grid);gap:5px;align-items:center;margin-bottom:5px;}
+.set-hdr{display:grid;grid-template-columns:var(--set-grid);gap:8px;padding:0 0 6px;margin-bottom:4px;}
+.set-hdr-cell:nth-child(4),.set-vol{display:none;}
+.set-hdr-cell{font-family:var(--font-body);font-size:11px;font-weight:500;
+  color:var(--muted);text-align:center;}
+.set-row{display:grid;grid-template-columns:var(--set-grid);gap:8px;align-items:center;margin-bottom:8px;}
 /* RPE picker. Values 6-10 ONLY — that is the full extent of the scale both canonical
    sources define (Exercise Science Framework §"Reps in Reserve (RIR) & RPE
    Equivalencies"; research-report (8).pdf p.6 §"Rate of Perceived Exertion (RPE)
    Targets" [49]). Neither source anchors RPE 5 or below, so no such option is offered
    and none is invented. Blank = not rated, which stores NULL. */
 .set-rpe{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--muted2);
-  font-family:var(--font-mono);font-size:13px;font-weight:600;padding:8px 2px;width:100%;
+  font-family:var(--font-body);font-variant-numeric:tabular-nums;font-size:15px;font-weight:600;padding:8px 2px;width:100%;height:48px;
   text-align:center;text-align-last:center;outline:none;-webkit-appearance:none;appearance:none;
   cursor:pointer;transition:border-color .15s,color .15s;}
 .set-rpe:focus{border-color:var(--accent);}
 .set-rpe.rated{color:var(--text);border-color:var(--border2);}
-.set-num{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;}
+.set-num{font-family:var(--font-body);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:var(--muted);text-align:center;}
 .set-input{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--text);
-  font-family:var(--font-mono);font-size:16px;font-weight:600;padding:8px 4px;
+  font-family:var(--font-body);font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;letter-spacing:-.01em;padding:8px 4px;height:48px;
   width:100%;text-align:center;outline:none;-webkit-appearance:none;transition:border-color .15s;}
 .set-input:focus{border-color:var(--accent);}
 .set-input.done{border-color:color-mix(in srgb,var(--accent2) 40%,transparent);color:var(--green);background:color-mix(in srgb,var(--accent2) 4%,transparent);}
 .set-input.pr{border-color:rgba(255,176,32,.5);color:var(--amber);}
 .set-input.bw{border-style:dashed;}
-.set-input.bw::placeholder{color:var(--muted);opacity:.7;font-size:10px;letter-spacing:.05em;}
-.set-vol{font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:center;}
-.set-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);
-  color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.set-input.bw::placeholder{color:var(--muted);opacity:.7;font-size:10px;}
+.set-vol{font-family:var(--font-body);font-size:10px;color:var(--muted);text-align:center;}
+.set-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--border2);background:var(--s2);
+  color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .set-btn.logged{background:var(--green-dim);border-color:color-mix(in srgb,var(--accent2) 40%,transparent);color:var(--green);}
 .set-btn.pr-set{background:var(--amber-dim);border-color:rgba(255,176,32,.4);color:var(--amber);}
-.set-actions{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 8px;}
-.set-act{flex:1;padding:7px;background:transparent;border:1px dashed var(--border2);border-radius:7px;
-  color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;
+.set-actions{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px;}
+.set-act svg{display:none;}
+.set-act{flex:0 0 auto;padding:9px 14px;min-height:38px;display:inline-flex;align-items:center;background:var(--s2);border:1px solid var(--border2);border-radius:var(--th-pill-radius);
+  color:var(--muted2);font-family:var(--font-body);font-size:13px;font-weight:600;
   cursor:pointer;transition:all .15s;text-align:center;}
 .set-act:hover{border-color:var(--accent);color:var(--accent);}
-.set-act.blue:hover{border-color:var(--blue);color:var(--blue);}
+.set-act.blue:hover{border-color:var(--accent);color:var(--accent);}
 .set-act.green{color:var(--green);border-color:color-mix(in srgb,var(--accent2) 30%,transparent);}
 .set-del{background:transparent;border:none;color:var(--muted);font-size:13px;padding:4px 6px;cursor:pointer;border-radius:5px;}
 .set-del:hover{color:var(--red);}
@@ -432,7 +467,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .inline-1rm{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:8px;display:none;}
 .ex-card.open .inline-1rm{display:block;}
 .i1rm-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-.i1rm-label{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;}
+.i1rm-label{font-family:var(--font-body);font-size:10px;color:var(--muted2);}
 .i1rm-val{font-family:var(--font-display);font-size:26px;color:var(--amber);}
 .i1rm-pcts{display:flex;gap:4px;flex-wrap:wrap;}
 .i1rm-pct{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:4px;
@@ -442,13 +477,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .rest-timer{display:none;margin:0 0 8px;background:var(--s2);border:1px solid var(--border);
   border-radius:9px;padding:9px 12px;align-items:center;gap:8px;}
 .rest-timer.on{display:flex;}
-.rest-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;flex-shrink:0;}
-.rest-count{font-family:var(--font-display);font-size:28px;color:var(--accent);letter-spacing:.04em;flex-shrink:0;}
+.rest-lbl{font-family:var(--font-body);font-size:10px;color:var(--muted);flex-shrink:0;}
+.rest-count{font-family:var(--font-display);font-size:28px;color:var(--accent);flex-shrink:0;}
 .rest-count.hot{color:var(--red);}
 .rest-bar-track{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
 .rest-bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .9s linear;}
 .rest-skip{background:none;border:1px solid var(--border);border-radius:5px;padding:4px 9px;
-  font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;}
+  font-family:var(--font-body);font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;}
 
 /* Exercise substitution */
 .swap-picker{display:none;flex-direction:column;gap:6px;margin:0 0 8px;padding:10px;
@@ -471,8 +506,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* Video embed */
 .ex-video-wrap:not(:empty){margin-bottom:10px;}
 .ex-video-btn{width:100%;padding:9px 12px;background:rgba(255,0,0,.08);border:1px solid rgba(255,0,0,.2);
-  border-radius:8px;color:#ff6b6b;font-family:var(--font-mono);font-size:10px;
-  letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;}
+  border-radius:8px;color:#ff6b6b;font-family:var(--font-body);font-size:10px;
+  cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;}
 .ex-video-btn:hover{background:rgba(255,0,0,.14);}
 .ex-video-btn .yt-icon{font-size:16px;}
 .ex-video-frame{display:none;border-radius:8px;overflow:hidden;margin-top:6px;}
@@ -493,15 +528,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .cardio-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .cardio-block.skipped{opacity:.6;}
 .cardio-block.skipped .cardio-content{display:none;}
-.cardio-title{font-family:var(--font-display);font-size:19px;color:var(--blue);margin-bottom:4px;letter-spacing:.04em;}
+.cardio-title{font-family:var(--font-display);font-size:19px;color:var(--blue);margin-bottom:4px;}
 .cardio-body{font-size:12px;color:var(--muted2);line-height:1.65;}
-.zone-tag{display:inline-block;font-family:var(--font-mono);font-size:10px;
+.zone-tag{display:inline-block;font-family:var(--font-body);font-size:10px;
   color:var(--blue);background:var(--blue-dim);border:1px solid rgba(154,154,172,.2);
   padding:2px 9px;border-radius:4px;margin-top:6px;}
 .stopwatch{display:flex;align-items:center;gap:9px;margin-top:10px;}
-.sw-disp{font-family:var(--font-display);font-size:36px;color:var(--blue);letter-spacing:.05em;flex:1;}
+.sw-disp{font-family:var(--font-display);font-size:36px;color:var(--blue);flex:1;}
 .sw-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);
-  color:var(--text);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;cursor:pointer;transition:all .15s;}
+  color:var(--text);font-family:var(--font-body);font-size:10px;cursor:pointer;transition:all .15s;}
 .sw-btn.go{background:var(--blue-dim);border-color:rgba(154,154,172,.4);color:var(--blue);}
 .sw-btn.stop{background:var(--red-dim);border-color:color-mix(in srgb,var(--red) 30%,transparent);color:var(--red);}
 
@@ -519,14 +554,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .finish-banner{display:none;margin:12px 0 0;padding:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent2) 10%,transparent) 0%,var(--s1) 60%);
   border:1px solid color-mix(in srgb,var(--accent2) 28%,transparent);border-radius:12px;text-align:center;}
 .finish-banner.show{display:block;}
-.finish-title{font-family:var(--font-display);font-size:30px;color:var(--green);letter-spacing:.04em;margin-bottom:5px;}
+.finish-title{font-family:var(--font-display);font-size:30px;color:var(--green);margin-bottom:5px;}
 .finish-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
 
 /* ═══ HERO IMAGERY — duotone, profile-driven, avatar-swappable ═══ */
 /* ONE tint recipe (Wave 0): grayscale photo below, this layer paints the user's
    accent over it. Every duotone surface shares this rule — per-component rules
    keep only their own z-index. Override strength via --tint-opacity. */
-.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint,.dash-hero .tc-tint,.sum-hero .tc-tint{
+.hero-band::after,.hero-fill::after,.oneoff-card::after,.tc-card .tc-tint,.log-card .tc-tint,.dash-hero .tc-tint,.sum-hero .tc-tint,.goal-card .tc-tint,.ob-toggle .tc-tint{
   content:'';position:absolute;inset:0;background:var(--accent);mix-blend-mode:color;
   opacity:var(--tint-opacity,.42);}
 .hero-fill{--tint-opacity:.4;}
@@ -537,10 +572,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(1) contrast(1.08) brightness(.9);transform:scale(1.02);}
 .hero-band::after{z-index:1;}
 .hero-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.45) 55%,rgba(7,7,11,.82) 100%);}
+  background:linear-gradient(180deg,rgba(14,12,10,.05) 0%,rgba(14,12,10,.45) 55%,rgba(14,12,10,.82) 100%);}
 .hero-band .hero-cap{position:absolute;left:18px;right:18px;bottom:15px;z-index:3;}
-.hero-cap-eyebrow{font-family:var(--font-body);font-size:10px;font-weight:600;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--accent2);margin-bottom:3px;}
+.hero-cap-eyebrow{font-family:var(--font-body);font-size:10px;font-weight:600;
+  color:var(--accent2);margin-bottom:3px;}
 .hero-cap-title{font-family:var(--font-display);font-weight:800;font-size:23px;line-height:1.05;color:#fff;}
 /* faint duotone bleed for banners */
 .hero-host{position:relative;overflow:hidden;isolation:isolate;}
@@ -575,14 +610,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(1) contrast(1.08) brightness(.72);transition:filter .16s ease;}
 .oneoff-card::after{z-index:1;}
 .oneoff-card .oneoff-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(180deg,rgba(7,7,11,.02) 30%,rgba(7,7,11,.68) 100%);}
+  background:linear-gradient(180deg,rgba(14,12,10,.02) 30%,rgba(14,12,10,.68) 100%);}
 .oneoff-card .oneoff-cap{position:absolute;left:8px;right:8px;bottom:7px;z-index:3;text-align:left;}
 .oneoff-recency-badge{position:absolute;top:6px;right:6px;z-index:3;display:flex;align-items:center;gap:3px;
   padding:2px 6px;border-radius:5px;background:rgba(232,163,61,.92);color:#1a1305;
-  font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  font-family:var(--font-body);font-size:8px;font-weight:700;}
 .oneoff-recency-badge svg{width:9px;height:9px;}
-.oneoff-eyebrow{display:block;font-family:var(--font-body);font-size:8px;font-weight:600;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--accent2);margin-bottom:1px;}
+.oneoff-eyebrow{display:block;font-family:var(--font-body);font-size:8px;font-weight:600;
+  color:var(--accent2);margin-bottom:1px;}
 .oneoff-name{display:block;font-family:var(--font-display);font-weight:800;font-size:14px;line-height:1.05;color:#fff;}
 .oneoff-card:active{transform:scale(.97);}
 .oneoff-card.active{box-shadow:0 0 0 2px var(--accent),var(--e2);}
@@ -591,10 +626,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 @media (prefers-reduced-motion:reduce){.oneoff-card{transition:none;}.oneoff-card:active{transform:none;}}
 /* Wizard chrome. The step caption carries the question the grid answers, so a card
    grid never appears without saying what picking one means. */
-.oneoff-step-cap{margin-top:14px;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--accent2);}
+.oneoff-step-cap{margin-top:14px;font-family:var(--font-body);font-size:11px;
+  color:var(--accent2);}
 .oneoff-back{margin-top:12px;background:none;border:none;padding:0;cursor:pointer;
-  font-family:var(--font-mono);font-size:11px;color:var(--muted);-webkit-tap-highlight-color:transparent;}
+  font-family:var(--font-body);font-size:11px;color:var(--muted);-webkit-tap-highlight-color:transparent;}
 .oneoff-back:active{color:var(--text);}
 /* Affirmative-action pill language (BUG-150, generalized app-wide 2026-09-24):
    .profile-save-btn is the PRIMARY pill, .btn-secondary the neutral secondary pill,
@@ -610,9 +645,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   color:var(--text);cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
 .oneoff-saved-row:active,.card-btn:active{transform:scale(.98);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
 .oneoff-saved-name{font-weight:600;}
-.oneoff-saved-meta{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px;}
-.oneoff-list-note{font-family:var(--font-mono);font-size:11px;color:var(--muted);}
-.oneoff-recency-note{margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.6;}
+.oneoff-saved-meta{font-family:var(--font-body);font-size:11px;color:var(--muted);margin-top:2px;}
+.oneoff-list-note{font-family:var(--font-body);font-size:11px;color:var(--muted);}
+.oneoff-recency-note{margin-top:10px;font-family:var(--font-body);font-size:11px;color:var(--muted);line-height:1.6;}
 
 /* ═══════════════════════════════
    MODALS
@@ -661,8 +696,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   filter:grayscale(1) contrast(1.08) brightness(.75);}
 .tc-card .tc-tint{z-index:-2;}
 .tc-card .tc-scrim{position:absolute;inset:0;z-index:-1;
-  background:radial-gradient(120% 76% at 50% 50%,rgba(7,7,11,.32) 0%,rgba(7,7,11,.74) 56%,rgba(7,7,11,.93) 100%);}
-.tc-card .tc-meta{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.85);
+  background:radial-gradient(120% 76% at 50% 50%,rgba(14,12,10,.32) 0%,rgba(14,12,10,.74) 56%,rgba(14,12,10,.93) 100%);}
+.tc-card .tc-meta{font-family:var(--font-body);font-size:10px;color:rgba(255,255,255,.85);
   display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:10px;opacity:.85;}
 .tc-card .tc-dot{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
 .tc-card h2{font-family:var(--font-display);font-weight:700;color:#fff;letter-spacing:-.02em;
@@ -688,7 +723,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .tab-bar{position:fixed;left:0;right:0;bottom:0;z-index:120;display:none;
   grid-template-columns:1fr 1fr 96px 1fr 1fr;align-items:center;
   height:calc(74px + env(safe-area-inset-bottom,0px));padding:0 6px env(safe-area-inset-bottom,0px);
-  background:rgba(12,12,18,.92);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+  background:rgba(20,16,13,.92);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
   border-top:1px solid rgba(255,255,255,.08);}
 body.tabbed .tab-bar{display:grid;}
 .tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border:none;background:transparent;
@@ -700,7 +735,7 @@ body.tabbed .tab-bar{display:grid;}
 .tab-btn.active .tab-ico{color:var(--accent2);filter:drop-shadow(0 0 8px var(--accent-glow));}
 .tab-btn.tab-start{position:relative;top:-18px;width:68px;height:68px;margin:0 auto;padding:0;gap:2px;justify-content:center;
   border-radius:50%;background:radial-gradient(circle at 30% 25%,var(--accent2),var(--accent) 55%,var(--accent-deep));
-  color:#04130b;font-size:10px;font-weight:900;letter-spacing:.06em;
+  color:#04130b;font-size:10px;font-weight:900;
   box-shadow:0 8px 24px var(--accent-glow),0 0 0 6px var(--bg);}
 .tab-btn.tab-start .tab-ico{font-size:26px;}
 .tab-btn.tab-start:active{transform:scale(.94);}
@@ -712,7 +747,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .log-sub{font-size:13px;color:var(--muted2);margin-top:5px;}
 .log-filters{display:flex;gap:6px;margin:16px 0 14px;overflow-x:auto;}
 .log-chip{flex:0 0 auto;padding:7px 13px;border-radius:999px;border:1px solid var(--border2);background:var(--s1);color:var(--muted2);
-  font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
+  font-family:var(--font-body);font-size:10px;cursor:pointer;}
 .log-chip.active{background:var(--accent);border-color:transparent;color:#04130b;box-shadow:0 4px 14px var(--accent-glow);}
 .log-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .log-card{position:relative;overflow:hidden;isolation:isolate;text-align:left;border-radius:18px;border:1px solid var(--border2);padding:14px 13px 12px;
@@ -721,12 +756,12 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .log-card .tc-photo,.log-card .tc-tint{z-index:-3;}
 .log-card .tc-photo{position:absolute;inset:0;background-image:var(--hero-url);background-size:cover;background-position:center;opacity:.35;}
 .log-card .tc-tint{z-index:-2;}
-.log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.35) 0%,rgba(7,7,11,.92) 70%);}
-.log-card .log-meta{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;}
+.log-card .log-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,12,10,.35) 0%,rgba(14,12,10,.92) 70%);}
+.log-card .log-meta{font-family:var(--font-body);font-size:9.5px;color:rgba(255,255,255,.7);}
 .log-card h3{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.01em;margin:6px 0 auto;line-height:1.15;}
 .log-card .log-val{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1;margin-top:10px;}
 .log-card .log-val small{font-size:12px;font-weight:600;color:rgba(255,255,255,.7);}
-.log-delta{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;margin-top:5px;}
+.log-delta{font-family:var(--font-mono);font-size:10px;margin-top:5px;}
 .log-delta.up{color:var(--accent2);} .log-delta.down{color:var(--down);} .log-delta.flat{color:var(--muted2);}
 .log-spark{display:flex;align-items:flex-end;gap:2px;height:22px;margin-top:8px;}
 .log-spark i{flex:1;border-radius:2px;background:var(--accent2);opacity:.75;}
@@ -753,7 +788,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 /* 1RM */
 .calc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .calc-field{display:flex;flex-direction:column;gap:5px;}
-.calc-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.calc-lbl{font-family:var(--font-body);font-size:10px;color:var(--muted2);}
 .calc-input{background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);
   font-family:var(--font-mono);font-size:22px;font-weight:600;padding:12px 14px;width:100%;
   text-align:center;outline:none;-webkit-appearance:none;}
@@ -761,7 +796,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .calc-result{background:linear-gradient(135deg,var(--accent-dim) 0%,var(--s2) 60%);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
   border-radius:11px;padding:14px;text-align:center;margin-bottom:14px;}
 .calc-result-val{font-family:var(--font-display);font-size:58px;color:var(--accent2);line-height:1;}
-.calc-result-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
+.calc-result-lbl{font-family:var(--font-body);font-size:10px;color:var(--muted2);margin-top:2px;}
 
 /* Session summary (EPIC-13 Step 3) — Wave 5: celebration sheet. Hero photo uses
    the ONE duotone recipe (.tc-photo grayscale + the shared .tc-tint rule above);
@@ -772,38 +807,38 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .sum-hero .tc-photo{position:absolute;inset:0;z-index:-3;background-image:var(--hero-url);background-size:cover;background-position:center;
   filter:grayscale(1) contrast(1.08) brightness(.75);}
 .sum-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
-.sum-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.12) 0%,rgba(7,7,11,.5) 55%,var(--s1) 100%);}
+.sum-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,12,10,.12) 0%,rgba(14,12,10,.5) 55%,var(--s1) 100%);}
 .sum-hero-body{padding:30px 20px 12px;}
-.sum-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.sum-eyebrow{font-family:var(--font-body);font-size:10px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:7px;margin-bottom:8px;}
 .sum-eyebrow i{width:5px;height:5px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent-glow);}
 .sum-title{font-family:var(--font-display);font-size:42px;font-weight:800;line-height:.98;letter-spacing:-.02em;color:#fff;}
 .sum-body{padding:14px 16px max(20px,env(safe-area-inset-bottom));}
 .summary-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
 .summary-stat{background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:14px;text-align:center;}
 .summary-stat-val{font-family:var(--font-display);font-size:28px;color:var(--accent2);line-height:1;}
-.summary-stat-lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;}
+.summary-stat-lbl{font-family:var(--font-body);font-size:10px;color:var(--muted2);margin-top:4px;}
 .summary-stat.gold{background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35);}
 .summary-stat.gold .summary-stat-val{color:var(--gold2);}
 #sumPrList{margin-top:12px;}
 #sumPrList .duel-pr span{display:flex;align-items:center;gap:8px;}
 #sumPrList .duel-pr svg{width:14px;height:14px;color:var(--gold2);flex-shrink:0;}
 .sum-map{margin-top:12px;background:var(--s2);border:1px solid var(--border2);border-radius:16px;padding:12px 12px 14px;}
-.sum-map-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.sum-map-lbl{font-family:var(--font-body);font-size:10px;color:var(--muted2);}
 .sum-cta{display:block;width:100%;margin-top:14px;padding:15px;border:none;border-radius:999px;background:var(--accent);color:#04130b;
   font-family:var(--font-display);font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px var(--accent-glow);}
 .sum-cta:active{transform:scale(.98);}
 
 /* Persistent streak badge (EPIC-13 Step 4) — Wave 2: gold pill per docs/mockups/home-v2.html
    (gold = celebration-only surfaces: streak, PRs) */
-.dash-streak-chip{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:12px;color:var(--gold2);background:var(--gold-dim);border:1px solid rgba(255,176,32,.3);border-radius:999px;padding:7px 12px;flex-shrink:0;}
+.dash-streak-chip{display:flex;align-items:center;gap:5px;font-family:var(--font-body);font-size:12px;color:var(--gold2);background:var(--gold-dim);border:1px solid rgba(255,176,32,.3);border-radius:999px;padding:7px 12px;flex-shrink:0;}
 .pct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .pct-card{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:9px 6px;
   text-align:center;transition:all .15s;}
 .pct-val{font-family:var(--font-display);font-size:19px;color:var(--text);}
-.pct-lbl{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:1px;}
+.pct-lbl{font-family:var(--font-body);font-size:9px;color:var(--muted);margin-top:1px;}
 .formula-tabs{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
 .ftab{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--s2);
-  font-family:var(--font-mono);font-size:10px;color:var(--muted2);cursor:pointer;transition:all .15s;}
+  font-family:var(--font-body);font-size:10px;color:var(--muted2);cursor:pointer;transition:all .15s;}
 .ftab.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent);}
 
 /* Plate calc */
@@ -828,27 +863,27 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .pr-name{font-size:13px;font-weight:600;color:var(--text);}
 .pr-data{font-family:var(--font-mono);font-size:10px;color:var(--muted2);margin-top:2px;}
 .pr-1rm{font-family:var(--font-display);font-size:22px;color:var(--green);}
-.pr-badge{font-family:var(--font-mono);font-size:9px;padding:2px 6px;border-radius:4px;
+.pr-badge{font-family:var(--font-body);font-size:9px;padding:2px 6px;border-radius:4px;
   background:var(--green-dim);border:1px solid color-mix(in srgb,var(--accent2) 20%,transparent);color:var(--green);}
 
 /* History */
 .hist-session{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:7px;}
 .hist-date{font-family:var(--font-mono);font-size:10px;color:var(--muted2);margin-bottom:5px;
   display:flex;justify-content:space-between;align-items:center;}
-.hist-badge{font-family:var(--font-mono);font-size:9px;padding:2px 7px;border-radius:4px;
-  background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);text-transform:uppercase;}
+.hist-badge{font-family:var(--font-body);font-size:9px;padding:2px 7px;border-radius:4px;
+  background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);}
 .hist-ex{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
 .hist-sets{font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-bottom:5px;line-height:1.6;}
-.hist-pr{font-family:var(--font-mono);font-size:9px;color:var(--amber);background:var(--amber-dim);
+.hist-pr{font-family:var(--font-body);font-size:9px;color:var(--amber);background:var(--amber-dim);
   border:1px solid rgba(255,176,32,.2);padding:1px 6px;border-radius:3px;display:inline-block;margin-left:5px;}
 .clear-btn{width:100%;padding:9px;background:var(--red-dim);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);
-  border-radius:11px;color:var(--red);font-family:var(--font-mono);font-size:10px;
-  cursor:pointer;margin-top:10px;letter-spacing:.07em;text-transform:uppercase;}
+  border-radius:11px;color:var(--red);font-family:var(--font-body);font-size:10px;
+  cursor:pointer;margin-top:10px;}
 
 /* PR TOAST */
 .pr-toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-14px);
   background:var(--amber-dim);border:1px solid rgba(255,176,32,.4);border-radius:10px;
-  padding:8px 16px;font-family:var(--font-mono);font-size:12px;color:var(--amber);
+  padding:8px 16px;font-family:var(--font-body);font-size:12px;color:var(--amber);
   z-index:600;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
 .pr-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
@@ -874,14 +909,15 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
    viewport-fit=cover lands; padding is the idiom .tab-bar, .sum-body and the
    content offsets already use. Identical to before wherever the inset is 0,
    which is every device today (there is no viewport-fit=cover meta). */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(7,7,11,.96);
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(14,12,10,.96);
   backdrop-filter:blur(20px);border-top:1px solid var(--border);
-  display:flex;padding:9px 14px calc(22px + env(safe-area-inset-bottom,0px));gap:7px;z-index:300;max-width:580px;margin:0 auto;}
+  display:flex;align-items:center;padding:9px 12px calc(22px + env(safe-area-inset-bottom,0px));gap:2px;z-index:300;max-width:580px;margin:0 auto;}
 /* Wave 6: bigger tap targets; Finish is the one solid-accent action down here */
-.bnav-btn{flex:1;padding:12px 6px;border-radius:13px;border:1px solid var(--border2);background:var(--s1);
-  color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;
-  text-transform:uppercase;cursor:pointer;transition:all .15s;text-align:center;}
-.bnav-btn.primary{background:var(--accent);border-color:transparent;color:#04130b;font-weight:800;box-shadow:0 4px 14px var(--accent-glow);}
+.bnav-btn{flex:1 1 0;min-width:0;min-height:44px;padding:10px 4px;border-radius:99px;border:0;background:transparent;
+  color:var(--muted2);font-family:var(--font-body);font-size:13px;font-weight:600;letter-spacing:-.005em;
+  cursor:pointer;transition:color .15s,background .15s,transform .13s;text-align:center;white-space:nowrap;}
+.bnav-btn:hover{color:var(--text);}
+.bnav-btn.primary{flex:1.5 1 0;background:var(--accent);color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 .bnav-btn:active{transform:scale(.97);}
 
 @media(max-width:420px){
@@ -897,23 +933,23 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .auth-heading{font-family:var(--font-display);font-size:36px;font-weight:800;letter-spacing:-.01em;line-height:1.02;color:#fff;margin-bottom:8px;text-align:center;}
 .auth-sub{font-size:13px;color:var(--muted2);text-align:center;line-height:1.7;margin-bottom:22px;font-weight:300;}
 .auth-form{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:20px;}
-.auth-field-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;display:block;}
+.auth-field-label{font-family:var(--font-body);font-size:10px;color:var(--muted2);margin-bottom:8px;display:block;}
 .auth-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--font-body);font-size:16px;padding:13px 14px;outline:none;margin-bottom:12px;transition:border-color .15s;-webkit-appearance:none;}
 .auth-input:focus{border-color:var(--accent);}
 .auth-send-btn{width:100%;padding:15px;border-radius:999px;background:var(--accent);border:none;color:#04130b;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;transition:all .2s;margin-bottom:10px;box-shadow:0 6px 18px var(--accent-glow);}
 .auth-send-btn:hover{transform:translateY(-1px);}
 .auth-send-btn:active{transform:scale(.98);}
 .auth-send-btn:disabled{opacity:.5;cursor:default;transform:none;}
-.auth-skip{width:100%;padding:11px;background:transparent;border:1px solid var(--border2);border-radius:999px;color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.auth-skip{width:100%;padding:11px;background:transparent;border:1px solid var(--border2);border-radius:999px;color:var(--muted2);font-family:var(--font-body);font-size:10px;cursor:pointer;transition:all .15s;}
 .auth-skip:hover{border-color:var(--muted2);color:var(--text);}
 .auth-sent{text-align:center;padding:16px 0 8px;}
 .auth-sent-icon{font-size:44px;margin-bottom:12px;}
-.auth-sent-title{font-family:var(--font-display);font-size:26px;color:var(--green);margin-bottom:8px;letter-spacing:.04em;}
+.auth-sent-title{font-family:var(--font-display);font-size:26px;color:var(--green);margin-bottom:8px;}
 .auth-sent-sub{font-size:12px;color:var(--muted2);line-height:1.7;}
 .auth-user-badge{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--green-dim);border:1px solid color-mix(in srgb,var(--accent2) 20%,transparent);border-radius:8px;margin-bottom:10px;}
 .aub-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
-.aub-email{font-family:var(--font-mono);font-size:11px;color:var(--green);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.auth-signout{font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;padding:0;}
+.aub-email{font-family:var(--font-body);font-size:11px;color:var(--green);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.auth-signout{font-family:var(--font-body);font-size:10px;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;padding:0;}
 .auth-signout:hover{color:var(--red);}
 
 /* Sync status dot */
@@ -924,9 +960,9 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.3}}
 /* ── PROFILE MODAL ── */
 .profile-section{margin-bottom:20px;}
-.profile-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block;}
+.profile-section-label{font-family:var(--font-body);font-size:10px;color:var(--accent);margin-bottom:10px;display:block;}
 .profile-pill-row{display:flex;gap:6px;flex-wrap:wrap;}
-.profile-pill{padding:8px 14px;border-radius:999px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.profile-pill{padding:8px 14px;border-radius:999px;border:1px solid var(--border2);background:var(--s2);color:var(--muted2);font-family:var(--font-body);font-size:10px;cursor:pointer;transition:all .15s;}
 .profile-pill.active{background:var(--accent);border-color:transparent;color:#04130b;font-weight:700;box-shadow:0 4px 14px var(--accent-glow);}
 .profile-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
 .profile-swatch.active{border-color:#fff;transform:scale(1.15);}
@@ -935,7 +971,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .profile-input-row.three{grid-template-columns:1fr 1fr 1fr;}
 .profile-input-group{display:flex;flex-direction:column;gap:5px;}
 .profile-input-label{font-size:11px;color:var(--muted2);}
-.modal-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box;}
+.modal-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font-body);font-size:13px;width:100%;box-sizing:border-box;}
 .profile-save-btn{width:100%;padding:13px;border-radius:999px;background:var(--accent);border:none;color:#04130b;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;margin-top:8px;transition:all .2s;box-shadow:0 6px 18px var(--accent-glow);}
 .profile-save-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 30%,transparent);}
 .profile-divider{height:1px;background:var(--border);margin:18px 0;}
@@ -944,7 +980,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 /* ── Avatar prototypes ── */
 .avatar-stage{width:148px;height:148px;margin:0 auto 14px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 32%,var(--s2) 0%,var(--s1) 78%);border:1px solid var(--border2);overflow:hidden;position:relative;}
 .avatar-stage svg,.avatar-stage img{display:block;width:148px;height:148px;}
-.avatar-empty{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 18px;line-height:1.5;}
+.avatar-empty{font-family:var(--font-body);font-size:10px;color:var(--muted);text-align:center;padding:0 18px;line-height:1.5;}
 .avatar-style-row{display:flex;gap:6px;margin-bottom:14px;}
 .avatar-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;}
 /* ── JS-controlled initial states ── */
@@ -973,7 +1009,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
   background-size:cover;background-position:center 25%;filter:grayscale(1) contrast(1.08) brightness(.75);}
 .dash-hero .tc-tint{position:absolute;inset:0;z-index:-2;}
 .dash-hero .dash-hero-scrim{position:absolute;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(7,7,11,.05) 0%,rgba(7,7,11,.55) 45%,rgba(7,7,11,.95) 100%);}
+  background:linear-gradient(180deg,rgba(14,12,10,.05) 0%,rgba(14,12,10,.55) 45%,rgba(14,12,10,.95) 100%);}
 .dash-hero .tc-meta{justify-content:flex-start;margin-bottom:0;}
 .dash-hero h2{font-family:var(--font-display);font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff;margin:8px 0 6px;}
 .dash-hero p{font-size:13px;color:rgba(255,255,255,.72);margin:0;}
@@ -990,10 +1026,10 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .dash-rhythm-bar{width:100%;height:26px;border-radius:8px;border:1px solid var(--border2);background:transparent;}
 .dash-rhythm-seg.on .dash-rhythm-bar{background:var(--accent);border-color:var(--accent);box-shadow:0 2px 10px var(--accent-glow);}
 .dash-rhythm-seg.today .dash-rhythm-bar{outline:2px solid var(--accent2);outline-offset:1px;}
-.dash-rhythm-day{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:var(--muted2);text-transform:uppercase;}
+.dash-rhythm-day{font-family:var(--font-body);font-size:9px;color:var(--muted2);}
 .dash-rhythm-seg.on .dash-rhythm-day{color:var(--text);}
-.dash-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;}
-.dash-section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;display:block;}
+.dash-label{font-family:var(--font-body);font-size:10px;color:var(--muted2);display:flex;justify-content:space-between;gap:8px;}
+.dash-section-label{font-family:var(--font-body);font-size:10px;color:var(--accent);margin-bottom:8px;display:block;}
 /* 2. Duel */
 .dash-competition{cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .dash-competition:active{transform:scale(.99);}
@@ -1002,7 +1038,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .dash-comp-pts{font-family:var(--font-display);font-size:38px;font-weight:800;line-height:1;color:var(--text);}
 .dash-comp-pts small{font-size:13px;color:var(--muted2);font-weight:600;}
 .dash-comp-pts-right{text-align:right;}
-.dash-comp-vs{font-family:var(--font-mono);font-size:11px;color:var(--muted2);padding-bottom:8px;}
+.dash-comp-vs{font-family:var(--font-body);font-size:11px;color:var(--muted2);padding-bottom:8px;}
 .dash-comp-bar-track{height:10px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;}
 .dash-comp-bar-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .4s ease;}
 .dash-duel-note{font-size:13px;margin-top:10px;color:var(--text);}
@@ -1010,7 +1046,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .dash-day-dots{display:flex;justify-content:space-between;margin-top:12px;}
 .dash-day-dot-col{display:flex;flex-direction:column;align-items:center;gap:5px;}
 .dash-day-dot{width:26px;height:26px;border-radius:50%;border:1px solid var(--border2);background:transparent;display:inline-block;}
-.dash-day-label{font-family:var(--font-mono);font-size:9px;color:var(--muted2);}
+.dash-day-label{font-family:var(--font-body);font-size:9px;color:var(--muted2);}
 /* 3. Muscles this week */
 .dash-mmap{display:flex;gap:14px;align-items:center;margin-top:12px;}
 .dash-mmap-fig{width:96px;flex:0 0 auto;align-self:stretch;object-fit:contain;}
@@ -1018,7 +1054,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .dash-mmap-fig img{width:100%;height:100%;object-fit:contain;opacity:.5;filter:grayscale(1) brightness(1.4);}
 .dash-mrows{flex:1;display:flex;flex-direction:column;gap:9px;min-width:0;}
 .dash-mr-top{display:flex;justify-content:space-between;font-size:12px;color:var(--text);}
-.dash-mr-top span:last-child{font-family:var(--font-mono);color:var(--muted2);font-size:11px;}
+.dash-mr-top span:last-child{font-family:var(--font-body);color:var(--muted2);font-size:11px;}
 .dash-mr-trk{height:6px;border-radius:999px;background:rgba(255,255,255,.07);margin-top:4px;overflow:hidden;}
 .dash-mr-trk i{display:block;height:100%;border-radius:999px;}
 /* 4. Vitals — 4 tiles, accent-only rings */
@@ -1028,14 +1064,14 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .dash-ring-track{fill:none;stroke:rgba(255,255,255,.1);stroke-width:7;}
 .dash-ring-circle{fill:none;stroke:var(--accent2);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .4s ease;}
 .dash-ring-val{font-family:var(--font-display);font-size:16px;color:var(--text);margin-top:6px;line-height:1;}
-.dash-ring-label{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-top:3px;}
+.dash-ring-label{font-family:var(--font-body);font-size:8.5px;color:var(--muted2);margin-top:3px;}
 /* 5. Latest PR — gold, celebration-only */
 .dash-pr{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(255,176,32,.16),rgba(255,176,32,.03));border-color:rgba(255,176,32,.35);}
-.dash-pr-tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--gold2);display:flex;align-items:center;gap:5px;}
+.dash-pr-tag{font-family:var(--font-body);font-size:10px;color:var(--gold2);display:flex;align-items:center;gap:5px;}
 .dash-pr-tag svg{width:12px;height:12px;}
 .dash-pr h3{font-family:var(--font-display);font-size:18px;color:var(--text);margin:4px 0 0;}
 .dash-pr-num{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--gold2);margin-left:auto;text-align:right;line-height:1;}
-.dash-pr-num small{display:block;font-size:10px;color:var(--muted2);font-family:var(--font-mono);font-weight:400;margin-top:3px;}
+.dash-pr-num small{display:block;font-size:10px;color:var(--muted2);font-family:var(--font-body);font-weight:400;margin-top:3px;}
 
 /* ── Duel breakdown sheet (Wave 3, ruling 4 — docs/mockups/tabbar-and-duel.html) ── */
 .duel-title{font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-.02em;color:#fff;}
@@ -1043,15 +1079,15 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .duel-score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin:18px 0 8px;}
 .duel-score .n{font-family:var(--font-display);font-size:44px;font-weight:800;line-height:1;}
 .duel-score .l{font-size:12px;color:var(--muted2);margin-bottom:4px;}
-.duel-lead{justify-self:center;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;padding:6px 10px;border-radius:999px;background:rgba(63,224,140,.12);color:var(--accent2);white-space:nowrap;}
-.duel-rowh{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--muted2);margin:18px 0 8px;text-transform:uppercase;}
+.duel-lead{justify-self:center;font-family:var(--font-body);font-size:10px;padding:6px 10px;border-radius:999px;background:rgba(63,224,140,.12);color:var(--accent2);white-space:nowrap;}
+.duel-rowh{font-family:var(--font-body);font-size:10px;color:var(--muted2);margin:18px 0 8px;}
 .duel-src{display:grid;grid-template-columns:1fr 76px 76px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;color:var(--text);}
 .duel-src span{text-align:right;font-family:var(--font-display);font-weight:700;}
 .duel-src em{display:block;font-style:normal;font-size:11px;color:var(--muted2);margin-top:2px;}
 .duel-src:last-child{border-bottom:none;}
 .duel-src .win{color:var(--accent2);}
 .duel-days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
-.duel-d{border-radius:12px;background:var(--s2);padding:8px 0;text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--muted2);}
+.duel-d{border-radius:12px;background:var(--s2);padding:8px 0;text-align:center;font-family:var(--font-body);font-size:9px;color:var(--muted2);}
 .duel-d i{display:block;width:10px;height:10px;border-radius:50%;margin:6px auto 3px;background:rgba(255,255,255,.1);}
 .duel-d.today{outline:2px solid var(--accent2);}
 .duel-pr{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,var(--gold-dim),rgba(255,176,32,.03));border:1px solid rgba(255,176,32,.35);margin-bottom:8px;font-size:13px;color:var(--text);}
@@ -1069,7 +1105,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .you-nutri-card{position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--border2);padding:16px;margin-bottom:12px;isolation:isolate;background:var(--s1);}
 .you-nutri-card .you-photo{position:absolute;inset:0;z-index:-3;background-image:url('public/meal-prep.jpg');background-size:cover;background-position:center;filter:grayscale(1) contrast(1.08) brightness(.7);}
 .you-nutri-card .tc-tint{position:absolute;inset:0;z-index:-2;}
-.you-nutri-card .you-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,11,.45) 0%,rgba(7,7,11,.82) 40%,rgba(7,7,11,.94) 100%);}
+.you-nutri-card .you-scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(14,12,10,.45) 0%,rgba(14,12,10,.82) 40%,rgba(14,12,10,.94) 100%);}
 .you-nutri-card .dash-label{color:rgba(255,255,255,.75);}
 .you-nutri{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
 .you-nutri .dash-mr-top{color:#fff;}
@@ -1078,7 +1114,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 /* Body comp tiles */
 .you-body{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}
 .you-tile{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:13px 14px;}
-.you-tile .t{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);}
+.you-tile .t{font-family:var(--font-body);font-size:9px;color:var(--muted2);}
 .you-tile .v{font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text);margin-top:5px;line-height:1;}
 .you-tile .v small{font-size:11px;color:var(--muted2);font-weight:600;}
 .you-tile .s{font-size:11px;color:var(--muted2);margin-top:4px;}
@@ -1086,7 +1122,7 @@ body.tabbed .bug-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
 .you-map{display:flex;justify-content:center;gap:10px;margin-top:12px;}
 .you-map svg,.you-map img{max-width:100%;height:auto;}
 .you-map-fig{width:46%;max-width:200px;object-fit:contain;opacity:.6;filter:grayscale(1) brightness(1.35);}
-.you-map-legend{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:10px;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
+.you-map-legend{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:10px;font-family:var(--font-body);font-size:9px;color:var(--muted2);}
 .you-map-legend i{display:block;height:8px;width:110px;border-radius:999px;background:linear-gradient(90deg,#232b27,var(--accent2));}
 
 /* ── Bug Report FAB ──────────────────────────────────── */
@@ -1137,6 +1173,74 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 .qa-resolve-btn{flex-shrink:0;font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--text);cursor:pointer;white-space:nowrap;}
 .qa-resolve-btn:active{transform:scale(.94);}
 .qa-empty-msg{text-align:center;padding:44px 0;color:var(--muted2);font-size:14px;}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   THEME LAYER — the ONE place the app's look is decided.   (added 2026-11-17)
+
+   Why this exists. Colours and fonts were already tokens, so a palette or typeface
+   change reached every screen at once. Everything else was decided per screen: 30
+   classes each drew their own card (border + radius + background), 7 classes each
+   rebuilt the photo card, with 26 different corner radii between them. A design
+   request therefore became a screen-by-screen hunt, and screens nobody visited that
+   day kept the old look.
+
+   How it works. Each family below is ONE rule over a list of the existing classes,
+   reading ONE set of --th-* tokens. This block is last in the stylesheet, so it wins
+   over each class's own single-class rule; state rules (.selected, .completed,
+   :disabled, .open) are more specific and still apply. To change how cards, fields,
+   pills, photo cards or primary buttons look everywhere: edit the tokens here.
+   To give a NEW element the look: add its class to the family list. Do not write a
+   new border/radius/background/shadow for a card anywhere else.
+
+   Not covered, said plainly: 264 inline style="" attributes in the markup and JS
+   templates (71 set a font-size, 111 a colour or background) bypass any stylesheet,
+   this one included. They are the remaining screen-by-screen surface.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* surface card */
+  --th-card-bg:var(--s1);--th-card-border:1px solid var(--border2);--th-card-radius:var(--r-lg);
+  --th-card-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 16px rgba(0,0,0,.28);
+  /* field (anything you type or pick a value in) */
+  --th-field-bg:var(--s2);--th-field-border:1px solid var(--border2);--th-field-radius:var(--r-md);
+  /* photo card */
+  --th-hero-radius:var(--r-xl);
+  --th-hero-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.4);
+  --th-photo-filter:grayscale(1) contrast(1.08) brightness(.75);
+  /* selectable tile */
+  --th-tile-radius:var(--r-lg);
+  --th-selected-border:var(--accent);
+  --th-selected-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 1px var(--accent-glow),0 8px 22px rgba(0,0,0,.4);
+  /* pill / chip / secondary action */
+  --th-pill-radius:99px;
+  /* primary action */
+  --th-primary-bg:var(--accent);--th-primary-fg:#04130b;--th-primary-shadow:0 4px 14px var(--accent-glow);
+}
+/* 1 — surface cards */
+.review-item,.day-header,.ex-card,.setup-card,.inline-1rm,.summary-stat,.sum-map,.pct-card,
+.plate-display,.pr-item,.hist-session,.auth-form,.dash-panel,.dash-ring-card,.you-tile{
+  background:var(--th-card-bg);border:var(--th-card-border);border-radius:var(--th-card-radius);
+  box-shadow:var(--th-card-shadow);}
+/* 2 — fields */
+.ob-input,.ob-select,.modal-input,.calc-input,.auth-input,.eq-db-input,.plate-select,.set-input,.set-rpe,.ex-notes{
+  background:var(--th-field-bg);border:var(--th-field-border);border-radius:var(--th-field-radius);}
+:is(.ob-input,.ob-select,.modal-input,.calc-input,.auth-input,.eq-db-input,.plate-select,.set-input,.ex-notes):focus{
+  border-color:var(--accent);outline:none;}
+/* 3 — photo cards */
+.tc-card,.goal-card,.dash-hero,.sum-hero,.log-card,.you-nutri-card,.oneoff-card{
+  border-radius:var(--th-hero-radius);box-shadow:var(--th-hero-shadow);}
+:is(.tc-card,.goal-card,.dash-hero,.sum-hero,.ob-toggle) .tc-photo{filter:var(--th-photo-filter);}
+/* 4 — selectable tiles, and the one selected state every chooser shares */
+.ob-toggle{border-radius:var(--th-tile-radius);}
+.goal-card.selected,.ob-toggle.selected,.tc-card.primary{
+  border-color:var(--th-selected-border);box-shadow:var(--th-selected-shadow);}
+/* 5 — pills, chips, secondary actions */
+.tool-btn,.profile-pill,.goal-tag,.dash-chip,.log-chip,.log-more,.day-tab,.clear-btn.signout-btn,
+.you-settings-btn,.ob-back-btn,.auth-skip,.dash-streak-chip,.rest-skip{
+  border-radius:var(--th-pill-radius);font-family:var(--font-body);}
+/* 6 — primary actions */
+.ob-next-btn:not(:disabled),.ob-build-btn,.auth-send-btn,.profile-save-btn,.session-timer-start,.sum-cta,.bnav-btn.primary{
+  background:var(--th-primary-bg);color:var(--th-primary-fg);border-radius:var(--th-pill-radius);
+  box-shadow:var(--th-primary-shadow);border-color:transparent;}
 </style>
 </head>
 <body>
@@ -1253,28 +1357,28 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <div class="ob-card-sub">This shapes your entire program — reps, rest, progressions, everything.</div>
         <div class="goal-grid">
           <div class="goal-card" style="--gc:var(--red);--gd:color-mix(in srgb,var(--red) 8%,transparent);--gb:color-mix(in srgb,var(--red) 35%,transparent);" onclick="selectGoal('fat_burn',this)">
-            <div class="goal-card-top"><div class="goal-icon" data-icon="flame"></div><div class="goal-name">Burn Fat</div></div>
-            <div class="goal-desc">Lose body fat, increase metabolic conditioning, and build a leaner physique. High-rep, shorter rest, cardio-integrated sessions.</div>
+            <div class="tc-photo" data-hero="goal:fat_burn"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
+            <div class="goal-card-top"><div class="goal-name">Burn Fat</div></div>
             <div class="goal-tags"><span class="goal-tag">Higher Reps</span><span class="goal-tag">Shorter Rest</span><span class="goal-tag">Zone 2 Cardio</span><span class="goal-tag">Compound Circuits</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--orange);--gd:color-mix(in srgb,var(--orange) 10%,transparent);--gb:color-mix(in srgb,var(--orange) 40%,transparent);" onclick="selectGoal('build_muscle',this)">
-            <div class="goal-card-top"><div class="goal-icon" data-icon="dumbbell"></div><div class="goal-name">Build Muscle</div></div>
-            <div class="goal-desc">Maximize hypertrophy and strength through progressive overload, wave periodization, and compound-first programming.</div>
+            <div class="tc-photo" data-hero="goal:build_muscle"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
+            <div class="goal-card-top"><div class="goal-name">Build Muscle</div></div>
             <div class="goal-tags"><span class="goal-tag">6–12 Reps</span><span class="goal-tag">2 min Rest</span><span class="goal-tag">Heavy Compounds</span><span class="goal-tag">Wave Loading</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--teal);--gd:color-mix(in srgb,var(--teal) 8%,transparent);--gb:color-mix(in srgb,var(--teal) 35%,transparent);" onclick="selectGoal('transform',this)">
-            <div class="goal-card-top"><div class="goal-icon" data-icon="zap"></div><div class="goal-name">Transform</div></div>
-            <div class="goal-desc">Simultaneous fat loss and muscle building. Body recomposition through metabolic resistance training and moderate deficit.</div>
+            <div class="tc-photo" data-hero="goal:transform"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
+            <div class="goal-card-top"><div class="goal-name">Transform</div></div>
             <div class="goal-tags"><span class="goal-tag">8–15 Reps</span><span class="goal-tag">90 sec Rest</span><span class="goal-tag">MRT Circuits</span><span class="goal-tag">Hybrid Cardio</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--orange);--gd:color-mix(in srgb,var(--orange) 8%,transparent);--gb:color-mix(in srgb,var(--orange) 35%,transparent);" onclick="selectGoal('strength',this)">
-            <div class="goal-card-top"><div class="goal-icon" data-icon="trophy"></div><div class="goal-name">Strength</div></div>
-            <div class="goal-desc">Maximize force output on the big lifts. Heavy compound-first training at 85–100% 1RM with long, full-recovery rest — no supersets on primary lifts.</div>
+            <div class="tc-photo" data-hero="goal:strength"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
+            <div class="goal-card-top"><div class="goal-name">Strength</div></div>
             <div class="goal-tags"><span class="goal-tag">1–5 Reps</span><span class="goal-tag">3–5 min Rest</span><span class="goal-tag">85–100% 1RM</span><span class="goal-tag">Heavy Compounds</span></div>
           </div>
           <div class="goal-card" style="--gc:var(--green);--gd:color-mix(in srgb,var(--green) 8%,transparent);--gb:color-mix(in srgb,var(--green) 35%,transparent);" onclick="selectGoal('maintenance',this)">
-            <div class="goal-card-top"><div class="goal-icon" data-icon="target"></div><div class="goal-name">Maintain</div></div>
-            <div class="goal-desc">Hold your current strength and size at a lower time cost. Moderate loads, capped volume, and flexible scheduling that fits around life.</div>
+            <div class="tc-photo" data-hero="goal:maintenance"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
+            <div class="goal-card-top"><div class="goal-name">Maintain</div></div>
             <div class="goal-tags"><span class="goal-tag">6–10 Reps</span><span class="goal-tag">60–120 sec Rest</span><span class="goal-tag">Capped Volume</span><span class="goal-tag">Flexible Schedule</span></div>
           </div>
         </div>
@@ -1350,11 +1454,11 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
               <span class="ob-label" style="margin-bottom:6px;">Biological Sex</span>
               <div class="ob-toggle-row two">
                 <div class="ob-toggle" onclick="selectSex('M',this)">
-                  <div class="ob-toggle-icon">♂</div>
+                  <div class="tc-photo" data-hero="sex:male"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                   <div class="ob-toggle-label">Male</div>
                 </div>
                 <div class="ob-toggle" onclick="selectSex('F',this)">
-                  <div class="ob-toggle-icon">♀</div>
+                  <div class="tc-photo" data-hero="sex:female"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                   <div class="ob-toggle-label">Female</div>
                 </div>
               </div>
@@ -1367,15 +1471,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <span class="ob-label">Experience Level</span>
           <div class="ob-toggle-row three">
             <div class="ob-toggle" onclick="selectExperience('beginner',this)">
-              <div class="ob-toggle-icon" data-icon="sprout"></div>
+              <div class="tc-photo" data-hero="exp:beginner"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Beginner</div>
             </div>
             <div class="ob-toggle" onclick="selectExperience('intermediate',this)">
-              <div class="ob-toggle-icon" data-icon="zap"></div>
+              <div class="tc-photo" data-hero="exp:intermediate"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Intermediate</div>
             </div>
             <div class="ob-toggle" onclick="selectExperience('advanced',this)">
-              <div class="ob-toggle-icon" data-icon="flame"></div>
+              <div class="tc-photo" data-hero="exp:advanced"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Advanced</div>
             </div>
           </div>
@@ -1428,27 +1532,27 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <span class="ob-label">Muscle Emphasis</span>
           <div class="ob-toggle-row three">
             <div class="ob-toggle selected" onclick="selectEmphasis('balanced',this)">
-              <div class="ob-toggle-icon" data-icon="activity"></div>
+              <div class="tc-photo" data-hero="emphasis:balanced"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Balanced</div>
             </div>
             <div class="ob-toggle" onclick="selectEmphasis('upper_body',this)">
-              <div class="ob-toggle-icon" data-icon="zap"></div>
+              <div class="tc-photo" data-hero="emphasis:upper_body"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Upper Body</div>
             </div>
             <div class="ob-toggle" onclick="selectEmphasis('lower_body',this)">
-              <div class="ob-toggle-icon" data-icon="chevrons-down"></div>
+              <div class="tc-photo" data-hero="emphasis:lower_body"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Lower Body</div>
             </div>
             <div class="ob-toggle" onclick="selectEmphasis('back_heavy',this)">
-              <div class="ob-toggle-icon" data-icon="layers"></div>
+              <div class="tc-photo" data-hero="emphasis:back_heavy"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Back Heavy</div>
             </div>
             <div class="ob-toggle" onclick="selectEmphasis('push_heavy',this)">
-              <div class="ob-toggle-icon" data-icon="arrow-up-right"></div>
+              <div class="tc-photo" data-hero="emphasis:push_heavy"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Push Heavy</div>
             </div>
             <div class="ob-toggle" onclick="selectEmphasis('glute_focused',this)">
-              <div class="ob-toggle-icon" data-icon="heart"></div>
+              <div class="tc-photo" data-hero="emphasis:glute_focused"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
               <div class="ob-toggle-label">Glute Focus</div>
             </div>
           </div>
@@ -1459,19 +1563,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <span class="ob-label">Session Length</span>
           <div class="ob-toggle-row two">
             <div class="ob-toggle" onclick="selectDuration(30,this)">
-              <div class="ob-toggle-icon" data-icon="zap"></div>
               <div class="ob-toggle-label">30 min</div>
             </div>
             <div class="ob-toggle" onclick="selectDuration(45,this)">
-              <div class="ob-toggle-icon" data-icon="clock"></div>
               <div class="ob-toggle-label">45 min</div>
             </div>
             <div class="ob-toggle" onclick="selectDuration(60,this)">
-              <div class="ob-toggle-icon" data-icon="clock"></div>
               <div class="ob-toggle-label">60 min</div>
             </div>
             <div class="ob-toggle" onclick="selectDuration(90,this)">
-              <div class="ob-toggle-icon" data-icon="clock"></div>
               <div class="ob-toggle-label">90 min</div>
             </div>
           </div>
@@ -1482,15 +1582,12 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <span class="ob-label">Preferred Workout Time</span>
           <div class="ob-toggle-row three">
             <div class="ob-toggle" onclick="selectWorkoutTime('morning',this)">
-              <div class="ob-toggle-icon" data-icon="sunrise"></div>
               <div class="ob-toggle-label">Morning</div>
             </div>
             <div class="ob-toggle" onclick="selectWorkoutTime('lunch',this)">
-              <div class="ob-toggle-icon" data-icon="sun"></div>
               <div class="ob-toggle-label">Lunch</div>
             </div>
             <div class="ob-toggle" onclick="selectWorkoutTime('evening',this)">
-              <div class="ob-toggle-icon" data-icon="moon"></div>
               <div class="ob-toggle-label">Evening</div>
             </div>
           </div>
@@ -1512,19 +1609,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <span class="ob-label">Secondary Goal <span style="font-weight:300;color:var(--muted);">(optional)</span></span>
           <div class="ob-toggle-row two">
             <div class="ob-toggle" onclick="selectSecondaryGoal('run_5k',this)">
-              <div class="ob-toggle-icon" data-icon="activity"></div>
               <div class="ob-toggle-label">Run a 5K</div>
             </div>
             <div class="ob-toggle" onclick="selectSecondaryGoal('10k_steps',this)">
-              <div class="ob-toggle-icon" data-icon="footprints"></div>
               <div class="ob-toggle-label">10K Steps/Day</div>
             </div>
             <div class="ob-toggle" onclick="selectSecondaryGoal('improve_mobility',this)">
-              <div class="ob-toggle-icon" data-icon="yoga"></div>
               <div class="ob-toggle-label">Mobility</div>
             </div>
             <div class="ob-toggle" onclick="selectSecondaryGoal('none',this)">
-              <div class="ob-toggle-icon">—</div>
               <div class="ob-toggle-label">None</div>
             </div>
           </div>
@@ -1536,7 +1629,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <div class="ob-card-title">Your Color</div>
         <div class="ob-card-sub">This is how you show up in the competition. You can always change it later.</div>
 
-        <span class="ob-label">YOUR COLOR</span>
+        <span class="ob-label">Your color</span>
         <div style="font-size:12px;color:var(--muted2);margin-bottom:16px;font-weight:300;">This is how you show up in the competition</div>
 
         <!-- Wave 0: swatches render from THEME_PALETTE (one palette, one home) -->
@@ -1554,7 +1647,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <div class="ob-card-title">Baseline Estimates</div>
         <div class="ob-card-sub">Optional — rough guesses are fine. If you know roughly what you can lift for 8-10 solid reps, Week 1 starts dialed-in instead of generic. Skip anything you're unsure of; your first session calibrates the rest.</div>
 
-        <span class="ob-label">WHAT CAN YOU LIFT FOR 8–10 REPS?</span>
+        <span class="ob-label">What can you lift for 8–10 reps?</span>
         <div id="obEstimateList" style="margin-top:12px;">
           <!-- populated by renderBaselineEstimates() based on selected sex -->
         </div>
@@ -1685,11 +1778,11 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
                 <span class="ob-label" style="margin-bottom:6px;">Biological Sex</span>
                 <div class="ob-toggle-row two">
                   <div class="ob-toggle" onclick="selectSex('M',this)">
-                    <div class="ob-toggle-icon">♂</div>
+                  <div class="tc-photo" data-hero="sex:male"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                     <div class="ob-toggle-label">Male</div>
                   </div>
                   <div class="ob-toggle" onclick="selectSex('F',this)">
-                    <div class="ob-toggle-icon">♀</div>
+                  <div class="tc-photo" data-hero="sex:female"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                     <div class="ob-toggle-label">Female</div>
                   </div>
                 </div>
@@ -1701,15 +1794,15 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
             <span class="ob-label">Experience Level</span>
             <div class="ob-toggle-row three">
               <div class="ob-toggle" onclick="selectExperience('beginner',this)">
-                <div class="ob-toggle-icon" data-icon="sprout"></div>
+              <div class="tc-photo" data-hero="exp:beginner"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                 <div class="ob-toggle-label">Beginner</div>
               </div>
               <div class="ob-toggle" onclick="selectExperience('intermediate',this)">
-                <div class="ob-toggle-icon" data-icon="zap"></div>
+              <div class="tc-photo" data-hero="exp:intermediate"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                 <div class="ob-toggle-label">Intermediate</div>
               </div>
               <div class="ob-toggle" onclick="selectExperience('advanced',this)">
-                <div class="ob-toggle-icon" data-icon="flame"></div>
+              <div class="tc-photo" data-hero="exp:advanced"></div><div class="tc-tint"></div><div class="tc-scrim"></div>
                 <div class="ob-toggle-label">Advanced</div>
               </div>
             </div>
@@ -1773,7 +1866,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <polygon points="16,23 28,23 22,54 10,54" fill="#fff"/>
         <polygon points="34,25 46,25 40,54 28,54" fill="#fff"/>
       </svg>
-      <div style="font-family:var(--font-display);font-size:30px;letter-spacing:.1em;background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">TANDEM</div>
+      <div style="font-family:var(--font-display);font-size:30px;background:linear-gradient(135deg,#fff 0%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">TANDEM</div>
     </div>
     <div class="hero-band" data-hero="auth" role="img" aria-label="Athlete training">
       <div class="hero-scrim"></div>
@@ -1832,7 +1925,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
          through it. -->
     <button class="dash-hero" data-hero="phase" onclick="openModal('todaychoice')">
       <div class="dash-hero-photo"></div><div class="tc-tint"></div><div class="dash-hero-scrim"></div>
-      <div class="tc-meta"><span class="tc-dot"></span><span id="dashHeroMeta">TODAY</span></div>
+      <div class="tc-meta"><span class="tc-dot"></span><span id="dashHeroMeta">Today</span></div>
       <h2 id="dashHeroTitle">Today's Workout</h2>
       <p id="dashHeroSub"></p>
       <div class="dash-chips" id="dashHeroChips"></div>
@@ -2067,9 +2160,9 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 
   <!-- Tools -->
   <div class="tools-row">
-    <button class="tool-btn" onclick="openModal('prs')"><span data-icon="trophy"></span> PRs</button>
-    <button class="tool-btn" onclick="openModal('history')"><span data-icon="clipboard"></span> History</button>
-    <button class="tool-btn" onclick="openModal('goal')"><span data-icon="target"></span> Goal</button>
+    <button class="tool-btn" onclick="openModal('prs')">PRs</button>
+    <button class="tool-btn" onclick="openModal('history')">History</button>
+    <button class="tool-btn" onclick="openModal('goal')">Goal</button>
   </div>
 
   <!-- Day Tabs -->
@@ -2155,7 +2248,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <div class="pl-item"><div class="pl-swatch" style="background:#8e44ad"></div>5</div>
       <div class="pl-item"><div class="pl-swatch" style="background:#95a5a6"></div>2.5</div>
     </div>
-    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;">Plates per side →</div>
+    <div style="font-family:var(--font-body);font-size:10px;color:var(--muted2);margin-bottom:5px;">Plates per side →</div>
     <div class="plate-display" id="plateDisplay"><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Enter weight above</span></div>
     <div id="plateBreakdown" style="font-family:var(--font-mono);font-size:11px;color:var(--muted2);line-height:1.8;"></div>
   </div>
@@ -2168,7 +2261,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <div class="sum-hero" id="sumHero">
       <div class="tc-photo"></div><div class="tc-tint"></div><div class="sum-scrim"></div>
       <div class="sum-hero-body">
-        <div class="sum-eyebrow"><i></i>WORKOUT LOGGED</div>
+        <div class="sum-eyebrow"><i></i>Workout logged</div>
         <div class="sum-title">Session<br>Complete</div>
       </div>
     </div>
@@ -2322,7 +2415,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <div id="oneoffSavePrompt" style="display:none;margin-top:14px;">
       <div class="oneoff-step-cap">Save this as a template?</div>
       <input type="text" id="oneoffSaveName" class="modal-input" placeholder="Name this workout (e.g. Arms — Heavy)" style="margin-top:8px;">
-      <div style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);">How'd it feel? (1-7)</div>
+      <div style="margin-top:10px;font-family:var(--font-body);font-size:11px;color:var(--muted);">How'd it feel? (1-7)</div>
       <div id="oneoffRatingRow" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;"></div>
       <button class="profile-save-btn" onclick="saveOneOffTemplate()">Save Template</button>
       <button class="oneoff-btn-secondary" onclick="closeModal('oneoff')">Skip</button>
@@ -2355,9 +2448,8 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
         <div class="tc-photo" data-hero="phase"></div>
         <div class="tc-tint"></div>
         <div class="tc-scrim"></div>
-        <div class="tc-meta"><span class="tc-dot"></span>YOUR PROGRAM</div>
+        <div class="tc-meta"><span class="tc-dot"></span>Your program</div>
         <h2>Continue your plan</h2>
-        <p>Pick up where your program left off.</p>
         <span class="tc-cta">Start workout →</span>
       </button>
       <div class="tc-row">
@@ -2365,18 +2457,16 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <div class="tc-photo" style="background-image:url('public/oneoff-full-body.jpg')"></div>
           <div class="tc-tint"></div>
           <div class="tc-scrim"></div>
-          <div class="tc-meta">ONE-OFF</div>
+          <div class="tc-meta">One-off</div>
           <h2>Build me a workout</h2>
-          <p>Pick a focus, get a session.</p>
           <span class="tc-cta">Choose →</span>
         </button>
         <button class="tc-card" onclick="closeModal('todaychoice');openJournal()">
           <div class="tc-photo" data-hero="complete"></div>
           <div class="tc-tint"></div>
           <div class="tc-scrim"></div>
-          <div class="tc-meta">MANUAL LOG</div>
+          <div class="tc-meta">Manual log</div>
           <h2>Journal</h2>
-          <p>Log something you already did.</p>
           <span class="tc-cta">Log it →</span>
         </button>
       </div>
@@ -2452,7 +2542,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <button class="modal-close" onclick="closeModal('library')">✕</button>
     <div class="modal-title">Program Library</div>
     <div class="modal-sub">Authored, periodized programs. Adopting one replaces your generated plan — you can switch back anytime.</div>
-    <div id="libraryList" style="display:flex;flex-direction:column;gap:10px;"><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">Loading…</span></div>
+    <div id="libraryList" style="display:flex;flex-direction:column;gap:10px;"><span style="font-family:var(--font-body);font-size:11px;color:var(--muted)">Loading…</span></div>
     <div id="libraryCurrent" style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;"></div>
   </div>
 </div>
@@ -2469,7 +2559,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <label class="profile-input-label" for="builderWeeks">Duration (weeks)</label>
       <input type="number" id="builderWeeks" class="modal-input" min="4" max="12" value="12" style="width:64px;">
     </div>
-    <div id="builderStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
+    <div id="builderStatus" style="font-family:var(--font-body);font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
     <div id="builderDays"></div>
     <button class="btn-secondary" style="margin-bottom:10px;padding:9px;font-size:13px;" onclick="addBuilderDay()">+ Add Day</button>
     <button class="profile-save-btn" id="builderSaveBtn" onclick="saveCustomTemplate(this)">Build Template</button>
@@ -2503,11 +2593,11 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
            The old 'burn_fat' pill value reached getProgram(cfg.goal, …) unaliased and generated
            a silently-wrong program — see Bug & QA Log "Profile modal goal pills" (2026-09-24). -->
       <div class="profile-pill-row" id="profileGoalRow">
-        <button class="profile-pill" data-goal="fat_burn" onclick="selectProfileGoal('fat_burn')"><span data-icon="flame"></span> Burn</button>
-        <button class="profile-pill" data-goal="build_muscle" onclick="selectProfileGoal('build_muscle')"><span data-icon="dumbbell"></span> Muscle</button>
-        <button class="profile-pill" data-goal="transform" onclick="selectProfileGoal('transform')"><span data-icon="zap"></span> Transform</button>
-        <button class="profile-pill" data-goal="strength" onclick="selectProfileGoal('strength')"><span data-icon="trophy"></span> Strength</button>
-        <button class="profile-pill" data-goal="maintenance" onclick="selectProfileGoal('maintenance')"><span data-icon="target"></span> Maintain</button>
+        <button class="profile-pill" data-goal="fat_burn" onclick="selectProfileGoal('fat_burn')">Burn</button>
+        <button class="profile-pill" data-goal="build_muscle" onclick="selectProfileGoal('build_muscle')">Muscle</button>
+        <button class="profile-pill" data-goal="transform" onclick="selectProfileGoal('transform')">Transform</button>
+        <button class="profile-pill" data-goal="strength" onclick="selectProfileGoal('strength')">Strength</button>
+        <button class="profile-pill" data-goal="maintenance" onclick="selectProfileGoal('maintenance')">Maintain</button>
       </div>
       <div style="margin-top:12px;">
         <span class="profile-input-label" style="display:block;margin-bottom:6px;">Days / week</span>
@@ -2677,7 +2767,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
     <!-- Sign Out -->
     <div class="profile-section" style="text-align:center;">
       <div id="profileUserEmail" style="font-size:11px;color:var(--muted);margin-bottom:10px;"></div>
-      <button class="clear-btn" onclick="signOut()">Sign Out</button>
+      <button class="clear-btn signout-btn" onclick="signOut()">Sign out</button>
     </div>
   </div>
 </div>
@@ -2689,12 +2779,12 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
      itself uses to boot mid-session (renderTracker(); showView('dashboard')),
      so leaving and returning to a live session is already a supported state. -->
 <div class="bottom-nav" id="bottomNav">
-  <button class="bnav-btn" onclick="showView('dashboard')"><span data-icon="home"></span> Home</button>
-  <button class="bnav-btn" onclick="openModal('plates')"><span data-icon="plate"></span> Plates</button>
-  <button class="bnav-btn" onclick="openModal('calc')"><span data-icon="chart"></span> 1RM</button>
-  <button class="bnav-btn" onclick="openModal('history')"><span data-icon="clipboard"></span> Log</button>
-  <button class="bnav-btn" onclick="skipWorkout()"><span data-icon="clock"></span> Skip</button>
-  <button class="bnav-btn primary" onclick="finishSession()">Finish ✓</button>
+  <button class="bnav-btn" onclick="showView('dashboard')">Home</button>
+  <button class="bnav-btn" onclick="openModal('plates')">Plates</button>
+  <button class="bnav-btn" onclick="openModal('calc')">1RM</button>
+  <button class="bnav-btn" onclick="openModal('history')">Log</button>
+  <button class="bnav-btn" onclick="skipWorkout()">Skip</button>
+  <button class="bnav-btn primary" onclick="finishSession()">Finish</button>
 </div>
 
 <!-- Wave 1 — tab bar B (top-level views only; see .tab-bar CSS). START opens the
@@ -2702,7 +2792,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
 <nav class="tab-bar" id="tabBar" aria-label="Main">
   <button class="tab-btn" data-tab="home" onclick="goTab('home')"><span class="tab-ico" data-icon="home"></span>Home</button>
   <button class="tab-btn" data-tab="log" onclick="goTab('log')"><span class="tab-ico" data-icon="chart"></span>Log</button>
-  <button class="tab-btn tab-start" data-tab="start" onclick="goTab('start')" aria-label="Start a workout"><span class="tab-ico" data-icon="dumbbell"></span>START</button>
+  <button class="tab-btn tab-start" data-tab="start" onclick="goTab('start')" aria-label="Start a workout"><span class="tab-ico" data-icon="dumbbell"></span>Start</button>
   <button class="tab-btn" data-tab="you" onclick="goTab('you')"><span class="tab-ico" data-icon="user"></span>You</button>
   <button class="tab-btn" data-tab="duel" onclick="goTab('duel')"><span class="tab-ico" data-icon="duel"></span>Duel</button>
 </nav>
@@ -2741,7 +2831,50 @@ function userSexKey(){
   s = String(s).toLowerCase();
   return (s === 'f' || s === 'female') ? 'female' : 'male';
 }
+// Named photos for selection cards (onboarding goals, muscle emphasis). `goal:<key>` uses
+// the per-sex goal photography that shipped in public/ but nothing referenced; strength and
+// maintenance have no dedicated shot, so they take a FIXED slot of the hero pool (fixed,
+// not day-cycled: a choice card must not change its picture between visits).
+// `emphasis:<key>` picks a per-sex shot from the hero pool (see EMPHASIS_PHOTO_SLOT).
+const GOAL_PHOTO_SLUG = { fat_burn:'fat-burn', build_muscle:'build-muscle', transform:'transform' };
+const GOAL_PHOTO_POOL_SLOT = { strength:2, maintenance:4 };
+// Muscle-emphasis tiles show the user's own sex (Kerwin 2026-11-17: "keep it gender
+// specific"). The one-off focus photos are one shot each regardless of sex, so these
+// index the per-sex hero pool instead; the slot is picked by what the photo shows
+// (male-1 curl, male-2 pushdown, male-3/4 deadlift, male-5 back, male-6 cable fly;
+// female-1 back at the rack, female-2 floor work, female-3 squat, female-4 rack,
+// female-5 bar across the back, female-6 pressing a bar).
+const EXPERIENCE_PHOTO_SLOT = {
+  male:   { beginner:5, intermediate:1, advanced:3 },
+  female: { beginner:1, intermediate:2, advanced:4 },
+};
+const EMPHASIS_PHOTO_SLOT = {
+  male:   { balanced:5, upper_body:0, lower_body:2, back_heavy:4, push_heavy:1, glute_focused:3 },
+  female: { balanced:1, upper_body:4, lower_body:2, back_heavy:0, push_heavy:5, glute_focused:3 },
+};
+function namedHeroSrc(moment){
+  const [kind, key] = String(moment).split(':');
+  const sex = userSexKey();
+  if (kind === 'goal') {
+    if (GOAL_PHOTO_SLUG[key]) return `public/goal-${GOAL_PHOTO_SLUG[key]}-${sex}.jpg`;
+    const pool = HERO_PHOTOS[sex];
+    return pool[(GOAL_PHOTO_POOL_SLOT[key] || 0) % pool.length];
+  }
+  // The sex tiles each show their OWN sex (that is the choice being made); experience
+  // tiles show the user's sex, like everything else.
+  if (kind === 'sex') return HERO_PHOTOS[key === 'female' ? 'female' : 'male'][0];
+  if (kind === 'exp') {
+    const slot = (EXPERIENCE_PHOTO_SLOT[sex] || EXPERIENCE_PHOTO_SLOT.male)[key];
+    return HERO_PHOTOS[sex][slot != null ? slot : 0];
+  }
+  if (kind === 'emphasis') {
+    const slot = (EMPHASIS_PHOTO_SLOT[sex] || EMPHASIS_PHOTO_SLOT.male)[key];
+    return HERO_PHOTOS[sex][slot != null ? slot : 0];
+  }
+  return null;
+}
 function heroSrc(moment){
+  if (String(moment).includes(':')) { const named = namedHeroSrc(moment); if (named) return named; }
   const pool = HERO_PHOTOS[userSexKey()];
   const base = HERO_MOMENTS[moment] != null ? HERO_MOMENTS[moment] : 0;
   // cycle daily through the full gender pool so the whole set gets seen over time,
@@ -3333,7 +3466,7 @@ async function computeCalibration1RMs(sessionUUID, userId) {
 
   // Best Epley 1RM per exercise — same calcRM(w,r) as set-logging path
   const best1RMs = {};
-  const bestSet = {}; // BUG-263: the set that produced each best — the row's NOT NULL achieved_* fields
+  const bestSet = {}; // BUG-263: the set that produced each best — the row's non-nullable achieved_* fields
   for (const s of sessionSets) {
     if (!s.exercise_name || !s.weight_lbs || !s.reps) continue;
     const est = Math.round(calcRM(s.weight_lbs, s.reps)); // D12: calcRM selects the formula by rep range
@@ -3773,10 +3906,10 @@ function templateCardHTML(t, actionHTML) {
     <div style="border:1px solid var(--border2);border-radius:12px;padding:14px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
         <div style="font-weight:700;font-size:15px;">${t.name}</div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">${templateGoalChip(t)}</div>
+        <div style="font-family:var(--font-body);font-size:10px;color:var(--muted2);white-space:nowrap;">${templateGoalChip(t)}</div>
       </div>
       ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
+      <div style="font-family:var(--font-body);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
       ${t.description ? `<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-top:8px;">${t.description}</div>` : ''}
       ${actionHTML}
     </div>`;
@@ -4357,9 +4490,9 @@ function renderBuilderDays() {
             <input type="number" class="modal-input" min="0" value="${x.rest}" style="width:60px;" title="Rest (sec)" oninput="builderState.days[${di}].exercises[${xi}].rest=parseInt(this.value)||0">
             <button class="clear-btn" style="width:auto;padding:6px 8px;margin-top:0;" onclick="removeBuilderExercise(${di},${xi})">✕</button>
             ${x.exercise_id ? (x.suggestion
-              ? `<div style="width:100%;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-left:2px;">Last logged: ${x.suggestion}</div>`
+              ? `<div style="width:100%;font-family:var(--font-body);font-size:11px;color:var(--muted);padding-left:2px;">Last logged: ${x.suggestion}</div>`
               : x.suggestionLoading
-                ? `<div style="width:100%;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-left:2px;">Checking your history…</div>`
+                ? `<div style="width:100%;font-family:var(--font-body);font-size:11px;color:var(--muted);padding-left:2px;">Checking your history…</div>`
                 : '') : ''}
           </div>`).join('')}
       </div>
@@ -4931,7 +5064,10 @@ function updateWeightGap() {
   const weeks = Math.round(absDiff / rateVal);
 
   const sign = isGain ? '+' : isLoss ? '−' : '';
-  const color = isGain ? 'var(--blue)' : isLoss ? 'var(--green)' : 'var(--muted2)';
+  // Gaining and losing are both first-class goals (Kerwin 2026-11-17: "adding weight should be
+  // an option, and shouldn't go grey"). Both directions take the user's accent; only "already
+  // there" is muted. Direction is carried by the sign, never by colour alone.
+  const color = (isGain || isLoss) ? 'var(--accent2)' : 'var(--muted2)';
 
   gapVal.style.color = color;
   gapVal.textContent = `${sign}${absDiff} lbs to goal`;
@@ -5194,7 +5330,7 @@ function renderSessionTimer() {
     tick();
     _sessionTimerInterval = setInterval(tick, 1000);
   } else {
-    row.innerHTML = `<button class="session-timer-start" onclick="startWorkoutTimer()">${svgIcon('clock')} Start Workout</button>`;
+    row.innerHTML = `<button class="session-timer-start" onclick="startWorkoutTimer()">Start Workout</button>`;
   }
 }
 
@@ -5292,7 +5428,7 @@ function renderTracker() {
   const _phaseNum = _phases.findIndex(p => p === phase || (p.name === phase.name)) + 1 || 1;
 
   // Phase banner
-  document.getElementById('pbEyebrow').textContent = `Phase ${_phaseNum} · ${cfg.goal.replace('_',' ').toUpperCase()}`;
+  document.getElementById('pbEyebrow').textContent = `Phase ${_phaseNum} · ${cfg.goal.replace('_',' ')}`;
   document.getElementById('pbName').textContent = phase.name;
   document.getElementById('pbIntent').textContent = phase.intent;
   document.getElementById('pbReps').textContent = `This week: ${effectiveReps(phase, currentWeek, cfg.weeks)} reps · Phase range: ${phase.reps}`;
@@ -5353,7 +5489,7 @@ function renderTracker() {
       // per-day list — one builder (rhythmStripParts) owns the markup for both surfaces.
       const r = rhythmStripParts(s);
       const strip = `<br><br><strong style="color:var(--text)">Week rhythm:</strong>`
-        + ` <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);">${r.shape}</span>`
+        + ` <span style="font-family:var(--font-body);font-size:11px;color:var(--muted2);">${r.shape}</span>`
         + `<div class="dash-rhythm" style="margin:8px 0 2px;">${r.segsHtml}</div>`;
       const rows = s.cadence.map((key, i) => {
         const isRest = key === 'rest';
@@ -5659,7 +5795,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
             <div class="ex-check"></div>
             <div class="ex-info">
               <div class="ex-name"><span id="en-${ex.id}">${exDisplayName(ex.name)}</span><span class="ex-badge badge-${ex.badge}" id="eb-${ex.id}">${ex.badge}</span>${pr1rm ? `<span class="ex-1rm-tag" onclick="event.stopPropagation();quickCalc(${pr1rm})">est. 1RM ~${pr1rm}</span>` : ''}</div>
-              <div class="ex-reps" style="font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:2px;">
+              <div class="ex-reps" style="font-family:var(--font-body);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent2);margin-top:3px;">
                 ${ex.isCore
                 ? `${ex.sets} × ${ex.repRange || ex.r}${ex.unit === 'reps' ? ' reps' : 's hold'} · ${ex.authoredRest ?? phase.restAcc}s rest`
                 : `${ex.sets} × ${tierRows ? tierRows.map(t => t.reps).join('·') : (ex.repRange || anchorReps)} reps · ${ex.authoredRest ?? (ex.compound ? phase.restComp : phase.restAcc)}s rest`}
@@ -7383,7 +7519,7 @@ function renderStrengthTrend(matches) {
       <span style="font-family:var(--font-display);font-size:26px;color:${color};line-height:1;">
         ${up ? '+' : ''}${delta}<span style="font-size:14px;"> lbs</span>
       </span>
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:.08em;">
+      <span style="font-family:var(--font-body);font-size:10px;color:var(--muted2);">
         ${up ? '+' : ''}${pct}% · EST 1RM · ${pts.length} SESSIONS
       </span>
     </div>
@@ -7396,7 +7532,7 @@ function renderStrengthTrend(matches) {
             stroke-linejoin="round" stroke-linecap="round"/>
       ${dots}
     </svg>
-    <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--muted2);margin-top:3px;">
+    <div style="display:flex;justify-content:space-between;font-family:var(--font-body);font-size:9px;color:var(--muted2);margin-top:3px;">
       <span>${first.date}</span><span>${last.date}</span>
     </div>
   </div>`;
@@ -9243,15 +9379,15 @@ function oneOffGoalKey() {
 // app makes no remote image requests, and netlify.toml's `cp -r public _site/`
 // already ships the whole directory.
 const ONEOFF_FACE = {
-  chest:     { eyebrow: 'PECS · TRIS',  title: 'Chest' },
-  back:      { eyebrow: 'LATS · BIS',   title: 'Back' },
-  legs:      { eyebrow: 'QUADS · HAMS', title: 'Legs' },
-  shoulders: { eyebrow: 'DELTS',        title: 'Shoulders' },
-  arms:      { eyebrow: 'BIS · TRIS',   title: 'Arms' },
-  push:      { eyebrow: 'PRESSING',     title: 'Push' },
-  pull:      { eyebrow: 'PULLING',      title: 'Pull' },
-  hinge:     { eyebrow: 'POSTERIOR',    title: 'Hinge' },
-  full_body: { eyebrow: 'ALL OF IT',    title: 'Full Body' },
+  chest:     { eyebrow: 'Pecs · tris',  title: 'Chest' },
+  back:      { eyebrow: 'Lats · bis',   title: 'Back' },
+  legs:      { eyebrow: 'Quads · hams', title: 'Legs' },
+  shoulders: { eyebrow: 'Delts',        title: 'Shoulders' },
+  arms:      { eyebrow: 'Bis · tris',   title: 'Arms' },
+  push:      { eyebrow: 'Pressing',     title: 'Push' },
+  pull:      { eyebrow: 'Pulling',      title: 'Pull' },
+  hinge:     { eyebrow: 'Posterior',    title: 'Hinge' },
+  full_body: { eyebrow: 'All of it',    title: 'Full Body' },
 };
 // A focus added to FOCUS_SLOTS without a face here still renders — title-cased name,
 // no eyebrow, and a missing photo just leaves the accent-tinted card. Degrades, never
@@ -9265,9 +9401,9 @@ function oneOffFace(f) {
 // Kerwin's. The eyebrow names what actually changes in the generated day, so the
 // three cards are distinguishable by their structure and not just their names.
 const ONEOFF_GOALS = [
-  { key: 'fat_burn',     eyebrow: 'HIGH REP · SHORT REST', title: 'Feel the Burn' },
-  { key: 'transform',    eyebrow: 'SUPERSETS · MIXED REP', title: 'Tone' },
-  { key: 'build_muscle', eyebrow: 'TIERED SETS · HEAVY',   title: 'Gains Season' },
+  { key: 'fat_burn',     eyebrow: 'High rep · short rest', title: 'Feel the Burn' },
+  { key: 'transform',    eyebrow: 'Supersets · mixed rep', title: 'Tone' },
+  { key: 'build_muscle', eyebrow: 'Tiered sets · heavy',   title: 'Gains Season' },
 ];
 
 // Exactly one step visible. n: 0 = entry choice, 1 = goal grid, 2/3 = focus grid /
@@ -9539,7 +9675,7 @@ function renderOneOff(focus) {
     cardio: goalKey === 'fat_burn',
   });
   const host = document.getElementById('oneoffDay');
-  if (!day) { oneOffState.day = null; host.innerHTML = `<span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
+  if (!day) { oneOffState.day = null; host.innerHTML = `<span style="font-family:var(--font-body);font-size:11px;color:var(--muted)">No focus by that name.</span>`; return; }
   oneOffState.day = day; // finishOneOff() hands this to reconcileWorking1RMs
   // buildDayHTML needs a phase — it drives the rep display through effectiveReps().
   // Use the user's CURRENT phase at the PICKED goal, the same
@@ -10894,7 +11030,7 @@ function renderDashHero() {
   const dayKey = label?.dayKey ?? null;
   chipsEl.innerHTML = '';
   if (!sched || !dayKey) {
-    metaEl.textContent = 'TODAY';
+    metaEl.textContent = 'Today';
     titleEl.textContent = "Today's Workout";
     subEl.textContent = 'Continue your plan, or start something one-off.';
     if (ctaEl) ctaEl.textContent = 'Start workout →';
@@ -10902,7 +11038,7 @@ function renderDashHero() {
   }
   const daySlot = label.num != null ? `DAY ${label.num} OF ${label.denom}` : '';
   if (dayKey === 'rest') {
-    metaEl.textContent = daySlot ? `REST DAY · ${daySlot}` : 'REST DAY';
+    metaEl.textContent = daySlot ? `Rest day · ${daySlot}` : 'Rest day';
     titleEl.textContent = 'Rest & Recover';
     const restTip = restDaySuggestionText(cfg);
     subEl.textContent = restTip
@@ -11021,12 +11157,12 @@ function renderLatestPR() {
   card.style.display = '';
   const when = new Date(best.date + 'T00:00:00');
   const daysAgo = daysAgoFrom(when, new Date());
-  const whenLabel = daysAgo <= 0 ? 'TODAY'
-    : daysAgo === 1 ? 'YESTERDAY'
-    : daysAgo < 7 ? when.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
-    : when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  const whenLabel = daysAgo <= 0 ? 'Today'
+    : daysAgo === 1 ? 'Yesterday'
+    : daysAgo < 7 ? when.toLocaleDateString('en-US', { weekday: 'long' })
+    : when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const tagEl = document.getElementById('dashPrTag');
-  if (tagEl) tagEl.innerHTML = `${svgIcon('trophy')} NEW PR · ${whenLabel}`;
+  if (tagEl) tagEl.innerHTML = `${svgIcon('trophy')} New PR · ${whenLabel}`;
   const nameEl = document.getElementById('dashPrName');
   if (nameEl) nameEl.textContent = exDisplayName(best.name);
   const numEl = document.getElementById('dashPrNum');
@@ -11097,8 +11233,8 @@ function renderDuelSheet() {
   if (theirPtsEl) { theirPtsEl.textContent = theirPts; theirPtsEl.style.color = theirColor; }
   const leadEl = document.getElementById('duelLead');
   if (leadEl) {
-    leadEl.textContent = myPts === theirPts ? 'EVEN'
-      : iWin ? `YOU +${myPts - theirPts}` : `${theirName.toUpperCase()} +${theirPts - myPts}`;
+    leadEl.textContent = myPts === theirPts ? 'Even'
+      : iWin ? `You +${myPts - theirPts}` : `${theirName} +${theirPts - myPts}`;
   }
 
   // Sources — each side: [value shown, points]; steps points are the residual (see header).
@@ -11722,7 +11858,7 @@ function buildIdentityAvatar(p, size){
       </linearGradient>
     </defs>
     <g clip-path="url(#${uid}c)">
-      <rect x="0" y="0" width="100" height="100" fill="#0c0d12"/>
+      <rect x="0" y="0" width="100" height="100" fill="#171310"/>
       ${isFemale
         ? `<ellipse cx="50" cy="92" rx="${hipRx}" ry="18" fill="url(#${uid}b)"/>
            <ellipse cx="50" cy="80" rx="${shoulderRx}" ry="16" fill="url(#${uid}b)"/>`
