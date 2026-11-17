@@ -3905,12 +3905,12 @@ function templateCardHTML(t, actionHTML) {
   return `
     <div style="border:1px solid var(--border2);border-radius:12px;padding:14px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-        <div style="font-weight:700;font-size:15px;">${t.name}</div>
-        <div style="font-family:var(--font-body);font-size:10px;color:var(--muted2);white-space:nowrap;">${templateGoalChip(t)}</div>
+        <div style="font-weight:700;font-size:15px;">${escHtml(t.name)}</div>
+        <div style="font-family:var(--font-body);font-size:10px;color:var(--muted2);white-space:nowrap;">${escHtml(templateGoalChip(t))}</div>
       </div>
-      ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${t.tagline}</div>` : ''}
-      <div style="font-family:var(--font-body);font-size:10px;color:var(--muted);margin-top:6px;">${t.duration_weeks} wks · ${t.days_per_week} days/wk · ${(t.split_type || '').replace(/_/g, ' ')} · ${t.difficulty}</div>
-      ${t.description ? `<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-top:8px;">${t.description}</div>` : ''}
+      ${t.tagline ? `<div style="font-size:12px;color:var(--accent);margin-top:2px;">${escHtml(t.tagline)}</div>` : ''}
+      <div style="font-family:var(--font-body);font-size:10px;color:var(--muted);margin-top:6px;">${escHtml(t.duration_weeks)} wks · ${escHtml(t.days_per_week)} days/wk · ${escHtml((t.split_type || '').replace(/_/g, ' '))} · ${escHtml(t.difficulty)}</div>
+      ${t.description ? `<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-top:8px;">${escHtml(t.description)}</div>` : ''}
       ${actionHTML}
     </div>`;
 }
@@ -3920,7 +3920,7 @@ async function openProgramLibrary() {
   const list = document.getElementById('libraryList');
   const cur = document.getElementById('libraryCurrent');
   cur.innerHTML = AUTHORED_SOURCES.includes(cfg.programSource)
-    ? `Currently running: <strong style="color:var(--accent)">${(LS.get('tandem_adopted_program')?.template?.name) || 'adopted program'}</strong> · <a href="#" onclick="revertToGenerated();return false;" style="color:var(--muted2)">switch back to generated</a>`
+    ? `Currently running: <strong style="color:var(--accent)">${escHtml((LS.get('tandem_adopted_program')?.template?.name) || 'adopted program')}</strong> · <a href="#" onclick="revertToGenerated();return false;" style="color:var(--muted2)">switch back to generated</a>`
     : 'Currently running your generated program.';
   if (!sb) { list.innerHTML = '<span style="font-size:12px;color:var(--muted)">Library needs a connection — try again online.</span>'; return; }
   try {
@@ -4068,7 +4068,7 @@ function renderLibSummary() {
   if (!wrap || !pendingLibraryTemplate) return;
   const t = pendingLibraryTemplate;
   wrap.innerHTML = `
-    <div class="review-item span2"><div class="review-item-label">Program</div><div class="review-item-value">${t.name}</div></div>
+    <div class="review-item span2"><div class="review-item-label">Program</div><div class="review-item-value">${escHtml(t.name)}</div></div>
     <div class="review-item"><div class="review-item-label">Goal</div><div class="review-item-value">${TEMPLATE_GOAL_LABEL[t.code_goal_mapping] || t.code_goal_mapping}</div></div>
     <div class="review-item"><div class="review-item-label">Duration</div><div class="review-item-value">${t.duration_weeks} wks</div></div>
     <div class="review-item"><div class="review-item-label">Days/Week</div><div class="review-item-value">${t.days_per_week}</div></div>
@@ -5652,13 +5652,13 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
   let html = `
     <div class="day-header" style="--dhc:${day.color}">
       <div class="dh-top">
-        <div class="dh-title">${day.label}</div>
+        <div class="dh-title">${escHtml(day.label)}</div>
         <div class="dh-chips">
-          <div class="dh-chip hi">${day.blocks.find(b=>b.cardio) ? '90 min' : '60 min'}</div>
+          ${plannedSessionMinutes() ? `<div class="dh-chip hi">${plannedSessionMinutes()} min</div>` : ''}
           <div class="dh-chip">${effectiveReps(phase, currentWeek, cfg.weeks)} reps</div>
         </div>
       </div>
-      <div class="dh-rationale">${day.rationale}</div>
+      <div class="dh-rationale">${escHtml(day.rationale)}</div>
     </div>
   `;
 
@@ -5674,15 +5674,15 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
       const cardioKey = `${currentWeek}-${day.key}-${ex.id}`;
       const cardioSkipped = !!((LS.get('tandem_skipped_cardio') || {})[cardioKey]);
       html += `
-        <div class="block-label">${block.label}</div>
+        <div class="block-label">${escHtml(block.label)}</div>
         <div class="cardio-block${cardioSkipped ? ' skipped' : ''}" id="cardio-${cardioKey}">
           <div class="cardio-head">
             <div class="cardio-title">${exDisplayName(ex.name)}</div>
             <button class="rest-skip" onclick="toggleCardioSkip('${cardioKey}')">${cardioSkipped ? 'Add back' : 'Skip'}</button>
           </div>
           <div class="cardio-content">
-            <div class="cardio-body">${ex.cardioDesc}</div>
-            <div class="zone-tag">${ex.zone}</div>
+            ${ex.cardioDesc ? `<div class="cardio-body">${escHtml(ex.cardioDesc)}</div>` : ''}
+            ${ex.zone ? `<div class="zone-tag">${escHtml(ex.zone)}</div>` : ''}
             <div class="stopwatch">
               <div class="sw-disp" id="sw-${day.key}${ex.id}">${fmtTime(ex.duration * 60)}</div>
               <button class="sw-btn go" id="swBtn-${day.key}${ex.id}" onclick="toggleSW('${day.key}${ex.id}',${ex.duration * 60})">Start</button>
@@ -5693,7 +5693,7 @@ function buildDayHTML(day, phase, goalKey = cfg.goal) {
       return;
     }
 
-    html += `<div class="block-label">${block.label}</div>`;
+    html += `<div class="block-label">${escHtml(block.label)}</div>`;
     if (/superset/i.test(block.label || '')) {
       const restMatch = /rest\s+(\d+)/i.exec(block.label || '');
       const restSec = restMatch ? restMatch[1] : '90';
@@ -6268,7 +6268,7 @@ function logSet(id, i) {
       }
       btn.classList.add('pr-set');
       wEl.classList.add('pr'); rEl.classList.add('pr');
-      showToast(`${svgIcon('trophy')} PR — ${prExName} · ${est1rm} lbs`);
+      showToast(`PR — ${prExName} · ${est1rm} lbs`, 'trophy');
       document.getElementById('ec-' + id)?.classList.add('pr-beat');
     } else {
       btn.classList.add('logged');
@@ -7266,6 +7266,17 @@ function escNoteKey(v) {
   return String(v == null ? '' : v)
     .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+// escHtml — THE escaper for any string that did not originate in this file's own
+// literals (database rows, other users' template text, localStorage) on its way into an
+// innerHTML template. Covers text AND double/single-quoted attribute positions.
+// Audit 2026-11-16: template name/tagline/description from workout_templates were
+// interpolated raw, and any signed-in account could publish a template, so one user's
+// markup ran in every other user's browser.
+function escHtml(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function escNoteHtml(v) {
   return String(v == null ? '' : v)
@@ -8300,9 +8311,13 @@ function openModal(name) {
 
 function closeModal(name) { document.getElementById('modal-' + name)?.classList.remove('open'); }
 
-function showToast(msg) {
+// The message is ALWAYS text. It used to be assigned to innerHTML, and callers pass
+// template names and exercise names from the database into it (audit 2026-11-16).
+// An icon is named, never passed as markup: showToast('PR', 'trophy').
+function showToast(msg, icon) {
   const t = document.getElementById('prToast');
-  t.innerHTML = msg;
+  t.textContent = (icon ? ' ' : '') + String(msg == null ? '' : msg);
+  if (icon) t.insertAdjacentHTML('afterbegin', svgIcon(icon));
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 3500);
 }
@@ -9790,7 +9805,7 @@ async function finishOneOff() {
 
     oneOffIds.forEach(id => delete sessionSetsMap[id]); // only this one-off's sets — the regular program's are untouched
     const pts = sessionPointsFor(prCount);
-    showToast(`${svgIcon('flame')} One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts`);
+    showToast(`One-off saved — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts`, 'flame');
     // The scoreboard on screen is now stale by exactly this session's points and volume.
     // loadDashboard() is the one path that re-reads them from the cloud (showView does the
     // same call), so without it the credit above is invisible until the next navigation —
@@ -9896,7 +9911,7 @@ function addJournalRow(prefill) {
   const rpeOpts = Object.keys(RPE_ANCHORS).map(v =>
     `<option value="${v}" title="RPE ${v} — ${RPE_ANCHORS[v].effort}; ${RPE_ANCHORS[v].rir}">${v}</option>`).join('');
   row.innerHTML =
-    `<input type="text" class="j-name" placeholder="Exercise" value="${prefill?.name || ''}" style="${cell}font-family:var(--font-body);">` +
+    `<input type="text" class="j-name" placeholder="Exercise" value="${escHtml(prefill?.name || '')}" style="${cell}font-family:var(--font-body);">` +
     `<input type="number" class="j-sets" min="1" max="20" step="1" placeholder="sets" value="${prefill?.sets ?? ''}" style="${cell}font-family:var(--font-mono);">` +
     `<input type="number" class="j-reps" min="1" max="100" step="1" placeholder="reps" value="${prefill?.reps ?? ''}" style="${cell}font-family:var(--font-mono);">` +
     `<input type="number" class="j-weight" min="0" step="0.5" placeholder="lbs" value="${prefill?.weight ?? ''}" style="${cell}font-family:var(--font-mono);">` +
@@ -10037,7 +10052,7 @@ async function saveJournal() {
     LS.set('tandem_history', hist);
 
     const pts = sessionPointsFor(prCount);
-    showToast(`${svgIcon('flame')} Logged — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts${isBackdated ? ' (streak unchanged)' : ''}`);
+    showToast(`Logged — ${Math.round(totalVolume).toLocaleString()} lbs moved, +${pts} pts${isBackdated ? ' (streak unchanged)' : ''}`);
     closeModal('journal');
     // The scoreboard is now stale by exactly this session's points and volume, and
     // loadDashboard() is the only path that re-reads them: without this the credit
@@ -11013,6 +11028,18 @@ function setRestDaySuggestion(on) {
 
 // ── Wave 2: hero card — today's session from the same schedule plumbing the
 // tracker uses (getWeekSchedule/getProgramDayNumber; one rule, one home). ──
+// THE one home for "how long is this session" on any surface: the length the user chose
+// (cfg.workout_duration_minutes). Audit 2026-11-16: Home read this value ("about 60 min")
+// while the day header printed a hardcoded '90 min'/'60 min' literal keyed on whether the
+// day had a cardio block — two numbers for one session, and the literal had no source.
+// Returns null when the user never stated a length; callers then show NO time, never a
+// guess. Nothing here derives a duration from the prescription itself — that would need
+// per-set timing the sources do not give (open gap, flagged, not invented).
+function plannedSessionMinutes() {
+  const m = Number(typeof cfg !== 'undefined' && cfg ? cfg.workout_duration_minutes : 0);
+  return Number.isFinite(m) && m > 0 ? m : null;
+}
+
 function renderDashHero() {
   const titleEl = document.getElementById('dashHeroTitle');
   if (!titleEl) return;
@@ -11051,20 +11078,27 @@ function renderDashHero() {
   titleEl.textContent = sched.labelFor(dayKey);
   if (ctaEl) ctaEl.textContent = 'Start workout →';
   const day = sched.program.find(d => d.key === dayKey);
+  // `total` counts exactly what the workout screen's progress line counts ("0 of N
+  // exercises" = every .ex-card = every non-cardio exercise, core included). It used to
+  // count lifts only and say "5 lifts" above a workout that opened as "0 of 7 exercises".
+  // The two name chips still lead with the lifts, which is what identifies the day.
   const lifts = [];
+  let total = 0;
   (day?.blocks || []).forEach(b => {
     if (b.cardio) return;
-    (b.exs || []).forEach(ex => { if (ex && !ex.isCore) lifts.push(ex); });
+    (b.exs || []).forEach(ex => { if (!ex) return; total++; if (!ex.isCore) lifts.push(ex); });
   });
-  const mins = Number(cfg?.workout_duration_minutes);
-  subEl.textContent = lifts.length
-    ? `${lifts.length} lift${lifts.length === 1 ? '' : 's'}${mins ? ` · about ${mins} min` : ''}`
+  const mins = plannedSessionMinutes();
+  subEl.textContent = total
+    ? `${total} exercise${total === 1 ? '' : 's'}${mins ? ` · about ${mins} min` : ''}`
     : '';
+  // exDisplayName: the chip is presentation. ex.name is the stored identity
+  // ("Flat Barbell Press"), which the workout card already shows as "Bench Press".
   lifts.slice(0, 2).forEach(ex => {
-    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = ex.name; chipsEl.append(c);
+    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = exDisplayName(ex.name); chipsEl.append(c);
   });
-  if (lifts.length > 2) {
-    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = `+${lifts.length - 2} more`; chipsEl.append(c);
+  if (total > 2) {
+    const c = document.createElement('span'); c.className = 'dash-chip'; c.textContent = `+${total - 2} more`; chipsEl.append(c);
   }
 }
 
