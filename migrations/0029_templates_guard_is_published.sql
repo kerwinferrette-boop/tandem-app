@@ -1,6 +1,8 @@
 -- 0029 — only a privileged role may publish a workout template.
 --
--- NOT APPLIED. apply_migration is human-only (.claude/loop-config.md). Read it, then apply.
+-- APPLIED 2026-11-17 on Kerwin's go-ahead (via execute_sql; the drop-if-exists line was omitted
+-- because the trigger did not exist). All five post-apply assertions below passed; before the
+-- apply, assertions 1 and 2 FAILED (an authenticated account could publish), proving they can fail.
 --
 -- WHY (audit 2026-11-16)
 --   templates_write is `FOR ALL TO authenticated USING/WITH CHECK (author_id = auth.uid())`.
@@ -21,10 +23,11 @@
 --   Every client write of this column is the literal `false` (clone in adoptTemplate,
 --   createCustomTemplate). No client path publishes. So this blocks no existing behaviour.
 --
--- PRE-FLIGHT (run first; expect zero rows — a row here is a template some account already
--- published itself, and needs a human decision before the guard goes on):
---   select id, name, author_id from public.workout_templates
---   where is_published and author_id is not null and cloned_from is not null;
+-- PRE-FLIGHT (run first; every published row must be a seed from epic031_seed_programs.sql —
+-- anything else is a template some account published itself and needs a human decision).
+-- NOTE: an earlier draft filtered on `cloned_from is not null`, which misses a self-created
+-- template (createCustomTemplate leaves cloned_from null). Seeds also carry an author_id.
+--   select id, name, author_id, cloned_from from public.workout_templates where is_published;
 --
 -- POST-APPLY ASSERTIONS (each in a transaction ending in ROLLBACK; execute_sql autocommits):
 --   1. as authenticated, insert own template with is_published = true      -> 42501
