@@ -4351,7 +4351,16 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
   // buildDynamicProgram for where this actually gates the block. Numbered D32, not D29:
   // D29/D30 are reserved by the merged muscle-tag-vocabulary branch's D31 row (see
   // DOCTRINE.md D31 for that collision's own account).
-  const weightDeltaLbs = (Number.isFinite(weight) && Number.isFinite(targetWeight)) ? Math.abs(weight - targetWeight) : null;
+  // DIRECTION (2026-11-17). This was Math.abs(weight - targetWeight), which threw the sign
+  // away: a man on fat_burn whose target is 25 lb ABOVE his weight was treated as having 25 lb
+  // to LOSE and given the required finisher. The cited note is a fat-loss note, so the delta is
+  // pounds to lose; a gain target is zero pounds to lose. llm-council 2026-11-17 (5 advisors,
+  // 3 reviewers): unanimous that the behaviour is wrong; the doctrine row is corrected with it.
+  // Deliberately NOT built on the same verdict: a cardio change for users who are GAINING on
+  // other goals (the <=2/week interference finding is not about gaining, and "minimal
+  // interference at <=2" does not show harm above 2), the 10-20 lb and <10 lb tiers (uncited,
+  // from a superseded epic), and any link between direction and load progression (no source).
+  const weightDeltaLbs = (Number.isFinite(weight) && Number.isFinite(targetWeight)) ? Math.max(0, weight - targetWeight) : null;
 
   // Per-day program definitions
   const programs = {

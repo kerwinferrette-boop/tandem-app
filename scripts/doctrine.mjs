@@ -1523,6 +1523,18 @@ for (const days of DAYS) {
     const p = getProgram('fat_burn', days, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 - delta);
     if (!allDaysHaveCardio(p)) fail('D32', `fat_burn/${days}d/male delta=${delta}lb: cardio finisher missing on some day — required (delta > 20lb)`);
   }
+  // Direction (2026-11-17, llm-council docs/council-transcript-2026-11-17-d32-weight-direction.md):
+  // the cited note is a FAT-LOSS note, so "weight delta" is pounds to LOSE. A man whose target
+  // is ABOVE his current weight has nothing to lose and is in the "optional" branch — the old
+  // |current - goal| put a 25 lb GAIN target in the "more than 20 lb to lose" branch.
+  for (const gain of [1, 25, 50]) {
+    d32Checked++;
+    const p = getProgram('fat_burn', days, 12, 'male', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 + gain);
+    if ((p || []).some(dayHasCardio)) fail('D32', `fat_burn/${days}d/male target ${gain}lb ABOVE current: cardio finisher present — a gain target is not weight to lose, so the finisher is optional (skipped)`);
+    d32Checked++;
+    const pf = getProgram('fat_burn', days, 12, 'female', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 + gain);
+    if (!allDaysHaveCardio(pf)) fail('D32', `fat_burn/${days}d/female target ${gain}lb ABOVE current: cardio finisher missing — women's fat_burn cardio is never gated by weight`);
+  }
   for (const delta of [0, 10, 20, 21, 50]) {
     d32Checked++;
     const p = getProgram('fat_burn', days, 12, 'female', 'full_gym', 'balanced', null, null, { week: 1, phase: 0 }, 'intermediate', null, null, 200, 200 - delta);
