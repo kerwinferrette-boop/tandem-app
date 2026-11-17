@@ -3,8 +3,8 @@
   "totals": {
     "combos": 1050,
     "functions": 36,
-    "codeLines": 2223,
-    "dead": 462,
+    "codeLines": 2253,
+    "dead": 469,
     "coldOnly": 5,
     "pinpoint": 0,
     "goalExcl": 40,
@@ -113,8 +113,8 @@
       "days": []
     },
     "buildDynamicProgram": {
-      "codeLines": 281,
-      "dead": 50,
+      "codeLines": 311,
+      "dead": 57,
       "coldOnly": 0,
       "pinpoint": 0,
       "goalExcl": 2,

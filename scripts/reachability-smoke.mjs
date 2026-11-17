@@ -75,7 +75,6 @@ const OPEN_GAPS = {
     // (ii) primary tag, but every carrier is reachable via a sibling tag — no lost inventory.
     //      EPIC-026 §6: "Do NOT rename delts, traps, or the calf family… the benefit is a
     //      parent ['delt']/['trap'] slot no template wants and the science argues against."
-    lower_trap:        'all 4 carriers reachable via posterior_delt/rhomboid/lat_dorsi; §6 forbids a parent `trap` slot',
     middle_trap:       'sole carrier prone-t-raise reachable via posterior_delt/rhomboid; §6 forbids a parent `trap` slot',
     hip_flexor:        'all 3 carriers reachable via rectus_abdominis/transverse_abdominis',
     adductor:          'all 3 carriers reachable via glute/quad/oblique tags; EPIC-026 §7.5 open question for Kerwin (split magnus vs longus/brevis?)',

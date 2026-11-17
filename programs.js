@@ -3331,6 +3331,61 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       ], cardioGroups:['quad','glute_max','hamstring'] },
   ];
 
+  // EMPHASIS PROGRAM (2026-11-17). Kerwin: "If I pick a lower-body-focused workout, then I
+  // should have upper body, of course, but the majority ... should be focused on executing
+  // workouts that activate muscles in my legs ... primarily focusing on legs would be the
+  // basis of the program. Not that one extra lift is a lazy way out."
+  // MEASURED before this: emphasis only filtered each slot's candidate pool. Upper Body and
+  // Lower Body moved zero sets and swapped zero exercises; the others swapped at most one lift
+  // a week. A 4-day Build Muscle week was 45% leg lifts whatever was chosen.
+  // HOW: on every day that is NOT already the emphasised area, slots are re-pointed at the
+  // emphasised area — three of five (secondary, acc1, acc2) for the two lower-type emphases,
+  // two of five (acc1, acc2) for the three upper-type ones; see the note in the table. The day keeps its own
+  // primary compound, its acc3 and its Balance Block, which is what lets every other muscle
+  // still reach its weekly floor (D6b) — measured, not assumed; see emphasis-program-smoke.
+  // REJECTED, measured: also re-pointing acc3. Leg share rose 73% -> 82% but the volume pass
+  // then had one chest lift left to hold the floor and stacked Bench Press to 11 sets (D35).
+  // NO SOURCE gives a number for how much an emphasis should shift (Notion, DOCTRINE.md and
+  // research-report (8).pdf are all silent). "Three of five slots on the other days" is an
+  // ENGINEERING_DEFAULT chosen because it is the largest shift that kept every floor.
+  const EMPHASIS_PROGRAM = {
+    // The borrowed compound is quad/glute, not hamstring: with 'hamstring' in the list the
+    // first build put a hinge on all four days (Deadlift, Good Morning, Romanian Deadlift,
+    // Stiff-Leg Deadlift) and one squat in the whole week.
+    lower_body: { own:['day2','day4'], note:'Lower-body focus: this day keeps its main upper lift and gives the rest to leg work.', slots:{
+      secondary:{groups:['quad','glute_max'],                                   cat:'compound'},
+      acc1:     {groups:['hamstring','glute_max','glute_medius'],               cat:'isolation'},
+      acc2:     {groups:['quad_rectus_femoris','quad_vastus','gastrocnemius','calf'], cat:'isolation'} } },
+    glute_focused: { own:['day2'], note:'Glute focus: this day keeps its main lift and gives the rest to glute work.', slots:{
+      secondary:{groups:['glute_max'],                                          cat:'compound'},
+      acc1:     {groups:['glute_max','glute_medius','glute_minimus'],           cat:'isolation'},
+      acc2:     {groups:['glute_medius','glute_minimus','hamstring'],           cat:'isolation'} } },
+    // Upper-type emphases re-point TWO slots (acc1, acc2), not three. Re-pointing `secondary`
+    // as well was measured first: it left each leg day one leg compound, and the volume pass
+    // stacked it to hold the leg floors (Barbell Deadlift 7, Back Squat 6; under Back Heavy,
+    // Bench Press 8 and Cable Lateral Raise 10 once the push day lost its second press).
+    upper_body: { own:['day1','day3'], note:'Upper-body focus: both leg compounds stay; the accessory work today is upper body.', slots:{
+      acc1:     {groups:['pec_major','pec','lat_dorsi','rhomboid'],            cat:'isolation'},
+      acc2:     {groups:['lateral_delt','posterior_delt','bicep','tricep'],     cat:'isolation'} } },
+    back_heavy: { own:['day3'], note:'Back focus: this day keeps its compounds; the accessory work today is back.', slots:{
+      acc1:     {groups:['lat_dorsi','rhomboid'],                               cat:'isolation'},
+      acc2:     {groups:['posterior_delt','rhomboid','lower_trap'],             cat:'isolation'} } },
+    push_heavy: { own:['day1'], note:'Push focus: this day keeps its compounds; the accessory work today is chest, shoulders and triceps.', slots:{
+      acc1:     {groups:['pec_major','pec'],                                    cat:'isolation'},
+      acc2:     {groups:['tricep','anterior_delt','lateral_delt'],              cat:'isolation'} } },
+  };
+  // 3 days and up only. MEASURED at 2 days: the two full-body days are assembled from fixed
+  // positions of these base days, and the rewrite left front delts below the weekly floor
+  // (5.5 of 10) in four goals and added a lift above 6 sets in Strength. A 2-day emphasis
+  // therefore still only filters candidate pools, as before — said plainly, it is close to a
+  // no-op there, and that is an open gap, not a decision that 2-day users need no emphasis.
+  const emphasisProgram = (days >= 3 && EMPHASIS_PROGRAM[emphasis]) || null;
+  const dayTemplates = TEMPLATES.map(t => (!emphasisProgram || emphasisProgram.own.includes(t.key)) ? t
+    // The day's LABEL is left alone on purpose: muscleGroupFromLabel() parses label text for
+    // recovery-gap logic (BUG-73, BUG-114). The rationale line is display-only, so the honest
+    // description of a re-pointed day goes there.
+    : { ...t, rationale: emphasisProgram.note, slots: t.slots.map(sl => emphasisProgram.slots[sl.role] ? { role: sl.role, borrowed: true, ...emphasisProgram.slots[sl.role] } : sl) });
+
   // GEN-fix (Bug 39aca37f…71a0): core muscle groups every day's Core Block
   // draws from. groupsMatch's prefix rule ('oblique' → oblique_external /
   // oblique_internal) covers all 10 EXERCISE_BANK core entries.
@@ -3376,7 +3431,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
 
   try {
     const SECOND_EXPOSURE_ROLE = 'acc4';
-    const dayPicks = TEMPLATES.map(tmpl => {
+    const dayPicks = dayTemplates.map(tmpl => {
       const exs = {};
       // D30 (BUG-151) — patterns already claimed by a compound pick earlier in
       // THIS SESSION (one template day). Deliberately reset per tmpl, not
@@ -3389,7 +3444,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
       // cannot see across that merge, only within one tmpl's own slots.
       const usedPatterns = new Set();
       tmpl.slots.forEach(s => {
-        if (s.role === SECOND_EXPOSURE_ROLE) return; // filled in pass 2, below
+        if (s.role === SECOND_EXPOSURE_ROLE || s.borrowed) return; // filled in pass 2, below
         // EPIC-8a: beginner tier drops the Accessory Block's 3rd exercise slot
         // (2 accessories instead of 3) — skip selection entirely so acc3's
         // exercise stays available (excl:[...used]) for other days.
@@ -3424,8 +3479,19 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
     // changed mid-block: D15 went red on every 2-day program. A borrowed exposure never gets
     // to displace or destabilise the lifts that own a day.
     const gainsSecondExposure = !(exp === 'beginner' || isShortSession);
-    TEMPLATES.forEach((tmpl, ti) => {
+    dayTemplates.forEach((tmpl, ti) => {
       const { exs, usedPatterns } = dayPicks[ti];
+      // Emphasis-borrowed slots first, for the same reason: picked in day order, the pull
+      // day's borrowed squat took Barbell Back Squat and the quad day's own primary became
+      // Front Squat. A day's own lifts are settled before anything is lent to another day.
+      // The beginner / short-session drop (EPIC-8a, D28) applies to a borrowed slot exactly
+      // as it would have in pass 1.
+      const dropped = (exp === 'beginner' || isShortSession) ? droppableAccessory(tmpl.slots) : null;
+      tmpl.slots.filter(s => s.borrowed && s.role !== dropped).forEach(s => {
+        const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
+        const chosen = pick(cands, s, tmpl);
+        if (chosen) { used.add(chosen.name); exs[s.role] = chosen; if (chosen.category === 'compound') { const pat = movementPatternOf(chosen); if (pat) usedPatterns.add(pat); } }
+      });
       // Beginner and short sessions already SHED a slot (EPIC-8a / D28); they do not gain one.
       tmpl.slots.filter(s => gainsSecondExposure && s.role === SECOND_EXPOSURE_ROLE).forEach(s => {
         const cands = bank({groups:s.groups, cat:s.cat, excl:[...used], usedPatterns});
@@ -3433,7 +3499,7 @@ function buildDynamicProgram(goal, days, weeks, sex, tier, emphasis, injuries, m
         if (chosen) { used.add(chosen.name); exs[s.role] = chosen; }
       });
     });
-    const result = TEMPLATES.map((tmpl, ti) => {
+    const result = dayTemplates.map((tmpl, ti) => {
       const { exs } = dayPicks[ti];
       // GEN-fix: if every group-matched cardio candidate is excluded, allow
       // reuse rather than silently dropping the finisher (cardio repeats
