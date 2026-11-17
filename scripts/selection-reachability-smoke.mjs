@@ -37,6 +37,10 @@
 //   S5  anti-vacuity: the sweep generated >= the committed floor of programs, covered all 5
 //       goals / 3 tiers / 5 day-counts, and selected a plausible share of the bank — so a
 //       sweep that silently produced nothing cannot read as "everything is reachable".
+//   S6  the baseline's pinned `bank` size equals the live EXERCISE_BANK size. S1/S2 only watch
+//       the never-selected SET, so an added entry that happens to be selected left the
+//       fixture's bank figure (and the tracker's "N of M") silently behind — at be1d4e9
+//       (2026-11-10) the fixture said 184 against a 185-entry bank and this gate was green.
 // CATEGORIES are DERIVED from the data, never authored (CLAUDE.md: do not invent):
 //   experience-gated    appears only when experience='beginner'/'advanced' is supplied
 //   tier-ladder-outranked  >=1 selected peer shares a primary muscle token and is available at
@@ -46,14 +50,17 @@
 // should stay unselected — whether any of these should be reachable is Kerwin's call.
 //
 // Regenerate ONLY with `node scripts/selection-reachability-smoke.mjs --write-baseline`
-// (and only when the set SHRANK, or growth has a written justification). Never hand-edit.
+// (and only when the set SHRANK, growth has a written justification, or S6 fired because the
+// bank itself changed size). --write-baseline REFUSES to add a never-selected slug unless
+// --allow-growth is also passed (an existing-but-unreadable fixture is refused the same way), so
+// obeying S6's message does not bless new dead inventory. Never hand-edit.
 //
 // MUTATION RECORD (each assertion individually, on a COPY of the tree, every mutation proven
 // to have LANDED by a diff before its result was believed — SC-38/SC-40/SC-45) is in the
 // BUG-108 commit body.
 // ═══════════════════════════════════════════════════════
 import vm from 'vm';
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
@@ -153,6 +160,33 @@ function derive(s) {
 const derived = Object.fromEntries(never.map(s => [s, derive(s)]));
 
 if (WRITE) {
+  // The ratchet may not be loosened by its own remedy. S6 tells a reader whose bank changed to
+  // re-record; without this refusal, obeying that message would also bless any NEW dead inventory
+  // the same commit introduced (council pre-ship review, 2026-11-17). Growth needs the explicit
+  // flag, and the written justification the header already requires.
+  // A baseline that EXISTS but cannot be read (merge-conflicted, truncated, no `entries` object)
+  // is not a first pin: the set it protected is unknown, so every current slug counts as growth.
+  // Only a genuinely absent file is a first pin. (Limit, stated: deleting the file by hand still
+  // re-pins freely — that is a deliberate edit, the same trust level as hand-editing the fixture.)
+  let prevEntries = {};
+  if (existsSync(BASELINE)) {
+    try {
+      const prev = JSON.parse(readFileSync(BASELINE, 'utf8'));
+      prevEntries = prev && prev.entries && typeof prev.entries === 'object' ? prev.entries : null;
+    } catch { prevEntries = null; }
+  } else { prevEntries = null; }
+  const firstPin = !existsSync(BASELINE);
+  const grownOnWrite = firstPin ? [] : never.filter(s => !prevEntries || !(s in prevEntries));
+  if (!firstPin && !prevEntries && !process.argv.includes('--allow-growth')) {
+    console.error(`--write-baseline REFUSED: ${BASELINE} exists but is unreadable or has no entries object, so what it protected is unknown.`);
+    console.error('  Restore it from git first (git show HEAD:scripts/fixtures/selection-reachability-baseline.json), or re-run with --allow-growth and say why in the commit body. Nothing was written.');
+    process.exit(1);
+  }
+  if (grownOnWrite.length && !process.argv.includes('--allow-growth')) {
+    console.error(`--write-baseline REFUSED: re-recording would ADD ${grownOnWrite.length} never-selected slug(s) to the baseline — ${grownOnWrite.join(', ')}.`);
+    console.error('  Make them reachable, or re-run with --allow-growth and state the justification in the commit body. Nothing was written.');
+    process.exit(1);
+  }
   writeFileSync(BASELINE, JSON.stringify({
     _comment: 'BUG-108 selection-reachability baseline: EXERCISE_BANK slugs that NO getProgram() output contains across the sweep in scripts/selection-reachability-smoke.mjs. Category + reason are DERIVED from the data (never authored). The gate fails if this set grows (S1) and if an entry here is now selected (S2) — it ratchets down only. Regenerate ONLY with `node scripts/selection-reachability-smoke.mjs --write-baseline`; never hand-edit.',
     sweep: `${COMBO_FLOOR} persona combos x T=${T} x weeks 1-${T}`,
@@ -186,6 +220,8 @@ if (base) {
   must(drift.length === 0,
     `S4: ${drift.length} baseline entr(ies) now derive a DIFFERENT category than committed — a changed fact about the engine; re-record with --write-baseline:\n`
     + drift.map(s => `      ${s}: committed ${ent[s].category} -> now ${derived[s].category}`).join('\n'));
+  must(base.bank === slugs.length,
+    `S6: the baseline was pinned against a ${base.bank}-entry bank but EXERCISE_BANK now holds ${slugs.length} — the bank changed and the baseline was not regenerated, so its "N of M" figure and every reason string are stale; re-record with --write-baseline (it refuses if the never-selected set would grow)`);
 }
 must(programs >= COMBO_FLOOR * T && goalsSeen.size === 5 && tiersSeen.size === TIERS.length && daysSeen.size === DAY_COUNTS.length,
   `S5: the sweep is vacuous or shrank — ${programs} programs (floor ${COMBO_FLOOR * T}), ${goalsSeen.size}/5 goals, ${tiersSeen.size}/${TIERS.length} tiers, ${daysSeen.size}/${DAY_COUNTS.length} day-counts`);
