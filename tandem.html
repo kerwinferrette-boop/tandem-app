@@ -183,6 +183,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .weight-gap{margin-top:10px;padding:12px 14px;background:var(--s2);border-radius:10px;
   border:1px solid var(--border);display:none;}
 .weight-gap.visible{display:block;}
+/* A caution, not an error: gold is reserved for celebration and red for danger, so this takes
+   the muted-text colour with an accent rule down the side. */
+.goal-conflict{margin-top:10px;padding:10px 12px;border-left:3px solid var(--accent);border-radius:0 var(--r-sm) var(--r-sm) 0;
+  background:var(--s1);font-size:13px;line-height:1.5;color:var(--text);}
 .wg-gap{font-family:var(--font-display);font-size:28px;line-height:1;}
 .wg-pace{font-family:var(--font-body);font-size:11px;color:var(--muted2);margin-top:3px;}
 
@@ -1405,6 +1409,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <div class="weight-gap" id="weightGap">
             <div class="wg-gap" id="wgGapVal">—</div>
             <div class="wg-pace" id="wgPaceVal">—</div>
+            <div class="goal-conflict" id="wgConflict" role="status" style="display:none"></div>
           </div>
         </div>
 
@@ -2631,6 +2636,7 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
           <button class="profile-pill" data-exp="advanced" onclick="selectAvatarPill('exp','advanced')">Advanced</button>
         </div>
       </div>
+      <div class="goal-conflict" id="profileGoalConflict" role="status" style="display:none"></div>
       <button class="profile-save-btn" onclick="saveProfileProgram()">Save Program</button>
     </div>
 
@@ -2642,11 +2648,11 @@ body:has(.modal-overlay.tc-full.open) .bug-fab{display:none;}
       <div class="profile-input-row three">
         <div class="profile-input-group">
           <label class="profile-input-label">Current (lbs)</label>
-          <input type="number" id="profileWeightInput" placeholder="185" class="modal-input">
+          <input type="number" id="profileWeightInput" placeholder="185" class="modal-input" oninput="renderGoalWeightConflict()">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Goal (lbs)</label>
-          <input type="number" id="profileGoalWeightInput" placeholder="175" class="modal-input">
+          <input type="number" id="profileGoalWeightInput" placeholder="175" class="modal-input" oninput="renderGoalWeightConflict()">
         </div>
         <div class="profile-input-group">
           <label class="profile-input-label">Height</label>
@@ -4954,6 +4960,7 @@ function selectGoal(goal, el) {
   selectedGoal = goal;
   document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
+  renderGoalWeightConflict();
   obUpdateNextState();
 }
 
@@ -5037,6 +5044,31 @@ function selectThemeColor(color, el) {
   if (ring) ring.style.borderColor = color;
 }
 
+// THE one home for "this goal and this target weight contradict each other".
+// Kerwin 2026-11-17 ("Yes, warn"), on the llm-council's fifth recommendation
+// (docs/council-transcript-2026-11-17-d32-weight-direction.md): Burn Fat with a target ABOVE
+// current weight was accepted in silence. It is a WARNING, never a block — the user may have
+// a reason — and it changes nothing in the program (D32: a gain target is simply zero pounds
+// to lose). Only this one pair is called contradictory: Burn Fat is the only goal DEFINED by a
+// direction. Losing weight on Build Muscle, or gaining on Strength, is a choice, not a conflict.
+// Returns '' when there is nothing to say.
+function goalWeightConflict(goal, currentLbs, targetLbs) {
+  const cur = Number(currentLbs), tgt = Number(targetLbs);
+  if (canonicalGoal(goal) !== 'fat_burn' || !(cur > 0) || !(tgt > 0) || !(tgt > cur)) return '';
+  return 'Burn Fat is built for losing weight, but your target is above your current weight. To gain, pick Build Muscle. To lose, lower the target.';
+}
+// Paints the warning into every surface that shows it. Onboarding reads the live inputs;
+// the profile sheet reads its own pending pill + inputs, falling back to the saved config.
+function renderGoalWeightConflict() {
+  const set = (id, msg) => { const el = document.getElementById(id); if (!el) return; el.textContent = msg; el.style.display = msg ? 'block' : 'none'; };
+  const num = (id) => parseFloat(document.getElementById(id)?.value);
+  set('wgConflict', goalWeightConflict(selectedGoal, num('ob-weight'), num('ob-target-weight')));
+  const pGoal = (typeof profileState !== 'undefined' && profileState && profileState.goal) || (typeof cfg !== 'undefined' && cfg ? cfg.goal : null);
+  const pCur = num('profileWeightInput') || (typeof cfg !== 'undefined' && cfg ? cfg.weight : 0);
+  const pTgt = num('profileGoalWeightInput') || (typeof cfg !== 'undefined' && cfg ? (cfg.targetWeight ?? cfg.goalWeight) : 0);
+  set('profileGoalConflict', goalWeightConflict(pGoal, pCur, pTgt));
+}
+
 function updateWeightGap() {
   const cur = parseFloat(document.getElementById('ob-weight').value);
   const tgt = parseFloat(document.getElementById('ob-target-weight').value);
@@ -5044,6 +5076,7 @@ function updateWeightGap() {
   const gapVal = document.getElementById('wgGapVal');
   const paceVal = document.getElementById('wgPaceVal');
 
+  renderGoalWeightConflict();
   if (!cur || !tgt) { gap.classList.remove('visible'); return; }
 
   const diff = tgt - cur;
@@ -11610,6 +11643,7 @@ function openProfileModal() {
 
   refreshAvatarPreview();
   openModal('profile');
+  renderGoalWeightConflict();
 }
 
 function selectProfileGoal(goal) {
@@ -11617,6 +11651,7 @@ function selectProfileGoal(goal) {
   document.querySelectorAll('#profileGoalRow .profile-pill').forEach(b => {
     b.classList.toggle('active', b.dataset.goal === goal);
   });
+  renderGoalWeightConflict();
 }
 
 function selectProfileDays(days) {
@@ -11663,6 +11698,7 @@ function saveProfileProgram() {
   syncToCloud();
   closeModal('profile');
   showToast('Program updated');
+  renderGoalWeightConflict();
 }
 
 // BUG-255: users.name is NOT NULL, so empty/whitespace is rejected with no write.
@@ -11715,6 +11751,7 @@ function saveProfileStats() {
     sb.from('users').upsert({ id: currentUser.id, current_weight_lbs: weight || null, goal_weight_lbs: goalWeight || null, height_inches: totalInches || null }, { onConflict: 'id' });
   }
   showToast('Stats saved');
+  renderGoalWeightConflict();
 }
 
 function saveProfileNutrition() {

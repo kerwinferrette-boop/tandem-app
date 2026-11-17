@@ -25,6 +25,10 @@
 //   [S4] every exercise-name chip on Home is the name of an exercise card on today's workout.
 //   [S5] (once) templateCardHTML() given markup in name/tagline/description creates no element
 //        from it, and showToast() given markup creates no element from it.
+//   [S6] (once) the goal/target-weight warning shows for Burn Fat with a target ABOVE current
+//        weight and for nothing else (losing, equal, Build Muscle or Strength with a gain
+//        target), follows a goal change with the weights untouched, and appears in the profile
+//        sheet from a saved config and clears when another goal pill is picked.
 //
 // NOT covered, said plainly: other tabs (Log, You, Duel), modals, the one-off and journal
 // flows, signed-in state, weeks other than 1, and whether the "about N min" figure is TRUE of
@@ -37,6 +41,11 @@
 //   M-S2 Home counts lifts only again            -> S2 x50 ("5 exercises" vs "0 of 7");
 //   M-S3 day chip back to the literal '90 min'   -> S3 x50 ("60 min" vs "90 min").
 //   The fixed file was restored from a saved copy and byte-compared after each run.
+//
+// S6 MUTATION RECORD (2026-11-17, each landed, tandem.html restored from a saved copy and
+// byte-compared): warning never produced -> burnGain, switchToBurn, profileOpen; warns on any
+// gain target whatever the goal -> buildGain, strengthGain, switchAway, profileAfterPill; goal
+// change no longer repaints -> switchToBurn.
 //
 // Run: node scripts/rendered-screen-smoke.mjs
 import { chromium } from 'playwright';
@@ -165,6 +174,39 @@ try {
   });
   if (s5.cardEls !== 0 || !s5.cardHasText) fails.push(`[S5] templateCardHTML built ${s5.cardEls} element(s) from template text (text preserved: ${s5.cardHasText})`);
   if (s5.toastEls !== 0 || !s5.toastHasText) fails.push(`[S5] showToast built ${s5.toastEls} element(s) from its message (text preserved: ${s5.toastHasText})`);
+  // [S6] goal / target-weight contradiction warning (Kerwin 2026-11-17, "Yes, warn")
+  await page.goto(`http://localhost:${PORT}/tandem.html`);
+  await page.waitForFunction(() => typeof buildProgram === 'function' && typeof skipAuth === 'function');
+  const s6 = await page.evaluate(() => {
+    skipAuth();
+    document.querySelectorAll('.ob-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('ob-card-1').classList.add('active');
+    const shown = (id) => { const el = document.getElementById(id); return !!el && el.offsetParent !== null && el.textContent.trim().length > 0; };
+    const ob = (goal, cur, tgt) => {
+      document.querySelector(`.goal-card[onclick*="selectGoal('${goal}'"]`).click();
+      const w = document.getElementById('ob-weight'), t = document.getElementById('ob-target-weight');
+      w.value = cur; t.value = tgt; t.dispatchEvent(new Event('input', { bubbles: true })); updateWeightGap();
+      return shown('wgConflict');
+    };
+    const out = {
+      burnGain: ob('fat_burn', 200, 225), burnLose: ob('fat_burn', 225, 200), burnEqual: ob('fat_burn', 200, 200),
+      buildGain: ob('build_muscle', 200, 225), strengthGain: ob('strength', 200, 225),
+    };
+    // switching goal with the weights left alone must update the warning both ways
+    ob('build_muscle', 200, 225);
+    document.querySelector(`.goal-card[onclick*="selectGoal('fat_burn'"]`).click(); out.switchToBurn = shown('wgConflict');
+    document.querySelector(`.goal-card[onclick*="selectGoal('build_muscle'"]`).click(); out.switchAway = shown('wgConflict');
+    // profile sheet, from a saved config
+    selectedGoal = 'fat_burn'; selectedDays = 4; selectedSex = 'M'; selectedExperience = 'intermediate';
+    document.getElementById('ob-weight').value = 200; document.getElementById('ob-target-weight').value = 225;
+    buildProgram(); openProfileModal();
+    out.profileOpen = shown('profileGoalConflict');
+    selectProfileGoal('build_muscle'); out.profileAfterPill = shown('profileGoalConflict');
+    out.cfg = { goal: cfg.goal, weight: cfg.weight, target: cfg.targetWeight ?? cfg.goalWeight };
+    return out;
+  });
+  const want = { burnGain: true, burnLose: false, burnEqual: false, buildGain: false, strengthGain: false, switchToBurn: true, switchAway: false, profileOpen: true, profileAfterPill: false };
+  for (const [k, v] of Object.entries(want)) if (s6[k] !== v) fails.push(`[S6] goal/target warning: ${k} expected ${v ? 'shown' : 'hidden'}, got ${s6[k] ? 'shown' : 'hidden'} (cfg ${JSON.stringify(s6.cfg)})`);
   for (const e of pageErrors) fails.push(`page error: ${e}`);
 } finally {
   await browser.close();
@@ -182,4 +224,4 @@ if (fails.length) {
   if (fails.length > 40) console.error(`  … and ${fails.length - 40} more`);
   process.exit(1);
 }
-console.log(`rendered-screen-smoke: OK — ${combos} combos (5 goals x 5 day-counts x 2 sexes), ${combos - restDays} with a Home count compared; S1-S5 hold`);
+console.log(`rendered-screen-smoke: OK — ${combos} combos (5 goals x 5 day-counts x 2 sexes), ${combos - restDays} with a Home count compared; S1-S6 hold`);
