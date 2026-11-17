@@ -77,6 +77,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   color:var(--muted2);cursor:pointer;transition:all .15s;}
 .nav-pill.active{background:var(--accent-dim);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent2);}
 .nav-pill.teal.active{background:var(--teal-dim);border-color:color-mix(in srgb,var(--teal) 40%,transparent);color:var(--teal);}
+/* BUG-251: one tap-target floor for the shared control classes (44 x 44 CSS px, Apple HIG 44pt),
+   so every current and future control of these classes inherits it. Two shapes:
+   - grown: the painted box is at least 44 x 44. The Log chips and tracker tools sit in overflow-x:auto
+     rows, which clip an overlay on both axes, so they must grow; the rest have room in their row.
+   - hit-slop: the header pills keep their painted size (growing them makes the sticky header taller
+     on every screen) and get a transparent overlay of at least 44 x 44 centred on the pill.
+   Guarded by scripts/tap-target-floor-smoke.mjs. */
+.log-chip,.tool-btn,.wn-reset,.rest-skip,.sw-btn,.ex-note-swap{min-height:44px;min-width:44px;}
+.ex-note-swap{display:flex;align-items:center;}
+.nav-pill{position:relative;}
+.nav-pill::after{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%);}
 
 /* ═══════════════════════════════
    VIEWS
