@@ -4037,8 +4037,8 @@ function applyDeload(program, rotation, weeks) {
     realization: isRealization,
     label: /deload|realization/i.test(day.label || '') ? day.label : `${day.label} · ${isRealization ? 'Realization' : 'Deload'}`,
     rationale: (isRealization
-      ? `REALIZATION WEEK — this is what the last block built. Fewer sets, but push for a real top single/triple/five near your max. `
-      : `DELOAD WEEK — volume cut ~50%, load held. Recovery is the training stimulus this week; do not chase new PRs. `
+      ? `Realization week — this is what the last block built. Fewer sets, but push for a real top single/triple/five near your max. `
+      : `Deload week — volume cut ~50%, load held. Recovery is the training stimulus this week; do not chase new PRs. `
     ) + (day.rationale || ''),
     blocks: (day.blocks || []).map(b => b.cardio ? b : ({
       ...b,
