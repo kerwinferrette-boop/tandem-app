@@ -78,10 +78,6 @@ const ALLOWED_WIDE_TRACKING = [
 const ALLOWED_MONO = [
   // numeric form inputs
   { marker: '.ob-input', reason: 'onboarding numeric stat inputs (weight/height/age)' },
-  { marker: '.set-input', reason: 'weight/reps entry cells — tabular alignment matters' },
-  { marker: '.set-rpe', reason: 'RPE numeric cell' },
-  { marker: '.set-num', reason: 'set index column' },
-  { marker: '.set-vol', reason: 'per-set volume figure' },
   { marker: '.eq-db-input', reason: 'equipment max-dumbbell numeric input' },
   { marker: '.calc-input', reason: '1RM calculator numeric inputs' },
   { marker: 'j-sets', reason: 'journal sets numeric input' },
@@ -102,17 +98,20 @@ const ALLOWED_MONO = [
   { marker: '.pr-data', reason: 'PR list weight x reps figures' },
   { marker: '.hist-sets', reason: 'history set-count figure' },
   { marker: '.hist-date', reason: 'history date column — fixed-width alignment' },
-  { marker: '.pb-reps', reason: 'per-exercise history rep figures' },
   { marker: '.log-delta', reason: 'trend delta figure' },
   { marker: '.log-axis', reason: 'chart axis labels' },
   { marker: '.log-bars .b span', reason: 'chart bar value labels' },
   { marker: '.i1rm-pct', reason: '1RM percent figure' },
-  { marker: 'ex-reps', reason: 'prescribed sets x reps figure on lift cards' },
   { marker: 'selectedThemeColor', reason: 'accent color hex readout in onboarding review' },
 ];
 // SC-33: pin the total so the allowlist cannot quietly absorb new sites.
 // Recount and update deliberately when a keep-mono surface is added/removed.
-const EXPECTED_MONO_TOTAL = { 'tandem.html': 29, 'programs.js': 0 };
+// 29 -> 27 on 2026-11-17: the lift-card prescription line (.ex-reps) and the phase banner's
+// rep line (.pb-reps) left the mono face on Kerwin's call — sentences that contain numbers are
+// prose; tabular-nums keeps the digits aligned. Both allowlist entries were removed with them.
+// 27 -> 23 the same day: the set logger's four cells (.set-input, .set-rpe, .set-num, .set-vol)
+// followed, on Kerwin's explicit pick ("Monospace numbers"). tabular-nums keeps columns aligned.
+const EXPECTED_MONO_TOTAL = { 'tandem.html': 23, 'programs.js': 0 };
 
 // [D] legitimate all-caps runs, if any ever appear (acronym pairs etc.).
 // Single ALL-CAPS words (TANDEM, RPE, AMRAP, PR, OTP) are not matched by the
