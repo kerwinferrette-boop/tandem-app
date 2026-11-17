@@ -3,8 +3,8 @@
   "totals": {
     "combos": 1050,
     "functions": 36,
-    "codeLines": 2204,
-    "dead": 459,
+    "codeLines": 2223,
+    "dead": 462,
     "coldOnly": 5,
     "pinpoint": 0,
     "goalExcl": 40,
@@ -113,7 +113,7 @@
       "days": []
     },
     "buildDynamicProgram": {
-      "codeLines": 265,
+      "codeLines": 281,
       "dead": 50,
       "coldOnly": 0,
       "pinpoint": 0,
@@ -279,15 +279,15 @@
       "days": []
     },
     "getProgram": {
-      "codeLines": 1411,
-      "dead": 99,
+      "codeLines": 1414,
+      "dead": 102,
       "coldOnly": 0,
       "pinpoint": 0,
       "goalExcl": 0,
       "daysExcl": 51,
-      "tierExcl": 24,
+      "tierExcl": 23,
       "sexExcl": 2,
-      "injuryExcl": 2,
+      "injuryExcl": 1,
       "goals": [
         "fat_burn",
         "build_muscle",
