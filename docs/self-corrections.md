@@ -2087,3 +2087,37 @@ allow the call?).
 
 **Enforced by:** judgment — not mechanically checkable. Recorded for the specific connector in the
 auto-memory note `supabase-connector-silent-decline.md`.
+
+## SC-62 — I corrected a diagnostic's stale explanation and left the same claim live in its `--strict` invariant
+
+**What happened (2026-11-18, scheduled Builder, BUG-258).** I landed the stranded
+`scripts/bug258-start-path-diagnostic.mjs` and, because BUG-260 had since fixed the cause its 5c-ii
+line described, I made that line's EXPLANATION text conditional on the result. The `report()` call
+had a fourth argument, the strict invariant, which was still passed unconditionally. So `--strict`
+failed 5c-ii on the fixed code and could not tell fixed from broken. The independent verifier
+caught it by mutating the BUG-260 guard: the violation count was the same (2) on both sides. Fixed
+before the push (8352d14): the invariant is now conditional, and --strict gives 1 violation on main and 2 when the guard is mutated.
+
+**The mechanism.** I corrected the sentence a reader sees and did not trace every argument that
+carries the same claim into behaviour. SC-60's sibling-sweep failure, applied to the arguments of a
+single call rather than to copies of a string.
+
+> **THE RULE — SC-62.** When a finding's truth changes, update EVERY output that encodes it
+> (answer, evidence text, exit code / strict flag), then prove the exit code differs between the
+> fixed and the mutated code. Matching text is not proof. Only a red→green difference in the exit
+> code counts.
+
+**Enforced by:** judgment, not mechanically checkable. The verifier's mutation step is what caught
+it. Keep that step in every verifier brief.
+
+## SC-63 — I set "Reported By: Kerwin" on a Bug Log row the loop itself found
+
+**What happened (2026-11-18).** Filing BUG-276 (a finding from the Builder's own read of
+programs.js), I set the select `Reported By` = Kerwin because the enum only offers Kerwin/Dani.
+That attributes a report to a person who never made it. I cleared it to empty in the same session.
+
+> **THE RULE — SC-63.** A row the loop discovers leaves `Reported By` EMPTY. The enum names who
+> reported a bug; it is not a required field to fill with the nearest option. Same principle as
+> SC-61: never attribute an action to a person without evidence they took it.
+
+**Enforced by:** judgment, not mechanically checkable.
