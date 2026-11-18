@@ -740,7 +740,7 @@ const EXERCISE_BANK = {
     name:'Landmine Press', videoId:null,
     muscleGroups:{primary:['anterior_delt'],secondary:['tricep','serratus_anterior']},
     emphasis:['shoulders','chest','push','upper_body'], equipment:'barbell', tier:'full_gym', category:'compound', oneRmFactor:null,
-    why:'The landmine arc is dictated by physics, not a fixed track — the most shoulder-friendly pressing option for people with impingement or AC joint issues. The arc also trains shoulder flexion through a uniquely functional ROM.',
+    why:'The landmine arc is dictated by physics, not a fixed track. The arc also trains shoulder flexion through a uniquely functional ROM.',
     cues:['One hand on end of bar; stand at 45° to anchor','Press in an arc from chest height to eye level','Keep elbow in tight to body throughout','Rotate trunk slightly as you press for full shoulder flexion']},
   'shrug-barbell':{
     name:'Barbell Shrug', videoId:null,
