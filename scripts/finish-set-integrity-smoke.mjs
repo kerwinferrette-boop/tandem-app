@@ -42,8 +42,8 @@
  *        passed by refusing to save anything, or by crying wolf on every session.
  *   [A7] the repair pass actually repairs and is idempotent: sets the live sync dropped are
  *        inserted at finish, exactly once, with no duplicate (exercise_name, set_number).
- *   [A0] (BUG-263, per scenario) finishSession wrote its terminal message before anything
- *        else was read. That message is the harness's settle signal; without this check a
+ *   [A0] (Notion BUG-263, per scenario; checked FIRST in each scenario) finishSession wrote
+ *        one of its TERMINAL messages before anything else was read. That message is the harness's settle signal; without this check a
  *        save that never finished would make [A5b]'s "does not claim success" pass vacuously.
  *
  * NOT covered, said plainly: this proves the CLIENT contract against a mock. It cannot see
@@ -215,9 +215,12 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
   rejectSetInserts = reject;
 
   // Run the REAL completion path. finishSession() is synchronous and fires its cloud
-  // work in an un-awaited async IIFE, so settle on network quiet rather than on return.
+  // work in an un-awaited async IIFE, so it cannot be awaited. The settle signal is the
+  // save message it writes last (below); the network-quiet loop after it is a secondary
+  // margin for stray writes, no longer the completion signal.
   //
-  // BUG-263 (Notion row; the ID collides with the BUG-263 in commit 255783a): settling on
+  // Notion BUG-263, "finish-set-integrity-smoke is flaky" (not the different BUG-263 named
+  // in commit 255783a; the IDs collide): settling on
   // "no new set insert for 600 ms" alone was a race. After its set writes the IIFE still
   // awaits the workout_sessions PATCH, the PR count, the streak and calibration, and only
   // THEN writes its message — and every branch of it ends in exactly one showToast()
@@ -225,14 +228,20 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
   // Under load the harness read #prToast while it still held its static "New PR!" default
   // and read sessionRow before the PATCH landed: [A2]/[A6b] red on untouched main about 1
   // run in 3. So the completion signal is now the message itself. The harness blanks the
-  // element first (its own sentinel), then waits for finishSession to write it.
-  // FAIL CLOSED (SC-56): on timeout the text stays blank, finishTimedOut is reported, and
-  // [A2]/[A6b] fail — a stall can never read as a pass. The assertions are unchanged.
+  // element first (its own sentinel), then waits for text matching one of finishSession's
+  // TERMINAL messages — not merely any text — so a future intermediate toast ("Saving…")
+  // cannot settle the harness early and make [A5b]'s "does not claim success" vacuous.
+  // FAIL CLOSED (SC-56: a polling loop must fail closed): on timeout finishTimedOut is
+  // reported, [A0] fails, and so do [A2]/[A6b]. A stall can never read as a pass. The
+  // pre-existing assertions are unchanged.
   await page.evaluate(() => { const t = document.getElementById('prToast'); if (t) t.textContent = ''; });
   await page.evaluate(() => finishSession());
   let finishTimedOut = false;
   try {
-    await page.waitForFunction(() => (document.getElementById('prToast')?.textContent || '').trim() !== '',
+    // The four terminal texts of finishSession's IIFE: 'Session saved ✓', 'Session saved
+    // locally' (x2) and 'Workout kept on this device'. Keep in step with tandem.html.
+    await page.waitForFunction(() => /session saved|workout kept on this device/i
+      .test(document.getElementById('prToast')?.textContent || ''),
       null, { timeout: 20000, polling: 50 });
   } catch { finishTimedOut = true; }
   let quiet = 0, lastAttempts = -1;
