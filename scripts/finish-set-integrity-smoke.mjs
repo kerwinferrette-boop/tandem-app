@@ -42,6 +42,9 @@
  *        passed by refusing to save anything, or by crying wolf on every session.
  *   [A7] the repair pass actually repairs and is idempotent: sets the live sync dropped are
  *        inserted at finish, exactly once, with no duplicate (exercise_name, set_number).
+ *   [A0] (BUG-263, per scenario) finishSession wrote its terminal message before anything
+ *        else was read. That message is the harness's settle signal; without this check a
+ *        save that never finished would make [A5b]'s "does not claim success" pass vacuously.
  *
  * NOT covered, said plainly: this proves the CLIENT contract against a mock. It cannot see
  * prod, so it says nothing about whether the 15 damaged rows are repairable, and it does
@@ -213,7 +216,25 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
 
   // Run the REAL completion path. finishSession() is synchronous and fires its cloud
   // work in an un-awaited async IIFE, so settle on network quiet rather than on return.
+  //
+  // BUG-263 (Notion row; the ID collides with the BUG-263 in commit 255783a): settling on
+  // "no new set insert for 600 ms" alone was a race. After its set writes the IIFE still
+  // awaits the workout_sessions PATCH, the PR count, the streak and calibration, and only
+  // THEN writes its message — and every branch of it ends in exactly one showToast()
+  // (tandem.html finishSession: the no-session-id, success, unsynced and catch branches).
+  // Under load the harness read #prToast while it still held its static "New PR!" default
+  // and read sessionRow before the PATCH landed: [A2]/[A6b] red on untouched main about 1
+  // run in 3. So the completion signal is now the message itself. The harness blanks the
+  // element first (its own sentinel), then waits for finishSession to write it.
+  // FAIL CLOSED (SC-56): on timeout the text stays blank, finishTimedOut is reported, and
+  // [A2]/[A6b] fail — a stall can never read as a pass. The assertions are unchanged.
+  await page.evaluate(() => { const t = document.getElementById('prToast'); if (t) t.textContent = ''; });
   await page.evaluate(() => finishSession());
+  let finishTimedOut = false;
+  try {
+    await page.waitForFunction(() => (document.getElementById('prToast')?.textContent || '').trim() !== '',
+      null, { timeout: 20000, polling: 50 });
+  } catch { finishTimedOut = true; }
   let quiet = 0, lastAttempts = -1;
   for (let i = 0; i < 60 && quiet < 6; i++) {
     await page.waitForTimeout(100);
@@ -244,7 +265,7 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
     .reduce((s, r) => s + (r.weight_lbs || 0) * (r.reps || 0), 0);
   const dupKeys = setRows.map(r => `${r.exercise_name}\u0000${r.set_number}`);
   const duplicated = dupKeys.length !== new Set(dupKeys).size;
-  return { label, errs, booted, stored: sessionRow.total_volume_lbs, summed,
+  return { label, errs, booted, finishTimedOut, stored: sessionRow.total_volume_lbs, summed,
            completed: sessionRow.completed, setCount: setRows.length, bannerShown, toastText,
            marker, badgeText, duplicated, setInsertAttempts, setInsertRejections };
 }
@@ -315,6 +336,8 @@ async function unlogScenario(browser) {
     console.log(`····  ${z.label}: stored=${z.stored} summed=${z.summed} sets=${z.setCount} ` +
       `marker=${JSON.stringify(z.marker)} attempts=${z.setInsertAttempts} rejected=${z.setInsertRejections}`);
     check('[boot] the app booted with a real program', z.booted);
+    check(`[A0] ${z.label}: finishSession wrote its terminal message (BUG-263 settle signal)`, !z.finishTimedOut,
+      'no message within 20s — every later assertion on this scenario read an unfinished save');
     check('[A1] a total set-write loss is MARKED on the history row that holds the only copy',
       z.marker.setsUnsynced === 12 && z.marker.volumeUnaccounted === EXPECTED_LOCAL_VOLUME,
       `setsUnsynced=${z.marker.setsUnsynced} (expected 12), volumeUnaccounted=${z.marker.volumeUnaccounted} (expected ${EXPECTED_LOCAL_VOLUME})`);
@@ -334,6 +357,8 @@ async function unlogScenario(browser) {
                                            preSeedCloudExercise: 'bm-bench', reject: true });
     const partialShort = EXPECTED_LOCAL_VOLUME - p.summed;
     console.log(`····  ${p.label}: stored=${p.stored} summed=${p.summed} sets=${p.setCount} marker=${JSON.stringify(p.marker)}`);
+    check(`[A0] ${p.label}: finishSession wrote its terminal message (BUG-263 settle signal)`, !p.finishTimedOut,
+      'no message within 20s — every later assertion on this scenario read an unfinished save');
     check('[A5] a PARTIAL loss is marked, with the shortfall, not silently accepted',
       p.marker.setsUnsynced === 8 && p.marker.volumeUnaccounted === partialShort,
       `setsUnsynced=${p.marker.setsUnsynced} (expected 8), volumeUnaccounted=${p.marker.volumeUnaccounted} (expected ${partialShort})`);
@@ -347,6 +372,8 @@ async function unlogScenario(browser) {
                                            preSeedCloudExercise: 'bm-bench', reject: false });
     console.log(`····  ${r.label}: stored=${r.stored} summed=${r.summed} sets=${r.setCount} ` +
       `marker=${JSON.stringify(r.marker)} duplicated=${r.duplicated}`);
+    check(`[A0] ${r.label}: finishSession wrote its terminal message (BUG-263 settle signal)`, !r.finishTimedOut,
+      'no message within 20s — every later assertion on this scenario read an unfinished save');
     check('[A7] finish repairs the sets the live sync dropped', r.setCount === 12 && r.summed === EXPECTED_LOCAL_VOLUME,
       `${r.setCount} sets rows summing ${r.summed} (expected 12 / ${EXPECTED_LOCAL_VOLUME})`);
     check('[A7b] the repair is idempotent — no duplicate (exercise_name, set_number)', !r.duplicated);
@@ -368,6 +395,8 @@ async function unlogScenario(browser) {
     // ── A6: the happy path (a gate that just refuses to save is not a fix) ──
     const ok = await runScenario(browser, { label: 'nothing rejected', reject: false });
     console.log(`····  ${ok.label}: stored=${ok.stored} summed=${ok.summed} sets=${ok.setCount} marker=${JSON.stringify(ok.marker)}`);
+    check(`[A0] ${ok.label}: finishSession wrote its terminal message (BUG-263 settle signal)`, !ok.finishTimedOut,
+      'no message within 20s — every later assertion on this scenario read an unfinished save');
     check('[A6] every insert accepted -> completes, all sets land, stored == summed',
       ok.completed === true && ok.setCount === 12 && ok.stored === ok.summed && ok.stored === EXPECTED_LOCAL_VOLUME,
       `stored=${ok.stored} summed=${ok.summed} sets=${ok.setCount} (expected 12 / ${EXPECTED_LOCAL_VOLUME})`);
