@@ -225,9 +225,12 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
   // the session PATCH, the PR count, the streak read and the calibration write, which all
   // come AFTER the last set insert this loop settles on. A fixed 400 ms is a guess about how
   // long that tail takes; on a loaded machine it lost, and the read below got #prToast's
-  // static default markup (" New PR!"), so A2/A6b failed on correct code and A5b passed
-  // vacuously. Wait for one of the three terminal save messages instead. On timeout, do not
-  // throw: the default text is read, A2/A6b fail loudly, and SAVE_MSG_TIMEOUT says why.
+  // static default markup (" New PR!"), so A2/A6b failed on correct code. Wait for one of the
+  // three terminal save messages instead. On timeout, do not throw: the default text is read,
+  // A2/A5b/A6b fail loudly, and SAVE_MSG_TIMEOUT says why. (A5b's vacuous pass is closed by
+  // A5b's own positive "did not reach the cloud" clause below, not by this wait.) The 20 s
+  // ceiling is TOTAL for the finish tail (5+ serial requests), so extreme load can still go
+  // red, but as SAVE_MSG_TIMEOUT, never as a misleading " New PR!".
   const saveMsgWritten = await page.waitForFunction(() =>
     /session saved|did not reach the cloud/i.test(document.getElementById('prToast')?.textContent || ''),
     null, { timeout: 20000 }).then(() => true, () => false);
@@ -349,8 +352,11 @@ async function unlogScenario(browser) {
     check('[A5] a PARTIAL loss is marked, with the shortfall, not silently accepted',
       p.marker.setsUnsynced === 8 && p.marker.volumeUnaccounted === partialShort,
       `setsUnsynced=${p.marker.setsUnsynced} (expected 8), volumeUnaccounted=${p.marker.volumeUnaccounted} (expected ${partialShort})`);
-    check('[A5b] a PARTIAL loss does not claim success either',
-      !SUCCESS.test(p.toastText), `message was: ${p.toastText || '(none)'}`);
+    // Must also SAY the loss, like A2: "no success text" alone passes on the default
+    // " New PR!" markup or a timeout, i.e. when no save message was written at all.
+    check('[A5b] a PARTIAL loss does not claim success either, and says sets did not reach the cloud',
+      !SUCCESS.test(p.toastText) && /did not reach the cloud/i.test(p.toastText),
+      `message was: ${p.toastText || '(none)'}`);
     check('[A5c] a PARTIAL loss renders the badge too', /not synced/i.test(p.badgeText),
       `rendered badges: ${p.badgeText || '(none)'}`);
 

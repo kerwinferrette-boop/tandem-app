@@ -2121,3 +2121,24 @@ That attributes a report to a person who never made it. I cleared it to empty in
 > SC-61: never attribute an action to a person without evidence they took it.
 
 **Enforced by:** judgment, not mechanically checkable.
+
+## SC-64 — I wrote "this also closes A5b's vacuous pass" into a fix without a mutation that could show it
+
+**What happened (2026-11-20, scheduled Builder, BUG-263).** Fixing the flaky finish-path gate, I replaced a
+fixed 400 ms toast read with a wait for the save message, and the comment I wrote said the change closed
+[A5b]'s vacuous pass. It did not. A5b only asserted "no success text", so when no save message is written at
+all (wait times out, default " New PR!" read) A5b still passed. My two mutations both left a message for
+A5b's scenario to read, so neither could show it. The independent verifier removed the failed-sync toast
+(M3): A2 failed, A5b passed. Fixed before push: A5b now also requires "did not reach the cloud", and M3
+turns A5b red.
+
+**The mechanism.** I credited an assertion's repair to a change in the harness around it, without a
+mutation that deletes the thing THAT assertion is supposed to observe. SC-38 recurring, on a claim in a
+comment rather than in a new assertion.
+
+> **THE RULE — SC-64.** Before writing that a change makes an assertion non-vacuous, run a mutation that
+> removes exactly what that assertion should observe, and show that assertion — by name — go red.
+> Otherwise say nothing about that assertion.
+
+**Enforced by:** judgment, not mechanically checkable. The verifier's "try another value of the axis"
+step caught it; keep that step in every verifier brief.
