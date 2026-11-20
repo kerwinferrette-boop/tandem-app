@@ -221,10 +221,22 @@ async function runScenario(browser, { label, preSeedCloudExercise, reject }) {
   }
   await page.waitForTimeout(400);
 
+  // BUG-263: the save message is written at the END of finishSession()'s async block, after
+  // the session PATCH, the PR count, the streak read and the calibration write, which all
+  // come AFTER the last set insert this loop settles on. A fixed 400 ms is a guess about how
+  // long that tail takes; on a loaded machine it lost, and the read below got #prToast's
+  // static default markup (" New PR!"), so A2/A6b failed on correct code and A5b passed
+  // vacuously. Wait for one of the three terminal save messages instead. On timeout, do not
+  // throw: the default text is read, A2/A6b fail loudly, and SAVE_MSG_TIMEOUT says why.
+  const saveMsgWritten = await page.waitForFunction(() =>
+    /session saved|did not reach the cloud/i.test(document.getElementById('prToast')?.textContent || ''),
+    null, { timeout: 20000 }).then(() => true, () => false);
+
   const bannerShown = await page.evaluate(() =>
     !!document.getElementById('finishBanner')?.classList.contains('show'));
-  const toastText = await page.evaluate(() =>
-    [...document.querySelectorAll('.toast, #toast, [class*=toast]')].map(t => t.textContent || '').join(' | '));
+  const toastText = (saveMsgWritten ? '' : 'SAVE_MSG_TIMEOUT (no save message within 20s) | ') +
+    await page.evaluate(() =>
+      [...document.querySelectorAll('.toast, #toast, [class*=toast]')].map(t => t.textContent || '').join(' | '));
   // the marker on the row that holds the only remaining copy of an unsynced set
   const marker = await page.evaluate(() => {
     const h = (LS.get('tandem_history') || [])[0] || {};
