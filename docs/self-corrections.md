@@ -2142,3 +2142,29 @@ comment rather than in a new assertion.
 
 **Enforced by:** judgment, not mechanically checkable. The verifier's "try another value of the axis"
 step caught it; keep that step in every verifier brief.
+
+## SC-65 — I baselined a new gate from its own walk's output, so the baseline inherited the walk's blind spot and the gate read "clean" over 24 objects it never saw
+
+**What happened (2026-11-21, scheduled Builder, BUG-108).** Building `scripts/inventory-reconciliation-smoke.mjs`,
+I counted an object as an exercise only if it had a string `name` AND a `sets` or `r` key. Every cardio entry
+(`{id, name, badge:'cardio', duration}`) has neither, so 12 objects per static library — 24 in all, 10 unbanked
+names — were invisible. I then generated the baseline AND the anti-vacuity floors (133/133) from that same walk,
+so the floors certified the undercount, all 8 of my mutations passed (none touched a cardio object), and verify
+printed ALL 88 CHECKS PASS. The independent verifier derived the sets with a different method (a `name:` regex
+over each declaration's line range), found 145 objects per library, and proved the hole with one mutation: a
+renamed cardio entry left the gate green. All five council advisors had independently named the shape heuristic
+as the main weakness; I had not yet acted on it when the verifier's result arrived.
+
+**The mechanism.** A ratchet's baseline and floors are only as complete as the code that produced them. Deriving
+both from the walk under test makes the baseline a mirror of the walk, not a check on it, and mutations I choose
+to apply inherit my mental model of which objects exist. This is SC-38 and SC-64 again, but one level earlier:
+there, a vacuous assertion. Here, a vacuous *inventory*.
+
+> **THE RULE — SC-65.** A gate that enumerates things must cross-check its count against a second, differently
+> derived count of the same things (e.g. runtime walk vs source-text keys) inside the gate itself, and its
+> classification must fail closed: an object it cannot classify fails, it is never silently skipped. Never set a
+> floor or a baseline from the walk under test alone.
+
+**Enforced by:** for this gate, mechanically — R8 (fail-closed shape) and R9 (walked named objects == `name:` keys
+in source, per inventory), each proven red by mutation (M12, M13) in the commit that added them. In general,
+judgment — not mechanically checkable.

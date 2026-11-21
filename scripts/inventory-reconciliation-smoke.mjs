@@ -46,13 +46,16 @@
 //   R3  (D) may not grow / R3s (D) stale, same rules, per direction.
 //   R4  every baseline entry carries a tracker row id and a one-line reason.
 //   R5  TEMPLATES slots carry no `name` field (see above).
-//   R6  scripts/verify.mjs still registers selection-reachability-smoke.mjs (owner of B/C).
+//   R6  scripts/verify.mjs still registers selection-reachability-smoke.mjs (owner of B/C), on a
+//       non-comment line, as a join(scriptsDir, ...) argument.
 //   R7  anti-vacuity: each inventory yielded >= its committed floor of exercise objects, TEMPLATES
 //       >= its floor of slots, the bank is non-empty; a MISSING floor fails (never defaults).
 //   R8  fail-closed shape: every object with a string `name` in an inventory must have an `id` or a
 //       `badge`; anything else fails instead of going uncounted (the first draft counted only
 //       objects with `sets`/`r` and silently missed all 24 cardio entries — verifier, 2026-11-21).
 //   R9  source cross-check: per inventory, named objects walked == `name:` keys in its source text.
+//   R10 whole-file accounting: programs.js `name:` keys outside the bank, PHASES and the covered
+//       inventories must equal the committed count (3 bank-derived sites at 2026-11-21).
 //
 // Regenerate ONLY with `node scripts/inventory-reconciliation-smoke.mjs --write-baseline`, and
 // only when a set SHRANK. --write-baseline refuses to add an entry unless --allow-growth is
@@ -111,6 +114,9 @@ function literalText(src, anchor) {
   if (end < 0) { console.error(`FATAL: could not find the end of the literal at: ${anchor}\n  ${ANCHOR_HELP}`); process.exit(2); }
   return src.slice(open, end + 1);
 }
+// `name:` keys in a piece of source text (R9, R10)
+const NAME_KEY = /[{,]\s*name\s*:/g;
+const keyCount = t => (t.match(NAME_KEY) || []).length;
 // Declaration ORDER is load-bearing: programs, SUBSTITUTIONS, PRESS_ALTERNATES and femalePrograms are
 // all getProgram()-local consts declared BEFORE the activePrograms line, so they are in scope there.
 // Moving one below that line makes the capture throw and this gate fail (it does not pass silently).
@@ -174,9 +180,16 @@ const scanned = Object.fromEntries(INV.map(k => [k, exerciseNames(__inv[k], k)])
 // R9 — source cross-check: the captured name-bearing object count equals the number of `name:` keys in
 // that declaration's source text. A capture or walk that drops objects cannot match the text.
 for (const k of INV) {
-  const lit = (SRC_TEXT[k].match(/[{,]\s*name\s*:/g) || []).length;
+  const lit = keyCount(SRC_TEXT[k]);
   if (lit !== scanned[k].named) fail(`R9 ${k}: source has ${lit} name: keys but the walk saw ${scanned[k].named} named objects`);
 }
+
+// R10 — whole-file accounting: every `name:` key in programs.js is inside the bank, PHASES, or one of
+// the covered inventories, except a committed count of OTHER keys (bank-derived sites such as
+// makeEx's `name: entry.name`). A new hard-coded pool this script does not list changes that count and
+// fails, instead of being invisible (second verifier, 2026-11-21, G1: an added EXTRA_POOL passed).
+const otherNameKeys = keyCount(SRC) - keyCount(literalText(SRC, 'const EXERCISE_BANK = {'))
+  - keyCount(literalText(SRC, 'const PHASES = {')) - INV.reduce((n, k) => n + keyCount(SRC_TEXT[k]), 0);
 
 const setA = {};   // name -> {inventory: hits}
 for (const k of INV) for (const [n, c] of scanned[k].names)
@@ -201,6 +214,7 @@ console.log(`  (A) prescribed-but-unbanked: ${Object.keys(setA).length}`);
 for (const [n, by] of Object.entries(setA).sort()) console.log(`      ${n}: ` + Object.entries(by).map(([k, c]) => `${k} x${c}`).join(', '));
 console.log(`  (D) library divergence: programs-only ${setD.programs_only.length}, femalePrograms-only ${setD.femalePrograms_only.length}`);
 for (const d of ['programs_only', 'femalePrograms_only']) for (const n of setD[d]) console.log(`      ${d}: ${n}`);
+console.log(`  name: keys outside bank/PHASES/covered inventories: ${otherNameKeys}`);
 console.log('  (B)/(C) owned by scripts/selection-reachability-smoke.mjs (not re-derived here)');
 
 // ── 4. baseline / ratchet ──────────────────────────────────────────────────────────────
@@ -216,6 +230,7 @@ if (WRITE) {
   const out = {
     _comment: 'BUG-108 inventory reconciliation baseline. Regenerate only via --write-baseline (see scripts/inventory-reconciliation-smoke.mjs header). Never hand-edit to go green.',
     floors: prev?.floors || {},
+    other_name_keys: prev?.other_name_keys ?? otherNameKeys,
     A: mk('A', Object.keys(setA).sort()).map(e => ({ ...e, hits: setA[e.name] })),
     D_programs_only: mk('D_programs_only', setD.programs_only),
     D_femalePrograms_only: mk('D_femalePrograms_only', setD.femalePrograms_only),
@@ -244,8 +259,10 @@ else {
     else if (got < fl[k]) fail(`R7 ${k} yielded ${got} < floor ${fl[k]}`);
   }
   if (bankNames.size === 0) fail('R7 EXERCISE_BANK is empty');
+  if (!Number.isInteger(prev.other_name_keys)) fail('R10 baseline has no other_name_keys count (a missing count must fail)');
+  else if (otherNameKeys !== prev.other_name_keys) fail(`R10 programs.js has ${otherNameKeys} name: keys outside the bank, PHASES and the covered inventories; baseline says ${prev.other_name_keys}. A new hard-coded exercise pool must be added to INV, not left uncovered`);
 }
-if (!/selection-reachability-smoke\.mjs/.test(readFileSync(VERIFY, 'utf8')))
+if (!readFileSync(VERIFY, 'utf8').split('\n').some(l => !/^\s*\/\//.test(l) && /join\(scriptsDir, 'selection-reachability-smoke\.mjs'\)/.test(l)))
   fail('R6 scripts/verify.mjs no longer registers selection-reachability-smoke.mjs, the owner of sets (B)/(C)');
 
 if (fails.length) { console.error(`\nINVENTORY RECONCILIATION FAILED (${fails.length}):`); for (const f of fails) console.error('  ✗ ' + f); process.exit(1); }

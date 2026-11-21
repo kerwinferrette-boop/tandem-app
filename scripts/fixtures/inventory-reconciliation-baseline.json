@@ -9,6 +9,7 @@
     "TEMPLATES_slots": 22,
     "_why": "exercise objects / slots captured at origin/main 3b53c0c on 2026-11-21; lowering needs a reason in the commit body"
   },
+  "other_name_keys": 3,
   "A": [
     {
       "name": "Back Extension",
