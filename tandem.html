@@ -10727,6 +10727,15 @@ async function loadDashboard() {
       // raw last-credited value, so it is not selected and nothing can render it stale.
       // avg_steps added Wave 3: the duel sheet shows the steps component's input; the
       // steps POINTS themselves are never recomputed client-side (the view owns that rule).
+      // Why 3b reads theme_color separately (BUG-244, checked 2026-11-21 by read-only SQL on
+      // the live view; nothing changed): migrations/0018_pr_points_15.sql had the view
+      // hard-code '#1B5E38' as every user's theme_color, so the view could not carry a
+      // partner's colour and the old "broken in the view" note was true then. 0028 (BUG-265)
+      // changed it to coalesce(u.theme_color, '#1B5E38'), and live it now matches
+      // users.theme_color on every row. 3b stays as it is: it also supplies the partner's
+      // name, and folding theme_color into this select waits on Kerwin's open colour
+      // decision. Not checked: what the view returns under a signed-in user's RLS, since the
+      // SQL ran as a privileged role.
       const { data: lb } = await sb.from('competition_leaderboard')
         .select('user_id, name, sessions_completed, prs_earned, avg_steps, total_points')
         .in('user_id', [uid, pid]);
