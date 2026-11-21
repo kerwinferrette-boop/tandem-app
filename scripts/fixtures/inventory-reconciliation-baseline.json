@@ -1,0 +1,94 @@
+{
+  "_comment": "BUG-108 inventory reconciliation baseline. Regenerate only via --write-baseline (see scripts/inventory-reconciliation-smoke.mjs header). Never hand-edit to go green.",
+  "floors": {
+    "programs": 133,
+    "femalePrograms": 133,
+    "SUBSTITUTIONS": 14,
+    "TEMPLATES_slots": 22,
+    "_why": "exercise objects / slots captured at origin/main 3b53c0c on 2026-11-21; lowering needs a reason in the commit body"
+  },
+  "A": [
+    {
+      "name": "Back Extension",
+      "row": "BUG-161",
+      "reason": "prescribed in 5 male + 5 female core blocks; bank entry is research-gated (BUG-110 history)",
+      "hits": {
+        "programs": 5,
+        "femalePrograms": 5
+      }
+    },
+    {
+      "name": "Incline Push-Up",
+      "row": "BUG-130",
+      "reason": "SUBSTITUTIONS backfill pool entry (not the injury path); bank entry research-gated",
+      "hits": {
+        "SUBSTITUTIONS": 1
+      }
+    },
+    {
+      "name": "Landmine Row",
+      "row": "BUG-279",
+      "reason": "SUBSTITUTIONS backfill pool entry; found by this gate 2026-11-21; bank entry or re-point is research-gated",
+      "hits": {
+        "SUBSTITUTIONS": 1
+      }
+    },
+    {
+      "name": "Single-Leg Curl",
+      "row": "BUG-279",
+      "reason": "femalePrograms fbf-slcurl; found by this gate 2026-11-21; bank entry or re-point is research-gated",
+      "hits": {
+        "femalePrograms": 1
+      }
+    }
+  ],
+  "D_programs_only": [
+    {
+      "name": "Flat Barbell Press",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Hack Squat",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Hanging Leg Raise",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Leg Press",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Low Incline Barbell Press",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Seated Leg Curl",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Tricep Overhead Extension",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    }
+  ],
+  "D_femalePrograms_only": [
+    {
+      "name": "Cable Kickback",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Single-Leg Curl",
+      "row": "BUG-280",
+      "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    }
+  ]
+}
