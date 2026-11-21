@@ -2826,7 +2826,9 @@ const HERO_PHOTOS = {
   male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg','public/hero-male-5.jpg','public/hero-male-6.jpg'],
   female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg','public/hero-female-5.jpg','public/hero-female-6.jpg']
 };
-const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3, auth:4 };
+// BUG-204 (2026-11-21): `pr:3` removed — no data-hero attribute ever requests a 'pr' moment.
+// auth keeps 4 so every live moment's photo offset is unchanged.
+const HERO_MOMENTS = { onboard:0, phase:1, complete:2, auth:4 };
 function userSexKey(){
   let s = '';
   // live edit in profile modal takes priority for instant preview
@@ -3787,14 +3789,12 @@ function resolveMaxDb() {
 // Variety context for the engine: current week and phase index, so
 // accessories rotate weekly and primary compounds rotate only at phase
 // boundaries (stable within a mesocycle) — see bank()/pick() in programs.js.
+// BUG-204 (2026-11-21): this used to also return `phase`, a phase index it paid a getPhase +
+// scaledPhases + findIndex for. Nothing read it: buildDynamicProgram reads rot.week only and
+// applyDeload reads rotation.week only (programs.js), so getProgram's output never depended
+// on it. scripts/dead-output-smoke.mjs T3 proves that by running getProgram both ways.
 function rotationContext() {
-  let phaseIdx = 0;
-  try {
-    const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
-    const phases = scaledPhases(cfg.goal, cfg.weeks);
-    phaseIdx = Math.max(0, phases.findIndex(p => p.name === phase.name));
-  } catch (e) { /* defaults fine pre-onboarding */ }
-  return { week: currentWeek, phase: phaseIdx };
+  return { week: currentWeek };
 }
 // ═══ EPIC-031 — TECHNIQUE COACHING TIPS ═══
 // Rendered on authored-program exercise cards whose block technique is live

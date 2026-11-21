@@ -4392,7 +4392,7 @@ function materializeTemplate(tpl, week, opts) {
         sets: ex.sets, r: low, repRange: String(ex.reps || low),
         w: seedWeight(bank, { sex: opts && opts.sex, dbCap: opts && opts.maxDb }),
         rest: ex.rest, authoredRest: ex.rest,
-        compound, isCore: ex.role === 'core', role: ex.role,
+        compound, isCore: ex.role === 'core',
         unit: bank.unit || 'reps', equipment: bank.equipment || null,
         why: bank.why || '',
         cues: (exp === 'advanced' && compound) ? [...(bank.cues || []), ADVANCED_RPE_CUE] : (bank.cues || []),
@@ -4411,7 +4411,6 @@ function materializeTemplate(tpl, week, opts) {
       color: TEMPLATE_DAY_COLORS[di % TEMPLATE_DAY_COLORS.length],
       rationale: `${tpl.template.name} — ${block.name} (wks ${block.week_start}–${block.week_end}). `
         + ((block.rep_scheme_by_week || {})[weekInBlock] || ''),
-      authored: true, templateSlug: tpl.template.slug,
       blocks: [{ label: block.name, exs }],
     };
   });
