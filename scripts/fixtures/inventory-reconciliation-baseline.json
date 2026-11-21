@@ -1,9 +1,11 @@
 {
   "_comment": "BUG-108 inventory reconciliation baseline. Regenerate only via --write-baseline (see scripts/inventory-reconciliation-smoke.mjs header). Never hand-edit to go green.",
   "floors": {
-    "programs": 133,
-    "femalePrograms": 133,
+    "programs": 145,
+    "femalePrograms": 145,
     "SUBSTITUTIONS": 14,
+    "PRESS_ALTERNATES": 5,
+    "build5_fallback": 8,
     "TEMPLATES_slots": 22,
     "_why": "exercise objects / slots captured at origin/main 3b53c0c on 2026-11-21; lowering needs a reason in the commit body"
   },
@@ -18,11 +20,81 @@
       }
     },
     {
+      "name": "Bike — Easy Zone 2",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
+      }
+    },
+    {
+      "name": "Bike — Sprint Intervals",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
+      }
+    },
+    {
+      "name": "Elliptical or Rower",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1
+      }
+    },
+    {
+      "name": "Elliptical — Zone 2",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "femalePrograms": 1
+      }
+    },
+    {
       "name": "Incline Push-Up",
       "row": "BUG-130",
       "reason": "SUBSTITUTIONS backfill pool entry (not the injury path); bank entry research-gated",
       "hits": {
         "SUBSTITUTIONS": 1
+      }
+    },
+    {
+      "name": "Incline Treadmill Walk",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
+      }
+    },
+    {
+      "name": "Incline Treadmill — Intervals",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
+      }
+    },
+    {
+      "name": "Incline Treadmill — Zone 2",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
+      }
+    },
+    {
+      "name": "KB Swing — Intervals",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
       }
     },
     {
@@ -34,15 +106,39 @@
       }
     },
     {
+      "name": "Rower — Intervals",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1
+      }
+    },
+    {
       "name": "Single-Leg Curl",
       "row": "BUG-279",
       "reason": "femalePrograms fbf-slcurl; found by this gate 2026-11-21; bank entry or re-point is research-gated",
       "hits": {
         "femalePrograms": 1
       }
+    },
+    {
+      "name": "Stationary Bike — Zone 2",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
+      "hits": {
+        "programs": 1,
+        "femalePrograms": 1,
+        "build5_fallback": 1
+      }
     }
   ],
   "D_programs_only": [
+    {
+      "name": "Elliptical or Rower",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated"
+    },
     {
       "name": "Flat Barbell Press",
       "row": "BUG-280",
@@ -84,6 +180,11 @@
       "name": "Cable Kickback",
       "row": "BUG-280",
       "reason": "male/female static library divergence, not yet shown to be cited sex-specific programming"
+    },
+    {
+      "name": "Elliptical — Zone 2",
+      "row": "BUG-281",
+      "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated"
     },
     {
       "name": "Single-Leg Curl",

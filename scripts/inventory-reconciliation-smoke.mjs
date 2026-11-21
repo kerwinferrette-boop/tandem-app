@@ -4,23 +4,26 @@
 //
 // THE DEFECT. programs.js has MORE THAN ONE inventory of exercises and, before this gate,
 // nothing reconciled them. EXERCISE_BANK is what the generator selects from and what
-// bankIndexByName() resolves (D20 recovery, D27 continuity, D31 variety, per-exercise set
-// counts, muscle tags). The app ALSO prescribes from four other places:
-//   programs        getProgram()-local static library (male)
-//   femalePrograms  getProgram()-local static library (female) — chosen by
-//                   `const activePrograms = isFemale ? femalePrograms : programs;`
-//   SUBSTITUTIONS   getProgram()-local pool, consumed by the dedupeConsecutiveDays backfill
-//                   (NOT the injury path; injury substitution is getExerciseSubstitutes(),
-//                   which draws from EXERCISE_BANK)
-//   TEMPLATES       buildDynamicProgram()-local slot templates
-// A name can sit in one of those and not in the bank, and the two static libraries can drift
-// apart by sex. Every other gate was blind to both.
+// bankIndexByName() (tandem.html) / bankEntryByName() (programs.js) resolve by EXACT name (D20
+// recovery, D27 continuity, D31 variety, per-exercise set counts, muscle tags). The app ALSO
+// prescribes from these hard-coded inventories, all covered here:
+//   programs          getProgram()-local static library (male)
+//   femalePrograms    getProgram()-local static library (female) — chosen by
+//                     `const activePrograms = isFemale ? femalePrograms : programs;`
+//   SUBSTITUTIONS     getProgram()-local pool, consumed by the dedupeConsecutiveDays backfill
+//                     (NOT the injury path; that is getExerciseSubstitutes(), bank-drawn)
+//   PRESS_ALTERNATES  getProgram()-local swap list for dedupePressingBuild5
+//   build5_fallback   build5's inline hard-coded Shoulders + Arms day (`base4.shouldersArmsDay || {...}`)
+//   TEMPLATES         buildDynamicProgram()-local slot templates (groups only, no names)
+// The BUG-108 prompt named the first three + TEMPLATES; the independent verifier found the other two
+// (2026-11-21) and they were added rather than left as a scope note. NOT covered: any exercise list
+// in tandem.html (follow-up, stated so nobody reads this gate as covering it).
 //
-// HOW IT READS THEM (runtime values, not a text grep). All four are function-LOCAL consts, so
-// they are unreachable from a vm context. This script injects one capture statement after each
-// declaration into an in-memory copy of programs.js, asserts each anchor matched EXACTLY once
-// (SC-45: a mutation/injection that did not land must fail, not pass), runs getProgram() and
-// buildDynamicProgram() once each, and walks the captured objects. Nothing on disk is changed.
+// HOW IT READS THEM (runtime values, not a text grep). They are function-LOCAL consts, unreachable
+// from a vm context, so this script injects one capture statement into an in-memory copy of
+// programs.js, asserts every anchor matched EXACTLY once (exit 2 with "update the anchor" if not),
+// runs getProgram() and buildDynamicProgram() once each, and walks the captured objects. The build5
+// fallback is an inline literal and is evaluated from its own source text. Nothing on disk changes.
 //
 // THE SETS (BUG-108 prompt, step 1):
 //   (A) PRESCRIBED-BUT-UNBANKED — every exercise name in ANY of the four inventories that is
@@ -44,9 +47,12 @@
 //   R4  every baseline entry carries a tracker row id and a one-line reason.
 //   R5  TEMPLATES slots carry no `name` field (see above).
 //   R6  scripts/verify.mjs still registers selection-reachability-smoke.mjs (owner of B/C).
-//   R7  anti-vacuity: each of programs / femalePrograms / SUBSTITUTIONS yielded >= its
-//       committed floor of exercise objects, TEMPLATES >= its floor of slots, and the bank is
-//       non-empty — so a capture that silently grabbed an empty object cannot read as clean.
+//   R7  anti-vacuity: each inventory yielded >= its committed floor of exercise objects, TEMPLATES
+//       >= its floor of slots, the bank is non-empty; a MISSING floor fails (never defaults).
+//   R8  fail-closed shape: every object with a string `name` in an inventory must have an `id` or a
+//       `badge`; anything else fails instead of going uncounted (the first draft counted only
+//       objects with `sets`/`r` and silently missed all 24 cardio entries — verifier, 2026-11-21).
+//   R9  source cross-check: per inventory, named objects walked == `name:` keys in its source text.
 //
 // Regenerate ONLY with `node scripts/inventory-reconciliation-smoke.mjs --write-baseline`, and
 // only when a set SHRANK. --write-baseline refuses to add an entry unless --allow-growth is
@@ -73,11 +79,14 @@ const fails = [];
 const fail = m => fails.push(m);
 
 // ── 1. instrument an in-memory copy ────────────────────────────────────────────────────
-let code = readFileSync(PROGRAMS, 'utf8');
-function injectAfter(anchor, stmt) {
-  const n = code.split(anchor).length - 1;
-  if (n !== 1) { console.error(`FATAL: anchor matched ${n} times (need exactly 1): ${anchor}`); process.exit(2); }
-  code = code.replace(anchor, anchor + stmt);
+const SRC = readFileSync(PROGRAMS, 'utf8');
+let code = SRC;
+const ANCHOR_HELP = 'An anchor is a literal line of programs.js this gate hooks into. If you renamed or ' +
+  'reformatted it, UPDATE THE ANCHOR in scripts/inventory-reconciliation-smoke.mjs to match; do not delete the check.';
+function anchorAt(src, anchor) {
+  const n = src.split(anchor).length - 1;
+  if (n !== 1) { console.error(`FATAL: anchor matched ${n} times (need exactly 1): ${anchor}\n  ${ANCHOR_HELP}`); process.exit(2); }
+  return src.indexOf(anchor);
 }
 // end index of the bracketed literal that starts at `open` (string/comment aware)
 function literalEnd(src, open) {
@@ -95,43 +104,79 @@ function literalEnd(src, open) {
   }
   return -1;
 }
-injectAfter('const activePrograms = isFemale ? femalePrograms : programs;',
-  ' __inv.programs = programs; __inv.femalePrograms = femalePrograms; __inv.SUBSTITUTIONS = SUBSTITUTIONS;');
+// source text of the literal opened by the last char of `anchor` (used by R9's cross-check)
+function literalText(src, anchor) {
+  const open = anchorAt(src, anchor) + anchor.length - 1;
+  const end = literalEnd(src, open);
+  if (end < 0) { console.error(`FATAL: could not find the end of the literal at: ${anchor}\n  ${ANCHOR_HELP}`); process.exit(2); }
+  return src.slice(open, end + 1);
+}
+// Declaration ORDER is load-bearing: programs, SUBSTITUTIONS, PRESS_ALTERNATES and femalePrograms are
+// all getProgram()-local consts declared BEFORE the activePrograms line, so they are in scope there.
+// Moving one below that line makes the capture throw and this gate fail (it does not pass silently).
+anchorAt(code, 'const activePrograms = isFemale ? femalePrograms : programs;');
+code = code.replace('const activePrograms = isFemale ? femalePrograms : programs;',
+  'const activePrograms = isFemale ? femalePrograms : programs; __inv.programs = programs; __inv.femalePrograms = femalePrograms; ' +
+  '__inv.SUBSTITUTIONS = SUBSTITUTIONS; __inv.PRESS_ALTERNATES = PRESS_ALTERNATES;');
 {
   const anchor = 'const TEMPLATES = [';
-  const n = code.split(anchor).length - 1;
-  if (n !== 1) { console.error(`FATAL: anchor matched ${n} times (need exactly 1): ${anchor}`); process.exit(2); }
-  const start = code.indexOf(anchor) + anchor.length - 1;
+  const start = anchorAt(code, anchor) + anchor.length - 1;
   const end = literalEnd(code, start);
-  if (end < 0 || code[end + 1] !== ';') { console.error('FATAL: could not find the end of the TEMPLATES literal'); process.exit(2); }
+  if (end < 0 || code[end + 1] !== ';') { console.error(`FATAL: could not find the end of the TEMPLATES literal\n  ${ANCHOR_HELP}`); process.exit(2); }
   code = code.slice(0, end + 2) + ' __inv.TEMPLATES = TEMPLATES;' + code.slice(end + 2);
 }
 const __inv = {};
 const ctx = vm.runInNewContext(
   `(function() { ${code}; return { getProgram, buildDynamicProgram, EXERCISE_BANK }; })()`, { console, __inv });
+// One call captures every library: all four are unconditional literals (no early return precedes
+// them, verified 2026-11-21); only the activePrograms SELECTION depends on sex.
 try { ctx.getProgram('build_muscle', 4, 12, 'male', 'full_gym', 'balanced', [], null, { week: 1, phase: 0 }); }
 catch (e) { fail(`getProgram() threw while capturing inventories: ${e.message}`); }
 try { ctx.buildDynamicProgram('build_muscle', 4, 12, 'male', 'full_gym', 'balanced', [], null, { week: 1, phase: 0 }); }
 catch (e) { fail(`buildDynamicProgram() threw while capturing TEMPLATES: ${e.message}`); }
-for (const k of ['programs', 'femalePrograms', 'SUBSTITUTIONS', 'TEMPLATES'])
+for (const k of ['programs', 'femalePrograms', 'SUBSTITUTIONS', 'PRESS_ALTERNATES', 'TEMPLATES'])
   if (!__inv[k]) { console.error(`FATAL: ${k} was not captured — the injected statement never ran`); process.exit(2); }
+// build5's hard-coded Shoulders + Arms day is an inline literal (`base4.shouldersArmsDay || {...}`),
+// not a named const, so it is evaluated from its source text. It is the emergency fallback when the
+// bank cannot fill the day, i.e. it is reachable exactly when the bank is thin.
+const SRC_TEXT = {
+  programs: literalText(SRC, 'const programs = {'),
+  femalePrograms: literalText(SRC, 'const femalePrograms = {'),
+  SUBSTITUTIONS: literalText(SRC, 'const SUBSTITUTIONS = ['),
+  PRESS_ALTERNATES: literalText(SRC, 'const PRESS_ALTERNATES = ['),
+  build5_fallback: literalText(SRC, 'base4.shouldersArmsDay || {'),
+};
+try { __inv.build5_fallback = vm.runInNewContext('(' + SRC_TEXT.build5_fallback + ')', {}); }
+catch (e) { console.error(`FATAL: build5 fallback literal did not evaluate standalone: ${e.message}`); process.exit(2); }
 
 // ── 2. walk ────────────────────────────────────────────────────────────────────────────
+// FAIL-CLOSED classification (R8). Every object carrying a string `name` inside these inventories must
+// be an exercise object (it has an `id` or a `badge`); anything else is an unrecognised shape and fails,
+// so a new exercise shape cannot go uncounted. (The first draft counted only objects with `sets`/`r`
+// and silently missed every cardio entry — they carry `duration` — caught by the independent verifier.)
 const bankNames = new Set(Object.values(ctx.EXERCISE_BANK).map(e => e.name));
-function exerciseNames(root) {
-  const out = new Map(); let objs = 0; const seen = new Set();
+function exerciseNames(root, inv) {
+  const out = new Map(); let objs = 0, named = 0; const seen = new Set();
   (function walk(v) {
     if (!v || typeof v !== 'object' || seen.has(v)) return;
     seen.add(v);
-    if (typeof v.name === 'string' && ('sets' in v || 'r' in v)) {
-      objs++; out.set(v.name, (out.get(v.name) || 0) + 1);
+    if (typeof v.name === 'string') {
+      named++;
+      if ('id' in v || 'badge' in v) { objs++; out.set(v.name, (out.get(v.name) || 0) + 1); }
+      else fail(`R8 ${inv}: object named '${v.name}' has neither id nor badge — unrecognised shape; classify it in this script`);
     }
     for (const x of Array.isArray(v) ? v : Object.values(v)) walk(x);
   })(root);
-  return { names: out, objs };
+  return { names: out, objs, named };
 }
-const INV = ['programs', 'femalePrograms', 'SUBSTITUTIONS'];
-const scanned = Object.fromEntries(INV.map(k => [k, exerciseNames(__inv[k])]));
+const INV = ['programs', 'femalePrograms', 'SUBSTITUTIONS', 'PRESS_ALTERNATES', 'build5_fallback'];
+const scanned = Object.fromEntries(INV.map(k => [k, exerciseNames(__inv[k], k)]));
+// R9 — source cross-check: the captured name-bearing object count equals the number of `name:` keys in
+// that declaration's source text. A capture or walk that drops objects cannot match the text.
+for (const k of INV) {
+  const lit = (SRC_TEXT[k].match(/[{,]\s*name\s*:/g) || []).length;
+  if (lit !== scanned[k].named) fail(`R9 ${k}: source has ${lit} name: keys but the walk saw ${scanned[k].named} named objects`);
+}
 
 const setA = {};   // name -> {inventory: hits}
 for (const k of INV) for (const [n, c] of scanned[k].names)
@@ -193,8 +238,11 @@ else {
   cmp('D_programs_only', setD.programs_only, 'R3 (D) programs-only');
   cmp('D_femalePrograms_only', setD.femalePrograms_only, 'R3 (D) femalePrograms-only');
   const fl = prev.floors || {};
-  for (const k of INV) if (!(scanned[k].objs >= (fl[k] || 1))) fail(`R7 ${k} yielded ${scanned[k].objs} exercise objects < floor ${fl[k] || 1}`);
-  if (!(slots >= (fl.TEMPLATES_slots || 1))) fail(`R7 TEMPLATES yielded ${slots} slots < floor ${fl.TEMPLATES_slots || 1}`);
+  for (const k of [...INV, 'TEMPLATES_slots']) {
+    const got = k === 'TEMPLATES_slots' ? slots : scanned[k].objs;
+    if (!Number.isInteger(fl[k]) || fl[k] < 1) fail(`R7 no committed floor for ${k} (a missing floor must fail, never default)`);
+    else if (got < fl[k]) fail(`R7 ${k} yielded ${got} < floor ${fl[k]}`);
+  }
   if (bankNames.size === 0) fail('R7 EXERCISE_BANK is empty');
 }
 if (!/selection-reachability-smoke\.mjs/.test(readFileSync(VERIFY, 'utf8')))
