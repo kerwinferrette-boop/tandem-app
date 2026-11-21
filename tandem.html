@@ -9216,6 +9216,13 @@ function daysAgoFrom(when, now) {
 const RECOVERY_PARAMS = {
   build_muscle: { sameGroupHours: 48, maxConsecutive: 2 }, // 48h between same groups; 2-on 1-off blocks
   fat_burn:     { sameGroupHours: 24, maxConsecutive: 3 }, // cardio tolerates more consecutive days
+  // BUG-162 (2026-11-21, values unchanged): transform's 36h is NOT an intermediate cadence.
+  // computeWeekCadence turns hours into day slots with Math.ceil(hours/24), so 36h becomes
+  // 2 slots, the same as build_muscle's and strength's 48h; with maxConsecutive 2 as well,
+  // transform's weekly schedule is identical to theirs for every day count. The 36 only
+  // differs where hours are read as hours (D20's recency threshold). Whether transform
+  // should schedule differently is a tuning call for Kerwin; scripts/cadence-collapse-
+  // smoke.mjs pins this collapse and fails on any new one.
   transform:    { sameGroupHours: 36, maxConsecutive: 2 }, // intermediate
   // D8 goals (2026-09-24). Neither the 5-Goal Taxonomy nor the Canonical Reference
   // prescribes an inter-session recovery HOURS figure, so both values below are
