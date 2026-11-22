@@ -7914,7 +7914,6 @@ function finishSession() {
       const duration = startTime
         ? Math.round((Date.now() - Number(startTime)) / 60000)
         : null;
-      const todayDate = localDateStr(); // BUG-018/027: local day, not UTC
 
       try {
         // ── BUG-230: account for every logged set before claiming the volume ──────
@@ -9279,7 +9278,7 @@ async function fetchOneOffHistorySets() {
 // Projection C (D27) — { exerciseName: distinctTrainingDayCount }.
 // Keyed on the BANK ENTRY's display name, resolved through bankIndexByName() so a
 // legacy slug-keyed row and its display name collapse to one lift rather than
-// counting as two — the same resolution recentSetsFor() does, and the same mistake
+// counting as two — the same resolution recentMuscleLoad() (D20) does, and the same mistake
 // the outcome gate made when it read a missing NAME as a missing LIFT.
 // Distinct DAYS, not set rows: five sets of bench in one session is one exposure.
 function liftSessionCounts(sets) {
@@ -9364,19 +9363,6 @@ function recentExerciseNames(sets, sessionLimit = 4) {
     if (e && e.name) names.add(e.name);
   }
   return names;
-}
-
-// Projection B (EPIC-027) — that one lift's recent sets, newest first (the fetch
-// already ordered them). Resolves slug and display name to the same bank entry so
-// legacy slug-keyed rows are not silently dropped from a lift's history.
-function recentSetsFor(exerciseName, sets) {
-  const idx = bankIndexByName();
-  const want = String(exerciseName || '').toLowerCase();
-  const target = idx[want] || null;
-  return (sets || []).filter(s => {
-    const n = String(s.exercise_name || '').toLowerCase();
-    return n === want || (target != null && idx[n] === target);
-  });
 }
 
 // ══ EPIC-028 · ONE-OFF "BUILD ME A WORKOUT" ENTRY POINT ══
