@@ -2187,3 +2187,23 @@ failure and its rule was judgment-only, so it recurred the first time the baseli
 > edit only the primary tree. Then "baseline" and "fix" are two paths, not two moments.
 
 **Enforced by:** judgment — not mechanically checkable.
+
+## SC-67 — SC-43/SC-66 a third time: the baseline was in a separate worktree, but the CANDIDATE gate run shared the tree I then edited
+
+**What happened (2026-11-23, scheduled Builder, BUG-282).** I followed SC-66: the baseline ran in a
+detached `origin/main` worktree. Then I started `verify → validate:personas` in the background on the
+PRIMARY tree as the candidate run, and while it was still going I edited
+`scripts/seated-leg-curl-why-smoke.mjs` in that same tree to close the independent verifier's M6 false
+pass. `verify` printed `ALL 89 CHECKS PASS`, but I cannot prove it finished before the edit, so that run
+proves nothing about either version. I noticed before citing it, committed the edit, and re-ran `verify`
+on the final committed tree (`validate:personas` reads only programs.js, which the edit did not touch).
+
+**The mechanism.** SC-66 split "baseline" from "candidate" into two paths, but left "candidate" and
+"next edit" on one path. Any gate run reads a tree; whichever tree I will edit next must not be the one
+under test.
+
+> **THE RULE — SC-67 (extends SC-66).** Every backgrounded gate run, baseline OR candidate, runs in its
+> own detached worktree of a COMMITTED sha (`git worktree add --detach <scratch>/cand <sha>`), never in
+> the primary tree. Only a committed sha can be cited as gated, and the citation names that sha.
+
+**Enforced by:** judgment — not mechanically checkable.
