@@ -1401,7 +1401,13 @@ const EXERCISE_BANK = {
     // shape BUG-103 reports.
     muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
-    why:'The seated position places hamstrings under stretch at both hip AND knee simultaneously — producing greater EMG activity than lying leg curl. A hamstring under hip-flexion tension is longer, increasing the hypertrophy stimulus.',
+    // BUG-282 (2026-11-23) — why cites Maeo S et al. (2021) Med Sci Sports Exerc
+    // 53(4):825-837, DOI 10.1249/MSS.0000000000002523, PMC7969179 (PubMed 33009197):
+    // 12-week within-subject trial, n=20 healthy adults, one leg seated / one leg prone,
+    // 5x10 at 70% 1RM, 2 sessions/week. MRI whole-hamstring volume grew more seated than
+    // prone (+14% vs +9%); the monoarticular head (biceps femoris short head) did not
+    // differ (+10% vs +9%). The previous "greater EMG activity" claim was uncited.
+    why:'Sitting with the hips bent trains the two-joint hamstrings at a longer length than lying curls do. In a 12-week MRI trial where each lifter trained one leg seated and one leg lying, the seated leg grew more total hamstring muscle; the short head grew about the same either way.',
     cues:['Sit tall; thigh pad positioned just above the knee','Curl all the way to maximum knee flexion','Squeeze at peak — hold one count','Slow eccentric — resist the return all the way']},
   'nordic-curl':{
     name:'Nordic Curl', videoId:null,
