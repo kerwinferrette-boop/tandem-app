@@ -36,12 +36,16 @@ const why = String(e.why || '');
 if (/EMG/i.test(why)) fails.push(`[a] why still carries an EMG claim: "${why}"`);
 if (!/longer length/i.test(why)) fails.push('[b] why does not state the longer-length rationale');
 
-// [c] the entry's own source span: from its key to the next top-level bank key.
+// [c] the entry's own source span: from its key to the first following line indented
+// by exactly two spaces (the next bank key, OR a key-level comment above it). Ending at
+// the next key alone let a citation placed as a comment above the NEXT entry count for
+// this one (independent verifier's mutation M6, 2026-11-23).
 const start = src.indexOf("  'seated-leg-curl':{");
 if (start < 0) fails.push('[c] could not locate the seated-leg-curl entry in source');
 else {
-  const next = src.indexOf("\n  '", start + 5);
-  const span = src.slice(start, next < 0 ? undefined : next);
+  const rest = src.slice(start + 5);
+  const m = rest.match(/\n  (?! )/);
+  const span = src.slice(start, m ? start + 5 + m.index : undefined);
   if (!span.includes('PMC7969179')) fails.push('[c] the seated-leg-curl entry does not cite PMC7969179');
 }
 
