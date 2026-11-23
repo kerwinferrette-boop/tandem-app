@@ -7505,13 +7505,14 @@ function findExerciseHistorySessions(history, targetName) {
 // weeks ago. I should be able to do that."
 //
 // He always could, in the sense that the data was there. What did not exist was a way to
-// SEE it. WHAT THIS PLOTS (BUG-205, corrected 2026-11-21 — this comment used to point at
-// sets.estimated_1rm_lbs as the data, and this function has never read that column): each
-// point is the best `est1rm` among that session's sets in the LOCAL history
-// (LS 'tandem_history', handed in via findExerciseHistorySessions() by openExerciseHistory()).
-// `est1rm` is stamped on the local set at log time by logSet() as calcRM(weight, reps) —
-// the same number logSet() also writes to the cloud column, but this renderer reads only
-// the local copy, makes no Supabase call and does not recompute anything. This modal
+// SEE it. WHAT THIS PLOTS (BUG-205, re-checked 2026-11-23): each point is the best `est1rm`
+// among that session's sets in the LOCAL history (LS 'tandem_history', handed in via
+// findExerciseHistorySessions() by openExerciseHistory()). This renderer reads only that
+// local copy, makes no Supabase call and recomputes nothing. `est1rm` reaches local history
+// two ways: logSet() stamps it at log time as calcRM(weight, reps), the same number it writes
+// to sets.estimated_1rm_lbs; and for sessions hydrated from the cloud,
+// exercisesFromCloudSets() copies sets.estimated_1rm_lbs into it. So that column IS the
+// source for synced sessions, read through local history rather than by this function. This modal
 // listed raw sets ("80×8 (101e)") newest-first, so reading a trend meant scrolling and
 // doing arithmetic. That is not a progress view, and its absence is why two months of
 // real progression felt invisible.

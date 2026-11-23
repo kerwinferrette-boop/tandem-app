@@ -11,9 +11,11 @@
  * deleted, and are listed on BUG-204 instead.
  *
  * Reads the WORKING-TREE tandem.html and programs.js (never a git ref).
- *   T1  BUG-205 comment: the renderStrengthTrend block no longer names sets.estimated_1rm_lbs as
- *       its data, and the function itself reads `est1rm`, makes no Supabase call and calls no
- *       calcRM (so the comment's "reads the local copy, recomputes nothing" is true)
+ *   T1  BUG-205 comment: the renderStrengthTrend block names both routes `est1rm` takes into
+ *       local history (logSet() at log time; exercisesFromCloudSets() copying
+ *       sets.estimated_1rm_lbs on hydrate, which is checked to be real), and the function itself
+ *       reads `est1rm`, makes no Supabase call and calls no calcRM (so "reads the local copy,
+ *       recomputes nothing" is true)
  *   T2  BUG-205 orphans stay gone: recentSetsFor() (zero callers) and finishSession()'s
  *       `const todayDate` (assigned, never read) — no declaration, no call, no stale pointer
  *   T3  BUG-204 discarded outputs stay gone:
@@ -54,8 +56,11 @@ const blockStart = html.lastIndexOf('renderStrengthTrend() —', trendAt);
 const block = blockStart >= 0 ? html.slice(blockStart, trendAt) : '';
 const trendFn = grabFn(html, 'renderStrengthTrend');
 ok('T1 renderStrengthTrend and its comment block exist', trendAt >= 0 && blockStart >= 0 && trendFn.length > 0);
-ok('T1 the comment no longer names sets.estimated_1rm_lbs as the data it plots',
-  !/the data was there\s*—\s*sets\.estimated_1rm_lbs/.test(block) && /has never read that column/.test(block));
+ok('T1 the comment names both routes est1rm takes into local history (logSet at log time, exercisesFromCloudSets on hydrate)',
+  /logSet\(\) stamps it/.test(block) && /exercisesFromCloudSets\(\)\s*(?:\/\/\s*)?copies sets\.estimated_1rm_lbs/.test(block));
+const ecs = noComments(grabFn(html, 'exercisesFromCloudSets'));
+ok('T1 the hydrate route the comment names is real: exercisesFromCloudSets() maps estimated_1rm_lbs to est1rm',
+  /est1rm\s*:[^\n]*estimated_1rm_lbs/.test(ecs));
 ok('T1 the renderer reads est1rm', /\.est1rm\b/.test(trendFn));
 ok('T1 the renderer makes no Supabase call and recomputes nothing', !/\bsb\.from\b|\bcalcRM\(|estimated_1rm_lbs/.test(noComments(trendFn)));
 
