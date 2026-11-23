@@ -2168,3 +2168,22 @@ there, a vacuous assertion. Here, a vacuous *inventory*.
 **Enforced by:** for this gate, mechanically — R8 (fail-closed shape) and R9 (walked named objects == `name:` keys
 in source, per inventory), each proven red by mutation (M12, M13) in the commit that added them. In general,
 judgment — not mechanically checkable.
+
+## SC-66 — SC-43 again: I edited tandem.html while my own baseline gate chain was still running against it
+
+**What happened (2026-11-22, scheduled Builder, BUG-205).** I started `verify → validate:personas →
+walkthrough → sweep → outcome` in the background on the working tree as the cycle's baseline, then,
+while `verify` was still mid-run, applied the BUG-205 edit to `tandem.html` in that same tree. The
+baseline was then measuring an unknown mix of before and after. I noticed before reading any result,
+stopped the run, and re-ran the baseline from a detached `git worktree` of `origin/main` in the
+scratchpad, so before/after are separate trees.
+
+**The mechanism.** A background job and a foreground edit shared one working tree, and nothing
+separated "baseline" from "candidate" except my memory of which was running. SC-43 named this exact
+failure and its rule was judgment-only, so it recurred the first time the baseline was backgrounded.
+
+> **THE RULE — SC-66 (tightens SC-43).** A baseline gate run never runs in the tree you will edit.
+> Run it from `git worktree add --detach <scratch>/base origin/main` (symlink `node_modules`), and
+> edit only the primary tree. Then "baseline" and "fix" are two paths, not two moments.
+
+**Enforced by:** judgment — not mechanically checkable.

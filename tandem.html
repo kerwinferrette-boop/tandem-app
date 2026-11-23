@@ -9291,7 +9291,7 @@ async function fetchOneOffHistorySets() {
 // Projection C (D27) — { exerciseName: distinctTrainingDayCount }.
 // Keyed on the BANK ENTRY's display name, resolved through bankIndexByName() so a
 // legacy slug-keyed row and its display name collapse to one lift rather than
-// counting as two — the resolution the deleted Projection B used to share, and the same mistake
+// counting as two — the same resolution recentMuscleLoad() (D20) does, and the same mistake
 // the outcome gate made when it read a missing NAME as a missing LIFT.
 // Distinct DAYS, not set rows: five sets of bench in one session is one exposure.
 function liftSessionCounts(sets) {
@@ -9377,10 +9377,6 @@ function recentExerciseNames(sets, sessionLimit = 4) {
   }
   return names;
 }
-
-// Projection B (EPIC-027), recentSetsFor(), was DELETED 2026-11-21 (BUG-205): it had zero
-// callers in tandem.html, programs.js and scripts/. Projection C above does its own
-// slug/display-name resolution through bankIndexByName().
 
 // ══ EPIC-028 · ONE-OFF "BUILD ME A WORKOUT" ENTRY POINT ══
 // getSingleDay has existed in programs.js since D9 with ZERO callers in the app —

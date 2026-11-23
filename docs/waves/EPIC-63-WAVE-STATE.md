@@ -274,6 +274,11 @@ path "fully wired" because it upserts `users.color_theme`, a column read by noth
       BUG-205's code half (3 orphan declarations + the false comment at `:6562`) is safe and small;
       its column half is a proposal for Kerwin, not a migration to run. BUG-204 changes program
       output, so expect `program-snapshot` to fire — do not silently re-baseline it.
+      **2026-11-22 (scheduled Builder):** BUG-205 code half DONE. Removed `recentSetsFor()` and
+      finishSession()'s unused `todayDate`. The other two named items were already gone at
+      origin/main a808fab: skipAhead() declares no `perWeek`, and renderStrengthTrend() reads
+      `s.est1rm` (from `sets.estimated_1rm_lbs` via exercisesFromCloudSets()), so its comment is no
+      longer false. BUG-205's column half and BUG-203/204 stay open, so this box stays unchecked.
 
 - [ ] **6. HELD, do not start — inline-handler / CSP refactor.** 223 `onclick`, 0
       `addEventListener`, handlers re-serialised with manual quote-escaping (`:5525`, `:6193`).
