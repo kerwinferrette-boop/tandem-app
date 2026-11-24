@@ -50,6 +50,13 @@
  *   [A] no NEW write-only column beyond ALLOW
  *   [B] every ALLOW entry still reproduces — a stale allowlist fails too, so the
  *       ratchet only turns one way. Fix a column, and you must remove its entry.
+ *   [F] the inverse (BUG-202, 2026-11-21): no gate under scripts/ or scripts/lib/ refers,
+ *       outside comments, to a column this gate knows nothing in the app reads (KNOWN_OPEN
+ *       plus GATE_DEAD below). A gate that asserts a dead value is that value's only
+ *       consumer, and a green check over it manufactures confidence. Reads under scripts/
+ *       never count as reads for [A]; [F] makes sure they cannot quietly stand in for one.
+ *       KNOWN_GATE_READS carries the one exception found on 2026-11-21, exact file + name;
+ *       an entry that stops reproducing fails, so the list can only shrink by a fix.
  *   [C] self-test: the detector must still catch the four known-dead fixtures.
  *       This exists because the first three drafts of this detector each produced
  *       a reassuringly short list by accident (one counted a console.warn string
@@ -108,6 +115,26 @@ const MASKED = {
     'on exercise_notes (BUG-195). No reader of a personal_records row touches it.',
 };
 const ALLOW = { ...SERVER_SIDE, ...KNOWN_OPEN };
+// GATE_DEAD (BUG-202): columns read by nothing in the app or the database that [A] cannot
+// see as write-only, so they are named here by hand. week_targets is no longer written at
+// all (its gate assertion was already retired on main); calibration_session_id on
+// personal_records is written through a rows array the payload parser cannot see.
+// Server side checked read-only 2026-11-21: no public function body, view or RLS policy
+// mentions either name.
+const GATE_DEAD = {
+  'personal_records.week_targets':
+    'BUG-202 (D5) — writers deleted 2026-10-13, gate assertion retired; drop migration 0024 committed, not applied (Kerwin\'s)',
+  'personal_records.calibration_session_id':
+    'BUG-202 (D5) — written by computeCalibration1RMs, read by nothing in the app or the database',
+};
+// KNOWN_GATE_READS: gate references to a dead column that [F] found and that are carried,
+// not removed. Exact file + column name. Remove an entry in the commit that fixes it.
+const KNOWN_GATE_READS = {
+  // Asserts personal_records.calibration_session_id is stamped on every calibration row.
+  // It sits inside the calibration gate, which the 2026-11-21 lane batch may not change;
+  // retiring it or giving the column a reader is Kerwin's call, reported on BUG-202.
+  'calibration-upsert-smoke.mjs': ['calibration_session_id'],
+};
 
 // The detector's self-test runs against a SYNTHETIC snippet, not against live
 // columns. An earlier draft used four real columns as fixtures; that is wrong,
@@ -230,9 +257,43 @@ if (unmasked.length) {
   console.log(`  ok    [D] ${Object.keys(MASKED).length} MASKED finding(s) still invisible to this detector (carried, not fixed)`);
 }
 
+// [F] no gate asserts a dead column
+const scriptsDir = new URL('./', import.meta.url);
+const gateFiles = [
+  ...fs.readdirSync(scriptsDir).filter(f => f.endsWith('.mjs')).map(f => new URL(f, scriptsDir)),
+  ...fs.readdirSync(new URL('lib/', scriptsDir)).filter(f => f.endsWith('.mjs')).map(f => new URL(`lib/${f}`, scriptsDir)),
+].filter(u => !u.pathname.endsWith('/column-reachability-smoke.mjs'));
+const stripComments = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
+const deadNames = new Map();
+for (const c of [...Object.keys(KNOWN_OPEN), ...Object.keys(GATE_DEAD)]) {
+  const col = c.split('.')[1];
+  if (!deadNames.has(col)) deadNames.set(col, []);
+  deadNames.get(col).push(c);
+}
+const gateHits = [], carried = [], found = new Set();
+for (const u of gateFiles) {
+  const rel = u.pathname.split('/scripts/')[1];
+  const t = stripComments(fs.readFileSync(u, 'utf8'));
+  for (const [col, owners] of deadNames) {
+    if (!new RegExp(`\\b${col}\\b`).test(t)) continue;
+    found.add(`${rel}|${col}`);
+    if ((KNOWN_GATE_READS[rel] || []).includes(col)) carried.push(`${rel} → ${col}`);
+    else gateHits.push(`${rel} reads ${col} (${owners.join(', ')})`);
+  }
+}
+const staleGate = Object.entries(KNOWN_GATE_READS).flatMap(([f, cols]) => cols.filter(c => !found.has(`${f}|${c}`)).map(c => `${f} → ${c}`));
+if (gateHits.length) {
+  fail(`[F] ${gateHits.length} gate reference(s) to a column nothing in the app reads — a gate may not be a dead value's only consumer:`);
+  for (const h of gateHits.sort()) console.log(`          ${h}`);
+  console.log('        Retire the assertion, or give the column a real reader first (BUG-202).');
+} else if (staleGate.length) {
+  fail(`[F] KNOWN_GATE_READS entr(y/ies) no longer reproduce — remove: ${staleGate.join('; ')}`);
+} else console.log(`  ok    [F] no gate in ${gateFiles.length} files under scripts/ refers to one of the ${deadNames.size} column names nothing reads, beyond ${carried.length} carried (${carried.join('; ')})`);
+
 console.log('\nOPEN, carried deliberately:');
 for (const [c, why] of Object.entries(KNOWN_OPEN)) if (deadNow.has(c)) console.log(`  · ${c} — ${why}`);
 for (const [c, why] of Object.entries(MASKED)) console.log(`  · ${c} — MASKED (this gate can no longer detect it): ${why}`);
+for (const [c, why] of Object.entries(GATE_DEAD)) console.log(`  · ${c} — read by nothing, named by hand for [F]: ${why}`);
 
 console.log(failed === 0 ? '\ncolumn-reachability-smoke: PASS' : `\ncolumn-reachability-smoke: ${failed} FAILURE(S)`);
 process.exit(failed === 0 ? 0 : 1);

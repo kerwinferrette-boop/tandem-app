@@ -2826,7 +2826,9 @@ const HERO_PHOTOS = {
   male:   ['public/hero-male-1.jpg','public/hero-male-2.jpg','public/hero-male-3.jpg','public/hero-male-4.jpg','public/hero-male-5.jpg','public/hero-male-6.jpg'],
   female: ['public/hero-female-1.jpg','public/hero-female-2.jpg','public/hero-female-3.jpg','public/hero-female-4.jpg','public/hero-female-5.jpg','public/hero-female-6.jpg']
 };
-const HERO_MOMENTS = { onboard:0, phase:1, complete:2, pr:3, auth:4 };
+// BUG-204 (2026-11-21): `pr:3` removed — no data-hero attribute ever requests a 'pr' moment.
+// auth keeps 4 so every live moment's photo offset is unchanged.
+const HERO_MOMENTS = { onboard:0, phase:1, complete:2, auth:4 };
 function userSexKey(){
   let s = '';
   // live edit in profile modal takes priority for instant preview
@@ -3787,14 +3789,12 @@ function resolveMaxDb() {
 // Variety context for the engine: current week and phase index, so
 // accessories rotate weekly and primary compounds rotate only at phase
 // boundaries (stable within a mesocycle) — see bank()/pick() in programs.js.
+// BUG-204 (2026-11-21): this used to also return `phase`, a phase index it paid a getPhase +
+// scaledPhases + findIndex for. Nothing read it: buildDynamicProgram reads rot.week only and
+// applyDeload reads rotation.week only (programs.js), so getProgram's output never depended
+// on it. scripts/dead-output-smoke.mjs T3 proves that by running getProgram both ways.
 function rotationContext() {
-  let phaseIdx = 0;
-  try {
-    const phase = getPhase(currentWeek, cfg.goal, cfg.weeks);
-    const phases = scaledPhases(cfg.goal, cfg.weeks);
-    phaseIdx = Math.max(0, phases.findIndex(p => p.name === phase.name));
-  } catch (e) { /* defaults fine pre-onboarding */ }
-  return { week: currentWeek, phase: phaseIdx };
+  return { week: currentWeek };
 }
 // ═══ EPIC-031 — TECHNIQUE COACHING TIPS ═══
 // Rendered on authored-program exercise cards whose block technique is live
@@ -7504,8 +7504,15 @@ function findExerciseHistorySessions(history, targetName) {
 // Kerwin, 2026-08-17: "If I'm doing bench press, I want to see where I was at seven
 // weeks ago. I should be able to do that."
 //
-// He always could, in the sense that the data was there — sets.estimated_1rm_lbs has
-// been stamped per set since June. What did not exist was a way to SEE it. This modal
+// He always could, in the sense that the data was there. What did not exist was a way to
+// SEE it. WHAT THIS PLOTS (BUG-205, re-checked 2026-11-23): each point is the best `est1rm`
+// among that session's sets in the LOCAL history (LS 'tandem_history', handed in via
+// findExerciseHistorySessions() by openExerciseHistory()). This renderer reads only that
+// local copy, makes no Supabase call and recomputes nothing. `est1rm` reaches local history
+// two ways: logSet() stamps it at log time as calcRM(weight, reps), the same number it writes
+// to sets.estimated_1rm_lbs; and for sessions hydrated from the cloud,
+// exercisesFromCloudSets() copies sets.estimated_1rm_lbs into it. So that column IS the
+// source for synced sessions, read through local history rather than by this function. This modal
 // listed raw sets ("80×8 (101e)") newest-first, so reading a trend meant scrolling and
 // doing arithmetic. That is not a progress view, and its absence is why two months of
 // real progression felt invisible.
@@ -9210,6 +9217,13 @@ function daysAgoFrom(when, now) {
 const RECOVERY_PARAMS = {
   build_muscle: { sameGroupHours: 48, maxConsecutive: 2 }, // 48h between same groups; 2-on 1-off blocks
   fat_burn:     { sameGroupHours: 24, maxConsecutive: 3 }, // cardio tolerates more consecutive days
+  // BUG-162 (2026-11-21, values unchanged): transform's 36h is NOT an intermediate cadence.
+  // computeWeekCadence turns hours into day slots with Math.ceil(hours/24), so 36h becomes
+  // 2 slots, the same as build_muscle's and strength's 48h; with maxConsecutive 2 as well,
+  // transform's weekly schedule is identical to theirs for every day count. The 36 only
+  // differs where hours are read as hours (D20's recency threshold). Whether transform
+  // should schedule differently is a tuning call for Kerwin; scripts/cadence-collapse-
+  // smoke.mjs pins this collapse and fails on any new one.
   transform:    { sameGroupHours: 36, maxConsecutive: 2 }, // intermediate
   // D8 goals (2026-09-24). Neither the 5-Goal Taxonomy nor the Canonical Reference
   // prescribes an inter-session recovery HOURS figure, so both values below are
@@ -10717,6 +10731,15 @@ async function loadDashboard() {
       // raw last-credited value, so it is not selected and nothing can render it stale.
       // avg_steps added Wave 3: the duel sheet shows the steps component's input; the
       // steps POINTS themselves are never recomputed client-side (the view owns that rule).
+      // Why 3b reads theme_color separately (BUG-244, checked 2026-11-21 by read-only SQL on
+      // the live view; nothing changed): migrations/0018_pr_points_15.sql had the view
+      // hard-code '#1B5E38' as every user's theme_color, so the view could not carry a
+      // partner's colour and the old "broken in the view" note was true then. 0028 (BUG-265)
+      // changed it to coalesce(u.theme_color, '#1B5E38'), and live it now matches
+      // users.theme_color on every row. 3b stays as it is: it also supplies the partner's
+      // name, and folding theme_color into this select waits on Kerwin's open colour
+      // decision. Not checked: what the view returns under a signed-in user's RLS, since the
+      // SQL ran as a privileged role.
       const { data: lb } = await sb.from('competition_leaderboard')
         .select('user_id, name, sessions_completed, prs_earned, avg_steps, total_points')
         .in('user_id', [uid, pid]);
