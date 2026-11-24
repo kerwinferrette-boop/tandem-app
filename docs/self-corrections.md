@@ -2207,3 +2207,36 @@ under test.
 > the primary tree. Only a committed sha can be cited as gated, and the citation names that sha.
 
 **Enforced by:** judgment — not mechanically checkable.
+
+## SC-68 — I measured which exercise the engine picks, never the weight the app shows for it
+
+**What happened (2026-11-24, scheduled Builder, BUG-279).** Banking 'Single-Leg Curl' so the
+female fallback library's name would resolve, I measured selection carefully: week-1 snapshot
+byte-identical, 3150 of 25200 rotation programs changed, every displaced lift named. I reported
+the change as "zero risk beyond a sixth leg-curl variant". The pre-ship council's Contrarian found
+what I never looked at: `tandem.html`'s `ACCESSORY_ALIASES` already maps 'Single-Leg Curl' to
+'Leg Curl', so `getWeekTarget()` gives it 0.45 x the user's Romanian Deadlift 1RM, a two-leg load
+on a one-leg lift. Banking the name moves that load from a fallback nobody reaches into 630 normal
+programs. Correcting it is a 1RM-to-load coefficient, forbidden scope, so the change is held on a
+branch for Kerwin instead of shipped.
+
+**The gap.** I searched for the name in `programs.js` (where I was editing) and treated "which lifts
+are selected" as the whole user-visible effect. The load a lift is shown with is computed in the
+OTHER file, keyed by the same name string. A name-keyed lookup in a second file is a reader I never
+enumerated.
+
+The independent verifier found a second half I missed the same way: my diff compared each program's
+exercise NAMES only, so I wrote "the only exercises displaced are the five leg-curl variants" while
+144 set counts on OTHER exercises changed (maintenance, full_gym, 4-6 days, weeks 17-21; e.g. Romanian
+Deadlift 4 -> 5 sets) because the rotation shift moved the volume budget. It also found the new lift's
+seed load (70 lb male / 40 lb female) exceeds the two-leg Lying Leg Curl's curated 60 / 30.
+
+> **THE RULE — SC-68.** Before banking, renaming or newly surfacing an exercise, grep its exact name
+> string in BOTH `programs.js` and `tandem.html` (and `scripts/`) and list every hit by function.
+> For each name-keyed table (aliases, load factors, set counts, swap lists), state what the user
+> will SEE for that lift once it is reachable: sets, reps, rest AND the prescribed weight. A
+> selection sweep is half the measurement; the prescribed load is the other half. And a program
+> diff compares every field of every exercise, never names alone.
+
+**Enforced by:** judgment — not mechanically checkable. The pre-ship council caught it this time;
+put "what weight will the user see?" in every verifier and council brief for an exercise change.
