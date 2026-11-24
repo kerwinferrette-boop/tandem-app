@@ -1392,6 +1392,24 @@ const EXERCISE_BANK = {
     emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
     why:'Knee flexion trains the short head of bicep femoris — the only head that cannot be reached with any hip hinge movement. Both hamstring functions (knee flexion AND hip extension) must be trained for complete development.',
     cues:['Pad just above the heel, not on the Achilles','Curl all the way up to maximum knee flexion','Do not let the hips lift off the pad','Lower slowly — do not let the weight slam']},
+  'single-leg-curl':{
+    name:'Single-Leg Curl', videoId:null,
+    // BUG-279 (2026-11-24): this name is prescribed by the female static library
+    // (femalePrograms fat_burn day4, id fbf-slcurl) but had no bank entry, so its logged
+    // sets resolved to nothing for D20 recovery, D27 continuity and D31 variety.
+    // Same machine and same knee-flexion action as lying-leg-curl above, one leg at a
+    // time, so it carries lying-leg-curl's tags and their citations (BUG-103, PMC7872291;
+    // DOI 10.1080/02640414.2025.2486879). oneRmFactor stays null: no load coefficient is
+    // added here. Why-string source: "Comparison of Muscle Growth and Dynamic Strength
+    // Adaptations Induced by Unilateral and Bilateral Resistance Training: A Systematic
+    // Review and Meta-analysis", Sports Med 2025;55(4):923-936,
+    // DOI 10.1007/s40279-024-02169-z — no hypertrophy difference between unilateral and
+    // bilateral training (ES -0.21, P = 0.57); unilateral training gave the larger gain in
+    // unilateral strength (ES -0.65) and bilateral in bilateral strength (ES 0.56).
+    muscleGroups:{primary:['hamstring_biceps_femoris','hamstring_semimembranosus','hamstring_semitendinosus'],secondary:['gastrocnemius']},
+    emphasis:['hamstrings','lower_body'], equipment:'machine', tier:'full_gym', category:'isolation', oneRmFactor:null,
+    why:'The lying leg curl, one leg at a time, so each hamstring does its own work. A 2025 review of the research found one-leg and two-leg training build about the same amount of muscle, and that strength gains favour whichever style you train.',
+    cues:['Pad just above the heel, working leg only','Hips pressed into the pad — do not let them lift','Curl to full knee flexion, then lower slowly','Do the same reps on each leg']},
   'seated-leg-curl':{
     name:'Seated Leg Curl', videoId:'YyvSfVjQeL0',
     // BUG-103 (2026-09-25) — see the identical citation + rationale on lying-leg-curl
@@ -2006,7 +2024,8 @@ const MOVEMENT_FAMILIES = {
   'cable-pull-through':{ label:'Cable Pull-Through', pattern:'hinge', canonicalLift:null,
     variants:['cable-pull-through']},
   'leg-curl':{ label:'Leg Curl', pattern:'isolation', canonicalLift:null,
-    variants:['lying-leg-curl','seated-leg-curl','nordic-curl','slider-leg-curl','glute-ham-raise']},
+    variants:['lying-leg-curl','seated-leg-curl','nordic-curl','slider-leg-curl','glute-ham-raise',
+              'single-leg-curl']},   // BUG-279: one-leg lying curl, same knee-flexion family
 
   // ── HIP ISOLATION ────────────────────────────────────
   'glute-kickback':{ label:'Glute Kickback', pattern:'isolation', canonicalLift:null,

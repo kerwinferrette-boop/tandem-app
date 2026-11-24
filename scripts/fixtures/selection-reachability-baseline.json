@@ -1,7 +1,7 @@
 {
   "_comment": "BUG-108 selection-reachability baseline: EXERCISE_BANK slugs that NO getProgram() output contains across the sweep in scripts/selection-reachability-smoke.mjs. Category + reason are DERIVED from the data (never authored). The gate fails if this set grows (S1) and if an entry here is now selected (S2) — it ratchets down only. Regenerate ONLY with `node scripts/selection-reachability-smoke.mjs --write-baseline`; never hand-edit.",
   "sweep": "1050 persona combos x T=24 x weeks 1-24",
-  "bank": 185,
+  "bank": 186,
   "count": 27,
   "entries": {
     "band-external-rotation": {

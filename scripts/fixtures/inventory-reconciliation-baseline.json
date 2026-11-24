@@ -116,14 +116,6 @@
       }
     },
     {
-      "name": "Single-Leg Curl",
-      "row": "BUG-279",
-      "reason": "femalePrograms fbf-slcurl; found by this gate 2026-11-21; bank entry or re-point is research-gated",
-      "hits": {
-        "femalePrograms": 1
-      }
-    },
-    {
       "name": "Stationary Bike — Zone 2",
       "row": "BUG-281",
       "reason": "cardio protocol name, a suffixed variant of a bank base name; resolves to no bank entry; whether cardio must resolve is research-gated",
