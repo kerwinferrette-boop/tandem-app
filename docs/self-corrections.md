@@ -2268,3 +2268,12 @@ the code, so they shared its blind spots (SC-38, SC-65).
 
 **Enforced by:** judgment — not mechanically checkable. The independent verifier's own mutations caught
 it; keep "design your own mutations, different from the author's" in every verifier brief.
+
+**Second round, same day (SC-69 recurred within the hour).** After the first fix, a second
+independent verifier found the same shape twice more. F still ran an empty-profile user (no sex, no
+injuries, no history), so `tierOk` bypasses keyed on sex, injuries, D20 recent exposure or D31
+variety stayed green. And `expected()` and C5 derived the right answer from the two tables under
+test, so editing both tables to move "Hotel · Full" to full-gym workouts passed. Fixed: F3 runs the
+real `renderOneOff` across sex (F/M/female/male), injuries, half- and all-trained exposure, variety
+history and experience; P pins each selector tier to a literal bank tier. The rule above already
+covered both; I applied it to the goal axis only and stopped. Sweep EVERY input the caller reads.

@@ -140,6 +140,11 @@ const sessW = new Map();
 // Goal axis: renderOneOff branches on oneOffGoalKey() (cardio only for fat_burn), so F sweeps every
 // goal rather than stubbing one (verifier I, 2026-11-25). Read from programs.js, not hand-listed.
 let curGoal = 'build_muscle';
+// Profile axis (F3): the empty-profile user (no sex, no injuries, no history) is what F1/F2 run;
+// F3 re-runs the real renderOneOff for profiles that reach other getSingleDay branches
+// (verifier2 N6-N9, 2026-11-25: sex, injuries, D20 recent exposure, D31 variety each
+// had a tierOk bypass the empty profile could not see).
+let curProfile = { load: {}, names: new Set() };
 const ctx2 = {
   cfg: {}, console,
   sessionStorage: {
@@ -180,7 +185,7 @@ Object.assign(ctx2, {
   getSingleDay(focus, opts) { const day = realGetSingleDay(focus, opts); calls.getSingleDay.push({ focus, tier: opts && opts.tier, opts, day }); return day; },
   oneOffState: {}, oneOffGoalKey: () => curGoal, currentWeek: 1,
   getPhase: () => ({}), buildDayHTML: () => '', showOneOffStep() {}, renderIcons() {}, showToast() {},
-  recentMuscleLoad: () => ({}), recentExerciseNames: () => new Set(), resolveMaxDb: () => 0,
+  recentMuscleLoad: () => curProfile.load, recentExerciseNames: () => curProfile.names, resolveMaxDb: () => 0,
   RECOVERY_PARAMS: { build_muscle: { sameGroupHours: 48 } },
   _oneoffSets: [], _oneoffHistorySets: [], _savedWorkouts: [],
   sb: { from: () => ({ select: () => ({ eq: () => ({ single: async () => { calls.sbSaved++; return { data: { day_data: { name: 'saved', blocks: [] } }, error: null }; } }) }) }) },
@@ -234,6 +239,52 @@ for (const c of cfgVals) for (const s of sessVals) {
 
 if (cardioDays === 0) fails.push('F2: no fat_burn one-off was built with cardio:true — the cardio finisher path was never checked (vacuous)');
 
+// F3 — profile axis. Each tier reached through a FRESH durable choice (no override).
+let f3Cases = 0;
+{
+  const allPrimaries = [...new Set(Object.values(bankByName).flatMap(e => e.muscleGroups.primary || []))];
+  const load = Object.fromEntries(allPrimaries.map(m => [m, 1]));   // trained 1h ago: inside every window
+  // Half trained, half fresh: D20 only widens a slot to FRESH groups when some groups are
+  // recovered, so an all-trained load never reaches that branch.
+  const halfLoad = Object.fromEntries(allPrimaries.filter((_, i) => i % 2 === 0).map(m => [m, 1]));
+  const names = new Set(Object.keys(bankByName));                   // every lift recently done
+  const PROFILES = [
+    ['sex=F', { sex: 'F' }, {}, new Set()], ['sex=M', { sex: 'M' }, {}, new Set()],
+    ['injuries=knee', { injuries: 'knee' }, {}, new Set()], ['injuries=shoulder', { injuries: 'shoulder' }, {}, new Set()],
+    ['injuries=lower back', { injuries: 'lower back' }, {}, new Set()],
+    ['sex=female', { sex: 'female' }, {}, new Set()], ['sex=male', { sex: 'male' }, {}, new Set()],
+    ['recent exposure, all trained (D20)', {}, load, new Set()], ['recent exposure, half trained (D20)', {}, halfLoad, new Set()], ['recent lifts (D31 variety)', {}, {}, names],
+    ['experience=advanced', { experience: 'advanced' }, {}, new Set()],
+    ['everything at once', { sex: 'F', injuries: 'knee', experience: 'beginner' }, halfLoad, names],
+  ];
+  const durableFor = { full_gym: 'full_gym', hotel_gym: 'home_dumbbells', home: 'bodyweight' };
+  for (const [tier, durable] of Object.entries(durableFor)) for (const [pname, extra, pload, pnames] of PROFILES)
+    for (const goal of GOALS) for (const focus of FOCUSES) {
+      curGoal = goal; curProfile = { load: pload, names: pnames };
+      setState(durable, null, null); Object.assign(ctx2.cfg, extra);
+      calls.getSingleDay.length = 0; U.renderOneOff(focus); f3Cases++;
+      const call = calls.getSingleDay[0];
+      if (!call || call.tier !== tier) { fails.push(`F3 ${pname} goal=${goal} focus=${focus}: built at ${call && call.tier}, want ${tier}`); continue; }
+      legalAt(call.day, tier, `F3 ${pname} goal=${goal} focus=${focus} tier=${tier}`);
+    }
+  curProfile = { load: {}, names: new Set() };
+}
+
+// P — absolute pins, independent of the tables under test (verifier2 N3c, 2026-11-25: expected()
+// and C5 derive the answer FROM EQ_TIER_TO_BANK/EQ_TIER_TO_CFG, so a consistent edit to both
+// moved "Hotel · Full" to full-gym workouts with every check green). Source: each selector
+// button's own label in EQ_LABELS (a hotel or a dumbbells-only room has no barbell/machine
+// station; bodyweight has no equipment). Changing a pin is a product decision, not a refactor.
+const PINS = { full_gym: 'full_gym', standard_gym: 'full_gym', hotel_full: 'hotel_gym', hotel_small: 'hotel_gym', dumbbells: 'hotel_gym', bodyweight: 'home' };
+for (const t of new Set([...Object.keys(PINS), ...Object.keys(EQ_TIER_TO_BANK)])) {
+  if (!(t in PINS)) { fails.push(`P selector tier ${t} has no pinned bank tier — add one deliberately`); continue; }
+  if (!(t in EQ_TIER_TO_BANK)) { fails.push(`P pinned selector tier ${t} is gone from EQ_TIER_TO_BANK`); continue; }
+  setState(undefined, t, ''); const viaSession = U.resolveEquipmentTier();
+  setState(EQ_TIER_TO_CFG[t], null, null); const viaDurable = U.resolveEquipmentTier();
+  if (viaSession !== PINS[t]) fails.push(`P "${t}" picked this session resolves ${viaSession}, pinned ${PINS[t]}`);
+  if (viaDurable !== PINS[t]) fails.push(`P "${t}" saved as the durable choice resolves ${viaDurable}, pinned ${PINS[t]}`);
+}
+
 // G — change tier, then regenerate
 let gCases = 0;
 const priors = [[undefined, null, null], ['full_gym', null, null], ['bodyweight', 'hotel_full', 'full_gym'], ['home_dumbbells', 'bodyweight', 'home_dumbbells']];
@@ -279,4 +330,4 @@ if (fails.length) {
   console.error(`FAIL equipment-tier-resolution-smoke: ${fails.length} violation(s) across ${cases} sweep cases + ${named.length} transitions + F ${fCases} focus cases + G ${gCases} tier-change cases + H ${hCases} saved-workout cases`);
   process.exit(1);
 }
-console.log(`✓ resolveEquipmentTier honours its contract across ${cases} sweep cases (${staleCases} stale-baseline, ${absentCases} absent-baseline with an override set) and ${named.length} named transitions; session and durable tier tables agree; F1/F2 ${fCases} goal x focus x state one-offs built at the resolved tier and tier-legal with renderOneOff's real opts (${GOALS.length} goals, ${FOCUSES.length} focuses, ${legalMemo.size} goal x focus x tier combos, ${cardioDays} fat_burn days with the cardio finisher); G1 ${gCases} tier-change-then-regenerate cases; H1 ${hCases} open-a-saved-workout cases leave the tier untouched`);
+console.log(`✓ resolveEquipmentTier honours its contract across ${cases} sweep cases (${staleCases} stale-baseline, ${absentCases} absent-baseline with an override set) and ${named.length} named transitions; session and durable tier tables agree; F1/F2 ${fCases} goal x focus x state one-offs built at the resolved tier and tier-legal with renderOneOff's real opts (${GOALS.length} goals, ${FOCUSES.length} focuses, ${legalMemo.size} goal x focus x tier combos, ${cardioDays} fat_burn days with the cardio finisher); F3 ${f3Cases} sex/injury/history/experience profile one-offs tier-legal; P 6 selector tiers pinned to an independent bank tier; G1 ${gCases} tier-change-then-regenerate cases; H1 ${hCases} open-a-saved-workout cases leave the tier untouched`);
