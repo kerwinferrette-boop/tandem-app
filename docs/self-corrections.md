@@ -2240,3 +2240,31 @@ seed load (70 lb male / 40 lb female) exceeds the two-leg Lying Leg Curl's curat
 
 **Enforced by:** judgment — not mechanically checkable. The pre-ship council caught it this time;
 put "what weight will the user see?" in every verifier and council brief for an exercise change.
+
+## SC-69 — My new guard checked a call the user never makes, and one of its assertions compared a value to itself
+
+**What happened (2026-11-25, scheduled Builder, BUG-187).** Extending the equipment-tier guard, I wrote F2
+("getSingleDay never serves an exercise above the tier") by calling `getSingleDay(focus, {tier})` myself,
+and stubbed `oneOffGoalKey()` to `'build_muscle'`. The real caller, `renderOneOff`, passes `goal`,
+`supersets` and `cardio` too, and only Fat Burn adds the cardio finisher. So F2 never ran the path a
+Fat Burn user hits. G1 asserted "baseline == new cfg.equipment", where both come from the same line of
+`applySetupSelection`, so it could not see a wrong durable mapping. Six mutations I chose all went red,
+and I wrote that each assertion "has teeth". The independent verifier found three mutations that broke
+real behaviour and left the guard green: a cardio pool that skips the tier filter (a home user gets an
+Elliptical), a Fat Burn-only hard-coded tier, and a wrong saved mapping for bodyweight. Fixed before
+push: F now sweeps all 5 goals, legality-checks the day the real call returned with the caller's real
+opts, and fails if no cardio day was built. G1 now checks `cfg.equipment === EQ_TIER_TO_CFG[T]` and
+what a fresh tab resolves. All 10 mutations are red.
+
+**The mechanism.** I tested the callee with arguments I chose, not the call the app makes, and I
+checked an output against another output of the same write. My mutations came from my own model of
+the code, so they shared its blind spots (SC-38, SC-65).
+
+> **THE RULE — SC-69.** A guard that claims a property of what the user gets must check the value the
+> real caller produced, with the caller's real arguments (capture them in the stub; never re-call the
+> callee with your own). Sweep every axis the caller branches on, and never stub one to a constant.
+> An equality assertion between two values written by the same line proves nothing; compare against
+> an independent source (the mapping table, a fresh read).
+
+**Enforced by:** judgment — not mechanically checkable. The independent verifier's own mutations caught
+it; keep "design your own mutations, different from the author's" in every verifier brief.

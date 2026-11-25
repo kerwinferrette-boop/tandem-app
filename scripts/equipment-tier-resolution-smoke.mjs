@@ -137,20 +137,29 @@ for (const [label, c, s, b, want] of named) {
 // re-filtered when opened at another. The shipped code replays it verbatim (day_data as saved);
 // changing that is a product call, not this guard's to encode.
 const sessW = new Map();
+// Goal axis: renderOneOff branches on oneOffGoalKey() (cardio only for fat_burn), so F sweeps every
+// goal rather than stubbing one (verifier I, 2026-11-25). Read from programs.js, not hand-listed.
+let curGoal = 'build_muscle';
 const ctx2 = {
   cfg: {}, console,
   sessionStorage: {
     getItem: k => (sessW.has(k) ? sessW.get(k) : null),
     setItem: (k, v) => { sessW.set(k, String(v)); },
+    // removeItem/clear recorded too: a stub without them would crash a removal (failing by
+    // accident) or, guarded, silently miss it (verifier E2/E3, 2026-11-25).
+    removeItem: k => { sessW.delete(k); },
+    clear: () => { sessW.clear(); },
   },
 };
 const progSrc = readFileSync(process.env.PROGRAMS_JS || join(root, 'programs.js'), 'utf8');
 const pctx = { console, window: {}, localStorage: { getItem() { return null; }, setItem() {} }, sessionStorage: { getItem() { return null; }, setItem() {} } };
 pctx.globalThis = pctx; vm.createContext(pctx);
-vm.runInContext(progSrc + ';this.__g=getSingleDay;this.__b=EXERCISE_BANK;this.__f=ONEOFF_FOCUSES;', pctx);
+vm.runInContext(progSrc + ';this.__g=getSingleDay;this.__b=EXERCISE_BANK;this.__f=ONEOFF_FOCUSES;this.__goals=Object.keys(PHASES);', pctx);
 const realGetSingleDay = pctx.__g;
 const bankByName = Object.fromEntries(Object.values(pctx.__b).map(e => [e.name, e]));
 const FOCUSES = [...pctx.__f];
+const GOALS = [...pctx.__goals];
+if (GOALS.length !== 5) fails.push(`F: PHASES has ${GOALS.length} goal keys, expected the 5 canonical goals — extraction broke or the goal list changed`);
 const TIER_RANK = { home: 0, hotel_gym: 1, full_gym: 2 };
 if (FOCUSES.length < 5) fails.push(`F: ONEOFF_FOCUSES has ${FOCUSES.length} entries — extraction broke or the focus list collapsed`);
 
@@ -165,8 +174,11 @@ Object.assign(ctx2, {
   },
   LS: { set() {}, get() { return null; } },
   syncToCloud() {}, renderProgramViews() { calls.renderProgramViews++; },
-  getSingleDay(focus, opts) { calls.getSingleDay.push({ focus, tier: opts && opts.tier }); return realGetSingleDay(focus, opts); },
-  oneOffState: {}, oneOffGoalKey: () => 'build_muscle', currentWeek: 1,
+  // The stub runs the REAL getSingleDay with the EXACT opts renderOneOff built (goal, supersets,
+  // cardio, injuries...), so F2's tier-legality check sees the cardio finisher and superset paths
+  // too — a bare getSingleDay(focus,{tier}) never reached them (verifier G2, 2026-11-25).
+  getSingleDay(focus, opts) { const day = realGetSingleDay(focus, opts); calls.getSingleDay.push({ focus, tier: opts && opts.tier, opts, day }); return day; },
+  oneOffState: {}, oneOffGoalKey: () => curGoal, currentWeek: 1,
   getPhase: () => ({}), buildDayHTML: () => '', showOneOffStep() {}, renderIcons() {}, showToast() {},
   recentMuscleLoad: () => ({}), recentExerciseNames: () => new Set(), resolveMaxDb: () => 0,
   RECOVERY_PARAMS: { build_muscle: { sameGroupHours: 48 } },
@@ -196,25 +208,31 @@ function legalAt(day, tier, label) {
 }
 
 // F — focus axis over every resolution state
-let fCases = 0; const legalMemo = new Map();
+let fCases = 0, cardioDays = 0; const legalMemo = new Map();
 for (const c of cfgVals) for (const s of sessVals) {
   const durable = c || '';
   const stale = durable === 'bodyweight' ? 'full_gym' : 'bodyweight';
   for (const [kind, b] of [['fresh', durable], ['stale', stale], ['absent', null], ['empty', '']]) {
-    for (const focus of FOCUSES) {
+    for (const goal of GOALS) for (const focus of FOCUSES) {
+      curGoal = goal;
       setState(c, s, b);
       const want = expected(c, s, b);
       calls.getSingleDay.length = 0;
       U.renderOneOff(focus);
       fCases++;
       const seen = calls.getSingleDay.map(x => x.tier);
-      if (seen.length !== 1) fails.push(`F1 focus=${focus} cfg=${c} eq_tier=${s} baseline=${kind}: renderOneOff called getSingleDay ${seen.length}x`);
-      else if (seen[0] !== want) fails.push(`F1 focus=${focus} cfg=${c} eq_tier=${s} baseline=${kind}: one-off built at ${seen[0]}, resolver contract says ${want}`);
-      const key = `${focus}|${want}`;
-      if (!legalMemo.has(key)) { legalMemo.set(key, 1); for (let r = 0; r < 5; r++) legalAt(realGetSingleDay(focus, { tier: want }), want, `focus=${focus} tier=${want} run ${r}`); }
+      if (seen.length !== 1) fails.push(`F1 goal=${goal} focus=${focus} cfg=${c} eq_tier=${s} baseline=${kind}: renderOneOff called getSingleDay ${seen.length}x`);
+      else if (seen[0] !== want) fails.push(`F1 goal=${goal} focus=${focus} cfg=${c} eq_tier=${s} baseline=${kind}: one-off built at ${seen[0]}, resolver contract says ${want}`);
+      else {
+        legalMemo.set(`${goal}|${focus}|${want}`, (legalMemo.get(`${goal}|${focus}|${want}`) || 0) + 1);
+        legalAt(calls.getSingleDay[0].day, want, `goal=${goal} focus=${focus} tier=${want}`);
+        if (goal === 'fat_burn' && calls.getSingleDay[0].opts.cardio) cardioDays++;
+      }
     }
   }
 }
+
+if (cardioDays === 0) fails.push('F2: no fat_burn one-off was built with cardio:true — the cardio finisher path was never checked (vacuous)');
 
 // G — change tier, then regenerate
 let gCases = 0;
@@ -225,6 +243,11 @@ for (const [c, s, b] of priors) for (const T of Object.keys(EQ_TIER_TO_BANK)) {
   const label = `prior cfg=${c} eq_tier=${s} baseline=${b} -> select ${T}`;
   const got = U.resolveEquipmentTier();
   if (got !== EQ_TIER_TO_BANK[T]) fails.push(`G1 ${label}: resolver answers ${got}, want ${EQ_TIER_TO_BANK[T]}`);
+  // Not circular: the durable choice must be the selector's own mapping, and a FRESH TAB (no
+  // sessionStorage) must still resolve to the tier the user picked (verifier D, 2026-11-25).
+  if (ctx2.cfg.equipment !== (EQ_TIER_TO_CFG[T] || null)) fails.push(`G1 ${label}: cfg.equipment saved as ${ctx2.cfg.equipment}, selector mapping is ${EQ_TIER_TO_CFG[T]}`);
+  { const keep = new Map(sessW); sessW.clear(); const fresh = U.resolveEquipmentTier(); for (const [k, v] of keep) sessW.set(k, v);
+    if (fresh !== EQ_TIER_TO_BANK[T]) fails.push(`G1 ${label}: a fresh tab resolves ${fresh}, the user picked ${T} (${EQ_TIER_TO_BANK[T]})`); }
   if (sessW.get('eq_tier_baseline') !== (ctx2.cfg.equipment || '')) fails.push(`G1 ${label}: baseline ${sessW.get('eq_tier_baseline')} ≠ new cfg.equipment ${ctx2.cfg.equipment}`);
   if (calls.renderProgramViews !== 1) fails.push(`G1 ${label}: renderProgramViews called ${calls.renderProgramViews}x, want 1 (no regenerate)`);
   calls.getSingleDay.length = 0; U.renderOneOff(FOCUSES[0]);
@@ -256,4 +279,4 @@ if (fails.length) {
   console.error(`FAIL equipment-tier-resolution-smoke: ${fails.length} violation(s) across ${cases} sweep cases + ${named.length} transitions + F ${fCases} focus cases + G ${gCases} tier-change cases + H ${hCases} saved-workout cases`);
   process.exit(1);
 }
-console.log(`✓ resolveEquipmentTier honours its contract across ${cases} sweep cases (${staleCases} stale-baseline, ${absentCases} absent-baseline with an override set) and ${named.length} named transitions; session and durable tier tables agree; F1/F2 ${fCases} focus x state one-offs built at the resolved tier (${FOCUSES.length} focuses, ${legalMemo.size} focus x tier days tier-legal); G1 ${gCases} tier-change-then-regenerate cases; H1 ${hCases} open-a-saved-workout cases leave the tier untouched`);
+console.log(`✓ resolveEquipmentTier honours its contract across ${cases} sweep cases (${staleCases} stale-baseline, ${absentCases} absent-baseline with an override set) and ${named.length} named transitions; session and durable tier tables agree; F1/F2 ${fCases} goal x focus x state one-offs built at the resolved tier and tier-legal with renderOneOff's real opts (${GOALS.length} goals, ${FOCUSES.length} focuses, ${legalMemo.size} goal x focus x tier combos, ${cardioDays} fat_burn days with the cardio finisher); G1 ${gCases} tier-change-then-regenerate cases; H1 ${hCases} open-a-saved-workout cases leave the tier untouched`);
