@@ -317,10 +317,10 @@ const PHASES = {
        // Evidence-informed pressing progression (Fonseca et al. 2014 JSCR — exercise variation > load variation for balanced hypertrophy).
        // Foundation: DB Bench (stabilisers, bilateral parity). Build: Incline DB (adds upper-pec angle, same implement — ~86% of flat DB strength).
        'tr-dbench': {id:'tr-incdb',  name:'Incline DB Press', badge:'compound',
-         why:'At 30–45° the clavicular pec head dominates EMG activity. DB variation adds deeper bottom-position stretch versus barbell. Evidence-informed progression: same implement (dumbbell), adds upper-pec angle. Fonseca et al. 2014 — varied exercises produce greater balanced hypertrophy than repeating the same movement.',
+         why:'The 30–45° incline angles the press toward the upper (clavicular) chest. DB variation adds deeper bottom-position stretch versus barbell. Evidence-informed progression: same implement (dumbbell), adds upper-pec angle. Fonseca et al. 2014 — varied exercises produce greater balanced hypertrophy than repeating the same movement.',
          cues:['Set bench to 30° — not steeper','Elbows at 60–70° from torso, not flared to 90°','Full stretch at bottom without shoulder impingement','Drive up and slightly in — slight arc, not straight up']},
        'trf-bench': {id:'trf-incdb', name:'Incline DB Press', badge:'compound',
-         why:'At 30–45° the clavicular pec head dominates EMG activity. DB variation adds deeper bottom-position stretch versus barbell. Evidence-informed progression: same implement (dumbbell), adds upper-pec angle.',
+         why:'The 30–45° incline angles the press toward the upper (clavicular) chest. DB variation adds deeper bottom-position stretch versus barbell. Evidence-informed progression: same implement (dumbbell), adds upper-pec angle.',
          cues:['Set bench to 30° — not steeper','Elbows at 60–70° from torso, not flared to 90°','Full stretch at bottom without shoulder impingement','Drive up and slightly in — slight arc, not straight up']}
      }},
     {name:'Recomp Power',         intent:'Heaviest phase. Body composition changes become visually apparent. 8-rep floor maintained throughout.',                           weeks:[7,9],  reps:'9·8·8',    restComp:120, restAcc:75,  pctComp:5,
@@ -469,7 +469,7 @@ const EXERCISE_BANK = {
     name:'Incline DB Press', videoId:null,
     muscleGroups:{primary:['pec_major_clavicular'],secondary:['anterior_delt','tricep']},
     emphasis:['chest','push','upper_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:0.86,
-    why:'At 30–45° the clavicular pec head dominates EMG activity. DB variation adds a deeper bottom-position stretch versus barbell, increasing time under tension through full ROM. Evidence-informed progression from flat DB — same implement, adds upper-pec angle.',
+    why:'The 30–45° incline angles the press toward the upper (clavicular) chest. DB variation adds a deeper bottom-position stretch versus barbell, increasing time under tension through full ROM. Evidence-informed progression from flat DB — same implement, adds upper-pec angle.',
     cues:['Set bench to 30° — not steeper','Elbows at 60–70° from torso, not flared to 90°','Full stretch at bottom without shoulder impingement','Drive up and slightly in — a slight arc, not straight up']},
   'low-incline-barbell-press':{
     name:'Low Incline Barbell Press', videoId:'DbFgADa2PL8',
@@ -505,7 +505,7 @@ const EXERCISE_BANK = {
     name:'Dips', videoId:null,
     muscleGroups:{primary:['pec_major_sternal','tricep'],secondary:['anterior_delt']},
     emphasis:['chest','triceps','push','upper_body'], equipment:'bodyweight', tier:'hotel_gym', category:'compound', oneRmFactor:0.85,
-    why:'Among the highest pec major EMG outputs of any bodyweight pressing movement. Forward lean increases chest activation; upright torso shifts load to triceps. Add weight via belt or held dumbbell to progress.',
+    why:'A bodyweight press for the chest and triceps. Add weight via belt or held dumbbell to progress.',
     cues:['Lean forward slightly for chest emphasis','Lower until upper arms parallel to floor','Do not flare elbows past 45°','Full lockout at top']},
   'push-up':{
     name:'Push-Up', videoId:'IODxDxX7oi4',
@@ -1001,7 +1001,7 @@ const EXERCISE_BANK = {
     name:'Barbell Curl', videoId:null,
     muscleGroups:{primary:['bicep_brachii'],secondary:['brachialis','brachioradialis']},
     emphasis:['biceps','pull','upper_body'], equipment:'barbell', tier:'full_gym', category:'isolation', oneRmFactor:null,
-    why:'Supinated grip and bilateral load allow maximum bicep loading. Barbell curl consistently produces the highest peak bicep EMG among curl variations. Bilateral constraint removes any unilateral cheating.',
+    why:'Supinated grip and bilateral load allow maximum bicep loading. Bilateral constraint removes any unilateral cheating.',
     cues:['Elbows pinned to sides — do not let them drift forward','Supinated grip throughout — do not pronate at top','Full extension at bottom (stretch)','Do not swing — hinge at the elbow only']},
   'db-curl':{
     name:'DB Curl', videoId:null,
@@ -1177,7 +1177,7 @@ const EXERCISE_BANK = {
     name:'Diamond Push-Up', videoId:null,
     muscleGroups:{primary:['tricep_lateral','tricep_medial'],secondary:['pec_major_sternal','anterior_delt']},
     emphasis:['triceps','push','upper_body'], equipment:'bodyweight', tier:'home', category:'isolation', oneRmFactor:null,
-    why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Direct triceps mass work; elevate the feet to progress.',
+    why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps. Direct triceps mass work; elevate the feet to progress.',
     cues:['Hands together under the chest, index fingers and thumbs forming a diamond','Body rigid in a straight line — no hip sag','Lower until the chest nearly touches the hands, elbows tucked','Press to full lockout; elevate the feet to add difficulty']},
   'jm-press':{
     name:'JM Press', videoId:null,
@@ -1457,7 +1457,7 @@ const EXERCISE_BANK = {
     name:'Hip Thrust', videoId:'SEdqd1n0cvg',
     muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'Greatest glute EMG activation of any exercise. The fully shortened position at peak (hip fully extended) is unique — squats and deadlifts never achieve full hip extension under load. Trains the glute in its most powerful position.',
+    why:'The fully shortened position at peak (hip fully extended) is unique — squats and deadlifts never achieve full hip extension under load. Trains the glute in its most powerful position.',
     cues:['Upper back on bench, shoulder blades on edge','Drive through heels, not toes','Tuck chin to chest — do not hyperextend the neck','Squeeze glutes aggressively at top; do not hyperextend the lower back']},
   'barbell-hip-thrust':{
     name:'Barbell Hip Thrust', videoId:null,
@@ -1683,7 +1683,7 @@ const EXERCISE_BANK = {
     name:'Bicycle Crunch', videoId:null,
     muscleGroups:{primary:['rectus_abdominis','oblique_external'],secondary:['oblique_internal']},
     emphasis:['core'], equipment:'bodyweight', tier:'home', category:'core', rxBasis:'flat-default-uncited', oneRmFactor:null,
-    why:'Consistently one of the highest EMG-ranked ab exercises — the pedaling twist trains the rectus abdominis and obliques together through flexion plus rotation. A staple for combined ab and oblique work.',
+    why:'The pedaling twist trains the rectus abdominis and obliques together through flexion plus rotation. A staple for combined ab and oblique work.',
     cues:['Lie back, hands lightly behind the head, shoulders off the floor','Bring one elbow toward the opposite knee as that leg drives in','Extend the other leg straight without letting it touch down','Rotate from the torso, not the neck; move slowly and with control']},
   'v-up':{
     name:'V-Up', videoId:null,
@@ -4650,7 +4650,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Constant hamstring tension throughout. No slack point unlike conventional deadlift. Safer spinal load at higher bodyweights.',
                cues:['Push hips back — not down. Close car door with your butt.','Bar against legs the entire descent.','Hamstring stretch at mid-shin for taller lifters.','Drive hips forward at top. Full glute lockout.']},
               {id:'bm-hip',  name:'Hip Thrust', badge:'compound', sets:3, w:135, r:10, rest:120, compound:true,
-               why:'Greatest glute EMG activation of any exercise. Fully shortened position is unique — squats and deadlifts never achieve it. Primary movement, not a finisher.',
+               why:'Fully shortened position is unique — squats and deadlifts never achieve it. Primary movement, not a finisher.',
                cues:['Bench edge at shoulder blades. Feet flat, shoulder-width.','Drive through full foot — not just heel.','Level hips at top. 2-sec hold every rep. Non-negotiable.']},
             ]},
             {label:'Accessory Block · Rest 75 sec', exs:[
@@ -4658,7 +4658,12 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Knee flexion hits short head of bicep femoris that RDL barely touches. Both hamstring functions need training.',
                cues:['Hips into pad. Any lift = glute compensating.','Full extension every rep.','3-sec eccentric — this is the growth signal.']},
               {id:'bm-slc',  name:'Seated Leg Curl', badge:'isolation', sets:3, w:75, r:10, rest:75, compound:false,
-               why:'Seated leg curl places the hamstring at a stretched starting length — greater hypertrophy signal than lying curl alone. This completes the hamstring picture: RDL covers the hip-extension function, seated curl covers the knee-flexion function from a lengthened position.',
+               // BUG-283 (2026-11-26) — same source as the EXERCISE_BANK 'seated-leg-curl' why (BUG-282):
+               // Maeo S et al. (2021) Med Sci Sports Exerc 53(4):825-837, DOI 10.1249/MSS.0000000000002523,
+               // PMC7969179. 12-week within-subject MRI trial, n=20, seated vs prone curl: whole-hamstring
+               // volume +14% seated vs +9% prone; biceps femoris short head did not differ. The old wording
+               // ("greater hypertrophy signal than lying curl alone") was uncited and broader than the finding.
+               why:'Sitting with the hips bent trains the two-joint hamstrings at a longer length than lying curls do; in a 12-week MRI trial the seated leg grew more total hamstring muscle than the lying leg. This completes the hamstring picture: RDL covers the hip-extension function, seated curl covers the knee-flexion function from a lengthened position.',
                cues:['Sit upright. Back against pad.','Full extension at start — earn the stretch.','3-sec eccentric. This is the growth signal.','Do not let hips lift off seat — that is the glute stealing the work.']},
               {id:'bm-calf1',name:'Standing Calf Raise', badge:'isolation', sets:4, w:170, r:20, rest:45, compound:false,
                why:'Calves are slow-twitch dominant — they respond to volume, not heavy loading. High reps, short rest, full range.',
@@ -5187,7 +5192,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
      why:'A bodyweight pulling compound — a sturdy table (or two chairs and a broomstick) substitutes for a bar. Trains the same horizontal pull pattern as a barbell or dumbbell row.',
      cues:['Lie under a sturdy table, hands gripping the edge, body straight.','Pull chest toward the table edge, squeezing shoulder blades together.']},
     {id:'sub-dpu',   name:'Diamond Push-Up',        badge:'isolation', tier:'home', sets:3, w:0, r:15, rest:45, compound:false,
-     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps — producing among the highest triceps EMG of any bodyweight movement. Direct triceps mass work.',
+     why:'The narrow diamond hand position shifts a standard push-up’s load heavily onto the triceps. Direct triceps mass work.',
      cues:['Hands together under the chest forming a diamond.','Lower until the chest nearly touches the hands, elbows tucked; press to lockout.']},
     {id:'sub-bwsq',  name:'Bodyweight Squat',       badge:'compound',  tier:'home', sets:3, w:0, r:15, rest:60, compound:true,
      why:'The bodyweight squat pattern — full knee and hip flexion trains the quads through a complete range of motion. The foundational lower-body compound when no external load is available.',
@@ -5572,7 +5577,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 75 sec', exs:[
               {id:'fbf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:15, rest:75, compound:true,
-               why:'Highest glute EMG activation of any exercise. At higher reps, becomes metabolically demanding while building the glutes.',
+               why:'Loads the glutes at full hip extension. At higher reps, becomes metabolically demanding while building the glutes.',
                cues:['Bench at shoulder blade base. Feet flat, shoulder-width.','Drive through full foot. 2-sec hold at top.','Chin tucked. Do not hyperextend the spine.']},
               {id:'fbf-rdl', name:'Romanian Deadlift', badge:'compound', sets:3, w:35, r:15, rest:75, compound:true,
                why:'Constant hamstring tension throughout. Hip hinge pattern builds posterior chain.',
@@ -5716,7 +5721,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bmf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:12, rest:150, compound:true,
-               why:'Greatest glute EMG activation. Fully shortened position unique — squats and deadlifts never achieve it.',
+               why:'Trains the glutes at full hip extension. Fully shortened position unique — squats and deadlifts never achieve it.',
                cues:['Bench at shoulder blades. Feet flat, shoulder-width.','Drive through full foot.','Level hips at top. 2-sec hold every rep.']},
               {id:'bmf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:35, r:12, rest:120, compound:true,
                why:'Constant hamstring tension throughout. Completes the posterior chain picture.',
