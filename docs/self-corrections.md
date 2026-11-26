@@ -2240,3 +2240,22 @@ seed load (70 lb male / 40 lb female) exceeds the two-leg Lying Leg Curl's curat
 
 **Enforced by:** judgment — not mechanically checkable. The pre-ship council caught it this time;
 put "what weight will the user see?" in every verifier and council brief for an exercise change.
+
+## SC-69 — I set a tracker row's Evidence property to my own note and erased the ingestion evidence it held
+
+**What happened (2026-11-26, scheduled Builder).** Parking the `v-bar-lat-pulldown` ingestion row, I
+called `notion-update-page update_properties` with `Evidence` set to a two-line "not built" note. A
+property write REPLACES the value; it does not append. The row's Evidence held the full Lu et al.
+2026 citation, the per-muscle effect sizes, the triceps-instability caveat and the Buonsenso
+tension note. I noticed in the next step and restored it verbatim from the fetch I had made
+moments before, with my note prepended.
+
+**The mechanism.** I treated a property update like a comment: "add what I did". It overwrites the
+whole field, and the fetch in my context was the only copy outside the corpus page.
+
+> **THE RULE — SC-69.** Before writing a TEXT property on a tracker row that already has a value
+> (Evidence, Finding, Code Fix, Resolved In, Question for Kerwin), fetch it in the same turn and write
+> `<new note> + <the existing value verbatim>`, unless the point of the write is to replace a value
+> that is now false, and then say so in the new text. Never set a text property from your note alone.
+
+**Enforced by:** judgment, not mechanically checkable.
