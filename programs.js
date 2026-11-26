@@ -1457,7 +1457,7 @@ const EXERCISE_BANK = {
     name:'Hip Thrust', videoId:'SEdqd1n0cvg',
     muscleGroups:{primary:['glute_max'],secondary:['hamstring']},
     emphasis:['glutes','lower_body'], equipment:'dumbbell', tier:'hotel_gym', category:'compound', oneRmFactor:null,
-    why:'The fully shortened position at peak (hip fully extended) is unique — squats and deadlifts never achieve full hip extension under load. Trains the glute in its most powerful position.',
+    why:'Loads the glute at peak hip extension, the fully shortened position. Trains the glute in its most powerful position.',
     cues:['Upper back on bench, shoulder blades on edge','Drive through heels, not toes','Tuck chin to chest — do not hyperextend the neck','Squeeze glutes aggressively at top; do not hyperextend the lower back']},
   'barbell-hip-thrust':{
     name:'Barbell Hip Thrust', videoId:null,
@@ -4650,7 +4650,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Constant hamstring tension throughout. No slack point unlike conventional deadlift. Safer spinal load at higher bodyweights.',
                cues:['Push hips back — not down. Close car door with your butt.','Bar against legs the entire descent.','Hamstring stretch at mid-shin for taller lifters.','Drive hips forward at top. Full glute lockout.']},
               {id:'bm-hip',  name:'Hip Thrust', badge:'compound', sets:3, w:135, r:10, rest:120, compound:true,
-               why:'Fully shortened position is unique — squats and deadlifts never achieve it. Primary movement, not a finisher.',
+               why:'Loads the glute in the fully shortened position, at full hip extension. Primary movement, not a finisher.',
                cues:['Bench edge at shoulder blades. Feet flat, shoulder-width.','Drive through full foot — not just heel.','Level hips at top. 2-sec hold every rep. Non-negotiable.']},
             ]},
             {label:'Accessory Block · Rest 75 sec', exs:[
@@ -4879,7 +4879,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
                why:'Machine-guided path lets you load heavier without spinal compression. At 12 reps, leg press creates enormous metabolic demand — the largest muscles under heavy load for extended time.',
                cues:['Feet shoulder-width, mid-platform, 20–30° toe-out.','Full depth — knees toward armpits.','Do not lock out at top — maintain tension.','3-sec eccentric every rep.']},
               {id:'tr-hip',    name:'Hip Thrust', badge:'compound', sets:4, w:135, r:10, rest:120, compound:true,
-               why:'Greatest glute activation of any exercise. The fully shortened position is unique — no squat or deadlift achieves it. Glutes are the largest muscle — training them hard burns the most calories.',
+               why:'Loads the glute in the fully shortened position, at full hip extension. Glutes are the largest muscle — training them hard burns the most calories.',
                cues:['Bench at shoulder blades. Feet flat, shoulder-width.','Drive through full foot. 2-sec hold at top.','Level hips at top. Chin tucked — no hyperextension.']},
             ]},
             {label:'Superset Block · Rest 60 sec', exs:[
@@ -5721,7 +5721,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 2–3 min', exs:[
               {id:'bmf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:12, rest:150, compound:true,
-               why:'Trains the glutes at full hip extension. Fully shortened position unique — squats and deadlifts never achieve it.',
+               why:'Trains the glutes at full hip extension, the fully shortened position.',
                cues:['Bench at shoulder blades. Feet flat, shoulder-width.','Drive through full foot.','Level hips at top. 2-sec hold every rep.']},
               {id:'bmf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:35, r:12, rest:120, compound:true,
                why:'Constant hamstring tension throughout. Completes the posterior chain picture.',
@@ -5876,7 +5876,7 @@ function getProgram(goal, days, weeks, sex, equipment, emphasis, injuries, maxDb
           blocks:[
             {label:'Compound Block · Rest 2 min', exs:[
               {id:'trf-hip', name:'Hip Thrust', badge:'compound', sets:4, w:45, r:12, rest:120, compound:true,
-               why:'Greatest glute activation. Glutes are the largest muscle — training them hard burns the most calories.',
+               why:'Trains the glutes at full hip extension. Glutes are the largest muscle — training them hard burns the most calories.',
                cues:['Bench at shoulder blades. Feet flat, shoulder-width.','Drive through full foot. 2-sec hold at top.','Level hips. Chin tucked.']},
               {id:'trf-rdl', name:'Romanian Deadlift', badge:'compound', sets:4, w:35, r:12, rest:120, compound:true,
                why:'Posterior chain under constant tension. Complements hip thrust for total lower body development.',

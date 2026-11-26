@@ -20,6 +20,16 @@
 //   [c] the allowlist is live: every allowlisted entry still exists and still
 //       matches CLAIM. A stale allowlist entry fails.
 //
+// KNOWN LIMITS — stated, not hidden (independent verifier, 2026-11-26):
+//   * CLAIM is the scope-locked spelling class (EMG, than lying/prone/seated). Comparative
+//     claims WITHOUT those words ("greatest glute activation of any exercise", "greater
+//     hypertrophy stimulus than standing curls", "outperforms any isolation") are NOT
+//     covered. About 45 such whys remain on main; they are tracked on BUG-283 for Kerwin's
+//     decision, not silently treated as fine. Widen CLAIM in the same change that clears them.
+//   * Any citation marker on an entry clears any claim on it: the gate proves a source is
+//     NAMED, not that it supports that sentence (e.g. trf-incdb's Fonseca 2014 cite).
+//   * Only single-quoted why:'...' literals are seen; none of another form exists today.
+//
 // Run: node scripts/why-claim-citation-smoke.mjs   (exit 1 on any failure)
 // Test hook: WHY_CITE_SRC=<path> reads a copy instead (used to mutation-test).
 import { readFileSync } from 'node:fs';
