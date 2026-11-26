@@ -2259,3 +2259,32 @@ whole field, and the fetch in my context was the only copy outside the corpus pa
 > that is now false, and then say so in the new text. Never set a text property from your note alone.
 
 **Enforced by:** judgment, not mechanically checkable.
+
+## SC-70 — SC-60 inside my own retry: I fixed the claims the verifier named and swept no further, then wrote "all" in the commit
+
+**What happened (2026-11-26, scheduled Builder, BUG-283).** The first independent verifier FAILed
+attempt 1 because the guard matched "EMG" by spelling, so "Greatest glute activation of any
+exercise" survived on tr-hip / trf-hip. In attempt 2 (da9943c) I fixed exactly the five entries
+the verifier had listed and wrote "removed on all hip-thrust entries" and "each now states only
+the position it trains". The second verifier found 12 Hip Thrust entries in the static
+libraries. bmf-hip2 still said "no squat achieves it" (the same claim without the word
+"deadlift"), and three of my edited entries still carried other uncited superlatives ("most
+powerful position", "burns the most calories"). fbf-hip was edited but left out of the list.
+
+**The mechanism.** I treated the verifier's list of instances as the full set. It was a sample
+the verifier happened to find. I then wrote a universal ("all", "only") that I had not checked
+with a query that could prove it. SC-60 again: a sweep keyed on the spellings I already had.
+
+> **THE RULE — SC-70.** Before writing "all", "every", "only" or "none" in a commit body or tracker
+> row, run the query that would show a counter-example (here: every entry whose name or id is the
+> subject, `grep -n "Hip Thrust\|-hip" programs.js`, then read each why) and paste the count it
+> returns. A verifier's list of failures is a lower bound, never the population.
+
+**Correction to da9943c's body, recorded here because that sha is cited by a gate run and is
+not amended:** the doubtful hip-extension claim was NOT removed from every Hip Thrust entry
+(bmf-hip2 keeps "no squat achieves it"). The edited entries do NOT state only the position they
+train: hip-thrust keeps "most powerful position", and tr-hip / trf-hip keep "burns the most
+calories". The entries actually edited were hip-thrust, bm-hip, bmf-hip, fbf-hip, tr-hip and
+trf-hip. BUG-283 is Needs Human after 2 attempts (safety.max_fix_attempts_per_story).
+
+**Enforced by:** judgment, not mechanically checkable.
