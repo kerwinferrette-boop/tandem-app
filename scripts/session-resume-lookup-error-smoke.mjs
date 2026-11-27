@@ -25,6 +25,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { blankToast, waitForToast } from './lib/toast-wait.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PORT = 22400 + Math.floor(Math.random() * 400);
@@ -139,7 +140,11 @@ const tapStart = async (page) => { await page.click('#sessionTimerRow .session-t
     await reset(page);
     await page.evaluate(() => { window.__open['real-open'] = { id: 'real-open', notes: null };
       LSraw.set('tandem_active_session_id', 'real-open'); window.__lookupError = true; renderTracker(); });
+    // BUG-278: blank the toast first, then wait for THIS action's terminal text (fail closed),
+    // instead of trusting the 300 ms inside tapStart to have been long enough.
+    await blankToast(page);
     await tapStart(page);
+    await waitForToast(page, /could not start/i, { mode: 'throw' });
     const blip = await page.evaluate(() => ({ ins: window.__ins.length, key: LSraw.get('tandem_active_session_id'),
       toast: (document.getElementById('prToast')?.textContent || '').trim() }));
     check('[S3]', blip.ins === 0 && blip.key === 'real-open', `lookup ERROR mints nothing and keeps the stored id (inserts=${blip.ins}, key=${blip.key})`);

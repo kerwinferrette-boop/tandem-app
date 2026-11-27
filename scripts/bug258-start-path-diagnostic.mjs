@@ -31,6 +31,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { blankToast, waitForToast } from './lib/toast-wait.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PORT = 22400 + Math.floor(Math.random() * 400);
@@ -197,12 +198,15 @@ const tapStart = async (page) => { await page.click('#sessionTimerRow .session-t
 
     // (d): row minted AND user shown no usable tracker AND no error?
     await reset(page); await page.evaluate(() => { window.__insertError = true; });
+    // BUG-278: blank, act, wait. 'report' mode — a diagnostic reports a missing toast, it does not crash.
+    await blankToast(page);
     await tapStart(page);
+    const ieWait = await waitForToast(page, /could not start/i, { mode: 'report' });
     const ie = await page.evaluate(() => ({ ins: window.__ins.length, key: LSraw.get('tandem_active_session_id'),
       toast: (document.getElementById('prToast')?.textContent || '').trim(),
       startAgain: !!document.querySelector('#sessionTimerRow .session-timer-start'),
       timer: !!document.getElementById('sessionTimerDisplay') }));
-    report('5d-i   insert REFUSED: user told?', /could not start/i.test(ie.toast) ? 'YES (toast)' : `NO TOAST FOUND (toast="${ie.toast}")`,
+    report('5d-i   insert REFUSED: user told?', ieWait.arrived ? 'YES (toast)' : `NO TOAST FOUND within the wait (toast="${ie.toast}")`,
       `row minted=${ie.ins === 1 && !!ie.key}; Start button shown again=${ie.startAgain}; timer live=${ie.timer}. `
       + 'On this branch the user sees "Could not start session — try again" and the same Start button, i.e. "won\'t let me start". '
       + 'But the reporter\'s production row WAS created, so the insert did not fail for them.', null);
