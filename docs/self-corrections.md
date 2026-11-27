@@ -2288,3 +2288,26 @@ calories". The entries actually edited were hip-thrust, bm-hip, bmf-hip, fbf-hip
 trf-hip. BUG-283 is Needs Human after 2 attempts (safety.max_fix_attempts_per_story).
 
 **Enforced by:** judgment, not mechanically checkable.
+
+## SC-71 — I let a verifier write its gate log into my baseline's filename, then read the overwritten file as my baseline
+
+**What I believed.** That `scratchpad/verify.log` held my own baseline `npm run verify` of 6a673ca,
+so its "1/89 CHECK(S) FAILED" (BUG-246 merge parity) was a baseline red on main.
+
+**What was true.** I pointed the independent verifier at the same scratchpad directory and did not
+name its output files. It wrote its own candidate run to `verify.log`, overwriting mine. The FAIL I
+read belonged to the verifier's first run, which overlapped its own `git worktree add/remove`. Two
+facts give it away: the file had no merge-parity section output, and merge parity passed both when
+run alone on the baseline sha and on the verifier's clean second run ("ALL 89 CHECKS PASS"). My
+real baseline verify result for 6a673ca is therefore LOST and cannot be reported.
+
+**The gap.** Two concurrent jobs shared one output directory with a common default filename, and I
+never checked who wrote the file before believing it (SC-30's "prove the harness reached it"
+applied to a log file).
+
+**THE RULE — SC-71.** Every gate run whose output I will cite writes to a file name that is unique
+to its job, for example `<job>-<sha>-verify.log`. When I delegate a gate run, I name the exact output
+path in the brief and forbid the shared defaults. Before citing a log, check that its first lines
+name the sha/worktree I expect.
+
+**Enforced by:** judgment, not mechanically checkable.
